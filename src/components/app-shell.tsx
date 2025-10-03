@@ -7,8 +7,9 @@ import Header from "./header";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
 
-const publicPaths = ["/", "/login", "/kayit-ol"];
+const publicPaths = ["/login", "/kayit-ol"];
 const authPaths = ["/login", "/kayit-ol"];
+const landingPage = "/";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -18,14 +19,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading) return;
 
-    const isPublic = publicPaths.includes(pathname);
+    const isPublic = publicPaths.includes(pathname) || pathname === landingPage;
     const isAuthPage = authPaths.includes(pathname);
+    const isLandingPage = pathname === landingPage;
 
     if (!user && !isPublic) {
       router.replace("/login");
     }
 
-    if (user && isAuthPage) {
+    if (user && (isAuthPage || isLandingPage)) {
       router.replace("/anasayfa");
     }
   }, [user, isUserLoading, pathname, router]);
@@ -38,7 +40,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isAppPage = !publicPaths.includes(pathname);
+  const isAppPage = !publicPaths.includes(pathname) && pathname !== landingPage;
 
   if (isAppPage) {
     return (
