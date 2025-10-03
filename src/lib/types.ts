@@ -20,7 +20,7 @@ export type Post = {
   id: string;
   username: string;
   userAvatar: string;
-  imageUrl: string;
+  imageUrl?: string; // Image is now optional
   caption: string;
   likes: number;
   comments: number;
