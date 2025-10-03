@@ -46,7 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isAppPage && user) {
     return (
-      <div className="flex h-screen flex-col bg-background">
+      <div className="flex h-dvh flex-col bg-background dark:bg-black">
         <Header />
         <main className="flex-1 overflow-hidden">{children}</main>
         <FooterNav />

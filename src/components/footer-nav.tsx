@@ -19,8 +19,8 @@ export default function FooterNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="relative z-10 shrink-0 border-t bg-background">
-      <div className="mx-auto grid h-14 max-w-md grid-cols-5">
+    <nav className="relative z-20 shrink-0 border-t bg-background dark:bg-black">
+      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center justify-items-center">
         {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (
@@ -28,19 +28,19 @@ export default function FooterNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 text-muted-foreground transition-colors hover:text-primary",
-                {
-                  "text-primary": isActive,
-                }
+                "flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary",
+                isActive ? "text-primary" : "text-gray-500"
               )}
             >
               <Icon 
                 className={cn(
-                  "h-6 w-6", 
+                  "h-7 w-7", 
                   { 'fill-current': isActive && href === '/anasayfa' }
                 )} 
               />
-              <span className="text-[10px] font-medium">{label}</span>
+              {isActive && (
+                <span className="text-[10px] font-semibold">{label}</span>
+              )}
             </Link>
           );
         })}

@@ -11,20 +11,29 @@ import { cn } from "@/lib/utils";
 export default function Header() {
   const pathname = usePathname();
 
-  return (
-    <header className="relative z-10 shrink-0 bg-background">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/profil" className="flex items-center gap-2">
-            {/* You can add a user avatar here later */}
-        </Link>
+  // Hide header on non-app pages
+  const publicPaths = ["/login", "/kayit-ol", "/"];
+  if (publicPaths.includes(pathname)) {
+    return null;
+  }
 
+  return (
+    <header className="relative z-20 shrink-0 bg-background dark:bg-black">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        
         <Link href="/anasayfa" className="flex items-center gap-2">
           <Icons.tinder className="h-8 w-auto text-primary" />
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-             <SlidersHorizontal />
+             <Shield className="h-6 w-6"/>
+           </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+             <SlidersHorizontal className="h-6 w-6"/>
+           </Button>
+            <Button variant="ghost" size="icon" className="text-purple-500 hover:text-purple-400">
+             <Zap className="h-6 w-6 fill-current"/>
            </Button>
         </div>
       </div>
