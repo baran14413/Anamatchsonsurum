@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, useUser } from "@/firebase";
 import { cn } from "@/lib/utils";
 import { Icons } from "./icons";
 import { Button } from "./ui/button";
@@ -27,7 +26,8 @@ const navLinks = [
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useUser();
+  const auth = useAuth();
 
   const handleLogout = async () => {
     await signOut(auth);

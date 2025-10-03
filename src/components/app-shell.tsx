@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useUser } from "@/firebase";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Header from "./header";
@@ -10,12 +10,12 @@ const publicPaths = ["/", "/login", "/kayit-ol"];
 const authPaths = ["/login", "/kayit-ol"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (isUserLoading) return;
 
     const isPublic = publicPaths.includes(pathname);
     const isAuthPage = authPaths.includes(pathname);
@@ -27,9 +27,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (user && isAuthPage) {
       router.replace("/anasayfa");
     }
-  }, [user, loading, pathname, router]);
+  }, [user, isUserLoading, pathname, router]);
 
-  if (loading) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Icons.logo className="h-24 w-24 animate-pulse text-primary" />

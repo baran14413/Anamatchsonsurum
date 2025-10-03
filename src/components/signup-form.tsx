@@ -8,8 +8,8 @@ import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,8 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,13 +53,15 @@ export default function SignupForm() {
         values.password
       );
       
+      const userDocRef = doc(firestore, "users", userCredential.user.uid);
+      
       // Create a user profile document in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      setDocumentNonBlocking(userDocRef, {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
         createdAt: new Date(),
         profileComplete: false,
-      });
+      }, { merge: true });
 
       toast({
         title: "Kayıt Başarılı",
