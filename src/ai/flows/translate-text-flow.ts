@@ -44,7 +44,7 @@ ${text}
 
     const { text: translatedText } = await ai.generate({
       prompt: prompt,
-      model: 'googleai/gemini-pro', // Using a faster model for simple translation
+      model: 'googleai/gemini-2.5-flash', // Using a powerful model for accurate translation
     });
 
     if (!translatedText) {
