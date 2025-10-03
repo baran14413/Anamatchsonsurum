@@ -16,23 +16,24 @@ interface ProfileCardProps {
 }
 
 const cardVariants = {
-  initial: (zIndex: number) => ({ 
-    scale: 1 - (3 - zIndex) * 0.05,
-    y: (3 - zIndex) * -10,
-    opacity: zIndex === 3 ? 1 : 0.8,
+  initial: (zIndex: number) => ({
+    opacity: 0,
+    scale: 1 - (2-zIndex) * 0.1,
+    y: (2-zIndex) * -15,
   }),
-  animate: { 
-    scale: 1, 
-    y: 0, 
-    opacity: 1, 
-    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } 
-  },
+  animate: (zIndex: number) => ({
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    zIndex,
+    transition: { duration: 0.3, ease: "easeOut" } 
+  }),
   exit: (direction: "left" | "right") => {
     return {
-      x: direction === "left" ? -500 : 500,
+      x: direction === "left" ? -300 : 300,
       opacity: 0,
       scale: 0.9,
-      transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+      transition: { duration: 0.3, ease: "easeIn" }
     };
   }
 };
@@ -40,23 +41,22 @@ const cardVariants = {
 
 export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zIndex }: ProfileCardProps) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-300, 300], [-20, 20]);
-  const opacity = useTransform(x, [-200, 0, 200], [0.5, 1, 0.5]);
-
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (Math.abs(info.offset.x) < 5) return;
-    if (info.offset.x < -100) {
+    if (info.offset.x < -50) {
       onSwipe("left");
-    } else if (info.offset.x > 100) {
+    } else if (info.offset.x > 50) {
       onSwipe("right");
     }
   };
   
   useEffect(() => {
     if (direction && isTopCard) {
-      const exitX = direction === 'left' ? -500 : 500;
+      const exitX = direction === 'left' ? -300 : 300;
       x.set(exitX);
     }
   }, [direction, isTopCard, x]);
@@ -73,7 +73,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
   return (
     <motion.div
       className="absolute h-full w-full"
-      style={{ x, rotate, opacity, zIndex }}
+      style={{ x, rotate, zIndex }}
       drag={isTopCard ? "x" : false}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.5}
@@ -82,7 +82,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
       initial="initial"
       animate="animate"
       exit={() => cardVariants.exit(direction || 'right')}
-      custom={direction}
+      custom={zIndex}
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-2xl">
         <AnimatePresence initial={false}>
