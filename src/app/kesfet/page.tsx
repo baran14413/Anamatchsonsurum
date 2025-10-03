@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { mockPosts } from "@/lib/data";
 import type { Post } from "@/lib/types";
+import { Translation } from "@/components/translation";
 
 // Mock comments for the sheet
 const mockCommentsData = [
@@ -48,7 +49,9 @@ export default function KesfetPage() {
                 </CardHeader>
 
                 <CardContent className="p-4 pt-0">
-                  <p className="text-foreground/90 whitespace-pre-wrap">{post.caption}</p>
+                  <div className="text-foreground/90 whitespace-pre-wrap">
+                     <Translation text={post.caption} sourceLanguage={post.language} />
+                  </div>
                 </CardContent>
 
                 {post.imageUrl && (

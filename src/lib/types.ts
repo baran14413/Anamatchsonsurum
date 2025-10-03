@@ -22,6 +22,7 @@ export type Post = {
   userAvatar: string;
   imageUrl?: string; // Image is now optional
   caption: string;
+  language: string; // Language of the caption
   likes: number;
   comments: number;
   timestamp: Date;
