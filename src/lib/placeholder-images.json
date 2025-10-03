@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user1",
+      "description": "Woman smiling in a city",
+      "imageUrl": "https://images.unsplash.com/photo-1598625873873-52f9aefd7d9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzU5NDU5NjcyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "user2",
+      "description": "Man hiking in mountains",
+      "imageUrl": "https://images.unsplash.com/photo-1458442310124-dde6edb43d10?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtYW4lMjBoaWtpbmd8ZW58MHx8fHwxNzU5NDA0MTg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man hiking"
+    },
+    {
+      "id": "user3",
+      "description": "Woman at a cafe",
+      "imageUrl": "https://images.unsplash.com/photo-1648836107897-738a45ec75f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3b21hbiUyMGNhZmV8ZW58MHx8fHwxNzU5NDQzMDc4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman cafe"
+    },
+    {
+      "id": "user4",
+      "description": "Man with a dog",
+      "imageUrl": "https://images.unsplash.com/photo-1596693485967-1dda98699e32?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bWFuJTIwZG9nfGVufDB8fHx8MTc1OTQ3ODQ5NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man dog"
+    },
+    {
+      "id": "user5",
+      "description": "Woman at the beach",
+      "imageUrl": "https://images.unsplash.com/photo-1708944704441-f29f280caef1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx3b21hbiUyMGJlYWNofGVufDB8fHx8MTc1OTQyNDU2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman beach"
+    },
+    {
+      "id": "user6",
+      "description": "Man playing guitar",
+      "imageUrl": "https://images.unsplash.com/photo-1671776616678-bf98ec079e35?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtYW4lMjBndWl0YXJ8ZW58MHx8fHwxNzU5NTAyNzc4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man guitar"
+    },
+    {
+      "id": "user7",
+      "description": "Woman painting",
+      "imageUrl": "https://images.unsplash.com/photo-1615339700936-d74e64fd1d1e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHBhaW50aW5nfGVufDB8fHx8MTc1OTQ5MDgzM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman painting"
+    },
+    {
+      "id": "user8",
+      "description": "Man in a suit",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1553642618-de0381320ff3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBzdWl0fGVufDB8fHx8MTc1OTQxNDU5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man suit"
+    }
+  ]
 }
