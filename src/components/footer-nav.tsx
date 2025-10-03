@@ -1,10 +1,11 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import { Compass, Heart, MessageSquare, User, Home } from "lucide-react";
+import { Compass, Heart, MessageSquare, User } from "lucide-react";
 import { Icons } from "./icons";
 
 const navLinks = [
@@ -19,27 +20,24 @@ export default function FooterNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
-      <div className="grid grid-cols-5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm">
+      <div className="grid h-16 grid-cols-5">
         {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
           return (
-            <Button
+            <Link
               key={href}
-              asChild
-              variant="ghost"
+              href={href}
               className={cn(
-                "flex h-16 flex-col items-center justify-center gap-1 rounded-none text-muted-foreground",
+                "flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary",
                 {
                   "text-primary": isActive,
                 }
               )}
             >
-              <Link href={href}>
-                <Icon className={cn("h-6 w-6", { 'fill-current': isActive && href === '/anasayfa' })} />
-                <span className="text-xs font-medium">{label}</span>
-              </Link>
-            </Button>
+              <Icon className={cn("h-6 w-6", { 'fill-current text-primary': isActive && href === '/anasayfa' }, { 'text-gray-400': !isActive })} />
+              <span className="text-xs font-medium">{label}</span>
+            </Link>
           );
         })}
       </div>

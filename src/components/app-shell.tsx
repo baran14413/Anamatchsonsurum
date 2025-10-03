@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser } from "@/firebase";
@@ -34,8 +35,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isUserLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Icons.logo className="h-24 w-24 animate-pulse text-primary" />
+      <div className="flex h-screen items-center justify-center bg-black">
+        <Icons.logo className="h-24 w-24 animate-pulse text-[#FD5068]" />
       </div>
     );
   }
@@ -46,7 +47,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen flex-col bg-background">
         <Header />
-        <main className="flex-1 pb-20 overflow-hidden">{children}</main>
+        <main className="relative flex-1 overflow-hidden">{children}</main>
         <FooterNav />
       </div>
     );

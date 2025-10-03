@@ -16,11 +16,11 @@ interface ProfileCardProps {
 }
 
 const cardVariants = {
-  initial: (zIndex: number) => ({
+  initial: {
     opacity: 0,
-    scale: 1 - (2-zIndex) * 0.1,
-    y: (2-zIndex) * -15,
-  }),
+    scale: 0.8,
+    y: 20
+  },
   animate: (zIndex: number) => ({
     opacity: 1,
     scale: 1,
@@ -30,10 +30,10 @@ const cardVariants = {
   }),
   exit: (direction: "left" | "right") => {
     return {
-      x: direction === "left" ? -300 : 300,
+      x: direction === "left" ? -400 : 400,
       opacity: 0,
-      scale: 0.9,
-      transition: { duration: 0.3, ease: "easeIn" }
+      rotate: direction === "left" ? -20 : 20,
+      transition: { duration: 0.4, ease: "easeIn" }
     };
   }
 };
@@ -41,12 +41,15 @@ const cardVariants = {
 
 export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zIndex }: ProfileCardProps) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const rotate = useTransform(x, [-300, 300], [-20, 20]);
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (Math.abs(info.offset.x) < 5) return;
+    if (Math.abs(info.offset.x) < 50) {
+        x.set(0);
+        return;
+    };
     if (info.offset.x < -50) {
       onSwipe("left");
     } else if (info.offset.x > 50) {
@@ -56,8 +59,8 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
   
   useEffect(() => {
     if (direction && isTopCard) {
-      const exitX = direction === 'left' ? -300 : 300;
-      x.set(exitX);
+      const exitX = direction === 'left' ? -400 : 400;
+      x.set(exitX, { duration: 0.4 });
     }
   }, [direction, isTopCard, x]);
 
@@ -72,7 +75,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
 
   return (
     <motion.div
-      className="absolute h-full w-full"
+      className="absolute inset-0"
       style={{ x, rotate, zIndex }}
       drag={isTopCard ? "x" : false}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
@@ -84,14 +87,14 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
       exit={() => cardVariants.exit(direction || 'right')}
       custom={zIndex}
     >
-      <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-2xl">
+      <div className="relative h-full w-full select-none overflow-hidden rounded-xl bg-card shadow-xl">
         <AnimatePresence initial={false}>
             <motion.div
               key={currentImageIndex}
               className="absolute inset-0"
-              initial={{ opacity: 0.6, scale: 1.05 }}
-              animate={{ opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { duration: 0.3 } }}
             >
                 <Image
                     src={profile.images[currentImageIndex]}
@@ -104,34 +107,33 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
             </motion.div>
         </AnimatePresence>
 
-        {profile.images.length > 1 && (
-            <>
-                <div className="absolute left-0 top-0 h-full w-1/2 z-10" onClick={(e) => handleImageNavigation(e, 'prev')} />
-                <div className="absolute right-0 top-0 h-full w-1/2 z-10" onClick={(e) => handleImageNavigation(e, 'next')} />
+        <div className="absolute inset-x-0 top-0 h-20 w-full z-10">
+            {profile.images.length > 1 && (
                 <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
                     {profile.images.map((_, index) => (
-                        <div key={index} className="h-1 flex-1 rounded-full bg-white/40 backdrop-blur-sm">
-                            <motion.div
+                        <div key={index} className="h-1 flex-1 rounded-full bg-white/40">
+                            <div
                                 className="h-full rounded-full bg-white"
-                                initial={{ width: '0%' }}
-                                animate={{ width: index === currentImageIndex ? '100%' : '0%'}}
-                                transition={{ duration: 0.1, ease: 'linear' }}
+                                style={{ width: index === currentImageIndex ? '100%' : '0%'}}
                             />
                         </div>
                     ))}
                 </div>
-            </>
-        )}
+            )}
+            <div className="absolute top-0 left-0 h-full w-1/2" onClick={(e) => handleImageNavigation(e, 'prev')} />
+            <div className="absolute top-0 right-0 h-full w-1/2" onClick={(e) => handleImageNavigation(e, 'next')} />
+        </div>
 
-        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/50 to-transparent p-5 text-white z-20">
+
+        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-white z-20">
           <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-3xl font-bold">
+            <div className="max-w-[calc(100%-40px)]">
+              <h2 className="text-2xl font-bold drop-shadow-md">
                 {profile.name}, <span className="font-light">{profile.age}</span>
               </h2>
-              <p className="mt-1 text-white/90 max-w-[90%] text-base">{profile.bio}</p>
+              <p className="mt-1 text-white/95 drop-shadow-sm text-base truncate">{profile.bio}</p>
             </div>
-             <button className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-white/30 backdrop-blur-sm">
+             <button className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-white/50 bg-white/20 backdrop-blur-sm">
                 <ChevronUp className="h-6 w-6" />
             </button>
           </div>
