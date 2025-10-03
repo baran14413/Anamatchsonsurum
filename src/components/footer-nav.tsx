@@ -4,14 +4,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Compass, Heart, MessageSquare, User } from "lucide-react";
+import { Compass, MessageSquare, User } from "lucide-react";
 import { Icons } from "./icons";
 
 const navLinks = [
   { href: "/anasayfa", label: "Ana sayfa", icon: Icons.tinderFlame },
   { href: "/kesfet", label: "Keşfet", icon: Compass },
-  { href: "/eslesmeler", label: "Eşleşmeler", icon: Heart },
-  { href: "/sohbetler", label: "Sohbetler", icon: MessageSquare },
+  { href: "/eslesmeler", label: "Mesajlar", icon: MessageSquare },
   { href: "/profil", label: "Profil", icon: User },
 ];
 
@@ -20,7 +19,7 @@ export default function FooterNav() {
 
   return (
     <nav className="relative z-20 shrink-0 border-t bg-background dark:bg-black">
-      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center justify-items-center">
+      <div className="mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-items-center">
         {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (
@@ -35,7 +34,7 @@ export default function FooterNav() {
               <Icon 
                 className={cn(
                   "h-7 w-7", 
-                  { 'fill-current': isActive && href === '/anasayfa' }
+                  { 'fill-current': isActive && (href === '/anasayfa' || href === '/eslesmeler') }
                 )} 
               />
               {isActive && (

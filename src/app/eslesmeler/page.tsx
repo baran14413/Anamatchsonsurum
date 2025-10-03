@@ -8,7 +8,7 @@ import { tr } from "date-fns/locale";
 export default function EslesmelerPage() {
   return (
     <div className="container mx-auto max-w-2xl p-4 md:py-8">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">Eşleşmeler</h1>
+      <h1 className="mb-6 text-3xl font-bold tracking-tight">Mesajlar</h1>
       <div className="space-y-4">
         {mockMatches.length > 0 ? (
           mockMatches.map((match) => (
