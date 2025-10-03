@@ -1,38 +1,33 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Icons } from "@/components/icons";
+import { MoveRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/70 to-background dark:from-primary dark:via-primary/90 dark:to-background"></div>
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4 text-center">
-        <div className="flex flex-col items-center space-y-6">
-          <Icons.logo className="h-24 w-24 text-white" />
-          <h1 className="text-5xl font-bold tracking-tight text-white md:text-7xl">
+    <div className="relative flex h-screen w-full items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-pink-100 via-white to-purple-100 dark:from-gray-900 dark:via-black dark:to-purple-900/50" />
+      <div className="relative z-10 flex flex-col items-center justify-center p-8 text-center">
+        <div className="flex items-center gap-4 mb-6">
+          <Icons.logo className="h-20 w-20 text-primary" />
+          <h1 className="text-7xl font-bold tracking-tighter text-gray-800 dark:text-white">
             BeMatch
           </h1>
-          <p className="max-w-2xl text-lg text-white/80 md:text-xl">
-            Yapay zeka destekli eşleştirme ile ruh eşini bulmaya hazır mısın?
-            Aşkı Keşfet, Bağlantı Kur.
-          </p>
-          <div className="flex flex-col gap-4 pt-6 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-accent text-accent-foreground hover:bg-accent/90 transform transition-transform hover:scale-105"
-            >
-              <Link href="/kayit-ol">Hemen Başla</Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="secondary"
-              className="transform transition-transform hover:scale-105"
-            >
-              <Link href="/login">Giriş Yap</Link>
-            </Button>
-          </div>
+        </div>
+        <p className="max-w-xl text-lg text-muted-foreground md:text-xl">
+          Yapay zeka destekli eşleştirme ile ruh eşini bulmaya hazır mısın?
+          Aşkı Keşfet, Bağlantı Kur.
+        </p>
+        <div className="mt-10 flex w-full max-w-sm flex-col gap-4">
+          <Button asChild size="lg" className="h-14 rounded-full bg-primary text-lg font-bold text-primary-foreground shadow-lg transition-transform hover:scale-105">
+            <Link href="/kayit-ol">
+              <span>Hesap Oluştur</span>
+              <MoveRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="link" className="text-muted-foreground">
+            <Link href="/login">Zaten üye misin? Giriş Yap</Link>
+          </Button>
         </div>
       </div>
     </div>
