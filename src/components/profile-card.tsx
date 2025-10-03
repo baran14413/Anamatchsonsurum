@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { UserProfile } from "@/lib/types";
@@ -11,11 +12,21 @@ interface ProfileCardProps {
   onSwipe: (direction: "left" | "right") => void;
   isTopCard: boolean;
   direction: "left" | "right" | "up" | "down" | null;
+  zIndex: number;
 }
 
 const cardVariants = {
-  initial: { scale: 0.95, y: 20, opacity: 0.8 },
-  animate: { scale: 1, y: 0, opacity: 1, transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } },
+  initial: (zIndex: number) => ({ 
+    scale: 1 - (3 - zIndex) * 0.05,
+    y: (3 - zIndex) * -10,
+    opacity: zIndex === 3 ? 1 : 0.8,
+  }),
+  animate: { 
+    scale: 1, 
+    y: 0, 
+    opacity: 1, 
+    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } 
+  },
   exit: (direction: "left" | "right") => {
     return {
       x: direction === "left" ? -500 : 500,
@@ -26,7 +37,8 @@ const cardVariants = {
   }
 };
 
-export default function ProfileCard({ profile, onSwipe, isTopCard, direction }: ProfileCardProps) {
+
+export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zIndex }: ProfileCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 300], [-20, 20]);
   const opacity = useTransform(x, [-200, 0, 200], [0.5, 1, 0.5]);
@@ -61,7 +73,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction }: 
   return (
     <motion.div
       className="absolute h-full w-full"
-      style={{ x, rotate, opacity }}
+      style={{ x, rotate, opacity, zIndex }}
       drag={isTopCard ? "x" : false}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.5}

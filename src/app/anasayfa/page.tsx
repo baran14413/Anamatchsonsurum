@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -43,6 +44,7 @@ export default function AnasayfaPage() {
                   onSwipe={(dir) => handleSwipe(profile.id, dir)}
                   isTopCard={isTopCard}
                   direction={direction}
+                  zIndex={profiles.length - index}
                 />
               );
             })
