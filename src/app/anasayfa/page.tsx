@@ -6,7 +6,7 @@ import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import { mockProfiles } from "@/lib/data";
 import type { UserProfile } from "@/lib/types";
-import { Heart, X, Undo, Star, Zap, Send } from "lucide-react";
+import { Heart, X, Undo, Star, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function AnasayfaPage() {
@@ -30,8 +30,8 @@ export default function AnasayfaPage() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-muted/20 dark:bg-black">
-      <div className="relative h-full w-full">
+    <div className="flex h-full flex-col bg-muted/20 dark:bg-black">
+      <div className="relative flex-1">
         <AnimatePresence>
           {profiles.length > 0 ? (
             profiles.map((profile, index) => {
@@ -63,27 +63,27 @@ export default function AnasayfaPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {profiles.length > 0 && (
-          <div className="absolute bottom-20 flex w-full max-w-md items-center justify-evenly px-4 py-2">
-              <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white text-yellow-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
-                  <Undo className="h-6 w-6" />
+        
+        {profiles.length > 0 && (
+          <div className="absolute bottom-6 left-0 right-0 z-50 flex w-full items-center justify-evenly px-4">
+              <Button onClick={() => {}} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-yellow-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+                  <Undo className="h-7 w-7" />
               </Button>
-              <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-red-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
-                  <X className="h-9 w-9" />
+              <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-20 w-20 rounded-full bg-white text-red-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+                  <X className="h-10 w-10" />
               </Button>
-               <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white text-blue-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
-                  <Star className="h-7 w-7 fill-current" />
+               <Button onClick={() => {}} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-blue-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+                  <Star className="h-8 w-8 fill-current" />
               </Button>
-              <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-green-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
-                  <Heart className="h-9 w-9 fill-green-400" />
+              <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-20 w-20 rounded-full bg-white text-green-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+                  <Heart className="h-10 w-10 fill-green-400" />
               </Button>
-               <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white text-sky-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
-                  <Send className="h-6 w-6" />
+               <Button onClick={() => {}} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-purple-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+                  <Zap className="h-7 w-7 fill-current"/>
                </Button>
           </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

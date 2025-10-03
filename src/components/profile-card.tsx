@@ -18,14 +18,14 @@ interface ProfileCardProps {
 const cardVariants = {
   initial: {
     opacity: 0,
-    scale: 0.8,
-    y: 20
+    scale: 0.9,
+    y: 10
   },
-  animate: (zIndex: number) => ({
+  animate: (custom: { zIndex: number, isTopCard: boolean }) => ({
     opacity: 1,
     scale: 1,
     y: 0,
-    zIndex,
+    zIndex: custom.zIndex,
     transition: { duration: 0.3, ease: "easeOut" } 
   }),
   exit: (direction: "left" | "right") => {
@@ -59,8 +59,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
   
   useEffect(() => {
     if (direction && isTopCard) {
-      const exitX = direction === 'left' ? -400 : 400;
-      x.set(exitX, { duration: 0.4 });
+      x.set(direction === 'left' ? -400 : 400, { duration: 0.4 });
     }
   }, [direction, isTopCard, x]);
 
@@ -75,7 +74,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
 
   return (
     <motion.div
-      className="absolute inset-0"
+      className="absolute inset-0 p-4"
       style={{ x, rotate, zIndex }}
       drag={isTopCard ? "x" : false}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
@@ -85,9 +84,9 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
       initial="initial"
       animate="animate"
       exit={() => cardVariants.exit(direction || 'right')}
-      custom={zIndex}
+      custom={{ zIndex, isTopCard }}
     >
-      <div className="relative h-full w-full select-none overflow-hidden rounded-xl bg-card shadow-xl">
+      <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-2xl">
         <AnimatePresence initial={false}>
             <motion.div
               key={currentImageIndex}
@@ -107,13 +106,13 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
             </motion.div>
         </AnimatePresence>
 
-        <div className="absolute inset-x-0 top-0 h-20 w-full z-10">
+        <div className="absolute inset-x-0 top-0 h-24 w-full z-10">
             {profile.images.length > 1 && (
                 <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
                     {profile.images.map((_, index) => (
                         <div key={index} className="h-1 flex-1 rounded-full bg-white/40">
                             <div
-                                className="h-full rounded-full bg-white"
+                                className="h-full rounded-full bg-white transition-all duration-300"
                                 style={{ width: index === currentImageIndex ? '100%' : '0%'}}
                             />
                         </div>
@@ -124,17 +123,16 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction, zI
             <div className="absolute top-0 right-0 h-full w-1/2" onClick={(e) => handleImageNavigation(e, 'next')} />
         </div>
 
-
-        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 text-white z-20">
+        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white z-20 pb-28">
           <div className="flex items-end justify-between">
             <div className="max-w-[calc(100%-40px)]">
-              <h2 className="text-2xl font-bold drop-shadow-md">
+              <h2 className="text-3xl font-bold drop-shadow-lg">
                 {profile.name}, <span className="font-light">{profile.age}</span>
               </h2>
-              <p className="mt-1 text-white/95 drop-shadow-sm text-base truncate">{profile.bio}</p>
+              <p className="mt-1 text-white/95 drop-shadow-md text-lg truncate">{profile.bio}</p>
             </div>
-             <button className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-white/50 bg-white/20 backdrop-blur-sm">
-                <ChevronUp className="h-6 w-6" />
+             <button className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/80 bg-white/30 backdrop-blur-md">
+                <ChevronUp className="h-7 w-7" />
             </button>
           </div>
         </div>
