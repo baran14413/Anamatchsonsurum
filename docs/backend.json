@@ -1,0 +1,198 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile within the BeMatch application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "description": "The user's date of birth.",
+          "format": "date-time"
+        },
+        "gender": {
+          "type": "string",
+          "description": "The user's gender."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "interests": {
+          "type": "array",
+          "description": "A list of the user's interests.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography or description of the user."
+        }
+      },
+      "required": [
+        "id",
+        "fullName",
+        "email",
+        "dateOfBirth",
+        "gender",
+        "profilePicture",
+        "interests",
+        "bio"
+      ]
+    },
+    "Match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Match",
+      "type": "object",
+      "description": "Represents a match between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Match entity."
+        },
+        "user1Id": {
+          "type": "string",
+          "description": "Reference to UserProfile of the first user in the match. (Relationship: UserProfile 1:N Match)"
+        },
+        "user2Id": {
+          "type": "string",
+          "description": "Reference to UserProfile of the second user in the match. (Relationship: UserProfile 1:N Match)"
+        },
+        "matchDate": {
+          "type": "string",
+          "description": "The date and time when the match occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "user1Id",
+        "user2Id",
+        "matchDate"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a chat message between two users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatMessage entity."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to UserProfile of the user who sent the message. (Relationship: UserProfile 1:N ChatMessage)"
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "Reference to UserProfile of the user who received the message. (Relationship: UserProfile 1:N ChatMessage)"
+        },
+        "messageText": {
+          "type": "string",
+          "description": "The content of the chat message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "receiverId",
+        "messageText",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profiles. Each user has their own document. The 'userId' parameter is the same as the Firebase Authentication UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/matches/{matchId}",
+        "definition": {
+          "entityName": "Match",
+          "schema": {
+            "$ref": "#/backend/entities/Match"
+          },
+          "description": "Stores matches for a specific user.  The 'userId' represents the user who has the match and the match document contains references to both users in the match.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user who initiated the match or to whom the match belongs."
+            },
+            {
+              "name": "matchId",
+              "description": "The unique ID of the match."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/matches/{matchId}/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages for a specific match between two users. The 'userId' represents one of the users in the match.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of one of the users participating in the match."
+            },
+            {
+              "name": "matchId",
+              "description": "The unique ID of the match this message belongs to."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique ID of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the BeMatch application, focusing on user profiles, matches, and chat messages. The core principle is to ensure authorization independence, enabling secure and scalable operations. User profiles are stored under `/users/{userId}`. Matches are stored in a subcollection `/users/{userId}/matches/{matchId}` and chat messages within `/users/{userId}/matches/{matchId}/messages/{messageId}`. This structure enables simple, robust, and easily debuggable security rules.\n\n**Authorization Independence:**  Authorization is based on the `request.auth.uid` and path-based ownership. Each user has their profile and related data (matches, messages) stored under their `userId`, making access control straightforward. This eliminates the need for `get()` calls to parent documents to validate authorization, ensuring atomic operations.\n\n**QAPs (Rules are not Filters):**\n*   Secure `list` operations are supported through path-based ownership.  Listing matches or messages is always scoped to a specific user's `userId`, preventing unauthorized access to other users' data.\n*   The structure inherently supports the integrity of ownership since data is stored within user-specific paths."
+  }
+}
