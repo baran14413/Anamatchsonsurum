@@ -14,12 +14,14 @@ import { mockPosts } from "@/lib/data";
 import type { Post } from "@/lib/types";
 import { Translation } from "@/components/translation";
 
-// Mock comments for the sheet
+// Mock comments for the sheet with different languages
 const mockCommentsData = [
-  { id: 1, user: "Ahmet", text: "Harika bir paylaşım!" },
-  { id: 2, user: "Zeynep", text: "Kesinlikle katılıyorum." },
-  { id: 3, user: "Murat", text: "Bu konuda daha fazla bilgi verir misin?" },
-  { id: 4, user: "Ayşe", text: "Çok ilham verici! ✨" },
+  { id: 1, user: "Ahmet", text: "Harika bir paylaşım!", language: 'tr' },
+  { id: 2, user: "Zeynep", text: "Kesinlikle katılıyorum.", language: 'tr' },
+  { id: 3, user: "Maria", text: "¡Qué foto tan increíble!", language: 'es' },
+  { id: 4, user: "John", text: "Wow, this looks amazing. Where was this taken?", language: 'en' },
+  { id: 5, user: "Ayşe", text: "Çok ilham verici! ✨", language: 'tr' },
+  { id: 6, user: "Pierre", text: "C'est magnifique!", language: 'fr' },
 ];
 
 export default function KesfetPage() {
@@ -116,8 +118,10 @@ export default function KesfetPage() {
                       <AvatarFallback>{selectedPost.username.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
-                      <span className="font-semibold">{selectedPost.username}</span>
-                      <span className="ml-1 text-foreground/90">{selectedPost.caption}</span>
+                      <span className="font-semibold">{selectedPost.username}</span>{' '}
+                      <span className="text-foreground/90">
+                        <Translation text={selectedPost.caption} sourceLanguage={selectedPost.language} />
+                      </span>
                     </div>
                 </div>
               )}
@@ -129,8 +133,10 @@ export default function KesfetPage() {
                      <AvatarFallback>{comment.user.charAt(0)}</AvatarFallback>
                    </Avatar>
                    <div className="text-sm">
-                     <span className="font-semibold">{comment.user}</span>
-                     <span className="ml-1">{comment.text}</span>
+                     <span className="font-semibold">{comment.user}</span>{' '}
+                     <span className="text-foreground/90">
+                       <Translation text={comment.text} sourceLanguage={comment.language} />
+                     </span>
                    </div>
                 </div>
               ))}
