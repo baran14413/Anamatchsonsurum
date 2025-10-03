@@ -8,9 +8,8 @@ import Header from "./header";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
 
-const publicPaths = ["/login", "/kayit-ol"];
-const authPaths = ["/login", "/kayit-ol"];
-const landingPage = "/";
+const publicPaths = ["/login", "/kayit-ol", "/"];
+const appRoot = "/anasayfa";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -18,18 +17,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (isUserLoading) return;
-
-    const isPublic = publicPaths.includes(pathname) || pathname === landingPage;
-    const isAuthPage = authPaths.includes(pathname);
-    const isLandingPage = pathname === landingPage;
-
-    if (!user && !isPublic) {
-      router.replace("/login");
+    if (isUserLoading) {
+      return; 
     }
 
-    if (user && (isAuthPage || isLandingPage)) {
-      router.replace("/anasayfa");
+    const isPublicPage = publicPaths.includes(pathname);
+
+    if (user) {
+      if (isPublicPage) {
+        router.replace(appRoot);
+      }
+    } else {
+      if (!isPublicPage) {
+        router.replace("/login");
+      }
     }
   }, [user, isUserLoading, pathname, router]);
 
@@ -40,14 +41,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  
+  const isAppPage = !publicPaths.includes(pathname);
 
-  const isAppPage = !publicPaths.includes(pathname) && pathname !== landingPage;
-
-  if (isAppPage) {
+  if (isAppPage && user) {
     return (
       <div className="flex h-screen flex-col bg-background">
         <Header />
-        <main className="relative flex-1 overflow-hidden">{children}</main>
+        <main className="flex-1 overflow-hidden">{children}</main>
         <FooterNav />
       </div>
     );
