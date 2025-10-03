@@ -61,6 +61,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction }: 
       style={{ x, rotate }}
       drag={isTopCard ? "x" : false}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.3}
       onDragEnd={handleDragEnd}
       variants={cardVariants}
       initial="initial"
@@ -95,9 +96,11 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction }: 
                 <div className="absolute top-2 left-2 right-2 flex gap-1">
                     {profile.images.map((_, index) => (
                         <div key={index} className="h-1 flex-1 rounded-full bg-white/50">
-                            <div
+                            <motion.div
                                 className="h-full rounded-full bg-white"
-                                style={{ width: index === currentImageIndex ? '100%' : '0%', transition: 'width 0.3s' }}
+                                initial={{ width: '0%' }}
+                                animate={{ width: index === currentImageIndex ? '100%' : '0%'}}
+                                transition={{ duration: 0.3 }}
                             />
                         </div>
                     ))}

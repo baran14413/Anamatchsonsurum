@@ -30,7 +30,7 @@ export default function AnasayfaPage() {
   }
 
   return (
-    <div className="container mx-auto flex h-[calc(100vh-10rem)] flex-col items-center justify-center p-4 md:h-[calc(100vh-5rem)]">
+    <div className="flex h-full flex-col items-center justify-center p-4">
       <div className="relative h-full w-full max-w-sm">
         <AnimatePresence>
           {profiles.length > 0 ? (
