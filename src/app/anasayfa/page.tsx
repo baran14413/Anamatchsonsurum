@@ -31,7 +31,7 @@ export default function AnasayfaPage() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center bg-gray-100 dark:bg-black">
-      <div className="relative h-[calc(100%-120px)] w-full max-w-md">
+      <div className="relative h-full w-full max-w-md">
         <AnimatePresence>
           {profiles.length > 0 ? (
             profiles.map((profile, index) => {
