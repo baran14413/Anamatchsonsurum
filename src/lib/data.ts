@@ -1,4 +1,4 @@
-import type { UserProfile, Match } from './types';
+import type { UserProfile, Match, Post } from './types';
 
 export const mockProfiles: UserProfile[] = [
   {
@@ -84,3 +84,47 @@ export const mockMatches: Match[] = [
     lastMessageTimestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
   },
 ];
+
+
+export const mockPosts: Post[] = [
+    {
+      id: 'post1',
+      username: 'Elif',
+      userAvatar: 'https://picsum.photos/seed/bematch1/100/100',
+      imageUrl: 'https://picsum.photos/seed/post1/600/700',
+      caption: 'Paris\'te harika bir gün!  Eiffel Kulesi\'ni görmek inanılmazdı. 🗼 #seyahat #paris #tbt',
+      likes: 1245,
+      comments: 89,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3),
+    },
+    {
+      id: 'post2',
+      username: 'Can',
+      userAvatar: 'https://picsum.photos/seed/bematch2/100/100',
+      imageUrl: 'https://picsum.photos/seed/post2/600/600',
+      caption: 'Bu haftasonu kamp ateşi ve yıldızlar... Başka bir şeye gerek yok. 🏕️🔥',
+      likes: 832,
+      comments: 45,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 22),
+    },
+     {
+      id: 'post3',
+      username: 'Selin',
+      userAvatar: 'https://picsum.photos/seed/bematch3/100/100',
+      imageUrl: 'https://picsum.photos/seed/post3/600/750',
+      caption: 'Yeni tablom sonunda bitti. Renklerle oynamayı seviyorum. 🎨 #sanat #resim #yağlıboya',
+      likes: 2400,
+      comments: 212,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 50),
+    },
+     {
+      id: 'post4',
+      username: 'Buse',
+      userAvatar: 'https://picsum.photos/seed/bematch5/100/100',
+      imageUrl: 'https://picsum.photos/seed/post4/600/600',
+      caption: 'Sahilde köpeğimle sabah yürüyüşü gibisi yok. 🐾❤️',
+      likes: 987,
+      comments: 61,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72),
+    }
+]

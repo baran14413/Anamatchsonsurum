@@ -15,3 +15,14 @@ export type Match = {
   lastMessage?: string;
   lastMessageTimestamp?: Date;
 };
+
+export type Post = {
+  id: string;
+  username: string;
+  userAvatar: string;
+  imageUrl: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  timestamp: Date;
+};
