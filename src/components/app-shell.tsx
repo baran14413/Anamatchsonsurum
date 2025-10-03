@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Header from "./header";
 import { Icons } from "./icons";
+import FooterNav from "./footer-nav";
 
 const publicPaths = ["/", "/login", "/kayit-ol"];
 const authPaths = ["/login", "/kayit-ol"];
@@ -43,7 +44,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-20">{children}</main>
+        <FooterNav />
       </div>
     );
   }

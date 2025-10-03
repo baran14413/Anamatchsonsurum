@@ -5,7 +5,7 @@ import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import { mockProfiles } from "@/lib/data";
 import type { UserProfile } from "@/lib/types";
-import { Heart, X, Undo } from "lucide-react";
+import { Heart, X, Undo, Star, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function AnasayfaPage() {
@@ -30,7 +30,7 @@ export default function AnasayfaPage() {
   }
 
   return (
-    <div className="container mx-auto flex h-[calc(100vh-8rem)] flex-col items-center justify-center p-4 md:h-[calc(100vh-4rem)]">
+    <div className="container mx-auto flex h-[calc(100vh-10rem)] flex-col items-center justify-center p-4 md:h-[calc(100vh-5rem)]">
       <div className="relative h-full w-full max-w-sm">
         <AnimatePresence>
           {profiles.length > 0 ? (
@@ -65,12 +65,21 @@ export default function AnasayfaPage() {
       </div>
 
       {profiles.length > 0 && (
-          <div className="mt-6 flex items-center justify-center gap-6">
-              <Button onClick={() => triggerSwipe('left')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-4 border-destructive text-destructive hover:bg-destructive/10">
+          <div className="mt-6 flex w-full max-w-sm items-center justify-around">
+              <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white shadow-lg text-yellow-500 hover:bg-gray-100">
+                  <Undo className="h-6 w-6" />
+              </Button>
+              <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-20 w-20 rounded-full bg-white shadow-lg text-red-500 hover:bg-gray-100">
                   <X className="h-10 w-10" />
               </Button>
-              <Button onClick={() => triggerSwipe('right')} variant="outline" size="icon" className="h-24 w-24 rounded-full border-4 border-green-500 text-green-500 hover:bg-green-500/10">
-                  <Heart className="h-12 w-12" />
+               <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white shadow-lg text-blue-500 hover:bg-gray-100">
+                  <Star className="h-6 w-6" />
+              </Button>
+              <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-20 w-20 rounded-full bg-white shadow-lg text-green-500 hover:bg-gray-100">
+                  <Heart className="h-10 w-10" />
+              </Button>
+               <Button onClick={() => {}} variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white shadow-lg text-purple-500 hover:bg-gray-100">
+                  <Zap className="h-6 w-6" />
               </Button>
           </div>
       )}

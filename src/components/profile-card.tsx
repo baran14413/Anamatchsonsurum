@@ -2,9 +2,9 @@
 
 import type { UserProfile } from "@/lib/types";
 import Image from "next/image";
-import { Badge } from "./ui/badge";
 import { PanInfo, motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import { ChevronUp } from "lucide-react";
 
 interface ProfileCardProps {
   profile: UserProfile;
@@ -105,17 +105,17 @@ export default function ProfileCard({ profile, onSwipe, isTopCard, direction }: 
             </>
         )}
 
-        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
-          <h2 className="text-3xl font-bold">
-            {profile.name}, <span className="font-light">{profile.age}</span>
-          </h2>
-          <p className="mt-1 text-white/90">{profile.bio}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {profile.interests.map((interest) => (
-              <Badge key={interest} variant="secondary" className="bg-white/20 text-white border-transparent">
-                {interest}
-              </Badge>
-            ))}
+        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">
+                {profile.name}, <span className="font-light">{profile.age}</span>
+              </h2>
+              <p className="mt-1 text-white/90 max-w-[80%]">{profile.bio}</p>
+            </div>
+             <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-white/30">
+                <ChevronUp className="h-6 w-6" />
+            </div>
           </div>
         </div>
       </div>
