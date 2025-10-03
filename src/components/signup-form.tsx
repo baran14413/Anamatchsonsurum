@@ -38,6 +38,7 @@ const formSchema = z.object({
 
 const getPasswordStrength = (password: string) => {
   let score = 0;
+  if (!password) return 0;
   if (password.length >= 8) score++;
   if (/[a-z]/.test(password)) score++;
   if (/[A-Z]/.test(password)) score++;
@@ -66,10 +67,10 @@ export default function SignupForm() {
   });
   
   const passwordValue = form.watch("password");
-  const passwordStrength = getPasswordStrength(passwordValue || "");
-  const strengthPercentage = (passwordStrength / 5) * 100;
+  const passwordStrength = getPasswordStrength(passwordValue);
+  const strengthPercentage = passwordStrength > 0 ? (passwordStrength / 5) * 100 : 0;
   
-  const strengthColors = {
+  const strengthColors: { [key: number]: string } = {
     0: "bg-transparent",
     1: "bg-red-500",
     2: "bg-orange-500",
@@ -117,7 +118,6 @@ export default function SignupForm() {
   }
 
   return (
-    <div className="grid gap-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -127,7 +127,7 @@ export default function SignupForm() {
               <FormItem>
                 <FormLabel>E-posta</FormLabel>
                 <FormControl>
-                  <Input placeholder="ornek@eposta.com" {...field} />
+                  <Input placeholder="ornek@eposta.com" {...field} className="bg-white/50 dark:bg-black/20" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -141,19 +141,19 @@ export default function SignupForm() {
                 <FormLabel>Şifre</FormLabel>
                 <div className="relative">
                   <FormControl>
-                    <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                    <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="bg-white/50 dark:bg-black/20"/>
                   </FormControl>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
                  {passwordValue && (
                   <div className="space-y-1 pt-1">
-                    <Progress value={strengthPercentage} className={`h-1 ${strengthColors[passwordStrength as keyof typeof strengthColors]}`} />
+                    <Progress value={strengthPercentage} className={'h-1.5'} indicatorClassName={strengthColors[passwordStrength]} />
                     <p className="text-xs text-muted-foreground">
                       Şifre gücü
                     </p>
@@ -171,12 +171,12 @@ export default function SignupForm() {
                 <FormLabel>Şifre Tekrar</FormLabel>
                 <div className="relative">
                   <FormControl>
-                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} className="bg-white/50 dark:bg-black/20"/>
                   </FormControl>
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -185,12 +185,11 @@ export default function SignupForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full h-12 text-base font-bold rounded-full" disabled={isLoading}>
+          <Button type="submit" className="w-full h-12 text-base font-bold rounded-full mt-6" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Kayıt Ol ve Başla
           </Button>
         </form>
       </Form>
-    </div>
   );
 }
