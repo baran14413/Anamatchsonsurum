@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { Chrome, Facebook, Mail } from 'lucide-react';
+import { Facebook, Mail } from 'lucide-react';
+import Image from 'next/image';
 
 export default function WelcomePage() {
   return (
@@ -29,7 +30,7 @@ export default function WelcomePage() {
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
-                <Chrome className="mr-4 h-6 w-6" />
+                <Image src="https://www.citypng.com/public/uploads/preview/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png" alt="Google logo" width={24} height={24} className="mr-4" />
                 Google ile devam et
               </Button>
             </Link>
