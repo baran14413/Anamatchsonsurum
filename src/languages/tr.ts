@@ -104,6 +104,40 @@ export const langTr = {
         ],
       },
     },
+    step9: {
+        title: 'Seni sen yapan başka neler var?',
+        description: 'Kendini ortaya koymaktan çekinme. Özgün olmak cazibelidir.',
+        communication: {
+            question: 'İletişim tarzını nasıl tanımlarsın?',
+            options: [
+                { id: 'good_texter', label: 'Mesajlaşmada iyiyim' },
+                { id: 'caller', label: 'Ararım' },
+                { id: 'video_chat', label: 'Video sohbet' },
+                { id: 'bad_texter', label: 'Mesajlaşmada kötüyüm' },
+                { id: 'face_to_face', label: 'Yüz yüze' },
+            ],
+        },
+        loveLanguage: {
+            question: 'Aşkını nasıl ifade edersin?',
+            options: [
+                { id: 'thoughtful_actions', label: 'Düşünceli davranışlarla' },
+                { id: 'gifts', label: 'Hediyelerle' },
+                { id: 'touch', label: 'Dokunarak' },
+                { id: 'compliments', label: 'İltifat duymak' },
+                { id: 'quality_time', label: 'Birlikte zaman geçirerek' },
+            ],
+        },
+        education: {
+            question: 'Eğitim seviyen nedir?',
+            options: [
+                { id: 'university_grad', label: 'Üniversite Mezunları' },
+                { id: 'bachelor_student', label: 'Lisans Öğrencisi' },
+                { id: 'high_school', label: 'Lise' },
+                { id: 'phd', label: 'Doktora' },
+                { id: 'master_student', label: 'Yüksek Lisans Öğrencisi' },
+            ],
+        },
+    },
     common: {
       next: 'İlerle',
       nextDynamic: 'Sonraki {count}/{total}',
@@ -114,3 +148,5 @@ export const langTr = {
     },
   },
 };
+
+    

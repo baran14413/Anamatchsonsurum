@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -45,6 +45,9 @@ const formSchema = z.object({
     smoking: z.string().optional(),
     workout: z.string().optional(),
     pets: z.array(z.string()).optional(),
+    communicationStyle: z.string().optional(),
+    loveLanguage: z.string().optional(),
+    educationLevel: z.string().optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -153,7 +156,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(8);
+  const [step, setStep] = useState(9);
   const auth = useAuth();
   const firestore = useFirestore();
 
@@ -169,12 +172,17 @@ export default function SignupForm() {
       smoking: undefined,
       workout: undefined,
       pets: [],
+      communicationStyle: undefined,
+      loveLanguage: undefined,
+      educationLevel: undefined,
     },
     mode: "onChange",
   });
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
+  const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel']);
+
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -185,6 +193,11 @@ export default function SignupForm() {
     }).length;
   }, [lifestyleValues]);
 
+  const filledMoreInfoCount = useMemo(() => {
+    return moreInfoValues.filter(v => !!v).length;
+  }, [moreInfoValues]);
+
+
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
 
@@ -193,7 +206,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const progressValue = (step / 8) * 100;
+  const progressValue = (step / 9) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -205,10 +218,11 @@ export default function SignupForm() {
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
+    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 8) {
+      if (step === 9) {
          toast({title: langTr.signup.common.tempToast, description: langTr.signup.common.tempToastDescription})
       } else {
         nextStep();
@@ -248,19 +262,24 @@ export default function SignupForm() {
         form.setValue('workout', undefined);
         form.setValue('pets', []);
     }
+    if (step === 9) {
+        form.setValue('communicationStyle', undefined);
+        form.setValue('loveLanguage', undefined);
+        form.setValue('educationLevel', undefined);
+    }
     handleNextStep();
   }
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
+       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
         {step > 1 && (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
-        {(step === 7 || step === 8) && (
+        {(step === 7 || step === 8 || step === 9) && (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0">
             {langTr.signup.progressHeader.skip}
           </Button>
@@ -268,9 +287,9 @@ export default function SignupForm() {
       </header>
       
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
-          {step < 8 && (
-             <div className="flex-1 space-y-4">
+         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
+         {step < 8 && (
+            <div className="flex-1 space-y-4">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -458,103 +477,162 @@ export default function SignupForm() {
                 </>
               )}
             </div>
-          )}
-
-          {step === 8 && (
-            <>
-              <div className="shrink-0">
-                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-8 py-4 pr-2 -mr-4">
-                <FormField
-                  control={form.control}
-                  name="drinking"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {langTr.signup.step8.drinking.options.map(opt => (
-                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="smoking"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {langTr.signup.step8.smoking.options.map(opt => (
-                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="workout"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {langTr.signup.step8.workout.options.map(opt => (
-                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Controller
-                  name="pets"
-                  control={form.control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          {langTr.signup.step8.pets.options.map(opt => {
-                            const isSelected = field.value?.includes(opt.id);
-                            return (
-                              <Button
-                                key={opt.id}
-                                type="button"
-                                variant={isSelected ? 'default' : 'outline'}
-                                onClick={() => {
-                                  const newValue = isSelected
-                                    ? field.value?.filter(v => v !== opt.id)
-                                    : [...(field.value || []), opt.id];
-                                  field.onChange(newValue);
-                                }}
-                                className="rounded-full"
-                              >
-                                {opt.label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </>
-          )}
-
+            )}
+             {step === 8 && (
+                <>
+                 <div className="shrink-0">
+                      <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
+                      <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
+                  </div>
+                  <div className="flex-1 space-y-8 py-4 pr-2 -mr-4 overflow-y-auto">
+                    <FormField
+                      control={form.control}
+                      name="drinking"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step8.drinking.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="smoking"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step8.smoking.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="workout"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step8.workout.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Controller
+                      name="pets"
+                      control={form.control}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step8.pets.options.map(opt => {
+                                const isSelected = field.value?.includes(opt.id);
+                                return (
+                                  <Button
+                                    key={opt.id}
+                                    type="button"
+                                    variant={isSelected ? 'default' : 'outline'}
+                                    onClick={() => {
+                                      const newValue = isSelected
+                                        ? field.value?.filter(v => v !== opt.id)
+                                        : [...(field.value || []), opt.id];
+                                      field.onChange(newValue);
+                                    }}
+                                    className="rounded-full"
+                                  >
+                                    {opt.label}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+               {step === 9 && (
+                <>
+                 <div className="shrink-0">
+                      <h1 className="text-3xl font-bold">{langTr.signup.step9.title}</h1>
+                      <p className="text-muted-foreground">{langTr.signup.step9.description}</p>
+                  </div>
+                  <div className="flex-1 space-y-8 py-4 pr-2 -mr-4 overflow-y-auto">
+                    <FormField
+                      control={form.control}
+                      name="communicationStyle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step9.communication.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step9.communication.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="loveLanguage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step9.loveLanguage.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step9.loveLanguage.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="educationLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langTr.signup.step9.education.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step9.education.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
           <div className="shrink-0 pt-6">
             {step === 5 ? (
               <Button
@@ -574,6 +652,15 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
+            ) : step === 9 ? (
+                <Button
+                type="button"
+                onClick={handleNextStep}
+                className="w-full h-14 rounded-full text-lg font-bold"
+                disabled={isLoading || filledMoreInfoCount === 0}
+              >
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '3')}
+              </Button>
             ) : (
               <Button
                 type="button"
@@ -590,3 +677,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    

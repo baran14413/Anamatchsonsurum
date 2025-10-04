@@ -19,6 +19,9 @@ export type UserProfile = {
   smoking?: string;
   workout?: string;
   pets?: string[];
+  communicationStyle?: string;
+  loveLanguage?: string;
+  educationLevel?: string;
 };
 
 export type Match = {
@@ -39,5 +42,7 @@ export type Post = {
   comments: number;
   timestamp: Date;
 };
+
+    
 
     
