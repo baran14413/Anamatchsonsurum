@@ -49,10 +49,10 @@ export default function DuzenlePage() {
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return doc(firestore, 'users', user.uid);
+        return doc(firestore, 'users', user.uid, 'profile');
     }, [user, firestore]);
     
-    const { data: userProfile, isLoading } = useDoc(userProfileRef);
+    const { data: userProfile, isLoading, error } = useDoc(userProfileRef);
 
     const handleIconClick = () => {
         fileInputRef.current?.click();

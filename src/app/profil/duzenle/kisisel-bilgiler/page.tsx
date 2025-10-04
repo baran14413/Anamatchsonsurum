@@ -31,10 +31,10 @@ export default function KisiselBilgilerPage() {
   
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'users', user.uid, 'profile');
   }, [user, firestore]);
 
-  const { data: userProfile, isLoading: isDocLoading, mutate } = useDoc(userProfileRef);
+  const { data: userProfile, isLoading: isDocLoading, error } = useDoc(userProfileRef);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -61,7 +61,6 @@ export default function KisiselBilgilerPage() {
         fullName: data.fullName,
         bio: data.bio,
       });
-      mutate();
       toast({
         title: "Profil Güncellendi",
         description: "Kişisel bilgileriniz başarıyla kaydedildi.",

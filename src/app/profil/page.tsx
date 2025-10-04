@@ -25,10 +25,10 @@ export default function ProfilPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'users', user.uid, 'profile');
   }, [user, firestore]);
 
-  const { data: userProfile, isLoading } = useDoc(userProfileRef);
+  const { data: userProfile, isLoading, error } = useDoc(userProfileRef);
 
   const calculateAge = (dateString: string | undefined) => {
     if (!dateString) return 0;
@@ -193,5 +193,3 @@ export default function ProfilPage() {
     </div>
   );
 }
-
-    

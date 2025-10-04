@@ -32,10 +32,10 @@ export default function GaleriPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'users', user.uid, 'profile');
   }, [user, firestore]);
 
-  const { data: userProfile, isLoading, mutate } = useDoc(userProfileRef);
+  const { data: userProfile, isLoading, error } = useDoc(userProfileRef);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -76,7 +76,6 @@ export default function GaleriPage() {
         await updateDoc(userProfileRef, {
           images: arrayUnion(...newUrls)
         });
-        mutate();
         toast({
           title: "Fotoğraflar Eklendi",
           description: `${newUrls.length} yeni fotoğraf galerinize eklendi.`,
@@ -114,7 +113,6 @@ export default function GaleriPage() {
       await updateDoc(userProfileRef, {
         images: arrayRemove(imageToDelete)
       });
-      mutate();
       toast({
         title: "Fotoğraf Silindi",
         description: "Fotoğraf galerinizden kaldırıldı."

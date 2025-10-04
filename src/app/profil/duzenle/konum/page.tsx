@@ -55,10 +55,10 @@ export default function KonumPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'users', user.uid, 'profile');
   }, [user, firestore]);
 
-  const { data: userProfile, isLoading, mutate } = useDoc(userProfileRef);
+  const { data: userProfile, isLoading, error: docError } = useDoc(userProfileRef);
 
   useEffect(() => {
     const fetchAddress = async (lat: number, lon: number) => {
@@ -109,7 +109,6 @@ export default function KonumPage() {
         if (userProfileRef) {
           updateDoc(userProfileRef, { location: newLocation })
             .then(() => {
-              mutate(); // Re-fetches the user profile data
               toast({
                 title: "Konum Güncellendi",
                 description: "Yeni konumunuz başarıyla kaydedildi.",
