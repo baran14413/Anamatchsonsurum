@@ -83,8 +83,6 @@ export default function SignupForm() {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  const [finalProfilePictureUrl, setFinalProfilePictureUrl] = useState<string>('');
-
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(
        step === 1 ? step1Schema :
@@ -141,20 +139,13 @@ export default function SignupForm() {
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const localUrl = URL.createObjectURL(file);
-        form.setValue("profilePicture", localUrl, { shouldValidate: true });
-
-        // Start upload in the background
-        uploadFile(file).then(cloudinaryUrl => {
-            if (cloudinaryUrl) {
-                setFinalProfilePictureUrl(cloudinaryUrl);
-                // Also add it to the images array
-                const currentImages = form.getValues("images");
-                if (!currentImages.includes(cloudinaryUrl)) {
-                    form.setValue("images", [cloudinaryUrl, ...currentImages]);
-                }
-            }
-        });
+        const cloudinaryUrl = await uploadFile(file);
+        if (cloudinaryUrl) {
+            form.setValue("profilePicture", cloudinaryUrl, { shouldValidate: true });
+            // Also add it to the images array as the first image
+            const currentImages = form.getValues("images");
+            form.setValue("images", [cloudinaryUrl, ...currentImages.filter(img => img !== cloudinaryUrl)], { shouldValidate: true });
+        }
     }
   };
 
@@ -166,12 +157,17 @@ export default function SignupForm() {
             toast({ title: "Hata", description: "En fazla 9 fotoğraf yükleyebilirsiniz.", variant: "destructive" });
             return;
         }
-
+        
+        setIsUploading(true);
         const uploadPromises = Array.from(files).map(file => uploadFile(file));
         const urls = await Promise.all(uploadPromises);
+        setIsUploading(false);
         const validUrls = urls.filter((url): url is string => url !== null);
         
-        form.setValue("images", [...currentPictures, ...validUrls], { shouldValidate: true });
+        // Prevent duplicates
+        const newImages = [...new Set([...currentPictures, ...validUrls])];
+
+        form.setValue("images", newImages, { shouldValidate: true });
     }
   };
 
@@ -220,8 +216,8 @@ export default function SignupForm() {
         return;
     }
 
-    if (!finalProfilePictureUrl) {
-        toast({ title: "Profil Resmi Eksik", description: "Lütfen Adım 2'ye geri dönüp profil resminizin yüklenmesini bekleyin veya tekrar yükleyin.", variant: "destructive" });
+    if (!data.profilePicture) {
+        toast({ title: "Profil Resmi Eksik", description: "Lütfen Adım 2'ye geri dönüp profil resminizi yükleyin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -243,9 +239,9 @@ export default function SignupForm() {
             email: data.email,
             fullName: data.fullName,
             dateOfBirth: data.dateOfBirth,
-            profilePicture: finalProfilePictureUrl,
+            profilePicture: data.profilePicture, // This is now a Cloudinary URL
             gender: data.gender,
-            images: data.images, // This now includes profile picture and others
+            images: data.images, // This now includes Cloudinary URLs
             location: location,
             createdAt: new Date(),
             profileComplete: true,
@@ -439,11 +435,13 @@ export default function SignupForm() {
                                      ))}
                                      {field.value.length < 9 && (
                                          <label htmlFor="match-pics-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-md cursor-pointer hover:bg-muted">
-                                            <Upload className="h-8 w-8 text-muted-foreground"/>
-                                            <span className="text-xs text-muted-foreground mt-1">Yükle</span>
+                                            {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/> : <Upload className="h-8 w-8 text-muted-foreground"/>}
+                                            <span className="text-xs text-muted-foreground mt-1">
+                                                {isUploading ? 'Yükleniyor...' : 'Yükle'}
+                                            </span>
                                          </label>
                                      )}
-                                     <Input id="match-pics-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleMatchPicturesUpload} />
+                                     <Input id="match-pics-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleMatchPicturesUpload} disabled={isUploading} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -493,17 +491,22 @@ export default function SignupForm() {
                     onClick={async () => {
                         const isValid = await form.trigger();
                         if (isValid) {
-                            if (step === 2 && isUploading && !finalProfilePictureUrl) {
+                            if (step === 2 && isUploading) {
                                 toast({ title: "Lütfen Bekleyin", description: "Profil fotoğrafınız hala yükleniyor." });
+                                return;
+                            }
+                            if (step === 2 && !form.getValues("profilePicture")) {
+                                toast({ title: "Profil Resmi Gerekli", description: "Lütfen devam etmeden önce bir profil resmi yükleyin.", variant: "destructive" });
                                 return;
                             }
                             nextStep();
                         }
                     }}
                     className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={(step === 3 && !location) || (isUploading && step === 2)}
+                    disabled={(step === 3 && !location) || isUploading}
                  >
-                    Devam Et
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isUploading ? 'Resim Yükleniyor...' : 'Devam Et'}
                  </Button>
                ) : (
                 <Button 
@@ -520,3 +523,4 @@ export default function SignupForm() {
       </Form>
   );
 }
+
