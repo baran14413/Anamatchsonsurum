@@ -42,6 +42,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // event.key'nin bir dize olduğundan emin olmak için kontrol ekleyin
+      if (typeof event.key !== 'string') {
+        return;
+      }
+      
       let newBuffer;
       if (event.key === 'Backspace') {
         newBuffer = inputBuffer.slice(0, -1);
