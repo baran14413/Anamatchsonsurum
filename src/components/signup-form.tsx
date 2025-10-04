@@ -932,7 +932,7 @@ export default function SignupForm() {
                     <h1 className="text-3xl font-bold">{langTr.signup.step12.title}</h1>
                      <p className="text-muted-foreground mt-2">{langTr.signup.step12.description}</p>
                      <div className="flex items-center gap-4 mt-4">
-                       <Progress value={(uploadedPhotoCount / 6) * 100} className="w-20 h-2" />
+                       <Progress value={(uploadedPhotoCount / 6) * 100} className="w-full h-2" />
                        <span className="text-sm font-medium text-muted-foreground">
                          {uploadedPhotoCount}/6
                        </span>
@@ -1063,5 +1063,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
