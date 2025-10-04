@@ -23,10 +23,16 @@ export default function WelcomePage() {
               repeat: Infinity,
               repeatDelay: 0.5,
             }}
-            className="mb-12"
+            className="mb-8"
           >
             <Icons.logo width={256} height={256} />
           </motion.div>
+           <div className="w-40 h-px bg-white/50 mb-8"></div>
+            <h2 
+              className="text-2xl font-sans font-light tracking-wider text-white drop-shadow-md"
+            >
+              Eşleşme bul, eğlen, sohbet et
+            </h2>
         </div>
 
         <div className="w-full max-w-sm space-y-6">
