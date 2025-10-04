@@ -10,7 +10,6 @@ import { MapPin, Heart, X, ArrowUp } from "lucide-react";
 interface ProfileCardProps {
   profile: UserProfileType;
   onSwipe: (direction: 'left' | 'right') => void;
-  isTopCard: boolean;
 }
 
 const calculateAge = (dateString: string | undefined) => {
@@ -25,7 +24,7 @@ const calculateAge = (dateString: string | undefined) => {
     return age;
 };
 
-export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCardProps) {
+export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const x = useMotionValue(0);
   
@@ -59,23 +58,19 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   return (
     <motion.div
       className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      style={{ x, rotate, zIndex: isTopCard ? 2 : 1 }}
-      drag={isTopCard ? "x" : false}
+      style={{ x, rotate }}
+      drag="x"
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      initial={{ scale: 1, y: 0, opacity: 1 }}
-      animate={{
-        scale: isTopCard ? 1 : 0.95,
-        y: isTopCard ? 0 : -10,
-        opacity: isTopCard ? 1 : 0.5,
-      }}
+      initial={{ scale: 0.95, y: 20, opacity: 0 }}
+      animate={{ scale: 1, y: 0, opacity: 1 }}
       exit={{
         x: x.get() > 0 ? 300 : -300,
         opacity: 0,
         scale: 0.8,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.3 }
       }}
-      transition={{ type: "spring", stiffness: 300, damping: 35 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-xl">
         <motion.div style={{ opacity: likeOpacity }} className="absolute left-8 top-8 z-10 transform">
@@ -91,7 +86,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
             alt={profile.fullName || 'Profil fotosu'}
             fill
             className="object-cover"
-            priority={isTopCard}
+            priority={true}
             data-ai-hint="person portrait"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent"></div>

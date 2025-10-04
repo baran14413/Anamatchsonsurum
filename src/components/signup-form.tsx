@@ -52,7 +52,7 @@ const step3Schema = z.object({
 
 // Step 4 Schema
 const step4Schema = z.object({
-    matchPictures: z.array(z.string().url()).min(2, { message: "Lütfen en az 2 fotoğraf yükleyin." }),
+    images: z.array(z.string().url()).min(2, { message: "Lütfen en az 2 fotoğraf yükleyin." }),
 });
 
 // Step 5 Schema
@@ -100,7 +100,7 @@ export default function SignupForm() {
         dateOfBirth: "",
         profilePicture: "",
         gender: undefined,
-        matchPictures: [],
+        images: [],
         password: "",
         confirmPassword: "",
         terms: false,
@@ -148,6 +148,11 @@ export default function SignupForm() {
         uploadFile(file).then(cloudinaryUrl => {
             if (cloudinaryUrl) {
                 setFinalProfilePictureUrl(cloudinaryUrl);
+                // Also add it to the images array
+                const currentImages = form.getValues("images");
+                if (!currentImages.includes(cloudinaryUrl)) {
+                    form.setValue("images", [cloudinaryUrl, ...currentImages]);
+                }
             }
         });
     }
@@ -156,9 +161,9 @@ export default function SignupForm() {
   const handleMatchPicturesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-        const currentPictures = form.getValues("matchPictures") || [];
-        if(currentPictures.length + files.length > 5) {
-            toast({ title: "Hata", description: "En fazla 5 fotoğraf yükleyebilirsiniz.", variant: "destructive" });
+        const currentPictures = form.getValues("images") || [];
+        if(currentPictures.length + files.length > 9) {
+            toast({ title: "Hata", description: "En fazla 9 fotoğraf yükleyebilirsiniz.", variant: "destructive" });
             return;
         }
 
@@ -166,7 +171,7 @@ export default function SignupForm() {
         const urls = await Promise.all(uploadPromises);
         const validUrls = urls.filter((url): url is string => url !== null);
         
-        form.setValue("matchPictures", [...currentPictures, ...validUrls], { shouldValidate: true });
+        form.setValue("images", [...currentPictures, ...validUrls], { shouldValidate: true });
     }
   };
 
@@ -240,7 +245,7 @@ export default function SignupForm() {
             dateOfBirth: data.dateOfBirth,
             profilePicture: finalProfilePictureUrl,
             gender: data.gender,
-            images: data.matchPictures, // Ensure 'images' field is populated
+            images: data.images, // This now includes profile picture and others
             location: location,
             createdAt: new Date(),
             profileComplete: true,
@@ -295,8 +300,8 @@ export default function SignupForm() {
                     )} />
                     <FormField control={form.control} name="fullName" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Kullanıcı Adı</FormLabel>
-                            <FormControl><Input placeholder="benzersiz_kullanici_adin" {...field} /></FormControl>
+                            <FormLabel>Tam Adınız</FormLabel>
+                            <FormControl><Input placeholder="Adınız Soyadınız" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -418,12 +423,12 @@ export default function SignupForm() {
 
             {step === 4 && (
                  <div className="space-y-4 pt-8 text-center">
-                    <h3 className="text-xl font-semibold">Eşleşme Fotoğrafları</h3>
+                    <h3 className="text-xl font-semibold">Galeri Fotoğrafları</h3>
                     <p className="text-muted-foreground text-sm">
                         Kendine ait, net ve farklı anlarını yansıtan en az 2 fotoğraf daha ekle. 
                         Bu fotoğraflar eşleşme ekranında diğer kullanıcılara gösterilecek.
                     </p>
-                    <FormField control={form.control} name="matchPictures" render={({ field }) => (
+                    <FormField control={form.control} name="images" render={({ field }) => (
                         <FormItem>
                            <FormControl>
                                 <div className="grid grid-cols-3 gap-2">
@@ -432,7 +437,7 @@ export default function SignupForm() {
                                              <Image src={src} alt={`Eşleşme fotoğrafı ${index+1}`} layout="fill" className="rounded-md object-cover"/>
                                          </div>
                                      ))}
-                                     {field.value.length < 5 && (
+                                     {field.value.length < 9 && (
                                          <label htmlFor="match-pics-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-md cursor-pointer hover:bg-muted">
                                             <Upload className="h-8 w-8 text-muted-foreground"/>
                                             <span className="text-xs text-muted-foreground mt-1">Yükle</span>

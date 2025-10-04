@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useSWR from 'swr';
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,14 @@ const fetcher = async (url: string, idToken: string) => {
     });
 
     if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
-        throw new Error(errorData.error || 'Failed to fetch matches');
+        const errorText = await res.text();
+        console.error("Fetcher Error Response:", errorText);
+        try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.error || 'Failed to fetch matches');
+        } catch (e) {
+            throw new Error('Profil yükleme hatası. Sunucu yanıtı geçersiz.');
+        }
     }
     return res.json();
 };
@@ -35,8 +41,13 @@ export default function AnasayfaPage() {
     if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const token = await user.getIdToken();
-        setIdToken(token);
+        try {
+            const token = await user.getIdToken();
+            setIdToken(token);
+        } catch (error) {
+            console.error("Error getting ID token:", error);
+            setIdToken(null);
+        }
       } else {
         setIdToken(null);
       }
@@ -46,30 +57,36 @@ export default function AnasayfaPage() {
 
   const { data: fetchedProfiles, error, isLoading, mutate } = useSWR<UserProfileType[]>(
     idToken ? [`/api/get-potential-matches`, idToken] : null,
-    ([url, token]) => fetcher(url, token)
+    ([url, token]) => fetcher(url, token),
+    { revalidateOnFocus: false }
   );
 
-  const profiles = (fetchedProfiles && !error) ? fetchedProfiles : mockProfiles;
-  const usingMockData = !fetchedProfiles || !!error;
+  const profilesToRender = useMemo(() => {
+    if (fetchedProfiles && !error) {
+      return fetchedProfiles;
+    }
+    // If there's an error or it's loading and there are no profiles yet, use mocks.
+    return mockProfiles;
+  }, [fetchedProfiles, error]);
+
+  const [currentIndex, setCurrentIndex] = useState(profilesToRender.length - 1);
+  
+  useEffect(() => {
+    setCurrentIndex(profilesToRender.length - 1);
+  }, [profilesToRender]);
+
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
-    if (usingMockData) {
-        // For mock data, just filter the array locally without an API call.
-        const updatedMockProfiles = profiles.filter(p => p.id !== swipedUserId);
-        // Here we can't use SWR's mutate, so we'd need a local state if we want mock swipes to persist.
-        // For simplicity, we will just visually remove it, but it will reappear on refresh.
-        // To make this work with state:
-        // const [visibleProfiles, setVisibleProfiles] = useState(profiles);
-        // setVisibleProfiles(updatedMockProfiles);
-        // But this reintroduces complexity. The simplest approach for robust mocks is to not mutate them.
-        // For this fix, we will just let the card disappear but a real implementation would need local state for mocks.
+    const isMock = !fetchedProfiles || !!error;
+
+    // Immediately remove card from UI by decrementing index
+    setCurrentIndex(prev => prev - 1);
+
+    if (isMock || !idToken) {
         return;
     }
-      
-    if (!idToken) return;
-
-    // Optimistic UI update: remove the card immediately from SWR's cache.
-    mutate(currentProfiles => (currentProfiles || []).filter(p => p.id !== swipedUserId), false);
+    
+    // Don't use SWR's mutate for optimistic UI, we manage it with currentIndex
   
     try {
         const response = await fetch('/api/record-swipe', {
@@ -95,7 +112,11 @@ export default function AnasayfaPage() {
                 duration: 5000,
             });
         }
-        // We don't re-fetch here, optimistic update is enough. SWR will revalidate in the background.
+        // If we've run out of real profiles, refetch
+        if (currentIndex <= 0) {
+          mutate();
+        }
+
     } catch (error: any) {
       console.error("Error recording interaction:", error);
       toast({
@@ -103,21 +124,19 @@ export default function AnasayfaPage() {
         description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
-      // On error, trigger a revalidation to revert the optimistic update and get fresh data.
+      // On error, trigger a revalidation to get fresh data.
       mutate();
     }
   };
 
   const triggerSwipe = (direction: 'left' | 'right') => {
-    // Make sure we are swiping the correct set of profiles
-    const currentProfiles = (fetchedProfiles && !error) ? fetchedProfiles : profiles;
-    if (currentProfiles.length > 0) {
-      const topProfile = currentProfiles[currentProfiles.length - 1];
+    const topProfile = profilesToRender[currentIndex];
+    if (topProfile) {
       handleSwipe(topProfile.id, direction);
     }
   };
   
-  if (isLoading || !idToken) {
+  if ((isLoading && !fetchedProfiles) || !idToken) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -125,26 +144,19 @@ export default function AnasayfaPage() {
     );
   }
 
-  // Determine which profiles to render. Prioritize fetched profiles.
-  const profilesToRender = (fetchedProfiles && !error) ? fetchedProfiles : mockProfiles;
+  const topProfile = profilesToRender[currentIndex];
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {profilesToRender.length > 0 ? (
-              profilesToRender.map((profile, index) => {
-                const isTopCard = index === profilesToRender.length - 1;
-                return (
-                  <ProfileCard
-                    key={profile.id}
-                    profile={profile}
-                    onSwipe={(dir) => handleSwipe(profile.id, dir)}
-                    isTopCard={isTopCard}
-                  />
-                );
-              })
+            {topProfile ? (
+              <ProfileCard
+                key={topProfile.id}
+                profile={topProfile}
+                onSwipe={(dir) => handleSwipe(topProfile.id, dir)}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground px-8">
                 <Heart className="h-16 w-16 mb-4 text-gray-300" />
@@ -156,7 +168,7 @@ export default function AnasayfaPage() {
         </div>
       </div>
 
-      {profilesToRender.length > 0 && (
+      {topProfile && (
         <div className="absolute bottom-20 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-3 py-4 shrink-0">
           <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-yellow-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
             <Undo2 className="h-6 w-6" />
