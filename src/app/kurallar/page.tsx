@@ -29,14 +29,14 @@ export default function RulesPage() {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 items-center px-4">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b px-4">
         <Link href="/" className="p-2 -ml-2">
           <ArrowLeft className="h-6 w-6" />
         </Link>
       </header>
-      <main className="flex flex-1 flex-col px-6 pb-8">
-        <div className="flex-1 space-y-8">
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-8">
           <div className="flex items-center gap-3">
             <Icons.logo className="h-10 w-10 text-primary" />
             <h1 className="text-3xl font-bold">BeMatch'e Hoş Geldin.</h1>
@@ -56,15 +56,15 @@ export default function RulesPage() {
             ))}
           </div>
         </div>
-        <div className="mt-8 shrink-0">
+      </main>
+      <div className="shrink-0 p-6 pt-0">
           <Button
             onClick={() => router.push('/kayit-ol')}
             className="w-full h-14 rounded-full text-lg font-bold"
           >
             Onaylıyorum
           </Button>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
