@@ -76,6 +76,7 @@ export default function SignupForm() {
   const [step, setStep] = useState(1);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [location, setLocation] = useState<{latitude: number, longitude: number} | null>(null);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -180,17 +181,34 @@ export default function SignupForm() {
   
   const handleNextStep = async () => {
     const isValid = await form.trigger();
-    if (isValid) {
-      if (step === 2 && isUploading) {
-        toast({
-          title: "Lütfen Bekleyin",
-          description: "Profil fotoğrafınız hala yükleniyor.",
-        });
-        return;
-      }
+    if (!isValid) return;
+
+    if (step === 2 && isUploading) {
+      toast({
+        title: "Lütfen Bekleyin",
+        description: "Profil fotoğrafınız hala yükleniyor.",
+      });
+      return;
+    }
+
+    if (step === 3) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setLocationError(null);
+          nextStep();
+        },
+        (error) => {
+          setLocationError("Konum izni reddedildi. Kayıt için bu izin gereklidir.");
+        }
+      );
+    } else {
       nextStep();
     }
-  }
+  };
 
   const onFinalSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
@@ -207,39 +225,37 @@ export default function SignupForm() {
         return;
     }
 
+    if (!location) {
+        toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 3'e geri dönüp konum izni verin.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
 
         const userDocRef = doc(firestore, "users", user.uid);
         
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const { latitude, longitude } = position.coords;
-
-            await setDoc(userDocRef, {
-                uid: user.uid,
-                email: data.email,
-                fullName: data.fullName,
-                dateOfBirth: data.dateOfBirth,
-                profilePicture: finalProfilePictureUrl, // Use the final URL
-                gender: data.gender,
-                images: data.matchPictures,
-                location: { latitude, longitude },
-                createdAt: new Date(),
-                profileComplete: true,
-            });
-
-            toast({
-                title: "Kayıt Tamamlandı!",
-                description: "Hesabın oluşturuldu. Maceraya hazırsın!",
-                className: "bg-green-500 text-white",
-            });
-            router.push("/anasayfa");
-
-        }, (error) => {
-            setLocationError("Konum bilgisi alınamadı. Kayıt tamamlanamadı.");
-            setIsLoading(false);
+        await setDoc(userDocRef, {
+            uid: user.uid,
+            email: data.email,
+            fullName: data.fullName,
+            dateOfBirth: data.dateOfBirth,
+            profilePicture: finalProfilePictureUrl, // Use the final URL
+            gender: data.gender,
+            images: data.matchPictures,
+            location: location,
+            createdAt: new Date(),
+            profileComplete: true,
         });
+
+        toast({
+            title: "Kayıt Tamamlandı!",
+            description: "Hesabın oluşturuldu. Maceraya hazırsın!",
+            className: "bg-green-500 text-white",
+        });
+        router.push("/anasayfa");
 
     } catch (error: any) {
         let description = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
@@ -251,6 +267,7 @@ export default function SignupForm() {
             description,
             variant: "destructive",
         });
+    } finally {
         setIsLoading(false);
     }
   };
@@ -357,7 +374,7 @@ export default function SignupForm() {
                     )} />
                      <div>
                         <FormLabel>Konum İzni</FormLabel>
-                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor. Bu adımı geçmek için "Devam Et" butonuna tıkla.</p>
+                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor. İzin vermek için "Devam Et" butonuna tıkla.</p>
                         {locationError && (
                           <Alert variant="destructive" className="mt-2">
                             <Terminal className="h-4 w-4" />
@@ -456,4 +473,3 @@ export default function SignupForm() {
       </Form>
   );
 }
-
