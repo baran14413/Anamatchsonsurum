@@ -30,7 +30,7 @@
         },
         "profilePicture": {
           "type": "string",
-          "description": "URL of the user's profile picture.",
+          "description": "URL of the user's profile picture, hosted on Cloudinary.",
           "format": "uri"
         },
         "interests": {
@@ -54,7 +54,11 @@
             "longitude": {
               "type": "number"
             }
-          }
+          },
+          "required": [
+            "latitude",
+            "longitude"
+          ]
         }
       },
       "required": [
@@ -65,7 +69,8 @@
         "gender",
         "profilePicture",
         "interests",
-        "bio"
+        "bio",
+        "location"
       ]
     },
     "Match": {

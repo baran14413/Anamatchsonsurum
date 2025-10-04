@@ -38,6 +38,7 @@
     "@radix-ui/react-tooltip": "^1.1.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cloudinary": "^2.4.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
@@ -45,6 +46,7 @@
     "framer-motion": "^11.2.10",
     "genkit": "^1.20.0",
     "lucide-react": "^0.475.0",
+    "multer": "^1.4.5-lts.1",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
@@ -57,6 +59,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/multer": "^1.4.11",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
