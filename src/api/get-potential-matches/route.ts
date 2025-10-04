@@ -29,7 +29,12 @@ export async function GET(req: NextRequest) {
             const userData = doc.data();
             // Ensure basic data integrity, especially the uid field
             if (userData && userData.uid) {
-                allUsers.push({ id: doc.id, ...userData } as UserProfile);
+                allUsers.push({
+                    id: doc.id,
+                    ...userData,
+                    // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
+                    images: userData.images || [], 
+                } as UserProfile);
             }
         });
         
