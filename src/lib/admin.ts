@@ -1,26 +1,33 @@
+
 import "server-only";
 import * as admin from 'firebase-admin';
 
-// Ensure the service account JSON string is correctly parsed from the environment variable.
-// It might need to be base64 decoded if it's encoded.
-const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
+// This function ensures that the service account JSON is properly parsed,
+// whether it's a raw string or base64 encoded.
+function parseServiceAccount(): admin.ServiceAccount {
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountString) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set.");
+    }
 
-let serviceAccount: admin.ServiceAccount;
-
-if (!serviceAccountString) {
-  throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set.");
+    try {
+        // First, try to parse it as a raw JSON string
+        return JSON.parse(serviceAccountString);
+    } catch (e) {
+        // If that fails, assume it's base64 encoded
+        try {
+            const decodedString = Buffer.from(serviceAccountString, 'base64').toString('utf8');
+            return JSON.parse(decodedString);
+        } catch (e2) {
+            console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT. It is not valid JSON or a valid base64-encoded JSON string.", e2);
+            throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT format.");
+        }
+    }
 }
-
-try {
-    serviceAccount = JSON.parse(serviceAccountString);
-} catch (e) {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT. Make sure it's a valid JSON string.", e);
-    throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT format.");
-}
-
 
 if (!admin.apps.length) {
   try {
+    const serviceAccount = parseServiceAccount();
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });

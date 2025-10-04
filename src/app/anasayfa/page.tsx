@@ -1,42 +1,64 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useCollection } from "@/firebase";
+import { useUser, useFirestore, useAuth } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
-import { useMemoFirebase } from "@/firebase/provider";
+import { doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore";
+
+async function fetchPotentialMatches(token: string) {
+    const res = await fetch('/api/get-potential-matches', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+        throw new Error(errorData.error || 'Failed to fetch matches');
+    }
+    return res.json();
+}
 
 export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
-  
-  const usersRef = useMemoFirebase(() => {
-      if(!firestore) return null;
-      return collection(firestore, "users");
-  }, [firestore]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { isLoading: profilesLoading, error: profilesError } = useCollection<UserProfileType>(usersRef, {
-    onSuccess: (data) => {
-        if (data && currentUser) {
-            // Filter out current user and already interacted users
-            const filteredProfiles = data.filter(p => p.id !== currentUser.uid);
-             // Shuffle the results for randomness in the swipe stack
-            setProfiles(filteredProfiles.sort(() => Math.random() - 0.5));
+  useEffect(() => {
+    const loadProfiles = async () => {
+      if (!currentUser || !auth) return;
+
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+            throw new Error("Authentication token not available.");
         }
-    }
-  });
+        const data = await fetchPotentialMatches(token);
+        setProfiles(data);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || 'Potansiyel eşleşmeler yüklenemedi.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadProfiles();
+  }, [currentUser, auth]);
 
 
-  const handleSwipe = async (swipedUserId: string, direction: 'left' | 'right') => {
+  const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
     if (!currentUser || !firestore) return;
 
     // Optimistically update the UI by removing the swiped card
@@ -45,7 +67,6 @@ export default function AnasayfaPage() {
     try {
         const batch = writeBatch(firestore);
 
-        // Record interaction for the current user
         const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions/${swipedUserId}`);
         batch.set(currentUserInteractionRef, {
             swipe: direction,
@@ -53,43 +74,34 @@ export default function AnasayfaPage() {
         });
 
         if (direction === 'right') {
-            // Check if the other user has also swiped right
             const otherUserInteractionRef = doc(firestore, `users/${swipedUserId}/interactions/${currentUser.uid}`);
-            
-            // Note: In a real client-side scenario, we can't securely read other users' interactions.
-            // This check would ideally be done via a Cloud Function for security.
-            // For this example, we'll assume we can trigger a match check.
-            // The logic to create the match document will be handled here, but a secure app would use a backend function.
+            const otherUserSwipeDoc = await getDoc(otherUserInteractionRef);
 
-            // Let's create a match optimistically for the demo if it's a right swipe
-            // In a real app, a Cloud Function would listen to right swipes and create the match if both swiped right.
-            
-            // To simulate a match for the toast:
-            // This is a placeholder. A real match creation would be more complex.
-            // For now, we just create the match records for both users.
-            const matchId = [currentUser.uid, swipedUserId].sort().join('_');
-            const matchDate = serverTimestamp();
-            const [user1Id, user2Id] = [currentUser.uid, swipedUserId].sort();
+            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data().swipe === 'right') {
+                const matchId = [currentUser.uid, swipedUserId].sort().join('_');
+                const matchDate = serverTimestamp();
+                const [user1Id, user2Id] = [currentUser.uid, swipedUserId].sort();
 
-            const matchData = {
-                id: matchId,
-                user1Id: user1Id,
-                user2Id: user2Id,
-                matchDate: matchDate,
-            };
+                const matchData = {
+                    id: matchId,
+                    user1Id: user1Id,
+                    user2Id: user2Id,
+                    matchDate: matchDate,
+                };
 
-            const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches/${matchId}`);
-            batch.set(currentUserMatchRef, matchData);
-            
-            const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
-            batch.set(otherUserMatchRef, matchData);
+                const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches/${matchId}`);
+                batch.set(currentUserMatchRef, matchData);
+                
+                const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
+                batch.set(otherUserMatchRef, matchData);
 
-            toast({
-                title: "Harika! Yeni bir eşleşme!",
-                description: "Hemen bir mesaj göndererek sohbeti başlat.",
-                className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
-                duration: 5000,
-            });
+                toast({
+                    title: "Harika! Yeni bir eşleşme!",
+                    description: "Hemen bir mesaj göndererek sohbeti başlat.",
+                    className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
+                    duration: 5000,
+                });
+            }
         }
         
         await batch.commit();
@@ -101,7 +113,6 @@ export default function AnasayfaPage() {
         description: "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       })
-      // Here you might want to revert the UI change
     }
   };
 
@@ -112,7 +123,7 @@ export default function AnasayfaPage() {
     }
   };
 
-  if (profilesLoading) {
+  if (isLoading) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -120,12 +131,12 @@ export default function AnasayfaPage() {
     );
   }
 
-  if (profilesError) {
+  if (error) {
       return (
-          <div className="flex flex-col h-full items-center justify-center text-center text-red-500">
+          <div className="flex flex-col h-full items-center justify-center text-center text-red-500 px-4">
               <X className="h-12 w-12 mb-4" />
               <h2 className="text-xl font-semibold">Profil Yükleme Hatası</h2>
-              <p>Potansiyel eşleşmeler yüklenemedi. Lütfen daha sonra tekrar deneyin.</p>
+              <p>{error}</p>
           </div>
       )
   }
@@ -173,5 +184,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
