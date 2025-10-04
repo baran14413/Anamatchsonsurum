@@ -100,18 +100,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh flex-col bg-background dark:bg-black">
       <Header />
-      <AnimatePresence mode="wait">
-        <motion.main
-          key={pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex-1 overflow-hidden"
-        >
-          {children}
-        </motion.main>
-      </AnimatePresence>
+      <main className="flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="h-full"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </main>
       <FooterNav />
     </div>
   );
