@@ -43,7 +43,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // event.key'nin bir dize olduğundan emin olmak için kontrol ekleyin
       if (typeof event.key !== 'string') {
         return;
       }
@@ -51,19 +50,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       let newBuffer;
       if (event.key === 'Backspace') {
         newBuffer = inputBuffer.slice(0, -1);
-      } else if (event.key.length === 1) { // Ignore keys like Shift, Control, etc.
+      } else if (event.key.length === 1) {
         newBuffer = inputBuffer + event.key;
       } else {
         newBuffer = inputBuffer;
       }
       
-      // Keep the buffer from growing too large
       newBuffer = newBuffer.slice(-6);
       setInputBuffer(newBuffer);
 
       if (newBuffer.endsWith('/quit')) {
         handleLogout();
-        setInputBuffer(''); // Reset buffer after command
+        setInputBuffer(''); 
       }
     };
 
@@ -91,9 +89,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, pathname, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading && !publicPaths.includes(pathname)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black">
+      <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
         <Icons.logo className="h-24 w-24 animate-pulse text-primary" />
       </div>
     );

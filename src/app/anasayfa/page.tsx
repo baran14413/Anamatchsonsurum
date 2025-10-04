@@ -36,8 +36,7 @@ export default function AnasayfaPage() {
   const { toast } = useToast();
   const auth = useAuth();
   const [idToken, setIdToken] = useState<string | null>(null);
-  const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
-
+  
   useEffect(() => {
     if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -59,22 +58,36 @@ export default function AnasayfaPage() {
   const { data: fetchedProfiles, error, isLoading, mutate } = useSWR<UserProfileType[]>(
     idToken ? [`/api/get-potential-matches`, idToken] : null,
     ([url, token]) => fetcher(url, token),
-    { revalidateOnFocus: false }
+    { 
+      revalidateOnFocus: false,
+      shouldRetryOnError: false
+    }
   );
   
+  const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
+
   useEffect(() => {
-    const profilesToUse = (!isLoading && fetchedProfiles) ? fetchedProfiles : mockProfiles;
-    setVisibleProfiles(profilesToUse);
+    if (fetchedProfiles) {
+      setVisibleProfiles(fetchedProfiles);
+    } else if (!isLoading && !fetchedProfiles) {
+      setVisibleProfiles(mockProfiles);
+    }
   }, [fetchedProfiles, isLoading]);
 
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
+    const isMockData = !fetchedProfiles || !!error;
+
     // Optimistically remove the card from the UI
+    const swipedProfile = visibleProfiles.find(p => p.id === swipedUserId);
     setVisibleProfiles(prev => prev.filter(p => p.id !== swipedUserId));
 
-    const isMock = !fetchedProfiles || !!error;
-
-    if (isMock || !idToken) {
+    if (isMockData || !idToken) {
+        // If we've run out of mock profiles, reset them
+        if(visibleProfiles.length <= 1) {
+            toast({ title: "Mock profiller bitti!", description: "Yeniden başlıyoruz."});
+            setVisibleProfiles(mockProfiles);
+        }
         return;
     }
     
@@ -108,15 +121,17 @@ export default function AnasayfaPage() {
           mutate();
         }
 
-    } catch (error: any) {
-      console.error("Error recording interaction:", error);
+    } catch (e: any) {
+      console.error("Error recording interaction:", e);
       toast({
         title: "Hata",
-        description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
+        description: e.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
-      // On error, trigger a revalidation to get fresh data, and restore the swiped card
-      setVisibleProfiles(prev => [...prev, visibleProfiles.find(p => p.id === swipedUserId)!]);
+      // On error, put the card back.
+      if (swipedProfile) {
+        setVisibleProfiles(prev => [swipedProfile, ...prev]);
+      }
     }
   };
 
@@ -127,7 +142,7 @@ export default function AnasayfaPage() {
     }
   };
   
-  if ((isLoading && !fetchedProfiles) || !idToken) {
+  if (isLoading || !idToken || (fetchedProfiles === undefined && !error)) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -135,20 +150,20 @@ export default function AnasayfaPage() {
     );
   }
 
+  const activeProfile = visibleProfiles.length > 0 ? visibleProfiles[visibleProfiles.length - 1] : null;
+
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {visibleProfiles.length > 0 ? (
-                visibleProfiles.map((profile, index) => (
-                    <ProfileCard
-                      key={profile.id}
-                      profile={profile}
-                      isTop={index === visibleProfiles.length - 1}
-                      onSwipe={(dir) => handleSwipe(profile.id, dir)}
-                    />
-                ))
+            {activeProfile ? (
+              <ProfileCard
+                key={activeProfile.id}
+                profile={activeProfile}
+                isTop={true}
+                onSwipe={(dir) => handleSwipe(activeProfile.id, dir)}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground px-8">
                 <Heart className="h-16 w-16 mb-4 text-gray-300" />

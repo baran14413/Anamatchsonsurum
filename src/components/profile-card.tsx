@@ -3,7 +3,7 @@
 
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import Image from "next/image";
-import { PanInfo, motion, useMotionValue, useTransform } from "framer-motion";
+import { PanInfo, motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { MapPin, Heart, X, ArrowUp } from "lucide-react";
 
@@ -27,6 +27,7 @@ const calculateAge = (dateString: string | undefined) => {
 
 export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const x = useMotionValue(0);
   
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
@@ -35,14 +36,17 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.x < -100) {
+      setSwipeDirection('left');
       onSwipe('left');
     } else if (info.offset.x > 100) {
+      setSwipeDirection('right');
       onSwipe('right');
     }
   };
 
-  const images = profile.images && profile.images.length > 0 ? profile.images : ['https://picsum.photos/seed/placeholder/600/800'];
-  const currentImage = images[currentImageIndex] || images[0];
+  const images = profile.images && profile.images.length > 0 
+    ? profile.images 
+    : ['https://picsum.photos/seed/placeholder/600/800'];
 
   const handleImageNavigation = (e: React.MouseEvent, navDirection: 'prev' | 'next') => {
     e.stopPropagation();
@@ -63,10 +67,8 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      initial={{ scale: 0.95, y: 20, opacity: 0 }}
-      animate={{ scale: 1, y: 0, opacity: 1 }}
       exit={{
-        x: x.get() > 0 ? 300 : -300,
+        x: swipeDirection === 'right' ? 300 : -300,
         opacity: 0,
         scale: 0.8,
         transition: { duration: 0.3 }
@@ -82,14 +84,26 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
         </motion.div>
 
         <div className="absolute inset-0">
-          <Image
-            src={currentImage}
-            alt={profile.fullName || 'Profil fotosu'}
-            fill
-            className="object-cover"
-            priority={true}
-            data-ai-hint="person portrait"
-          />
+          <AnimatePresence initial={false}>
+              <motion.div
+                  key={currentImageIndex}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+              >
+                  <Image
+                    src={images[currentImageIndex]}
+                    alt={profile.fullName || 'Profil fotosu'}
+                    fill
+                    className="object-cover"
+                    priority={isTop}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    data-ai-hint="person portrait"
+                  />
+              </motion.div>
+          </AnimatePresence>
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent"></div>
           
           <div className="absolute inset-0 flex">
@@ -101,7 +115,9 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
             <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
               {images.map((_, index) => (
                 <div key={index} className="h-1 flex-1 rounded-full bg-white/40 overflow-hidden">
-                   <div className={`h-full rounded-full transition-all duration-300 ${index === currentImageIndex ? 'bg-white' : ''}`}></div>
+                   <div 
+                     className={`h-full bg-white transition-all duration-300 ${index === currentImageIndex ? 'w-full' : 'w-0'}`}
+                   ></div>
                 </div>
               ))}
             </div>
@@ -111,7 +127,7 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
         <div className="absolute bottom-0 w-full p-5 text-white z-10 space-y-1">
           <div className="flex items-end justify-between">
             <div className="max-w-[calc(100%-50px)]">
-              <h2 className="text-3xl font-bold drop-shadow-lg">
+              <h2 className="text-3xl font-bold drop-shadow-lg break-words">
                 {profile.fullName || 'Kullanıcı'}, <span className="font-light">{userAge || ''}</span>
               </h2>
                <div className="flex items-center gap-1.5 pt-1">
