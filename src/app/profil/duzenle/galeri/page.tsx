@@ -134,70 +134,70 @@ export default function GaleriPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Images className="h-6 w-6 text-primary" />
-            Galeri Yönetimi
-          </CardTitle>
-          <CardDescription>
-            Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {images.map((url, index) => (
-              <div key={index} className="relative group aspect-square">
-                <Image
-                  src={url}
-                  alt={`Galeri fotoğrafı ${index + 1}`}
-                  fill
-                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                  className="rounded-lg object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                   <AlertDialogTrigger asChild>
-                     <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => setImageToDelete(url)}
-                        className="h-10 w-10 rounded-full"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                   </AlertDialogTrigger>
+    <AlertDialog>
+      <div className="p-4 sm:p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Images className="h-6 w-6 text-primary" />
+              Galeri Yönetimi
+            </CardTitle>
+            <CardDescription>
+              Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {images.map((url, index) => (
+                <div key={index} className="relative group aspect-square">
+                  <Image
+                    src={url}
+                    alt={`Galeri fotoğrafı ${index + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    className="rounded-lg object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <AlertDialogTrigger asChild>
+                      <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => setImageToDelete(url)}
+                          className="h-10 w-10 rounded-full"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                    </AlertDialogTrigger>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {images.length < 9 && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                {isUploading ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8" />
-                    <span className="mt-2 text-sm font-medium">Fotoğraf Yükle</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept="image/png, image/jpeg, image/gif"
-          />
-        </CardContent>
-      </Card>
-      
-      <AlertDialog open={!!imageToDelete} onOpenChange={(isOpen) => !isOpen && setImageToDelete(null)}>
+              ))}
+              {images.length < 9 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8" />
+                      <span className="mt-2 text-sm font-medium">Fotoğraf Yükle</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/png, image/jpeg, image/gif"
+            />
+          </CardContent>
+        </Card>
+        
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Fotoğrafı Silmek İstiyor musun?</AlertDialogTitle>
@@ -206,13 +206,13 @@ export default function GaleriPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setImageToDelete(null)}>İptal</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteImage} className="bg-destructive hover:bg-destructive/90">
               Sil
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      </div>
+    </AlertDialog>
   );
 }
