@@ -168,6 +168,13 @@ export const langTr = {
         description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline 10 ilgi alanı ekle.',
         categories: [
             {
+                title: 'Müzik',
+                icon: 'Music',
+                options: [
+                    'Kilise müziği', 'Müzik grupları', 'Rock müzik', 'Soul müzik', 'Pop müzik', 'K-Pop', 'Punk rock', 'Rap müzik', 'Halk müziği', 'Latin müziği', 'Alternatif müzik', 'Tekno', 'Caz', 'House müzik', 'EDM', 'R&B', 'Bağımsız müzik', 'Opera', 'Heavy Metal', 'Funk müziği', 'Reggaeton', 'Country Müziği', 'Hip Hop', 'J-Pop', 'Elektronik Müzik', 'Grime', "90'lar Britpop", 'Trap Müzik', 'Müzik'
+                ]
+            },
+            {
                 title: 'Dışarı Çıkmak',
                 icon: 'DoorOpen',
                 options: [
