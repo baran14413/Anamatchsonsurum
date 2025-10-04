@@ -98,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [inputBuffer, handleLogout]);
 
   useEffect(() => {
-    // Wait until the authentication check is complete
+    // Wait until the authentication check is complete before doing any routing
     if (isUserLoading) {
       return; 
     }
@@ -119,8 +119,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, pathname, router]);
 
-  // While checking user auth, show a global loading screen
-  // This prevents the flicker of showing a page before the redirect happens
+  // While checking user auth, show a global loading screen.
+  // This is the key to preventing the flicker of showing a page before the redirect happens.
   if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
@@ -131,28 +131,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const isAppPage = !publicPaths.includes(pathname);
 
-  // If the user is on a page within the app shell (and we have a user)
-  if (isAppPage && user) {
-    return (
-      <div className="flex h-dvh flex-col bg-background dark:bg-black">
-        <Header />
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-1 overflow-hidden"
-          >
-            {children}
-          </motion.main>
-        </AnimatePresence>
-        <FooterNav />
-      </div>
-    );
+  // If we're on a public page, or the user is not authenticated yet for a protected page,
+  // we just render the children (which might be the login page or the loading screen).
+  if (!isAppPage || !user) {
+    return <>{children}</>;
   }
 
-  // For public pages (Home, Login, Signup), just render the children
-  return <>{children}</>;
+  // If the user is authenticated and on a protected app page, render the full shell.
+  return (
+    <div className="flex h-dvh flex-col bg-background dark:bg-black">
+      <Header />
+      <AnimatePresence mode="wait">
+        <motion.main
+          key={pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex-1 overflow-hidden"
+        >
+          {children}
+        </motion.main>
+      </AnimatePresence>
+      <FooterNav />
+    </div>
+  );
 }
