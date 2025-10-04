@@ -456,10 +456,10 @@ export default function SignupForm() {
                 </>
               )}
               {step === 8 && (
-                <div className="flex-1 space-y-8 overflow-y-auto">
+                <div className="flex-1 flex flex-col min-h-0">
                   <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
                   <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-                  <div className="space-y-8 pt-4">
+                  <div className="flex-1 space-y-8 pt-4 overflow-y-auto">
                     <FormField
                       control={form.control}
                       name="drinking"
@@ -585,3 +585,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
