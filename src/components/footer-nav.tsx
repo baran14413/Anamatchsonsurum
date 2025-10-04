@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, MessageSquare, Search, User } from 'lucide-react';
+import { Heart, MessageSquare, Search, User, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
+import { Icons } from './icons';
 
 const navItems = [
+  { href: '/anasayfa', icon: Icons.tinderFlame, label: langTr.footerNav.home },
   { href: '/kesfet', icon: Search, label: langTr.footerNav.discover },
   { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes },
   { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats },
@@ -18,7 +20,7 @@ export default function FooterNav() {
 
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex h-16 items-center justify-around">
+      <nav className="flex h-14 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -31,8 +33,8 @@ export default function FooterNav() {
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className="h-6 w-6" />
-              <span className="font-medium">{item.label}</span>
+              <Icon className={cn("h-5 w-5", isActive && item.href === '/anasayfa' ? 'fill-primary' : '')} />
+              <span className="font-medium text-[10px]">{item.label}</span>
             </Link>
           );
         })}
