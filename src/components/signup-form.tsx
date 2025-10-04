@@ -35,6 +35,7 @@ import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
+import CircularProgress from "./circular-progress";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -201,7 +202,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: `Slot ${i+1}` }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: langTr.signup.step12.photoSlotLabels[i] || '' }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -232,7 +233,7 @@ export default function SignupForm() {
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
-  const uploadedPhotoCount = photoSlots.filter(p => p.file).length;
+  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.file).length, [photoSlots]);
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -365,14 +366,51 @@ export default function SignupForm() {
       const newSlots = [...photoSlots];
       newSlots[activeSlot] = { ...newSlots[activeSlot], file, preview };
       setPhotoSlots(newSlots);
+      
+      // Update form value
+      const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
+      form.setValue('photos', newPhotos, { shouldValidate: true });
     }
     setActiveSlot(null);
+    e.target.value = ''; // Reset file input
   };
 
   const openFilePicker = (index: number) => {
-    setActiveSlot(index);
-    fileInputRef.current?.click();
+    if (photoSlots[index].file) {
+      // If photo exists, clicking opens file picker to change it.
+      setActiveSlot(index);
+      fileInputRef.current?.click();
+    } else {
+      // If slot is empty, find the first truly empty slot to fill
+      const firstEmptyIndex = photoSlots.findIndex(p => !p.file);
+      setActiveSlot(firstEmptyIndex);
+      fileInputRef.current?.click();
+    }
   };
+  
+  const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
+      e.stopPropagation(); // Prevent opening file picker
+      const newSlots = [...photoSlots];
+      
+      // Remove the clicked one
+      newSlots[index] = { file: null, preview: null, label: langTr.signup.step12.photoSlotLabels[index] || '' };
+
+      // Re-order the array so that filled slots are at the beginning
+      const filledSlots = newSlots.filter(p => p.file);
+      const emptySlots = Array.from({ length: 6 - filledSlots.length }, (_, i) => ({ 
+        file: null, 
+        preview: null, 
+        label: langTr.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
+      }));
+
+      const reorderedSlots = [...filledSlots, ...emptySlots];
+      
+      setPhotoSlots(reorderedSlots);
+      
+      const newPhotos = reorderedSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
+      form.setValue('photos', newPhotos, { shouldValidate: true });
+  }
+
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -447,17 +485,17 @@ export default function SignupForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        {step > 1 && (
+        {step > 1 ? (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
-        )}
+        ) : <div className="w-10"></div>}
         <Progress value={progressValue} className="h-2 flex-1" />
-        {(step === 8 || step === 9 || step === 10 || step === 11) && (
-          <Button variant="ghost" onClick={handleSkip} className="shrink-0">
+        {(step === 8 || step === 9 || step === 10 || step === 11) ? (
+          <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
             {langTr.signup.progressHeader.skip}
           </Button>
-        )}
+        ) : <div className="w-16"></div>}
       </header>
       
       <Form {...form}>
@@ -930,37 +968,54 @@ export default function SignupForm() {
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{langTr.signup.step12.title}</h1>
-                     <p className="text-muted-foreground mt-2">{langTr.signup.step12.description}</p>
-                     <div className="flex items-center gap-4 mt-4">
-                       <Progress value={(uploadedPhotoCount / 6) * 100} className="w-full h-2" />
-                       <span className="text-sm font-medium text-muted-foreground">
-                         {uploadedPhotoCount}/6
-                       </span>
-                    </div>
+                     <div className="flex items-center gap-4 mt-2">
+                        <CircularProgress progress={(uploadedPhotoCount / 6) * 100} size={40} />
+                        <p className="text-muted-foreground flex-1">{langTr.signup.step12.description}</p>
+                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
                      <div className="grid grid-cols-2 gap-4">
                       {photoSlots.map((slot, index) => (
-                        <div key={index} className="aspect-[3/4] group">
+                        <div key={index} 
+                          className={`relative aspect-[3/4] rounded-lg
+                            ${index === 0 ? 'col-span-2 row-span-2' : ''}
+                          `}
+                        >
                            <div
                             onClick={() => openFilePicker(index)}
-                            className="cursor-pointer w-full h-full border-2 border-dashed bg-muted/50 rounded-xl flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
+                            className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
                               <>
-                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" className="rounded-xl"/>
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                   <Button variant="ghost" size="icon" className="text-white bg-black/50 hover:bg-black/70 hover:text-white">
-                                     <Pencil className="w-5 h-5"/>
-                                   </Button>
-                                   <Button variant="destructive" size="icon">
-                                     <Trash2 className="w-5 h-5"/>
-                                   </Button>
+                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" className="rounded-lg"/>
+                                <div className="absolute bottom-2 right-2 flex gap-2">
+                                   <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); openFilePicker(index); }}
+                                    className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                                   >
+                                     <Pencil className="w-4 h-4"/>
+                                   </button>
+                                   {uploadedPhotoCount > 2 && (
+                                     <button
+                                        type="button"
+                                        onClick={(e) => handleDeletePhoto(e, index)}
+                                        className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"
+                                     >
+                                         <Trash2 className="w-4 h-4"/>
+                                     </button>
+                                   )}
                                 </div>
                               </>
                             ) : (
-                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                    <Camera className="w-8 h-8" />
+                                <div className="text-center text-muted-foreground p-2">
+                                  <button
+                                    type="button"
+                                    className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto"
+                                  >
+                                    <Plus className="w-5 h-5"/>
+                                  </button>
+                                  {slot.label && <span className="text-xs font-medium mt-2 block">{slot.label}</span>}
                                 </div>
                             )}
                            </div>

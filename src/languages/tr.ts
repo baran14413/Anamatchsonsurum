@@ -59,6 +59,16 @@ export const langTr = {
     agree: 'Onaylıyorum',
   },
   signup: {
+    progressHeader: {
+        skip: 'Atla',
+    },
+    common: {
+        next: 'İlerle',
+        nextDynamic: 'İlerle ({count}/{total})',
+        emailExistsTitle: 'E-posta Zaten Mevcut',
+        emailExistsDescription: 'Girdiğiniz e-posta adresi zaten bir hesaba bağlı. Giriş sayfasına yönlendiriliyorsunuz.',
+        goToLogin: 'Giriş Yap',
+    },
     step1: {
       title: 'Hesabını oluştur',
       description: 'Maceraya başlamak için e-posta ve şifreni belirle.',
@@ -300,7 +310,7 @@ export const langTr = {
                 title: 'Sosyal medya içerikleri',
                 icon: 'MessageCircle',
                 options: [
-                    'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', "Vlogger'lık", 'YouTube', 'Sanal Gerçeklik', "Esprili caps'lar", 'Metaverse', "Podcast'ler", 'TikTok', 'Twitch', 'Netflix'
+                    'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', "Vlogger'lık", 'YouTube', 'Sanal Gerçeklik', "Esprili caps'ler", 'Metaverse', "Podcast'ler", 'TikTok', 'Twitch', 'Netflix'
                 ]
             },
             {
@@ -314,9 +324,17 @@ export const langTr = {
     },
     step12: {
         title: 'Yeni fotoğraflarını ekle',
-        description: '6 fotoğrafı olan kişiler 2 kata kadar daha fazla Beğeni alır. Yüz fotoğrafı ekleyerek başla.',
+        description: 'Baştan aşağı tarzını ortaya koy.',
         requirementText: '2 fotoğraf gerekli',
-        button: 'İlerle'
+        button: 'İlerle',
+        photoSlotLabels: [
+            '', // First one is main, no label needed
+            'Boy fotoğrafı',
+            'Gülümseyen',
+            'Sosyal',
+            'Yaşam Tarzı',
+            'Poz vermeden'
+        ],
     },
     errors: {
       dbConnectionError: 'Veritabanı bağlantısı kurulamadı.',
@@ -608,5 +626,3 @@ export const langTr = {
     profile: 'Profil',
   }
 };
-
-    
