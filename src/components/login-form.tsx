@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -24,20 +24,22 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
 import { langEn } from "@/languages/en";
+import { langTr } from "@/languages/tr";
 
-const formSchema = z.object({
-  email: z.string().email({ message: langEn.login.errors.invalidEmail }),
+const getSchema = (t: any) => z.object({
+  email: z.string().email({ message: t.login.errors.invalidEmail }),
   password: z.string().optional(),
 });
 
-export default function LoginForm() {
+export default function LoginForm({ lang }: { lang: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
-  const t = langEn.login;
+  const t = lang === 'en' ? langEn : langTr;
+  const formSchema = getSchema(t);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,8 +59,8 @@ export default function LoginForm() {
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: langEn.common.error,
-        description: t.errors.authServiceError,
+        title: t.common.error,
+        description: t.login.errors.authServiceError,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -70,15 +72,15 @@ export default function LoginForm() {
       if (methods.length > 0) {
         setStep('password');
       } else {
-        form.setError("email", { type: "manual", message: t.errors.emailNotRegistered });
+        form.setError("email", { type: "manual", message: t.login.errors.emailNotRegistered });
       }
     } catch (error: any) {
         if (error.code === 'auth/invalid-email') {
-            form.setError("email", { type: "manual", message: t.errors.invalidEmail });
+            form.setError("email", { type: "manual", message: t.login.errors.invalidEmail });
         } else {
             toast({
-                title: langEn.common.error,
-                description: t.errors.emailCheckError,
+                title: t.common.error,
+                description: t.login.errors.emailCheckError,
                 variant: "destructive"
             });
         }
@@ -92,8 +94,8 @@ export default function LoginForm() {
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: langEn.common.error,
-        description: t.errors.authServiceError,
+        title: t.common.error,
+        description: t.login.errors.authServiceError,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -103,7 +105,7 @@ export default function LoginForm() {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/anasayfa");
     } catch (error: any) {
-      form.setError("password", { type: "manual", message: t.errors.wrongPassword });
+      form.setError("password", { type: "manual", message: t.login.errors.wrongPassword });
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +127,7 @@ export default function LoginForm() {
             <Button variant="ghost" size="icon" onClick={handleBack}>
                 <ArrowLeft className="h-6 w-6" />
             </Button>
-            <h1 className="text-xl font-bold">{t.title}</h1>
+            <h1 className="text-xl font-bold">{t.login.title}</h1>
       </header>
        <div className="flex-1 flex flex-col p-6 overflow-y-auto">
          <div className="flex-1 flex flex-col">
@@ -133,21 +135,21 @@ export default function LoginForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {step === 'email' ? (
                 <>
-                    <h1 className="text-3xl font-bold">{t.emailStepTitle}</h1>
+                    <h1 className="text-3xl font-bold">{t.login.emailStepTitle}</h1>
                     <FormField
                       control={form.control}
                       name="email"
                       render={({ field }) => (
                           <FormItem>
                           <FormControl>
-                              <Input placeholder={t.emailPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
+                              <Input placeholder={t.login.emailPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
                           </FormControl>
                           <FormMessage />
                           </FormItem>
                       )}
                     />
                     <p className="text-sm text-muted-foreground flex items-center gap-2 pt-2">
-                        {t.emailHint}
+                        {t.login.emailHint}
                         <Heart className="h-4 w-4 text-red-500 fill-current" />
                     </p>
                 </>
@@ -155,9 +157,9 @@ export default function LoginForm() {
                 <>
                     <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                         <span className="text-muted-foreground">{emailValue}</span>
-                        <Button variant="link" size="sm" onClick={() => setStep('email')}>{t.change}</Button>
+                        <Button variant="link" size="sm" onClick={() => setStep('email')}>{t.login.change}</Button>
                     </div>
-                    <h1 className="text-3xl font-bold">{t.passwordStepTitle}</h1>
+                    <h1 className="text-3xl font-bold">{t.login.passwordStepTitle}</h1>
                     <FormField
                     control={form.control}
                     name="password"
@@ -165,7 +167,7 @@ export default function LoginForm() {
                         <FormItem>
                         <div className="relative">
                             <FormControl>
-                            <Input type={showPassword ? "text" : "password"} placeholder={t.passwordPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" autoFocus/>
+                            <Input type={showPassword ? "text" : "password"} placeholder={t.login.passwordPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" autoFocus/>
                             </FormControl>
                             <button
                             type="button"
@@ -192,16 +194,16 @@ export default function LoginForm() {
                 disabled={isLoading}
             >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {step === 'email' ? langEn.common.next : t.title}
+                {step === 'email' ? t.common.next : t.login.title}
             </Button>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                {t.noAccount}{" "}
+                {t.login.noAccount}{" "}
                 <Link
-                    href="/kayit-ol"
+                    href={`/kayit-ol?lang=${lang}`}
                     className="font-semibold text-primary underline-offset-4 hover:underline"
                 >
-                    {t.signupNow}
+                    {t.login.signupNow}
                 </Link>
             </div>
         </div>
@@ -209,5 +211,3 @@ export default function LoginForm() {
     </div>
   );
 }
-
-    
