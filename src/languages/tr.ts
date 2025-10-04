@@ -79,6 +79,7 @@ export const langTr = {
       description: 'Maceraya başlamak için e-posta ve şifreni belirle.',
       emailLabel: 'E-posta Adresin',
       passwordLabel: 'Şifren',
+      confirmPasswordLabel: 'Şifreni Tekrarla',
     },
     step2: {
       title: 'Adın ne?',

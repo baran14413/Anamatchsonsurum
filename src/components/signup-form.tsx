@@ -44,6 +44,7 @@ eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 const formSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address." }),
     password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+    confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "You must be at least 18 years old." })
         .refine(date => !isNaN(date.getTime()), { message: "Please enter a valid date." }),
@@ -66,6 +67,9 @@ const formSchema = z.object({
     interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
     uid: z.string().optional(), // To hold uid for Google Signups
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Şifreler eşleşmiyor.",
+    path: ["confirmPassword"],
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -199,6 +203,7 @@ export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
 
@@ -216,6 +221,7 @@ export default function SignupForm() {
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
       name: "",
       gender: undefined,
       lookingFor: "",
@@ -252,7 +258,7 @@ export default function SignupForm() {
             }
 
             setIsGoogleSignup(true);
-            setStep(2); // Skip email/password step
+            setStep(2); // Skip email/password step for Google signups
             sessionStorage.removeItem('googleSignupData');
         }
     } catch (error) {
@@ -475,7 +481,7 @@ export default function SignupForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
-    if (step === 1 && !isGoogleSignup) fieldsToValidate = ['email', 'password'];
+    if (step === 1 && !isGoogleSignup) fieldsToValidate = ['email', 'password', 'confirmPassword'];
     if (step === 2) fieldsToValidate = ['name'];
     if (step === 3) fieldsToValidate = ['dateOfBirth'];
     if (step === 4) fieldsToValidate = ['gender'];
@@ -547,7 +553,7 @@ export default function SignupForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        {step > 1 ? (
+        {step > 1 || isGoogleSignup ? (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
@@ -599,6 +605,28 @@ export default function SignupForm() {
                                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                                 >
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                             </button>
+                           </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t.signup.step1.confirmPasswordLabel}</FormLabel>
+                           <div className="relative">
+                            <FormControl>
+                                <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                            </FormControl>
+                             <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                                >
+                                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                              </button>
                            </div>
                           <FormMessage />
@@ -1180,3 +1208,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
