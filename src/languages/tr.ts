@@ -168,6 +168,13 @@ export const langTr = {
         description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline 10 ilgi alanı ekle.',
         categories: [
             {
+                title: 'Dışarı Çıkmak',
+                icon: 'DoorOpen',
+                options: [
+                    'Kaçış odaları', 'Barlar', 'İkinci el alışveriş', 'Müzeler', 'Rave partileri', 'Arabalı sinema', 'Müzikal', 'Kafeden kafeye gezmek', 'Akvaryum', 'Kulüpte Partilemek', 'Sergi', 'Alışveriş', 'Arabalar', 'Pub Quiz', 'Festivaller', 'Happy hour', 'Stand up Komedi', 'Karaoke', 'Ev Partileri', 'Tiyatro', 'Nargile', 'Paten', 'Canlı Müzik', 'Barları Turlamak', 'Bowling', 'Motosikletler', 'Partiler'
+                ]
+            },
+            {
                 title: 'Açık hava ve macera',
                 icon: 'Tent',
                 options: [
