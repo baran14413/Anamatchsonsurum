@@ -1,27 +1,48 @@
 /**
- * @file Firestore Security Rules for BeMatch application.
+ * @fileOverview Firestore Security Rules for the BeMatch application.
  *
- * @corePhilosophy This ruleset enforces a strict user-ownership model, ensuring that users can only access and modify data associated with their own user ID.
- * @dataStructure All data is nested under /users/{userId}, creating a clear hierarchy that simplifies access control. Matches and messages are stored as subcollections, maintaining the user-centric organization.
- * @keySecurityDecisions Listing of users is disallowed.  Write operations are restricted to authenticated users and must adhere to the ownership model.
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user can only access their own profile data, matches, and chat messages.
  *
- * @denormalizationForAuthorization  The data structure inherently supports authorization independence, eliminating the need for additional `get()` calls.  The `userId` is embedded in the path, making ownership checks simple and efficient.
- * @structuralSegregation N/A - All user data is private and stored under the `/users/{userId}` path.
+ * Data Structure:
+ * - /users/{userId}: Stores user profile data. The 'userId' must match the authenticated user's UID.
+ * - /users/{userId}/matches/{matchId}: Stores match data for a specific user. 'userId' is one of the users participating in the match.
+ * - /users/{userId}/matches/{matchId}/messages/{messageId}: Stores chat messages for a specific match.
+ *
+ * Key Security Decisions:
+ * - Users can only create, read, update, and delete their own profiles.
+ * - Users can only read and write matches and messages associated with their own user ID.
+ * - No listing of all users is allowed. Listing is only allowed within a user's own data tree.
+ *
+ * Denormalization for Authorization:
+ * The data structure inherently denormalizes authorization data into the path itself.  The 'userId' in the path `/users/{userId}` *is* the user's ID. This makes authorization checks simple and fast.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Rules for user profiles.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create their own profile.
-     * @allow (get, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, update, or delete their own profile.
-     * @deny (create) User 'attackerId' cannot create a profile with userId 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1'.
-     * @deny (get, update, delete) User 'attackerId' cannot get, update, or delete user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - User with UID 'user_abc' can create their profile document at /users/user_abc if the document's 'id' field also contains 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can get, update, or delete their profile document at /users/user_abc.
+     * @deny (create) - User with UID 'user_xyz' cannot create a profile document at /users/user_abc.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot get, update, or delete the profile document at /users/user_abc.
+     * @principle Enforces document ownership for writes.  Validates relational integrity.
      */
     match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
@@ -30,15 +51,27 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for matches of a user.
+     * @description Controls access to match documents within a user's profile.
      * @path /users/{userId}/matches/{matchId}
-     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create matches within their profile.
-     * @allow (get, list, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, list, update, or delete matches within their profile.
-     * @deny (create) User 'attackerId' cannot create matches within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
-     * @deny (get, list, update, delete) User 'attackerId' cannot get, list, update, or delete matches within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (create) - User with UID 'user_abc' can create a match document under /users/user_abc/matches/{matchId}.
+     * @allow (get, list, update, delete) - User with UID 'user_abc' can get, list, update, or delete match documents under /users/user_abc/matches/{matchId}.
+     * @deny (create) - User with UID 'user_xyz' cannot create a match document under /users/user_abc/matches/{matchId}.
+     * @deny (get, list, update, delete) - User with UID 'user_xyz' cannot get, list, update, or delete match documents under /users/user_abc/matches/{matchId}.
+     * @principle Restricts access to a user's own matches.
      */
     match /users/{userId}/matches/{matchId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
@@ -47,33 +80,32 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for chat messages within a match.
+     * @description Controls access to chat messages within a match.
      * @path /users/{userId}/matches/{matchId}/messages/{messageId}
-     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create messages within their matches.
-     * @allow (get, list, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, list, update, or delete messages within their matches.
-     * @deny (create) User 'attackerId' cannot create messages within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' matches.
-     * @deny (get, list, update, delete) User 'attackerId' cannot get, list, update, or delete messages within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' matches.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     * @allow (create) - User with UID 'user_abc' can create a chat message under /users/user_abc/matches/{matchId}/messages/{messageId}.
+     * @allow (get, list, update, delete) - User with UID 'user_abc' can get, list, update, or delete chat messages under /users/user_abc/matches/{matchId}/messages/{messageId}.
+     * @deny (create) - User with UID 'user_xyz' cannot create a chat message under /users/user_abc/matches/{matchId}/messages/{messageId}.
+     * @deny (get, list, update, delete) - User with UID 'user_xyz' cannot get, list, update, or delete chat messages under /users/user_abc/matches/{matchId}/messages/{messageId}.
+     * @principle Restricts access to chat messages to users participating in the match.
      */
     match /users/{userId}/matches/{matchId}/messages/{messageId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
   }
 }
