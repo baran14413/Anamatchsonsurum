@@ -4,7 +4,7 @@
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import { Loader2, Images, Upload, Trash2, X } from 'lucide-react';
+import { Loader2, Images, Upload, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-
 export default function GaleriPage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -39,13 +38,16 @@ export default function GaleriPage() {
   const { data: userProfile, isLoading, mutate } = useDoc(userProfileRef);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if ((userProfile?.images?.length || 0) >= 9) {
+    const currentImageCount = userProfile?.images?.length || 0;
+    const maxUploadCount = 9 - currentImageCount;
+
+    if (files.length > maxUploadCount) {
       toast({
-        title: "Galeri Dolu",
-        description: "En fazla 9 fotoğraf ekleyebilirsiniz.",
+        title: "Limit Aşıldı",
+        description: `Galerinizde ${currentImageCount} fotoğraf var. En fazla ${maxUploadCount} fotoğraf daha ekleyebilirsiniz.`,
         variant: "destructive"
       });
       return;
@@ -53,45 +55,51 @@ export default function GaleriPage() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+        if (!response.ok) {
+          throw new Error(`'${file.name}' yüklenemedi`);
+        }
+        return response.json();
       });
 
-      if (!response.ok) {
-        throw new Error((await response.json()).error || 'Yükleme başarısız');
-      }
+      const results = await Promise.all(uploadPromises);
+      const newUrls = results.map(result => result.url);
 
-      const { url } = await response.json();
-
-      if (userProfileRef) {
+      if (userProfileRef && newUrls.length > 0) {
         await updateDoc(userProfileRef, {
-          images: arrayUnion(url)
+          images: arrayUnion(...newUrls)
         });
         mutate();
         toast({
-          title: "Fotoğraf Eklendi",
-          description: "Yeni fotoğrafınız galerinize eklendi.",
+          title: "Fotoğraflar Eklendi",
+          description: `${newUrls.length} yeni fotoğraf galerinize eklendi.`,
         });
       }
     } catch (error: any) {
       toast({
         title: "Yükleme Başarısız",
-        description: error.message,
+        description: error.message || 'Bir veya daha fazla fotoğraf yüklenirken bir hata oluştu.',
         variant: 'destructive',
       });
     } finally {
       setIsUploading(false);
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
   const handleDeleteImage = async () => {
     if (!imageToDelete || !userProfileRef) return;
     
-    // You need at least 1 photo in your gallery
     if(userProfile?.images?.length <= 1) {
        toast({
         title: "Silme Başarısız",
@@ -101,7 +109,6 @@ export default function GaleriPage() {
        setImageToDelete(null);
        return;
     }
-
 
     try {
       await updateDoc(userProfileRef, {
@@ -124,6 +131,7 @@ export default function GaleriPage() {
   };
 
   const images = userProfile?.images || [];
+  const imageCount = images.length;
 
   if (isLoading) {
     return (
@@ -143,7 +151,7 @@ export default function GaleriPage() {
               Galeri Yönetimi
             </CardTitle>
             <CardDescription>
-              Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin.
+              Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin. ({imageCount}/9)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -171,7 +179,7 @@ export default function GaleriPage() {
                   </div>
                 </div>
               ))}
-              {images.length < 9 && (
+              {imageCount < 9 && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
@@ -194,6 +202,7 @@ export default function GaleriPage() {
               onChange={handleFileChange}
               className="hidden"
               accept="image/png, image/jpeg, image/gif"
+              multiple
             />
           </CardContent>
         </Card>
