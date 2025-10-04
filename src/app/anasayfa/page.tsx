@@ -1,145 +1,105 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
+import useSWR from 'swr';
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useCollection } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { doc, writeBatch, serverTimestamp, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { useMemoFirebase } from "@/firebase/provider";
+import { useAuth } from "@/firebase";
+
+const fetcher = async (url: string, idToken: string) => {
+    const res = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${idToken}`,
+        },
+    });
+
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
+        throw new Error(errorData.error || 'Failed to fetch matches');
+    }
+    return res.json();
+};
 
 export default function AnasayfaPage() {
-  const { user: currentUser } = useUser();
-  const firestore = useFirestore();
   const { toast } = useToast();
-  
-  const [profiles, setProfiles] = useState<UserProfileType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 1. Get IDs of users the current user has already interacted with (swiped or matched)
-  const interactionsRef = useMemoFirebase(() => {
-    if (!currentUser || !firestore) return null;
-    return collection(firestore, `users/${currentUser.uid}/interactions`);
-  }, [currentUser, firestore]);
-  const { data: interactions } = useCollection(interactionsRef);
-
-  // 2. Get all user profiles
-  const allProfilesRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'users');
-  }, [firestore]);
-  const { data: allProfiles, isLoading: profilesLoading } = useCollection(allProfilesRef);
+  const auth = useAuth();
+  const [idToken, setIdToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profilesLoading) {
-      setIsLoading(true);
-      return;
-    }
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const token = await user.getIdToken();
+        setIdToken(token);
+      } else {
+        setIdToken(null);
+      }
+    });
+    return () => unsubscribe();
+  }, [auth]);
 
-    if (!currentUser || !allProfiles) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const interactedUserIds = new Set(interactions?.map(i => i.id) || []);
-      
-      const potentialMatches = allProfiles.filter(p => 
-        p.id !== currentUser.uid && !interactedUserIds.has(p.id)
-      );
-
-      // Shuffle the potential matches
-      const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
-      setProfiles(shuffledMatches);
-      setError(null);
-    } catch(err: any) {
-        setError(err.message || 'Profiller filtrelenirken bir hata oluştu.');
-        console.error(err);
-    } finally {
-       setIsLoading(false);
-    }
-
-  }, [allProfiles, interactions, currentUser, profilesLoading]);
-
+  const { data: profiles, error, isLoading, mutate } = useSWR(
+    idToken ? ['/api/get-potential-matches', idToken] : null,
+    ([url, token]) => fetcher(url, token)
+  );
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
-    if (!currentUser || !firestore) return;
+    if (!idToken) return;
 
     // Optimistically update the UI by removing the swiped card
-    setProfiles(prev => prev.filter(p => p.id !== swipedUserId));
+    mutate(
+        (currentProfiles: UserProfileType[] = []) => currentProfiles.filter(p => p.id !== swipedUserId),
+        false
+    );
   
     try {
-        const batch = writeBatch(firestore);
-
-        // Record the swipe in the current user's interactions subcollection
-        const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions/${swipedUserId}`);
-        batch.set(currentUserInteractionRef, {
-            swipe: direction,
-            timestamp: serverTimestamp(),
+        const response = await fetch('/api/record-swipe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ swipedUserId, direction }),
         });
 
-        if (direction === 'right') {
-            // Check if the other user has swiped right on the current user
-            const otherUserInteractionRef = doc(firestore, `users/${swipedUserId}/interactions/${currentUser.uid}`);
-            const otherUserSwipeDoc = await getDoc(otherUserInteractionRef);
+        const result = await response.json();
 
-            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data().swipe === 'right') {
-                // It's a match!
-                const matchId = [currentUser.uid, swipedUserId].sort().join('_');
-                const matchDate = serverTimestamp();
-                const [user1Id, user2Id] = [currentUser.uid, swipedUserId].sort();
-
-                const matchData = {
-                    id: matchId,
-                    user1Id: user1Id,
-                    user2Id: user2Id,
-                    matchDate: matchDate,
-                };
-                
-                // Create the match document for the current user
-                const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches/${matchId}`);
-                batch.set(currentUserMatchRef, matchData);
-                
-                // Create the match document for the other user
-                const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
-                batch.set(otherUserMatchRef, matchData);
-
-                toast({
-                    title: "Harika! Yeni bir eşleşme!",
-                    description: "Hemen bir mesaj göndererek sohbeti başlat.",
-                    className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
-                    duration: 5000,
-                });
-            }
+        if (!response.ok) {
+            throw new Error(result.error || "Swipe kaydedilemedi.");
         }
-        
-        await batch.commit();
 
-    } catch (error) {
+        if (result.match) {
+            toast({
+                title: "Harika! Yeni bir eşleşme!",
+                description: "Hemen bir mesaj göndererek sohbeti başlat.",
+                className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
+                duration: 5000,
+            });
+        }
+    } catch (error: any) {
       console.error("Error recording interaction:", error);
       toast({
         title: "Hata",
-        description: "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
+        description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
-      })
-      // Optional: Re-add the profile to the list if the commit fails
-      // This is more complex and might not be desired. For now, we'll leave it out.
+      });
+      // Re-fetch data on error to revert optimistic update
+      mutate();
     }
   };
 
   const triggerSwipe = (direction: 'left' | 'right') => {
-    if (profiles.length > 0) {
+    if (profiles && profiles.length > 0) {
       const topProfile = profiles[profiles.length - 1];
       handleSwipe(topProfile.id, direction);
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !idToken) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -152,20 +112,20 @@ export default function AnasayfaPage() {
           <div className="flex flex-col h-full items-center justify-center text-center text-red-500 px-4">
               <X className="h-12 w-12 mb-4" />
               <h2 className="text-xl font-semibold">Profil Yükleme Hatası</h2>
-              <p>{error}</p>
+              <p>{error.message}</p>
           </div>
       )
   }
 
-  const activeProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
+  const activeProfile = profiles && profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-16">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {profiles.length > 0 ? (
-              profiles.map((profile, index) => {
+            {profiles && profiles.length > 0 ? (
+              profiles.map((profile: UserProfileType, index: number) => {
                 const isTopCard = index === profiles.length - 1;
                 return (
                   <ProfileCard
@@ -200,5 +160,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
