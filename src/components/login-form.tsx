@@ -1,10 +1,11 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
@@ -31,6 +32,7 @@ const formSchema = z.object({
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,10 +41,17 @@ export default function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      email: searchParams.get("email") || "",
       password: "",
     },
   });
+
+  useEffect(() => {
+    const emailFromQuery = searchParams.get("email");
+    if (emailFromQuery) {
+        form.setValue("email", emailFromQuery);
+    }
+  }, [searchParams, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -133,3 +142,5 @@ export default function LoginForm() {
     </div>
   );
 }
+
+    

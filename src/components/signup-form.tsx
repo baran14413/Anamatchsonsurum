@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { fetchSignInMethodsForEmail } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -30,6 +39,8 @@ const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
+    email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
+    password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
     name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
         .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
@@ -157,14 +168,18 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(9);
+  const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "Baran",
+      email: "",
+      password: "",
+      name: "",
       gender: undefined,
       lookingFor: "",
       distancePreference: 80,
@@ -208,23 +223,56 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const progressValue = (step / 9) * 100;
+  const totalSteps = 10;
+  const progressValue = (step / totalSteps) * 100;
+
+  const checkEmailExists = async () => {
+    setIsLoading(true);
+    const email = form.getValues("email");
+    if (!auth) {
+        toast({ title: "Hata", description: "Kimlik doğrulama hizmeti başlatılamadı.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+    try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods.length > 0) {
+            setShowEmailExistsDialog(true);
+        } else {
+            nextStep();
+        }
+    } catch (error: any) {
+        // Firebase throws an error for invalid email format, which is okay to ignore here
+        // as zod validation will catch it. We only care about the "already exists" case.
+        if (error.code === 'auth/invalid-email') {
+            nextStep();
+        } else {
+            toast({ title: "Hata", description: "E-posta kontrol edilirken bir sorun oluştu.", variant: "destructive" });
+        }
+    } finally {
+        setIsLoading(false);
+    }
+  }
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
-    if (step === 1) fieldsToValidate = ['name'];
-    if (step === 2) fieldsToValidate = ['dateOfBirth'];
-    if (step === 3) fieldsToValidate = ['gender'];
-    if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['location'];
-    if (step === 6) fieldsToValidate = ['distancePreference'];
-    if (step === 7) fieldsToValidate = ['school'];
-    if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
-    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
+    if (step === 1) fieldsToValidate = ['email', 'password'];
+    if (step === 2) fieldsToValidate = ['name'];
+    if (step === 3) fieldsToValidate = ['dateOfBirth'];
+    if (step === 4) fieldsToValidate = ['gender'];
+    if (step === 5) fieldsToValidate = ['lookingFor'];
+    if (step === 6) fieldsToValidate = ['location'];
+    if (step === 7) fieldsToValidate = ['distancePreference'];
+    if (step === 8) fieldsToValidate = ['school'];
+    if (step === 9) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
+    if (step === 10) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
 
     const isValid = await form.trigger(fieldsToValidate);
+
     if (isValid) {
-      if (step === 9) {
+      if (step === 1) {
+        await checkEmailExists();
+      } else if (step === totalSteps) {
          toast({title: langTr.signup.common.tempToast, description: langTr.signup.common.tempToastDescription})
       } else {
         nextStep();
@@ -255,16 +303,16 @@ export default function SignupForm() {
   };
   
   const handleSkip = () => {
-    if (step === 7) {
+    if (step === 8) {
         form.setValue('school', '');
     }
-    if (step === 8) {
+    if (step === 9) {
         form.setValue('drinking', undefined);
         form.setValue('smoking', undefined);
         form.setValue('workout', undefined);
         form.setValue('pets', []);
     }
-    if (step === 9) {
+    if (step === 10) {
         form.setValue('communicationStyle', undefined);
         form.setValue('loveLanguage', undefined);
         form.setValue('educationLevel', undefined);
@@ -275,14 +323,14 @@ export default function SignupForm() {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
+       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
         {step > 1 && (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
-        {(step === 7 || step === 8 || step === 9) && (
+        {(step === 8 || step === 9 || step === 10) && (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0">
             {langTr.signup.progressHeader.skip}
           </Button>
@@ -291,11 +339,53 @@ export default function SignupForm() {
       
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
-         {step < 8 && (
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 overflow-y-auto -mr-6 pr-6">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                   <div className="space-y-4 pt-8">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
+                          <FormControl>
+                            <Input placeholder="ornek@alanadi.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
+                           <div className="relative">
+                            <FormControl>
+                                <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                            </FormControl>
+                             <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                                >
+                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                             </button>
+                           </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+              {step === 2 && (
+                <>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
                   <FormField
                     control={form.control}
                     name="name"
@@ -303,13 +393,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langTr.signup.step1.placeholder}
+                            placeholder={langTr.signup.step2.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langTr.signup.step1.label}
+                          {langTr.signup.step2.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -317,9 +407,9 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 2 && (
+              {step === 3 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
                   <Controller
                     control={form.control}
                     name="dateOfBirth"
@@ -333,7 +423,7 @@ export default function SignupForm() {
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground pt-2 block">
-                          {langTr.signup.step2.label}
+                          {langTr.signup.step3.label}
                         </FormLabel>
                         {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
                       </FormItem>
@@ -341,9 +431,9 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 3 && (
+              {step === 4 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
                   <FormField
                     control={form.control}
                     name="gender"
@@ -357,7 +447,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('female')}
                             >
-                              {langTr.signup.step3.woman}
+                              {langTr.signup.step4.woman}
                             </Button>
                             <Button
                               type="button"
@@ -365,7 +455,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('male')}
                             >
-                              {langTr.signup.step3.man}
+                              {langTr.signup.step4.man}
                             </Button>
                           </div>
                         </FormControl>
@@ -375,10 +465,10 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step4.label}</p>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step5.label}</p>
                   <FormField
                     control={form.control}
                     name="lookingFor"
@@ -386,7 +476,7 @@ export default function SignupForm() {
                       <FormItem className="space-y-3 pt-4">
                         <FormControl>
                           <div className="grid grid-cols-2 gap-3">
-                            {langTr.signup.step4.options.map((option, index) => {
+                            {langTr.signup.step5.options.map((option, index) => {
                               const Icon = lookingForOptions[index].icon;
                               const isSelected = field.value === option.id;
                               return (
@@ -413,29 +503,29 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <div className="flex flex-col items-center text-center h-full justify-center">
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                     <MapPin className="w-12 h-12 text-primary" />
                   </div>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step6.title}</h1>
                   <p className="text-muted-foreground mt-2 max-w-sm">
-                    {langTr.signup.step5.description}
+                    {langTr.signup.step6.description}
                   </p>
                 </div>
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step6.title}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step6.description}</p>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step7.description}</p>
                   <FormField
                     control={form.control}
                     name="distancePreference"
                     render={({ field }) => (
                       <FormItem className="pt-12">
                         <div className="flex justify-between items-center mb-4">
-                          <FormLabel className="text-base">{langTr.signup.step6.label}</FormLabel>
-                          <span className="font-bold text-base">{field.value} {langTr.signup.step6.unit}</span>
+                          <FormLabel className="text-base">{langTr.signup.step7.label}</FormLabel>
+                          <span className="font-bold text-base">{field.value} {langTr.signup.step7.unit}</span>
                         </div>
                         <FormControl>
                           <Slider
@@ -447,7 +537,7 @@ export default function SignupForm() {
                           />
                         </FormControl>
                         <p className="text-center text-muted-foreground pt-8">
-                          {langTr.signup.step6.info}
+                          {langTr.signup.step7.info}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -455,9 +545,9 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 7 && (
+              {step === 8 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title}</h1>
                   <FormField
                     control={form.control}
                     name="school"
@@ -465,13 +555,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langTr.signup.step7.placeholder}
+                            placeholder={langTr.signup.step8.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langTr.signup.step7.label}
+                          {langTr.signup.step8.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -479,191 +569,195 @@ export default function SignupForm() {
                   />
                 </>
               )}
-            </div>
-            )}
-             {step === 8 && (
-                <>
-                 <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-                  </div>
-                  <div className="flex-1 space-y-8 py-4 pr-2 -mr-4 overflow-y-auto">
-                    <FormField
-                      control={form.control}
-                      name="drinking"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.drinking.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="smoking"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.smoking.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="workout"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.workout.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Controller
-                      name="pets"
-                      control={form.control}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.pets.options.map(opt => {
-                                const isSelected = field.value?.includes(opt.id);
-                                return (
-                                  <Button
-                                    key={opt.id}
-                                    type="button"
-                                    variant={isSelected ? 'default' : 'outline'}
-                                    onClick={() => {
-                                      const newValue = isSelected
-                                        ? field.value?.filter(v => v !== opt.id)
-                                        : [...(field.value || []), opt.id];
-                                      field.onChange(newValue);
-                                    }}
-                                    className="rounded-full"
-                                  >
-                                    {opt.label}
-                                  </Button>
-                                );
-                              })}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </>
-              )}
-               {step === 9 && (
+              {step === 9 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langTr.signup.step9.title}</h1>
+                      <h1 className="text-3xl font-bold">{langTr.signup.step9.title.replace('{name}', currentName)}</h1>
                       <p className="text-muted-foreground">{langTr.signup.step9.description}</p>
                   </div>
-                  <div className="flex-1 space-y-8 py-4 pr-2 -mr-4 overflow-y-auto">
-                    <FormField
-                      control={form.control}
-                      name="loveLanguage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step9.loveLanguage.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.loveLanguage.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="communicationStyle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step9.communication.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.communication.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="educationLevel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langTr.signup.step9.education.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.education.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="zodiacSign"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langTr.signup.step9.zodiac.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.zodiac.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <ScrollArea className="flex-1 -mr-6 pr-5">
+                    <div className="space-y-8 py-4">
+                      <FormField
+                        control={form.control}
+                        name="drinking"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step9.drinking.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step9.drinking.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="smoking"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step9.smoking.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step9.smoking.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="workout"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step9.workout.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step9.workout.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Controller
+                        name="pets"
+                        control={form.control}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step9.pets.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step9.pets.options.map(opt => {
+                                  const isSelected = field.value?.includes(opt.id);
+                                  return (
+                                    <Button
+                                      key={opt.id}
+                                      type="button"
+                                      variant={isSelected ? 'default' : 'outline'}
+                                      onClick={() => {
+                                        const newValue = isSelected
+                                          ? field.value?.filter(v => v !== opt.id)
+                                          : [...(field.value || []), opt.id];
+                                        field.onChange(newValue);
+                                      }}
+                                      className="rounded-full"
+                                    >
+                                      {opt.label}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </ScrollArea>
                 </div>
               )}
+               {step === 10 && (
+                 <div className="flex-1 flex flex-col min-h-0">
+                  <div className="shrink-0">
+                      <h1 className="text-3xl font-bold">{langTr.signup.step10.title}</h1>
+                      <p className="text-muted-foreground">{langTr.signup.step10.description}</p>
+                  </div>
+                  <ScrollArea className="flex-1 -mr-6 pr-5">
+                    <div className="space-y-8 py-4">
+                      <FormField
+                        control={form.control}
+                        name="loveLanguage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step10.loveLanguage.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step10.loveLanguage.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="communicationStyle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step10.communication.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step10.communication.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="educationLevel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langTr.signup.step10.education.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step10.education.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="zodiacSign"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langTr.signup.step10.zodiac.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step10.zodiac.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
+
           <div className="shrink-0 pt-6">
-            {step === 5 ? (
+            {step === 6 ? (
               <Button
                 type="button"
                 onClick={handleLocationRequest}
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step5.button}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step6.button}
               </Button>
-            ) : step === 8 ? (
+            ) : step === 9 ? (
               <Button
                 type="button"
                 onClick={handleNextStep}
@@ -672,7 +766,7 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
-            ) : step === 9 ? (
+            ) : step === 10 ? (
                 <Button
                 type="button"
                 onClick={handleNextStep}
@@ -694,6 +788,21 @@ export default function SignupForm() {
           </div>
         </form>
       </Form>
+      <AlertDialog open={showEmailExistsDialog} onOpenChange={setShowEmailExistsDialog}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{langTr.signup.common.emailExistsTitle}</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {langTr.signup.common.emailExistsDescription}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => router.push(`/login?email=${encodeURIComponent(form.getValues("email"))}`)}>
+                    {langTr.signup.common.goToLogin}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

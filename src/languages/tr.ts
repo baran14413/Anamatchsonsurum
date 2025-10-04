@@ -5,23 +5,29 @@ export const langTr = {
       skip: 'Atla',
     },
     step1: {
+      title: 'Hesabını oluştur',
+      description: 'Maceraya başlamak için e-posta ve şifreni belirle.',
+      emailLabel: 'E-posta Adresin',
+      passwordLabel: 'Şifren',
+    },
+    step2: {
       title: 'Adın ne?',
       placeholder: 'Adını gir',
       label: 'Profilinde bu şekilde görünecek. Bunu daha sonra değiştiremezsin.',
     },
-    step2: {
+    step3: {
       title: 'Doğum tarihin?',
       label: 'Profilinde yaşın gösterilir, doğum tarihin değil.',
       dayPlaceholder: 'GG',
       monthPlaceholder: 'AA',
       yearPlaceholder: 'YYYY',
     },
-    step3: {
+    step4: {
       title: 'Ben bir...',
       woman: 'Kadın',
       man: 'Erkek',
     },
-    step4: {
+    step5: {
       title: 'Ne arıyorsun?',
       label: 'Merak etme, bunu daha sonra profilinden istediğin zaman değiştirebilirsin.',
       options: [
@@ -33,26 +39,26 @@ export const langTr = {
         { id: 'whatever', label: 'Her şeye açığım' },
       ],
     },
-    step5: {
+    step6: {
       title: 'Konumunu Paylaş',
       description: 'Çevrendeki potansiyel eşleşmeleri görebilmek için konumunu bizimle paylaşman gerekiyor.',
       button: 'Konumumu Paylaş',
       errorTitle: 'Konum İzni Reddedildi',
       errorMessage: 'Eşleşmeleri bulmak için konum izni gereklidir. Lütfen tarayıcı ayarlarından izin verin.',
     },
-    step6: {
+    step7: {
       title: 'Mesafe tercihin nedir?',
       description: 'Potansiyel eşleşmelerin bulunmasını istediğin maksimum mesafeyi ayarlamak için kaydırıcıyı kullan.',
       label: 'Mesafe Tercihi',
       unit: 'Km',
       info: "Tercihleri daha sonra Ayarlar'dan değiştirebilirsin",
     },
-    step7: {
+    step8: {
       title: 'Okulunu yazmak istersen...',
       placeholder: 'Okulunu gir',
       label: 'Profilinde bu şekilde görünecek.',
     },
-    step8: {
+    step9: {
       title: '{name}, biraz da yaşam tarzı alışkanlıklarından bahsedelim',
       description: 'Eşleşme adaylarının alışkanlıkları, seninkilerle uyumlu mu? İlk sen başla.',
       drinking: {
@@ -104,7 +110,7 @@ export const langTr = {
         ],
       },
     },
-    step9: {
+    step10: {
         title: 'Seni sen yapan başka neler var?',
         description: 'Kendini ortaya koymaktan çekinme. Özgün olmak cazibelidir.',
         communication: {
@@ -164,6 +170,9 @@ export const langTr = {
       done: 'Bitir',
       tempToast: 'Şimdilik bu kadar!',
       tempToastDescription: 'Tasarım devam ediyor.',
+      emailExistsTitle: 'E-posta Zaten Mevcut',
+      emailExistsDescription: 'Girdiğiniz e-posta adresi zaten bir hesaba bağlı. Lütfen giriş yapın.',
+      goToLogin: 'Giriş Yapmaya Git',
     },
   },
 };
