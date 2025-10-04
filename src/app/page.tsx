@@ -13,7 +13,7 @@ export default function WelcomePage() {
       <main className="flex flex-1 flex-col items-center justify-center p-8 text-center">
         <div className="flex-1 flex flex-col justify-center items-center">
           <div className="mb-12">
-            <Icons.logo width={128} height={128} />
+            <Icons.logo width={256} height={256} />
           </div>
         </div>
 
