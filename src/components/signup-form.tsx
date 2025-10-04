@@ -83,6 +83,8 @@ const interestIcons: { [key: string]: React.ElementType } = {
   Music,
   Gamepad2,
   Sprout,
+  MessageCircle,
+  Dumbbell
 };
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {

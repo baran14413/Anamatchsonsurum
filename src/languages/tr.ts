@@ -222,6 +222,20 @@ export const langTr = {
                 options: [
                     'Öz Sevgi', 'Yeni Şeyler Denemek', 'Tarot', 'Spa', 'Kişisel Bakım', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Makyaj', 'Astroloji', 'Mindfulness', 'Sauna', 'Aktif Yaşam', 'Yoga'
                 ]
+            },
+            {
+                title: 'Sosyal medya içerikleri',
+                icon: 'MessageCircle',
+                options: [
+                    'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', "Vlogger'lık", 'YouTube', 'Sanal Gerçeklik', "Esprili caps'lar", 'Metaverse', "Podcast'ler", 'TikTok', 'Twitch', 'Netflix'
+                ]
+            },
+            {
+                title: 'Spor ve fitness',
+                icon: 'Dumbbell',
+                options: [
+                    'Buz Hokeyi', 'Atıcılık', 'Atletizm', 'Spor', 'Yürüyüş', 'Plaj sporları', 'Fitness dersleri', 'Paten kaymak', 'Ragbi', 'Boks'
+                ]
             }
         ]
     },
