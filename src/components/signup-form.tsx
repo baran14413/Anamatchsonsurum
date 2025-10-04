@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper, Map, Building } from "lucide-react";
+import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper, Map, Building, CalendarIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
@@ -30,14 +32,25 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 import Image from "next/image";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
+
+const INTERESTS_LIST = [
+  "Spor", "Müzik", "Seyahat", "Sinema", "Yemek", "Sanat", 
+  "Teknoloji", "Kitaplar", "Dans", "Moda", "Oyun", "Doğa Yürüyüşü",
+  "Fotoğrafçılık", "Yoga", "Gönüllülük", "Hayvansever"
+];
 
 // Step 1 Schema
 const step1Schema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
   fullName: z.string().min(3, { message: "Kullanıcı adı en az 3 karakter olmalıdır." }),
-  dateOfBirth: z.string().refine((dob) => new Date(dob) < new Date(), { message: "Doğum tarihi geçmiş bir tarih olmalıdır."}),
+  dateOfBirth: z.date({
+    required_error: "Doğum tarihi gereklidir.",
+  }),
 });
 
 // Step 2 Schema
@@ -57,6 +70,12 @@ const step4Schema = z.object({
 
 // Step 5 Schema
 const step5Schema = z.object({
+  interests: z.array(z.string()).min(5, { message: "Lütfen en az 5 ilgi alanı seçin." }),
+});
+
+
+// Step 6 Schema
+const step6Schema = z.object({
   password: z.string().min(8, { message: "Şifre en az 8 karakter olmalıdır." }),
   confirmPassword: z.string(),
   terms: z.boolean().refine(val => val === true, { message: "Kullanım koşullarını kabul etmelisiniz."}),
@@ -66,7 +85,7 @@ const step5Schema = z.object({
 });
 
 
-const combinedSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema).merge(step5Schema);
+const combinedSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema).merge(step5Schema).merge(step6Schema);
 
 type SignupFormValues = z.infer<typeof combinedSchema>;
 
@@ -91,16 +110,18 @@ export default function SignupForm() {
        step === 2 ? step2Schema :
        step === 3 ? step3Schema :
        step === 4 ? step4Schema :
-       step5Schema
+       step === 5 ? step5Schema :
+       step6Schema
     ),
     mode: "onChange",
     defaultValues: {
         email: "",
         fullName: "",
-        dateOfBirth: "",
+        dateOfBirth: undefined,
         profilePicture: "",
         gender: undefined,
         images: [],
+        interests: [],
         password: "",
         confirmPassword: "",
         terms: false,
@@ -115,7 +136,6 @@ export default function SignupForm() {
         
         if (response.ok && data.address) {
             const adr = data.address;
-            // Prefer district, fallback to city, then provide a generic name.
             const formattedAddress = [adr.district, adr.city].filter(Boolean).join(', ');
             setAddress(formattedAddress || "Konum Alındı");
         } else {
@@ -167,7 +187,6 @@ export default function SignupForm() {
         const cloudinaryUrl = await uploadFile(file);
         if (cloudinaryUrl) {
             form.setValue("profilePicture", cloudinaryUrl, { shouldValidate: true });
-            // Also add it to the images array as the first image, removing any previous first image
             const currentImages = form.getValues("images");
             const otherImages = currentImages.length > 0 && form.getValues("profilePicture") === currentImages[0]
                 ? currentImages.slice(1)
@@ -192,12 +211,20 @@ export default function SignupForm() {
         setIsUploading(false);
         const validUrls = urls.filter((url): url is string => url !== null);
         
-        // Prevent duplicates
         const newImages = [...new Set([...currentPictures, ...validUrls])];
 
         form.setValue("images", newImages, { shouldValidate: true });
     }
   };
+
+  const toggleInterest = (interest: string) => {
+    const currentInterests = form.getValues("interests") || [];
+    const newInterests = currentInterests.includes(interest)
+      ? currentInterests.filter(i => i !== interest)
+      : [...currentInterests, interest];
+    form.setValue("interests", newInterests, { shouldValidate: true });
+  };
+
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -217,7 +244,7 @@ export default function SignupForm() {
         setIsLoading(false);
       },
       (error) => {
-        setLocationError("Otomatik konum alınamadı. Eşleşmelerin doğru ve sürdürülebilir olması için lütfen konumunuzu manuel olarak girin.");
+        setLocationError("Otomatik konum alınamadı. Lütfen konum iznini kontrol edin veya manuel olarak seçin.");
         setIsLoading(false);
       },
       { timeout: 10000 }
@@ -225,8 +252,6 @@ export default function SignupForm() {
   };
   
   const handleManualLocationSelect = () => {
-    // In a real app, this would open a map modal.
-    // Here we simulate it by setting a predefined location.
     const newLocation = { latitude: 41.0082, longitude: 28.9784 }; // Istanbul as default
     setLocation(newLocation); 
     fetchAddress(newLocation.latitude, newLocation.longitude);
@@ -260,6 +285,12 @@ export default function SignupForm() {
         return;
     }
 
+    if (data.interests.length < 5) {
+        toast({ title: "Eksik İlgi Alanı", description: "Lütfen Adım 5'e geri dönüp en az 5 ilgi alanı seçin.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     if (!location) {
         toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 3'e geri dönüp konum izni verin veya manuel olarak seçin.", variant: "destructive" });
         setIsLoading(false);
@@ -276,15 +307,15 @@ export default function SignupForm() {
             uid: user.uid,
             email: data.email,
             fullName: data.fullName,
-            dateOfBirth: data.dateOfBirth,
-            profilePicture: data.profilePicture, // This is now a Cloudinary URL
+            dateOfBirth: format(data.dateOfBirth, "yyyy-MM-dd"),
+            profilePicture: data.profilePicture,
             gender: data.gender,
-            images: data.images, // This now includes Cloudinary URLs
+            images: data.images, 
             location: location,
+            interests: data.interests,
             createdAt: new Date(),
             profileComplete: true,
-            interests: [], // Initialize interests as empty array
-            bio: "" // Initialize bio as empty string
+            bio: "" 
         });
 
         toast({
@@ -339,13 +370,50 @@ export default function SignupForm() {
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Doğum Tarihi</FormLabel>
-                            <FormControl><Input type="date" {...field} /></FormControl>
-                            <FormMessage />
+                    <FormField
+                      control={form.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Doğum Tarihi</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "dd MMMM yyyy", { locale: tr })
+                                  ) : (
+                                    <span>Bir tarih seçin</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                                captionLayout="dropdown-buttons"
+                                fromYear={1950}
+                                toYear={new Date().getFullYear() - 18}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
                         </FormItem>
-                    )} />
+                      )}
+                    />
                 </div>
             )}
 
@@ -493,6 +561,41 @@ export default function SignupForm() {
             )}
 
             {step === 5 && (
+                <div className="space-y-4 pt-8">
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold">İlgi Alanların</h3>
+                    <p className="text-muted-foreground text-sm">
+                        Seni en iyi anlatan en az 5 ilgi alanı seç.
+                    </p>
+                  </div>
+                   <FormField
+                      control={form.control}
+                      name="interests"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                              <div className="flex flex-wrap gap-2 justify-center">
+                                  {INTERESTS_LIST.map((interest) => (
+                                      <Button
+                                        key={interest}
+                                        type="button"
+                                        variant={field.value?.includes(interest) ? "default" : "outline"}
+                                        onClick={() => toggleInterest(interest)}
+                                        className="rounded-full"
+                                      >
+                                          {interest}
+                                      </Button>
+                                  ))}
+                              </div>
+                          </FormControl>
+                           <FormMessage className="text-center"/>
+                        </FormItem>
+                      )}
+                    />
+                </div>
+            )}
+
+            {step === 6 && (
                  <div className="space-y-4 pt-8">
                     <h3 className="text-xl font-semibold">Neredeyse Bitti!</h3>
                      <FormField control={form.control} name="password" render={({ field }) => (
@@ -549,9 +652,18 @@ export default function SignupForm() {
                         }
                     }}
                     className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={(step === 3 && !location) || isUploading || isGeocoding}
+                    disabled={
+                        (step === 3 && !location) || 
+                        isUploading || 
+                        isGeocoding || 
+                        (step === 1 && !form.formState.isValid) ||
+                        (step === 2 && !form.formState.isValid) ||
+                        (step === 3 && !form.formState.isValid) ||
+                        (step === 4 && !form.formState.isValid) ||
+                        (step === 5 && !form.formState.isValid)
+                    }
                  >
-                    {isUploading || isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                     {isUploading ? 'Resim Yükleniyor...' : isGeocoding ? 'Adres Alınıyor...' : 'Devam Et'}
                  </Button>
                ) : (
@@ -569,5 +681,6 @@ export default function SignupForm() {
       </Form>
   );
 }
+
 
 

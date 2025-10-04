@@ -8,7 +8,7 @@ export type UserProfile = {
   profilePicture?: string;
   images: string[];
   bio?: string;
-  interests: string[];
+  interests?: string[];
   gender: 'male' | 'female' | 'other';
   location?: {
     latitude: number;
