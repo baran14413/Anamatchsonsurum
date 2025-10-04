@@ -30,6 +30,7 @@ const formSchema = z.object({
     name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
         .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
+    gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -69,14 +70,14 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
       const val = e.target.value.replace(/[^0-9]/g, '');
       
       if (field === 'day') {
-        if (parseInt(val) > 31) return;
-        if (val.length > 1 && parseInt(val.charAt(0)) > 3) return;
+        if (val.length > 0 && parseInt(val.charAt(0)) > 3) return;
+        if (val.length > 1 && parseInt(val) > 31) return;
         handleDateChange(val, month, year);
         if (val.length === 2) monthRef.current?.focus();
 
       } else if (field === 'month') {
-        if (parseInt(val) > 12) return;
-        if (val.length > 1 && parseInt(val.charAt(0)) > 1) return;
+        if (val.length > 0 && parseInt(val.charAt(0)) > 1) return;
+        if (val.length > 1 && parseInt(val) > 12) return;
         handleDateChange(day, val, year);
         if (val.length === 2) yearRef.current?.focus();
       }
@@ -143,7 +144,7 @@ export default function SignupForm() {
     // For now, we just log the data and move to a placeholder success page
     console.log(data);
     // In the future, this will handle user creation in Firebase
-    // nextStep(); 
+    nextStep(); 
   }
   
   const progressValue = (step / 5) * 100; // Assuming 5 steps total for now
@@ -152,10 +153,12 @@ export default function SignupForm() {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
     if (step === 1) fieldsToValidate = ['name'];
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
+    if (step === 3) fieldsToValidate = ['gender'];
+
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 2) {
+      if (step === 3) {
          toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
       } else {
         nextStep();
@@ -220,6 +223,40 @@ export default function SignupForm() {
                       )}
                     />
                 </>
+              )}
+              {step === 3 && (
+                 <>
+                   <h1 className="text-3xl font-bold">Ben bir...</h1>
+                   <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4 pt-8">
+                        <FormControl>
+                           <div className="space-y-3">
+                              <Button
+                                type="button"
+                                variant={field.value === 'female' ? 'default' : 'outline'}
+                                className="w-full h-14 rounded-full text-lg"
+                                onClick={() => field.onChange('female')}
+                              >
+                                Kadın
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={field.value === 'male' ? 'default' : 'outline'}
+                                className="w-full h-14 rounded-full text-lg"
+                                onClick={() => field.onChange('male')}
+                              >
+                                Erkek
+                              </Button>
+                           </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                 </>
               )}
             </div>
 
