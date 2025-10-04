@@ -74,7 +74,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                     if (val.length === 2) monthRef.current?.focus();
                 }}
                 disabled={disabled}
-                className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none"
+                className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
             <span className="text-2xl text-muted-foreground">/</span>
             <Input
@@ -88,7 +88,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                     if (val.length === 2) yearRef.current?.focus();
                 }}
                 disabled={disabled}
-                 className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none"
+                 className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
             <span className="text-2xl text-muted-foreground">/</span>
             <Input
@@ -101,7 +101,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                      handleDateChange(day, month, val);
                 }}
                 disabled={disabled}
-                className="text-2xl text-center h-16 w-28 p-0 border-0 border-b-2 rounded-none"
+                className="text-2xl text-center h-16 w-28 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
         </div>
     )
@@ -175,7 +175,7 @@ export default function SignupForm() {
                         <FormControl>
                           <Input
                             placeholder="Adını gir"
-                            className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
+                            className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
