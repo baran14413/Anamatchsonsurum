@@ -16,9 +16,9 @@ import {
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useDoc, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useDoc, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,11 @@ export default function DuzenlePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
 
-    const userProfileRef = user ? doc(firestore, 'users', user.uid) : null;
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [user, firestore]);
+    
     const { data: userProfile, isLoading } = useDoc(userProfileRef);
 
     const handleIconClick = () => {
@@ -62,6 +66,10 @@ export default function DuzenlePage() {
                 body: formData,
             });
 
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+            
             const { url } = await response.json();
 
             if (userProfileRef) {

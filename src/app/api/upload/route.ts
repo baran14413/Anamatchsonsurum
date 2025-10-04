@@ -1,58 +1,38 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
-import multer from 'multer';
 import { Readable } from 'stream';
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// Configure Multer for memory storage
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// Helper to run multer middleware
-const runMiddleware = (req: NextRequest, res: NextResponse, fn: any) => {
-  return new Promise((resolve, reject) => {
-    // We need to convert NextRequest to something that Express/Multer understands
-    const expressReq = req as any;
-    expressReq.headers = Object.fromEntries(req.headers);
-    
-    // We need to add the file stream to the request
-    if (req.body) {
-        expressReq.pipe = req.body.pipe.bind(req.body);
-        expressReq.unpipe = req.body.unpipe.bind(req.body);
-        expressReq.on = req.body.on.bind(req.body);
-        expressReq.once = req.body.once.bind(req.body);
-        expressReq.removeListener = req.body.removeListener.bind(req.body);
-        expressReq.off = req.body.off.bind(req.body);
-        expressReq.removeAllListeners = req.body.removeAllListeners.bind(req.body);
+// This is a workaround for a bug in Next.js where the body is not parsed correctly
+// See: https://github.com/vercel/next.js/discussions/54128
+async function getFileFromRequest(req: NextRequest) {
+    const formData = await req.formData();
+    const file = formData.get('file');
+    if (file instanceof File) {
+        return file;
     }
-    
-    fn(expressReq, res, (result: any) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-};
-
+    return null;
+}
 
 export async function POST(req: NextRequest) {
+  // Configure Cloudinary within the POST function to ensure env vars are loaded
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
   const res = new NextResponse();
 
   try {
-    await runMiddleware(req, res, upload.single('file'));
-    const file = (req as any).file;
-
+    const file = await getFileFromRequest(req);
+    
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
     }
+
+    const fileBuffer = await file.arrayBuffer();
+    const mimeType = file.type;
 
     const uploadPromise = new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
@@ -66,8 +46,7 @@ export async function POST(req: NextRequest) {
       );
 
       const readableStream = new Readable();
-      readableStream._read = () => {};
-      readableStream.push(file.buffer);
+      readableStream.push(Buffer.from(fileBuffer));
       readableStream.push(null);
       readableStream.pipe(stream);
     });
@@ -76,7 +55,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: result.secure_url });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Cloudinary Upload Error:", error);
+    return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
   }
 }
 
