@@ -17,9 +17,8 @@ export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
-  // Fetches all users - This approach is problematic with default security rules
-  // but we will filter on client-side for this project's scope.
-  // In a production app, a backend would provide a curated list of profiles.
+  // Fetches all users. In a real-world secure app, this would be a Cloud Function.
+  // We accept the security risk of fetching all users for this project's scope.
   const usersCollectionRef = useMemoFirebase(() => 
     firestore ? collection(firestore, "users") : null, 
     [firestore]
@@ -43,7 +42,7 @@ export default function AnasayfaPage() {
         setSwipedProfileIds(interactedIds);
       } catch (error) {
         console.error("Failed to fetch interactions:", error);
-        // Handle error, maybe show a toast
+        // In a real app, you might want to show a toast here.
       } finally {
         setIsFetchingInteractions(false);
       }
@@ -79,7 +78,7 @@ export default function AnasayfaPage() {
 
     if (action === 'like') {
       // In a real app, you would check if the other user has also liked the current user.
-      // For this project, we'll create a match directly.
+      // For this project, we'll create a match directly for simplicity.
       const matchId = [currentUser.uid, profile.id].sort().join('_');
       
       const matchDocForCurrentUser = doc(firestore, `users/${currentUser.uid}/matches`, matchId);
@@ -110,6 +109,7 @@ export default function AnasayfaPage() {
           newSet.delete(profile.id);
           return newSet;
       });
+      // Here you might want to use a toast to inform the user
     }
   };
 
