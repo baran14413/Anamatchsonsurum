@@ -5,17 +5,14 @@ import { useState, useEffect } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
-import { Heart, X, Loader2 } from "lucide-react";
+import { Heart, X, Loader2, PartyPopper } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useUser, useAuth } from "@/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const auth = useAuth();
-  const firestore = useFirestore();
   const { toast } = useToast();
   
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
@@ -62,28 +59,41 @@ export default function AnasayfaPage() {
   }, [currentUser, auth, toast]);
 
   const handleSwipe = async (profileId: string, direction: 'left' | 'right') => {
-    if (!currentUser || !firestore) return;
-  
-    // Optimistically update the UI
+    if (!currentUser || !auth) return;
+
+    // Optimistically update the UI by removing the swiped card
     setProfiles(prev => prev.filter(p => p.id !== profileId));
   
-    const interactionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profileId);
-    
     try {
-      // Only record the interaction.
-      // The logic for creating a match should be handled server-side
-      // by a Cloud Function that checks if both users swiped right.
-      await setDoc(interactionRef, {
-        swipe: direction,
-        timestamp: serverTimestamp(),
-        userId: currentUser.uid,
-      });
-  
-      // TODO: In the future, a Cloud Function will listen to writes on `interactions`.
-      // If user A swipes right on user B, and user B has already swiped right on user A,
-      // the function will create a match document in both users' `matches` subcollection.
-      // For now, we are just recording the swipe.
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
 
+      const response = await fetch('/api/record-swipe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          swipedUserId: profileId,
+          direction: direction,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to record swipe');
+      }
+
+      const result = await response.json();
+
+      if (result.match) {
+        toast({
+            title: "Harika! Yeni bir eşleşme!",
+            description: "Hemen bir mesaj göndererek sohbeti başlat.",
+            className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
+            duration: 5000,
+        });
+      }
     } catch (error) {
       console.error("Error recording interaction:", error);
       // Optionally revert UI update or show an error toast
