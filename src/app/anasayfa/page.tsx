@@ -1,113 +1,31 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import useSWR from 'swr';
+import { useState, useEffect } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2, Undo2, Star, Send } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/firebase";
 import { mockProfiles } from "@/lib/data";
-
-const fetcher = async (url: string, idToken: string) => {
-    const res = await fetch(url, {
-        headers: {
-            'Authorization': `Bearer ${idToken}`,
-        },
-    });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Fetcher Error Response:", errorText);
-        try {
-            const errorData = JSON.parse(errorText);
-            throw new Error(errorData.error || 'Failed to fetch matches');
-        } catch (e) {
-            throw new Error('Profil yükleme hatası. Sunucu yanıtı geçersiz.');
-        }
-    }
-    return res.json();
-};
 
 export default function AnasayfaPage() {
   const { toast } = useToast();
-  const auth = useAuth();
-  const [idToken, setIdToken] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (!auth) return;
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        try {
-            const token = await user.getIdToken();
-            setIdToken(token);
-        } catch (error) {
-            console.error("Error getting ID token:", error);
-            setIdToken(null);
-        }
-      } else {
-        setIdToken(null);
-      }
-    });
-    return () => unsubscribe();
-  }, [auth]);
-
-  const { data: fetchedProfiles, error, isLoading, mutate } = useSWR<UserProfileType[]>(
-    idToken ? [`/api/get-potential-matches`, idToken] : null,
-    ([url, token]) => fetcher(url, token),
-    { 
-      revalidateOnFocus: false,
-      shouldRetryOnError: false
-    }
-  );
-  
   const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
 
   useEffect(() => {
-    if (fetchedProfiles) {
-      setVisibleProfiles(fetchedProfiles);
-    } else if (!isLoading && !fetchedProfiles) {
-      setVisibleProfiles(mockProfiles);
-    }
-  }, [fetchedProfiles, isLoading]);
+    // Load mock profiles on component mount
+    setVisibleProfiles(mockProfiles);
+  }, []);
 
-
-  const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
-    const isMockData = !fetchedProfiles || !!error;
-
+  const handleSwipe = (swipedUserId: string, direction: 'right' | 'left') => {
     // Optimistically remove the card from the UI
-    const swipedProfile = visibleProfiles.find(p => p.id === swipedUserId);
     setVisibleProfiles(prev => prev.filter(p => p.id !== swipedUserId));
 
-    if (isMockData || !idToken) {
-        // If we've run out of mock profiles, reset them
-        if(visibleProfiles.length <= 1) {
-            toast({ title: "Mock profiller bitti!", description: "Yeniden başlıyoruz."});
-            setVisibleProfiles(mockProfiles);
-        }
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/record-swipe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ swipedUserId, direction }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || "Swipe kaydedilemedi.");
-        }
-
-        if (result.match) {
+    if (direction === 'right') {
+        // Simulate a match randomly
+        if (Math.random() > 0.7) { // 30% chance of a match
             toast({
                 title: "Harika! Yeni bir eşleşme!",
                 description: "Hemen bir mesaj göndererek sohbeti başlat.",
@@ -115,23 +33,12 @@ export default function AnasayfaPage() {
                 duration: 5000,
             });
         }
-       
-        // If we've run out of profiles, refetch
-        if (visibleProfiles.length <= 1) {
-          mutate();
-        }
-
-    } catch (e: any) {
-      console.error("Error recording interaction:", e);
-      toast({
-        title: "Hata",
-        description: e.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
-        variant: "destructive"
-      });
-      // On error, put the card back.
-      if (swipedProfile) {
-        setVisibleProfiles(prev => [swipedProfile, ...prev]);
-      }
+    }
+    
+    // If we've run out of mock profiles, reset them for continuous testing
+    if (visibleProfiles.length <= 1) {
+      toast({ title: "Profiller bitti!", description: "Yeniden başlıyoruz." });
+      setVisibleProfiles(mockProfiles);
     }
   };
 
@@ -142,7 +49,8 @@ export default function AnasayfaPage() {
     }
   };
   
-  if (isLoading || !idToken || (fetchedProfiles === undefined && !error)) {
+  // Show loader only if profiles haven't been loaded yet.
+  if (visibleProfiles.length === 0) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -150,7 +58,7 @@ export default function AnasayfaPage() {
     );
   }
 
-  const activeProfile = visibleProfiles.length > 0 ? visibleProfiles[visibleProfiles.length - 1] : null;
+  const activeProfile = visibleProfiles[visibleProfiles.length - 1];
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
