@@ -19,12 +19,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, CalendarIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
+
+const eighteenYearsAgo = new Date();
+eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
-  // We will add more fields for other steps later
+  dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." }),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -56,6 +64,21 @@ export default function SignupForm() {
   }
   
   const progressValue = (step / 5) * 100; // Assuming 5 steps total for now
+
+  const handleNextStep = async () => {
+    let fieldsToValidate: (keyof SignupFormValues)[] = [];
+    if (step === 1) fieldsToValidate = ['name'];
+    if (step === 2) fieldsToValidate = ['dateOfBirth'];
+
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      if (step === 2) {
+         toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
+      } else {
+        nextStep();
+      }
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -95,19 +118,64 @@ export default function SignupForm() {
                   />
                 </>
               )}
+               {step === 2 && (
+                <>
+                  <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
+                    <FormField
+                      control={form.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col pt-4">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal h-14 text-lg",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? (
+                                    format(field.value, "dd LLL, yyyy", { locale: tr })
+                                  ) : (
+                                    <span>Doğum tarihini seç</span>
+                                  )}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1920-01-01")
+                                }
+                                defaultMonth={eighteenYearsAgo}
+                                fromYear={1920}
+                                toYear={new Date().getFullYear() - 18}
+                                captionLayout="dropdown-buttons"
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                           <FormLabel className="text-muted-foreground mt-2">
+                             Profilinde yaşın gösterilir, doğum tarihin değil.
+                           </FormLabel>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                </>
+              )}
             </div>
 
             <div className="shrink-0">
               <Button
                 type="button"
-                onClick={async () => {
-                  const isValid = await form.trigger();
-                  if (isValid) {
-                    // For now, we don't have a next step, but this is where it would go
-                    // nextStep();
-                    toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
-                  }
-                }}
+                onClick={handleNextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
