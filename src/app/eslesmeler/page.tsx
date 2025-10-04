@@ -82,7 +82,7 @@ export default function EslesmelerPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4 md:py-8 h-full flex flex-col">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">Mesajlar</h1>
+      <h1 className="mb-6 text-3xl font-bold tracking-tight">Sohbetler</h1>
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-full">
@@ -101,13 +101,11 @@ export default function EslesmelerPage() {
         {!isLoading && (!matches || matches.length === 0) && (
           <div className="text-center py-20 flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Henüz Eşleşmen Yok</h2>
-            <p>Eşleştiğin kişiler burada görünecek.</p>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Henüz Sohbetin Yok</h2>
+            <p>Eşleştiğin kişilerle sohbetlerin burada görünecek.</p>
           </div>
         )}
       </div>
     </div>
   );
 }
-
-    

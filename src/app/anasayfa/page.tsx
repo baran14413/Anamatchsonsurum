@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
-import { Heart, X, Loader2 } from "lucide-react";
+import { Heart, X, Loader2, Undo2, Star, Send } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/firebase";
@@ -51,7 +51,6 @@ export default function AnasayfaPage() {
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
     if (!idToken) return;
 
-    // Optimistically update the UI by removing the swiped card
     mutate(
         (currentProfiles: UserProfileType[] = []) => currentProfiles.filter(p => p.id !== swipedUserId),
         false
@@ -88,7 +87,6 @@ export default function AnasayfaPage() {
         description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
-      // Re-fetch data on error to revert optimistic update
       mutate();
     }
   };
@@ -122,7 +120,7 @@ export default function AnasayfaPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
-      <div className="relative flex-1 flex flex-col items-center justify-center pb-16">
+      <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
             {profiles && profiles.length > 0 ? (
@@ -149,12 +147,21 @@ export default function AnasayfaPage() {
       </div>
 
       {activeProfile && (
-        <div className="absolute bottom-6 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-4 py-4 shrink-0">
-          <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-rose-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+        <div className="absolute bottom-20 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-3 py-4 shrink-0">
+          <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-yellow-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
+            <Undo2 className="h-6 w-6" />
+          </Button>
+          <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-red-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
             <X className="h-8 w-8" />
           </Button>
-          <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-teal-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
+          <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-blue-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
+            <Star className="h-6 w-6 fill-current" />
+          </Button>
+          <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-green-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
             <Heart className="h-8 w-8 fill-current" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-blue-400 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
+            <Send className="h-6 w-6" />
           </Button>
         </div>
       )}

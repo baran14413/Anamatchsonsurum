@@ -5,7 +5,7 @@ import type { UserProfile as UserProfileType } from "@/lib/types";
 import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform } from "framer-motion";
 import { useState } from "react";
-import { Info, MapPin, Heart, X } from "lucide-react";
+import { MapPin, Heart, X, ArrowUp } from "lucide-react";
 
 interface ProfileCardProps {
   profile: UserProfileType;
@@ -118,18 +118,15 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
               <h2 className="text-3xl font-bold drop-shadow-lg">
                 {profile.fullName || 'Kullanıcı'}, <span className="font-light">{userAge || ''}</span>
               </h2>
-              {profile.interests && profile.interests.length > 0 && (
-                 <p className="mt-1 text-white/95 drop-shadow-md text-base truncate">{profile.interests.join(' • ')}</p>
-              )}
+               <div className="flex items-center gap-1.5 pt-1">
+                 <MapPin className="h-4 w-4" />
+                 <p className="font-semibold text-sm">{(Math.random() * 200).toFixed(0)} km uzakta</p>
+               </div>
             </div>
             <button className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
-              <Info className="h-6 w-6" />
+              <ArrowUp className="h-6 w-6" />
             </button>
           </div>
-           <div className="flex items-center gap-1.5 pt-1">
-             <MapPin className="h-4 w-4" />
-             <p className="font-semibold text-sm">Yakınlarda</p>
-           </div>
         </div>
       </div>
     </motion.div>
