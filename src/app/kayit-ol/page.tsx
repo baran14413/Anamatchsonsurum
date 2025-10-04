@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-purple-50 dark:from-gray-900/50 dark:via-black dark:to-purple-900/20 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-red-500 via-purple-500 to-blue-500 p-4">
       <div className="w-full max-w-md">
         <Card className="shadow-2xl rounded-2xl bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-black/30">
           <CardHeader className="text-center space-y-4 pt-8">
