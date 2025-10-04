@@ -1,16 +1,25 @@
 
 "use client";
 
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Icons } from "@/components/icons";
-import { Shield, Settings, ChevronRight, Star, Zap, Gem, Check, Lock, Pencil, Loader2 } from "lucide-react";
+import { Shield, Settings, ChevronRight, Star, Zap, Gem, Check, Lock, Pencil, Loader2, Menu, LogOut } from "lucide-react";
 import CircularProgress from "@/components/circular-progress";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 
 const premiumFeatures = [
@@ -22,6 +31,9 @@ const premiumFeatures = [
 export default function ProfilPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -41,6 +53,25 @@ export default function ProfilPage() {
     }
     return age;
   };
+
+  const handleLogout = async () => {
+      try {
+        if (auth) {
+          await signOut(auth);
+          router.push('/login');
+          toast({
+            title: 'Çıkış Yapıldı',
+            description: 'Başarıyla çıkış yaptınız.',
+          });
+        }
+      } catch (error) {
+        toast({
+          title: 'Hata',
+          description: 'Çıkış yapılırken bir hata oluştu.',
+          variant: 'destructive',
+        });
+      }
+    };
   
   const userAge = userProfile ? calculateAge(userProfile.dateOfBirth) : 0;
   
@@ -62,6 +93,21 @@ export default function ProfilPage() {
 
   return (
     <div className="bg-muted/40 dark:bg-black h-full overflow-y-auto pb-24">
+       <div className="absolute top-4 right-4 z-10">
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6 text-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Güvenli Çıkış Yap</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       <div className="container mx-auto max-w-lg px-4 py-8">
         <div className="flex flex-col items-center gap-4">
             {/* Profile Avatar and Info */}
