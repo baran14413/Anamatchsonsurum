@@ -1,13 +1,14 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -16,49 +17,73 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Icons } from "./icons";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
-  password: z.string().min(1, { message: "Şifre boş olamaz." }),
+  password: z.string().optional(),
 });
 
 export default function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: searchParams.get("email") || "",
+      email: "",
       password: "",
     },
+    mode: "onChange"
   });
 
-  useEffect(() => {
-    const emailFromQuery = searchParams.get("email");
-    if (emailFromQuery) {
-        form.setValue("email", emailFromQuery);
-    }
-  }, [searchParams, form]);
+  const emailValue = form.watch("email");
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const checkEmailExists = async () => {
+    const isValid = await form.trigger("email");
+    if (!isValid) return;
+
     setIsLoading(true);
     if (!auth) {
       toast({
         title: "Hata",
-        description: "Kimlik doğrulama hizmeti yüklenemedi. Lütfen sayfayı yenileyin.",
+        description: "Kimlik doğrulama hizmeti yüklenemedi.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const methods = await fetchSignInMethodsForEmail(auth, emailValue);
+      if (methods.length > 0) {
+        setStep('password');
+      } else {
+        form.setError("email", { type: "manual", message: "Bu e-posta kayıtlı değil. Lütfen önce kayıt olunuz." });
+      }
+    } catch (error) {
+       form.setError("email", { type: "manual", message: "Geçersiz e-posta adresi." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!values.password) return; // Should not happen in password step
+    setIsLoading(true);
+    if (!auth) {
+      toast({
+        title: "Hata",
+        description: "Kimlik doğrulama hizmeti yüklenemedi.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -68,79 +93,105 @@ export default function LoginForm() {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/anasayfa");
     } catch (error: any) {
-      toast({
-        title: "Giriş Başarısız",
-        description: "E-posta veya şifreniz yanlış. Lütfen tekrar deneyin.",
-        variant: "destructive",
-      });
+      form.setError("password", { type: "manual", message: "Şifreniz yanlış. Lütfen tekrar deneyin." });
     } finally {
       setIsLoading(false);
     }
   }
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-black p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-            <Link href="/" className="inline-block mb-4">
-                <Icons.logo className="h-10 w-10 text-primary" />
-            </Link>
-            <h1 className="text-2xl font-bold tracking-tight">Giriş Yap</h1>
-        </div>
+  const handleBack = () => {
+    if (step === 'password') {
+        setStep('email');
+        form.clearErrors();
+        form.setValue('password', '');
+    } else {
+        router.back();
+    }
+  }
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input placeholder="E-posta" {...field} className="h-12 text-base"/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                   <div className="relative">
-                    <FormControl>
-                      <Input type={showPassword ? "text" : "password"} placeholder="Şifre" {...field} className="h-12 text-base"/>
-                    </FormControl>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full h-12 text-base font-bold rounded-full mt-6" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Giriş Yap
+  return (
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
+            <Button variant="ghost" size="icon" onClick={handleBack}>
+                <ArrowLeft className="h-6 w-6" />
             </Button>
-          </form>
-        </Form>
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Hesabın yok mu?{" "}
-          <Link
-            href="/kayit-ol"
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            Hemen Kayıt Ol
-          </Link>
+            <h1 className="text-xl font-bold">E-posta ile Giriş</h1>
+      </header>
+       <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+         <div className="flex-1 flex flex-col">
+            <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {step === 'email' ? (
+                <>
+                    <h1 className="text-3xl font-bold">E-postan nedir?</h1>
+                    <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormControl>
+                            <Input placeholder="E-posta adresini gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </>
+                ) : (
+                <>
+                    <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
+                        <span className="text-muted-foreground">{emailValue}</span>
+                        <Button variant="link" size="sm" onClick={() => setStep('email')}>Değiştir</Button>
+                    </div>
+                    <h1 className="text-3xl font-bold">Şifreni gir</h1>
+                    <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                        <div className="relative">
+                            <FormControl>
+                            <Input type={showPassword ? "text" : "password"} placeholder="Şifreni gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" autoFocus/>
+                            </FormControl>
+                            <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                            >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                        </div>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </>
+                )}
+            </form>
+            </Form>
+        </div>
+        <div className="shrink-0 pt-6">
+            <Button
+                type="button"
+                onClick={step === 'email' ? checkEmailExists : form.handleSubmit(onSubmit)}
+                className="w-full h-14 rounded-full text-lg font-bold"
+                disabled={isLoading}
+            >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {step === 'email' ? 'Devam Et' : 'Giriş Yap'}
+            </Button>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+                Henüz hesabın yokmu?{" "}
+                <Link
+                    href="/kayit-ol"
+                    className="font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                    O zaman kayıt ol
+                </Link>
+            </div>
         </div>
       </div>
     </div>
   );
 }
-
-    
