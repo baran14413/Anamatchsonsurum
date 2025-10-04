@@ -161,46 +161,12 @@ export default function SignupForm() {
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
-
-  const handleStep1Submit = async (data: Pick<SignupFormValues, "email" | "fullName" | "dateOfBirth">) => {
-    setIsLoading(true);
-    // TODO: Add check for unique username
-    setIsLoading(false);
-    nextStep();
-  }
-
-  const handleStep2Submit = () => {
-    nextStep();
-  }
-
-  const handleStep3Submit = () => {
-    setIsLoading(true);
-    setLocationError(null);
-    if (!navigator.geolocation) {
-      setLocationError("Tarayıcınız konum servislerini desteklemiyor.");
-      setIsLoading(false);
-      return;
+  
+  const handleNextStep = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      nextStep();
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // Location will be saved at the final step
-        nextStep();
-        setIsLoading(false);
-      },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationError("Aşkı bulmana yardımcı olmamız için konum izni vermen gerekiyor. Lütfen tarayıcı ayarlarından izni etkinleştir ve tekrar dene.");
-        } else {
-          setLocationError("Konum alınamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.");
-        }
-        setIsLoading(false);
-      }
-    );
-  }
-
-  const handleStep4Submit = () => {
-    nextStep();
   }
 
   const onFinalSubmit = async (data: SignupFormValues) => {
@@ -259,13 +225,7 @@ export default function SignupForm() {
 
   return (
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(
-            step === 1 ? handleStep1Submit :
-            step === 2 ? handleStep2Submit :
-            step === 3 ? handleStep3Submit :
-            step === 4 ? handleStep4Submit :
-            onFinalSubmit
-        )} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6">
             <Progress value={progress} className="h-2" />
             
             {step > 1 && (
@@ -437,7 +397,8 @@ export default function SignupForm() {
            
             <div className="pt-4">
                <Button 
-                type="submit" 
+                type={step === TOTAL_STEPS ? 'submit' : 'button'}
+                onClick={step !== TOTAL_STEPS ? handleNextStep : undefined}
                 className="w-full h-12 text-base font-bold rounded-full" 
                 disabled={isLoading}
                >
@@ -457,4 +418,3 @@ export default function SignupForm() {
   );
 }
 
-    
