@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import googleLogo from '@/img/googlelogin.png';
-import emailLogo from '@/img/gmaillogin.png';
 import { langTr } from '@/languages/tr';
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useAuth, useFirestore } from '@/firebase';
@@ -110,17 +109,7 @@ export default function WelcomePage() {
                 )}
                 {t.welcome.continueWithGoogle}
               </Button>
-            <Link href="/login" className="w-full block">
-              <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-                <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
-                {t.welcome.continueWithEmail}
-              </Button>
-            </Link>
           </div>
-
-          <Link href="/help" className="text-sm font-semibold hover:underline">
-            {t.welcome.loginIssues}
-          </Link>
         </div>
       </main>
     </div>

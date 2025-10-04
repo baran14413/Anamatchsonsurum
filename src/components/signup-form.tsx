@@ -2,12 +2,10 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import Link from 'next/link';
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -19,15 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil } from "lucide-react";
@@ -37,14 +26,12 @@ import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
+import Link from "next/link";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-    confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "You must be at least 18 years old." })
         .refine(date => !isNaN(date.getTime()), { message: "Please enter a valid date." }),
@@ -66,10 +53,8 @@ const formSchema = z.object({
     zodiacSign: z.string().optional(),
     interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
-    uid: z.string().optional(), // To hold uid for Google Signups
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Şifreler eşleşmiyor.",
-    path: ["confirmPassword"],
+    uid: z.string(),
+    email: z.string().email(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -202,11 +187,6 @@ export default function SignupForm() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
-  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
-
   const auth = useAuth();
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -219,9 +199,6 @@ export default function SignupForm() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
       name: "",
       gender: undefined,
       lookingFor: "",
@@ -256,13 +233,14 @@ export default function SignupForm() {
                 setPhotoSlots(initialSlots);
                 form.setValue('photos', [googleData.profilePicture]);
             }
-
-            setIsGoogleSignup(true);
-            setStep(2); // Skip email/password step for Google signups
             sessionStorage.removeItem('googleSignupData');
+        } else {
+            // If no google data, and we are on this page, it's an error. Redirect to welcome.
+            router.push('/');
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
+        router.push('/');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -289,45 +267,39 @@ export default function SignupForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (isGoogleSignup && step === 2) {
-      router.push('/'); // Go back to welcome screen if coming from Google signup
+    if (step === 1) {
+      router.push('/'); // Go back to welcome screen
     } else {
       setStep((prev) => prev - 1)
     }
   };
 
   async function onSubmit(data: SignupFormValues) {
-    if (!firestore) {
+    if (!firestore || !auth) {
       toast({ title: t.common.error, description: t.signup.errors.dbConnectionError, variant: "destructive" });
       return;
     }
+    
+    // Ensure the current user from auth matches the UID in the form
+    const currentUser = auth.currentUser;
+    if (!currentUser || currentUser.uid !== data.uid) {
+        toast({ title: t.common.error, description: "Authentication error. Please try signing in again.", variant: "destructive" });
+        router.push('/');
+        return;
+    }
+
     setIsLoading(true);
     try {
-      let userId = data.uid;
+      const userId = data.uid;
       
-      // 1. Create user in Firebase Auth if it's not a Google signup
-      if (!isGoogleSignup) {
-        if (!auth) {
-            toast({ title: t.common.error, description: t.login.errors.authServiceError, variant: "destructive" });
-            setIsLoading(false);
-            return;
-        }
-        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        userId = userCredential.user.uid;
-      }
-      
-      if (!userId) {
-          throw new Error("User ID is missing.");
-      }
-
-      // 2. Upload photos to a service (e.g., Cloudinary via your API)
+      // Upload photos to a service (e.g., Cloudinary via your API)
       const photoUrls: string[] = [];
       const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
 
       // Collect existing preview URLs (for Google profile pic or already uploaded pics)
       const existingUrls = photoSlots
         .map(p => p.preview)
-        .filter((url): url is string => !!url && url.startsWith('http'));
+        .filter((url): url is string => !!url && (url.startsWith('http') || url.startsWith('https://lh3.googleusercontent.com')));
 
       for (const file of filesToUpload) {
         if (file) {
@@ -348,7 +320,7 @@ export default function SignupForm() {
       
       const allPhotoUrls = [...existingUrls, ...photoUrls];
 
-      // 3. Create user profile object to save in Firestore
+      // Create user profile object to save in Firestore
       const userProfile = {
         uid: userId,
         fullName: data.name,
@@ -376,57 +348,27 @@ export default function SignupForm() {
         location: data.location || null,
       };
 
-      // 4. Save user profile to Firestore
+      // Save user profile to Firestore
       await setDoc(doc(firestore, "users", userId), userProfile);
       
-      // 5. Redirect to the app
+      // Redirect to the app
       router.push("/anasayfa");
 
     } catch (error: any) {
       console.error("Signup error:", error);
-       if (error.code === 'auth/email-already-in-use') {
-        setShowEmailExistsDialog(true);
-      } else {
-        toast({
-          title: "Signup Failed",
-          description: error.message || t.signup.errors.signupFailed,
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Signup Failed",
+        description: error.message || t.signup.errors.signupFailed,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   }
   
-  const totalSteps = 12;
+  const totalSteps = 11; // Now 11 steps as email/password is removed
   const progressValue = (step / totalSteps) * 100;
 
-  const checkEmailExists = async () => {
-    setIsLoading(true);
-    const email = form.getValues("email");
-    if (!auth) {
-        toast({ title: t.common.error, description: "Authentication service could not be initialized.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
-    try {
-        const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.length > 0) {
-            setShowEmailExistsDialog(true);
-        } else {
-            nextStep();
-        }
-    } catch (error: any) {
-        if (error.code === 'auth/invalid-email') {
-            form.setError("email", { type: "manual", message: t.login.errors.invalidEmail });
-        } else {
-            console.error("Email check error:", error);
-            toast({ title: t.common.error, description: "An error occurred while checking the email.", variant: "destructive" });
-        }
-    } finally {
-        setIsLoading(false);
-    }
-  }
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && activeSlot !== null) {
@@ -481,24 +423,21 @@ export default function SignupForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
-    if (step === 1 && !isGoogleSignup) fieldsToValidate = ['email', 'password', 'confirmPassword'];
-    if (step === 2) fieldsToValidate = ['name'];
-    if (step === 3) fieldsToValidate = ['dateOfBirth'];
-    if (step === 4) fieldsToValidate = ['gender'];
-    if (step === 5) fieldsToValidate = ['lookingFor'];
-    if (step === 6) fieldsToValidate = ['location'];
-    if (step === 7) fieldsToValidate = ['distancePreference'];
-    if (step === 8) fieldsToValidate = ['school'];
-    if (step === 11) fieldsToValidate = ['interests'];
-    if (step === 12) fieldsToValidate = ['photos'];
+    if (step === 1) fieldsToValidate = ['name'];
+    if (step === 2) fieldsToValidate = ['dateOfBirth'];
+    if (step === 3) fieldsToValidate = ['gender'];
+    if (step === 4) fieldsToValidate = ['lookingFor'];
+    if (step === 5) fieldsToValidate = ['location'];
+    if (step === 6) fieldsToValidate = ['distancePreference'];
+    if (step === 7) fieldsToValidate = ['school'];
+    if (step === 10) fieldsToValidate = ['interests'];
+    if (step === 11) fieldsToValidate = ['photos'];
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
 
     if (isValid) {
-      if (step === 1 && !isGoogleSignup) {
-        await checkEmailExists();
-      } else if (step === totalSteps) {
+      if (step === totalSteps) {
          form.handleSubmit(onSubmit)();
       } else {
         nextStep();
@@ -529,22 +468,22 @@ export default function SignupForm() {
   };
   
   const handleSkip = () => {
-    if (step === 8) {
+    if (step === 7) { // School
         form.setValue('school', '');
     }
-    if (step === 9) {
+    if (step === 8) { // Lifestyle
         form.setValue('drinking', undefined);
         form.setValue('smoking', undefined);
         form.setValue('workout', undefined);
         form.setValue('pets', []);
     }
-    if (step === 10) {
+    if (step === 9) { // More Info
         form.setValue('communicationStyle', undefined);
         form.setValue('loveLanguage', undefined);
         form.setValue('educationLevel', undefined);
         form.setValue('zodiacSign', undefined);
     }
-    if (step === 11) {
+    if (step === 10) { // Interests
         form.setValue('interests', []);
     }
     nextStep();
@@ -553,13 +492,11 @@ export default function SignupForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        {step > 1 || isGoogleSignup ? (
-          <Button variant="ghost" size="icon" onClick={prevStep}>
+        <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
-          </Button>
-        ) : <Link href="/" className="w-10"><Button variant="ghost" size="icon"><ArrowLeft className="h-6 w-6" /></Button></Link>}
+        </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
-        {(step === 8 || step === 9 || step === 10 || step === 11) ? (
+        {(step === 7 || step === 8 || step === 9 || step === 10) ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
             {t.signup.progressHeader.skip}
           </Button>
@@ -569,74 +506,7 @@ export default function SignupForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
-              {step === 1 && !isGoogleSignup && (
-                <div className="flex-1 flex flex-col">
-                  <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
-                    <p className="text-muted-foreground">{t.signup.step1.description}</p>
-                  </div>
-                   <div className="space-y-4 pt-8 flex-1 overflow-y-auto -mr-6 pr-6">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.signup.step1.emailLabel}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="example@domain.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.signup.step1.passwordLabel}</FormLabel>
-                           <div className="relative">
-                            <FormControl>
-                                <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
-                            </FormControl>
-                             <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                                >
-                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                             </button>
-                           </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t.signup.step1.confirmPasswordLabel}</FormLabel>
-                           <div className="relative">
-                            <FormControl>
-                                <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} />
-                            </FormControl>
-                             <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                                >
-                                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                             </button>
-                           </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
-              {step === 2 && (
+              {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step2.title}</h1>
                   <FormField
@@ -660,7 +530,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 3 && (
+              {step === 2 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step3.title}</h1>
                   <Controller
@@ -685,7 +555,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 4 && (
+              {step === 3 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step4.title}</h1>
                   <FormField
@@ -719,7 +589,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 5 && (
+              {step === 4 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step5.title}</h1>
@@ -761,7 +631,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <div className="flex flex-col items-center text-center h-full justify-center">
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                     <MapPin className="w-12 h-12 text-primary" />
@@ -772,7 +642,7 @@ export default function SignupForm() {
                   </p>
                 </div>
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step7.title}</h1>
                   <p className="text-muted-foreground">{t.signup.step7.description}</p>
@@ -803,7 +673,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 8 && (
+              {step === 7 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step8.title}</h1>
                   <FormField
@@ -827,7 +697,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 9 && (
+              {step === 8 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step9.title.replace('{name}', currentName)}</h1>
@@ -923,7 +793,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-               {step === 10 && (
+               {step === 9 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step10.title.replace('{name}', currentName)}</h1>
@@ -1003,7 +873,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-              {step === 11 && (
+              {step === 10 && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
@@ -1055,7 +925,7 @@ export default function SignupForm() {
                         />
                   </div>
               )}
-               {step === 12 && (
+               {step === 11 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
@@ -1126,7 +996,7 @@ export default function SignupForm() {
             </div>
 
           <div className="shrink-0 pt-6">
-            {step === 6 ? (
+            {step === 5 ? (
               <Button
                 type="button"
                 onClick={handleLocationRequest}
@@ -1135,7 +1005,7 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step6.button}
               </Button>
-            ) : step === 9 ? (
+            ) : step === 8 ? (
               <Button
                 type="button"
                 onClick={nextStep}
@@ -1144,7 +1014,7 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
-            ) : step === 10 ? (
+            ) : step === 9 ? (
                 <Button
                 type="button"
                 onClick={nextStep}
@@ -1153,7 +1023,7 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
-            ) : step === 11 ? (
+            ) : step === 10 ? (
                  <Button
                     type="button"
                     onClick={handleNextStep}
@@ -1162,7 +1032,7 @@ export default function SignupForm() {
                     >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
                  </Button>
-            ) : step === 12 ? (
+            ) : step === 11 ? (
                 <Button
                   type="button"
                   onClick={handleNextStep}
@@ -1182,7 +1052,7 @@ export default function SignupForm() {
               </Button>
             )}
 
-            {step === 12 && (
+            {step === 11 && (
               <p className="text-center text-sm text-muted-foreground mt-4">
                   {t.signup.step12.requirementText}
               </p>
@@ -1190,23 +1060,6 @@ export default function SignupForm() {
           </div>
         </form>
       </Form>
-      <AlertDialog open={showEmailExistsDialog} onOpenChange={setShowEmailExistsDialog}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>{t.signup.common.emailExistsTitle}</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {t.signup.common.emailExistsDescription}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogAction onClick={() => router.push(`/login?email=${encodeURIComponent(form.getValues("email"))}`)}>
-                    {t.signup.common.goToLogin}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
-
-    
