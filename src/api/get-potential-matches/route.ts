@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const currentUserId = decodedToken.uid;
 
-        // 1. Get IDs of users the current user has already swiped
+        // 1. Get IDs of users the current user has already swiped or matched with
         const interactionsSnapshot = await adminDb.collection(`users/${currentUserId}/interactions`).get();
         const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
         
@@ -27,8 +27,7 @@ export async function GET(req: NextRequest) {
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure basic data integrity, especially the uid field. This filters out documents
-            // that are just containers for subcollections (like 'interactions' or 'matches').
+            // Ensure we are only processing actual user profile documents, not subcollection containers.
             if (userData && userData.uid) {
                 allUsers.push({
                     id: doc.id, // The document ID is the user's UID

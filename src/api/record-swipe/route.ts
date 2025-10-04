@@ -59,11 +59,12 @@ export async function POST(req: NextRequest) {
                 batch.set(otherUserMatchRef, matchData);
 
                 // Add "matched" interaction to prevent them from seeing each other again
+                // This will overwrite the previous "right" swipe with "match"
                 const currentUserMatchedInteractionRef = adminDb.doc(`users/${currentUserId}/interactions/${swipedUserId}`);
-                batch.set(currentUserMatchedInteractionRef, { swipe: 'match', timestamp: matchDate }, { merge: true });
+                batch.set(currentUserMatchedInteractionRef, { swipe: 'match', timestamp: matchDate });
 
                 const otherUserMatchedInteractionRef = adminDb.doc(`users/${swipedUserId}/interactions/${currentUserId}`);
-                batch.set(otherUserMatchedInteractionRef, { swipe: 'match', timestamp: matchDate }, { merge: true });
+                batch.set(otherUserMatchedInteractionRef, { swipe: 'match', timestamp: matchDate });
             }
         }
         
