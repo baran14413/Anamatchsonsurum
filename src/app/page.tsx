@@ -12,9 +12,8 @@ export default function WelcomePage() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center justify-center p-8 text-center">
         <div className="flex-1 flex flex-col justify-center items-center">
-          <div className="flex items-center gap-4 mb-12">
-            <Icons.logo width={64} height={64} />
-            <h1 className="text-5xl font-bold tracking-tighter">BeMatch</h1>
+          <div className="mb-12">
+            <Icons.logo width={128} height={128} />
           </div>
         </div>
 
