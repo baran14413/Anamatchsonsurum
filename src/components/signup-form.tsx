@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper, Map } from "lucide-react";
+import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper, Map, Building } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
@@ -79,6 +79,8 @@ export default function SignupForm() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [location, setLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   
   const auth = useAuth();
   const firestore = useFirestore();
@@ -104,6 +106,29 @@ export default function SignupForm() {
         terms: false,
     }
   });
+
+  const fetchAddress = async (lat: number, lon: number) => {
+    setIsGeocoding(true);
+    try {
+        const response = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
+        const data = await response.json();
+        
+        if (response.ok && data.address) {
+            const adr = data.address;
+            // Prefer district, fallback to city, then provide a generic name.
+            const formattedAddress = [adr.district, adr.city].filter(Boolean).join(', ');
+            setAddress(formattedAddress || "Konum Alındı");
+        } else {
+            setAddress("Adres bulunamadı");
+        }
+    } catch (err) {
+        console.error("Geocoding fetch error:", err);
+        setAddress("Adres bilgisi alınamadı.");
+    } finally {
+        setIsGeocoding(false);
+    }
+  };
+
 
   const uploadFile = async (file: File) => {
     setIsUploading(true); 
@@ -182,10 +207,12 @@ export default function SignupForm() {
     setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
+        const newLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        });
+        };
+        setLocation(newLocation);
+        fetchAddress(newLocation.latitude, newLocation.longitude); // Fetch address right away
         setLocationError(null);
         setIsLoading(false);
       },
@@ -200,7 +227,9 @@ export default function SignupForm() {
   const handleManualLocationSelect = () => {
     // In a real app, this would open a map modal.
     // Here we simulate it by setting a predefined location.
-    setLocation({ latitude: 41.0082, longitude: 28.9784 }); // Istanbul as default
+    const newLocation = { latitude: 41.0082, longitude: 28.9784 }; // Istanbul as default
+    setLocation(newLocation); 
+    fetchAddress(newLocation.latitude, newLocation.longitude);
     setLocationError(null);
     toast({
         title: "Konum Ayarlandı",
@@ -380,10 +409,14 @@ export default function SignupForm() {
                         <FormLabel>Konum</FormLabel>
                         <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor.</p>
                         
-                        {location ? (
+                        {location && address ? (
                             <div className="flex items-center justify-center p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
-                                <Check className="h-5 w-5 mr-2"/>
-                                <span className="text-sm font-medium">Konum: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</span>
+                                {isGeocoding ? (
+                                    <Loader2 className="h-5 w-5 mr-2 animate-spin"/>
+                                ) : (
+                                    <Building className="h-5 w-5 mr-2"/>
+                                )}
+                                <span className="text-sm font-medium">Konum: {address}</span>
                             </div>
                         ) : (
                           <>
@@ -415,8 +448,8 @@ export default function SignupForm() {
                                 </AlertDialog>
                                 </div>
                             ) : (
-                                <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full" disabled={isLoading}>
-                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
+                                <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full" disabled={isLoading || isGeocoding}>
+                                    {isLoading || isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
                                     {isLoading ? 'Konum Alınıyor...' : 'Konum İzni Ver'}
                                 </Button>
                             )}
@@ -508,14 +541,18 @@ export default function SignupForm() {
                                 toast({ title: "Profil Resmi Gerekli", description: "Lütfen devam etmeden önce bir profil resmi yükleyin.", variant: "destructive" });
                                 return;
                             }
+                            if(step === 3 && !location) {
+                                 toast({ title: "Konum Gerekli", description: "Lütfen devam etmeden önce konum bilginizi paylaşın.", variant: "destructive" });
+                                 return;
+                            }
                             nextStep();
                         }
                     }}
                     className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={(step === 3 && !location) || isUploading}
+                    disabled={(step === 3 && !location) || isUploading || isGeocoding}
                  >
-                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                    {isUploading ? 'Resim Yükleniyor...' : 'Devam Et'}
+                    {isUploading || isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    {isUploading ? 'Resim Yükleniyor...' : isGeocoding ? 'Adres Alınıyor...' : 'Devam Et'}
                  </Button>
                ) : (
                 <Button 
@@ -532,4 +569,5 @@ export default function SignupForm() {
       </Form>
   );
 }
+
 
