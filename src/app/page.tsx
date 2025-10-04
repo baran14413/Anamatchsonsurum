@@ -1,45 +1,48 @@
-import Link from "next/link";
-import { Icons } from "@/components/icons";
-import LoginForm from "@/components/login-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Link from 'next/link';
+import { Icons } from '@/components/icons';
+import { Button } from '@/components/ui/button';
+import { Chrome, Facebook, Mail } from 'lucide-react';
 
-export default function LoginPage() {
+export default function WelcomePage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-red-500 via-purple-500 to-blue-500 p-4">
-      <div className="relative z-10 flex flex-col items-center p-8 text-center text-white">
-        <div className="flex items-center gap-4 mb-6">
-          <Icons.logo className="h-16 w-16 text-white sm:h-20 sm:w-20" />
-          <h1 className="text-5xl font-bold tracking-tighter text-white sm:text-6xl">
-            BeMatch
-          </h1>
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-pink-500 to-red-500 text-white">
+      <main className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <div className="flex items-center gap-4 mb-12">
+            <Icons.logo className="h-16 w-16 text-white" />
+            <h1 className="text-5xl font-bold tracking-tighter">BeMatch</h1>
+          </div>
         </div>
-        <p className="max-w-md text-base text-white/80 sm:text-lg md:text-xl">
-          Maceraya devam etmek için bilgilerini gir.
-        </p>
-      </div>
 
-      <div className="w-full max-w-md">
-        <Card className="shadow-2xl rounded-2xl bg-white/80 dark:bg-black/80 backdrop-blur-xl border-white/30 dark:border-black/30">
-          <CardContent className="px-6 pb-8 pt-6 sm:px-8">
-            <LoginForm />
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Hesabın yok mu?{" "}
-              <Link
-                href="/kayit-ol"
-                className="font-semibold text-primary underline-offset-4 hover:underline"
-              >
-                Hemen Kayıt Ol
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-xs text-white/90">
+            <p>
+              Oturum aç'a dokunarak <Link href="/tos" className="font-bold underline">Şartlarımızı</Link> kabul edersin. Verilerini nasıl işlediğimizi öğrenmek için <Link href="/privacy" className="font-bold underline">Gizlilik Politikası</Link> ve <Link href="/cookies" className="font-bold underline">Çerez Politikası</Link>'nı inceleyebilirsin.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+              <Chrome className="mr-4 h-6 w-6" />
+              Google ile devam et
+            </Button>
+            <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+              <Facebook className="mr-4 h-6 w-6" />
+              Facebook ile devam et
+            </Button>
+            <Link href="/login" className='w-full block'>
+              <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+                <Mail className="mr-4 h-6 w-6" />
+                E-posta ile devam et
+              </Button>
+            </Link>
+          </div>
+
+          <Link href="/help" className="text-sm font-semibold hover:underline">
+            Oturum açarken sorun mu yaşıyorsun?
+          </Link>
+        </div>
+      </main>
     </div>
   );
 }

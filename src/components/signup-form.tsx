@@ -33,57 +33,45 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
+import Link from "next/link";
+import { Icons } from "./icons";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 
-const INTERESTS_LIST = [
-  "Spor", "Müzik", "Seyahat", "Sinema", "Yemek", "Sanat", 
-  "Teknoloji", "Kitaplar", "Dans", "Moda", "Oyun", "Doğa Yürüyüşü",
-  "Fotoğrafçılık", "Yoga", "Gönüllülük", "Hayvansever"
-];
-
-// Step 1 Schema
+// Step 1 Schema: Email
 const step1Schema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
-  fullName: z.string().min(3, { message: "Kullanıcı adı en az 3 karakter olmalıdır." }),
-  dateOfBirth: z.date({
-    required_error: "Doğum tarihi gereklidir.",
-  }),
 });
 
-// Step 2 Schema
+// Step 2 Schema: Password
 const step2Schema = z.object({
-    profilePicture: z.string().url({ message: "Lütfen geçerli bir profil resmi yükleyin." }),
-});
-
-// Step 3 Schema
-const step3Schema = z.object({
-    gender: z.enum(["male", "female", "other"], { required_error: "Lütfen cinsiyetinizi seçin." }),
-});
-
-// Step 4 Schema
-const step4Schema = z.object({
-    images: z.array(z.string().url()).min(2, { message: "Lütfen en az 2 fotoğraf yükleyin." }),
-});
-
-// Step 5 Schema
-const step5Schema = z.object({
-  interests: z.array(z.string()).min(5, { message: "Lütfen en az 5 ilgi alanı seçin." }),
-});
-
-
-// Step 6 Schema
-const step6Schema = z.object({
   password: z.string().min(8, { message: "Şifre en az 8 karakter olmalıdır." }),
   confirmPassword: z.string(),
-  terms: z.boolean().refine(val => val === true, { message: "Kullanım koşullarını kabul etmelisiniz."}),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Şifreler eşleşmiyor.",
   path: ["confirmPassword"],
 });
 
+// Step 3 Schema: Personal Info
+const step3Schema = z.object({
+  fullName: z.string().min(3, { message: "Tam ad en az 3 karakter olmalıdır." }),
+  dateOfBirth: z.date({
+    required_error: "Doğum tarihi gereklidir.",
+  }),
+});
 
-const combinedSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema).merge(step5Schema).merge(step6Schema);
+// Step 4 Schema: Gender & Location
+const step4Schema = z.object({
+    gender: z.enum(["male", "female", "other"], { required_error: "Lütfen cinsiyetinizi seçin." }),
+});
+
+// Step 5 Schema: Photos
+const step5Schema = z.object({
+    images: z.array(z.string().url()).min(2, { message: "Lütfen en az 2 fotoğraf yükleyin." }),
+    profilePicture: z.string().url({ message: "Lütfen geçerli bir profil resmi yükleyin." }),
+});
+
+const combinedSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema).merge(step5Schema);
 
 type SignupFormValues = z.infer<typeof combinedSchema>;
 
@@ -108,24 +96,21 @@ export default function SignupForm() {
        step === 2 ? step2Schema :
        step === 3 ? step3Schema :
        step === 4 ? step4Schema :
-       step === 5 ? step5Schema :
-       step6Schema
+       step5Schema
     ),
     mode: "onChange",
     defaultValues: {
         email: "",
-        fullName: "",
-        dateOfBirth: undefined,
-        profilePicture: "",
-        gender: undefined,
-        images: [],
-        interests: [],
         password: "",
         confirmPassword: "",
-        terms: false,
+        fullName: "",
+        dateOfBirth: undefined,
+        gender: undefined,
+        images: [],
+        profilePicture: "",
     }
   });
-
+  
   const fetchAddress = async (lat: number, lon: number) => {
     setIsGeocoding(true);
     try {
@@ -178,22 +163,7 @@ export default function SignupForm() {
         setIsUploading(false);
     }
   }
-
-  const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        const cloudinaryUrl = await uploadFile(file);
-        if (cloudinaryUrl) {
-            form.setValue("profilePicture", cloudinaryUrl, { shouldValidate: true });
-            const currentImages = form.getValues("images");
-            const otherImages = currentImages.length > 0 && form.getValues("profilePicture") === currentImages[0]
-                ? currentImages.slice(1)
-                : currentImages;
-            form.setValue("images", [cloudinaryUrl, ...otherImages.filter(img => img !== cloudinaryUrl)], { shouldValidate: true });
-        }
-    }
-  };
-
+  
   const handleMatchPicturesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -212,15 +182,12 @@ export default function SignupForm() {
         const newImages = [...new Set([...currentPictures, ...validUrls])];
 
         form.setValue("images", newImages, { shouldValidate: true });
-    }
-  };
 
-  const toggleInterest = (interest: string) => {
-    const currentInterests = form.getValues("interests") || [];
-    const newInterests = currentInterests.includes(interest)
-      ? currentInterests.filter(i => i !== interest)
-      : [...currentInterests, interest];
-    form.setValue("interests", newInterests, { shouldValidate: true });
+        // Set profile picture if not set
+        if (!form.getValues("profilePicture") && newImages.length > 0) {
+            form.setValue("profilePicture", newImages[0], { shouldValidate: true });
+        }
+    }
   };
 
 
@@ -270,27 +237,15 @@ export default function SignupForm() {
         setIsLoading(false);
         return;
     }
-
-    if (!data.profilePicture) {
-        toast({ title: "Profil Resmi Eksik", description: "Lütfen Adım 2'ye geri dönüp profil resminizi yükleyin.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
     
     if (data.images.length < 2) {
-        toast({ title: "Eksik Galeri Fotoğrafı", description: "Lütfen Adım 4'e geri dönüp en az 2 fotoğraf yükleyin.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
-
-    if (data.interests.length < 5) {
-        toast({ title: "Eksik İlgi Alanı", description: "Lütfen Adım 5'e geri dönüp en az 5 ilgi alanı seçin.", variant: "destructive" });
+        toast({ title: "Eksik Galeri Fotoğrafı", description: "Lütfen Adım 5'e geri dönüp en az 2 fotoğraf yükleyin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
     if (!location) {
-        toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 3'e geri dönüp konum izni verin veya manuel olarak seçin.", variant: "destructive" });
+        toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 4'e geri dönüp konum izni verin veya manuel olarak seçin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -306,11 +261,11 @@ export default function SignupForm() {
             email: data.email,
             fullName: data.fullName,
             dateOfBirth: format(data.dateOfBirth, "yyyy-MM-dd"),
-            profilePicture: data.profilePicture,
+            profilePicture: data.profilePicture || data.images[0],
             gender: data.gender,
             images: data.images, 
             location: location,
-            interests: data.interests,
+            interests: [], // Will be added later
             createdAt: new Date(),
             profileComplete: true,
             bio: "" 
@@ -341,341 +296,204 @@ export default function SignupForm() {
   const progress = (step / TOTAL_STEPS) * 100;
 
   return (
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6">
-            <Progress value={progress} className="h-2" />
-            
-            {step > 1 && (
-                <Button variant="ghost" onClick={prevStep} className="absolute top-6 left-4 text-muted-foreground">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Geri
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-black p-4">
+      <div className="w-full max-w-sm">
+        <div className="flex justify-start w-full mb-4">
+            {step > 1 ? (
+                <Button variant="ghost" onClick={prevStep} size="icon">
+                    <ArrowLeft className="h-6 w-6 text-muted-foreground" />
                 </Button>
+            ) : (
+                <Link href="/" legacyBehavior>
+                    <a className="invisible">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="h-6 w-6 text-muted-foreground" />
+                        </Button>
+                    </a>
+                </Link>
             )}
+        </div>
 
-            {step === 1 && (
-                <div className="space-y-4 pt-8">
-                    <h3 className="text-xl font-semibold">Hesabını Oluştur</h3>
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>E-posta</FormLabel>
-                            <FormControl><Input placeholder="ornek@eposta.com" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="fullName" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Tam Adınız</FormLabel>
-                            <FormControl><Input placeholder="Adınız Soyadınız" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField
-                      control={form.control}
-                      name="dateOfBirth"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Doğum Tarihi</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd MMMM yyyy", { locale: tr })
-                                  ) : (
-                                    <span>Bir tarih seçin</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                                captionLayout="dropdown-buttons"
-                                fromYear={1950}
-                                toYear={new Date().getFullYear() - 18}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                </div>
-            )}
-
-            {step === 2 && (
-                <div className="space-y-4 text-center pt-8">
-                    <h3 className="text-xl font-semibold">Profil Fotoğrafı Ekle</h3>
-                    <p className="text-muted-foreground text-sm">İlk izlenim önemlidir. Yüzünün net göründüğü bir fotoğraf seç.</p>
-                    <FormField control={form.control} name="profilePicture" render={({ field }) => (
-                        <FormItem>
-                           <FormControl>
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="w-40 h-40 border-4 border-muted rounded-full overflow-hidden flex items-center justify-center bg-muted relative">
-                                        {field.value ? (
-                                             <Image src={field.value} alt="Profil resmi" width={160} height={160} className="object-cover w-full h-full" />
-                                        ): (
-                                             <Camera className="h-16 w-16 text-muted-foreground" />
-                                        )}
-                                    </div>
-                                    <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()} disabled={isUploading}>
-                                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
-                                        {isUploading ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
-                                    </Button>
-                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-            )}
-            
-            {step === 3 && (
-                 <div className="space-y-6 pt-8">
-                    <div>
-                        <h3 className="text-xl font-semibold">Biraz Daha Detay</h3>
-                        <p className="text-muted-foreground text-sm mt-1">Bu bilgiler profilinde görünecek.</p>
-                    </div>
-                    <FormField control={form.control} name="gender" render={({ field }) => (
-                        <FormItem className="space-y-3">
-                            <FormLabel>Cinsiyetiniz</FormLabel>
-                            <FormControl>
-                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl><RadioGroupItem value="female" /></FormControl>
-                                        <FormLabel className="font-normal">Kadın</FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl><RadioGroupItem value="male" /></FormControl>
-                                        <FormLabel className="font-normal">Erkek</FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl><RadioGroupItem value="other" /></FormControl>
-                                        <FormLabel className="font-normal">Diğer</FormLabel>
-                                    </FormItem>
-                                </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <div>
-                        <FormLabel>Konum</FormLabel>
-                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor.</p>
-                        
-                        {location && address ? (
-                            <div className="flex items-center justify-center p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
-                                {isGeocoding ? (
-                                    <Loader2 className="h-5 w-5 mr-2 animate-spin"/>
-                                ) : (
-                                    <Building className="h-5 w-5 mr-2"/>
-                                )}
-                                <span className="text-sm font-medium">Konum: {address}</span>
-                            </div>
-                        ) : (
-                          <>
-                            {locationError ? (
-                                <div className="space-y-2">
-                                <Alert variant="destructive">
-                                    <Terminal className="h-4 w-4" />
-                                    <AlertTitle>Konum Hatası</AlertTitle>
-                                    <AlertDescription>{locationError}</AlertDescription>
-                                </Alert>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button type="button" variant="outline" className="w-full">
-                                            <Map className="mr-2 h-4 w-4"/> Haritadan Seç
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Konumu Manuel Olarak Seç</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                            Uygulama, gelecekte burada bir harita görüntüleyerek konumunuzu seçmenize olanak tanıyacaktır. Şimdilik, devam etmek için temsili bir konumu ayarlamak üzere "Ayarla" düğmesine tıklayın.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleManualLocationSelect}>Ayarla</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                </div>
-                            ) : (
-                                <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full" disabled={isLoading || isGeocoding}>
-                                    {isLoading || isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
-                                    {isLoading ? 'Konum Alınıyor...' : 'Konum İzni Ver'}
-                                </Button>
-                            )}
-                          </>
-                        )}
-                    </div>
-                 </div>
-            )}
-
-            {step === 4 && (
-                 <div className="space-y-4 pt-8 text-center">
-                    <h3 className="text-xl font-semibold">Galeri Fotoğrafları</h3>
-                    <p className="text-muted-foreground text-sm">
-                        Kendine ait, net ve farklı anlarını yansıtan en az 2 fotoğraf daha ekle. 
-                        Bu fotoğraflar eşleşme ekranında diğer kullanıcılara gösterilecek.
-                    </p>
-                    <FormField control={form.control} name="images" render={({ field }) => (
-                        <FormItem>
-                           <FormControl>
-                                <div className="grid grid-cols-3 gap-2">
-                                     {field.value.map((src, index) => (
-                                         <div key={index} className="relative aspect-square">
-                                             <Image src={src} alt={`Eşleşme fotoğrafı ${index+1}`} layout="fill" className="rounded-md object-cover"/>
-                                         </div>
-                                     ))}
-                                     {field.value.length < 9 && (
-                                         <label htmlFor="match-pics-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-md cursor-pointer hover:bg-muted">
-                                            {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/> : <Upload className="h-8 w-8 text-muted-foreground"/>}
-                                            <span className="text-xs text-muted-foreground mt-1">
-                                                {isUploading ? 'Yükleniyor...' : 'Yükle'}
-                                            </span>
-                                         </label>
-                                     )}
-                                     <Input id="match-pics-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleMatchPicturesUpload} disabled={isUploading} />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-            )}
-
-            {step === 5 && (
-                <div className="space-y-4 pt-8">
-                  <div className="text-center">
-                    <h3 className="text-xl font-semibold">İlgi Alanların</h3>
-                    <p className="text-muted-foreground text-sm">
-                        Seni en iyi anlatan en az 5 ilgi alanı seç.
-                    </p>
-                  </div>
-                   <FormField
-                      control={form.control}
-                      name="interests"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                              <div className="flex flex-wrap gap-2 justify-center">
-                                  {INTERESTS_LIST.map((interest) => (
-                                      <Button
-                                        key={interest}
-                                        type="button"
-                                        variant={field.value?.includes(interest) ? "default" : "outline"}
-                                        onClick={() => toggleInterest(interest)}
-                                        className="rounded-full"
-                                      >
-                                          {interest}
-                                      </Button>
-                                  ))}
-                              </div>
-                          </FormControl>
-                           <FormMessage className="text-center"/>
-                        </FormItem>
-                      )}
-                    />
-                </div>
-            )}
-
-            {step === 6 && (
-                 <div className="space-y-4 pt-8">
-                    <h3 className="text-xl font-semibold">Neredeyse Bitti!</h3>
-                     <FormField control={form.control} name="password" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Şifre</FormLabel>
-                            <div className="relative">
-                                <FormControl><Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} /></FormControl>
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
-                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                </button>
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Şifre Tekrar</FormLabel>
-                            <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <FormField control={form.control} name="terms" render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.</FormLabel>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6">
+                
+                {step === 1 && (
+                    <div className="space-y-4">
+                        <h3 className="text-2xl font-bold">E-posta adresin nedir?</h3>
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-muted-foreground">Potansiyel eşleşmeler ve daha fazlası hakkında güncellemeler alacaksın.</FormLabel>
+                                <FormControl><Input placeholder="E-posta" {...field} className="h-12 text-base" autoFocus/></FormControl>
                                 <FormMessage />
-                            </div>
-                        </FormItem>
-                    )} />
-                 </div>
-            )}
-           
-            <div className="pt-4">
-               {step !== TOTAL_STEPS ? (
-                 <Button 
-                    type="button"
-                    onClick={async () => {
-                        const isValid = await form.trigger();
-                        if (isValid) {
-                            if (step === 2 && isUploading) {
-                                toast({ title: "Lütfen Bekleyin", description: "Profil fotoğrafınız hala yükleniyor." });
-                                return;
+                            </FormItem>
+                        )} />
+                    </div>
+                )}
+
+                {step === 2 && (
+                    <div className="space-y-4">
+                        <h3 className="text-2xl font-bold">Şifreni oluştur</h3>
+                         <FormField control={form.control} name="password" render={({ field }) => (
+                            <FormItem>
+                                <div className="relative">
+                                    <FormControl><Input type={showPassword ? "text" : "password"} placeholder="Şifre" {...field} className="h-12 text-base" autoFocus/></FormControl>
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                            <FormItem>
+                                <FormControl><Input type="password" placeholder="Şifreni Onayla" {...field} className="h-12 text-base" /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                )}
+                
+                {step === 3 && (
+                    <div className="space-y-4">
+                        <h3 className="text-2xl font-bold">Profil Bilgileri</h3>
+                        <FormField control={form.control} name="fullName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Adın</FormLabel>
+                                <FormControl><Input placeholder="Adın" {...field} className="h-12 text-base" autoFocus/></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField
+                          control={form.control}
+                          name="dateOfBirth"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel>Doğum Tarihin</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "h-12 text-base justify-start text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "dd MMMM yyyy", { locale: tr })
+                                      ) : (
+                                        <span>Bir tarih seçin</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                      date > new Date() || date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={1950}
+                                    toYear={new Date().getFullYear() - 18}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </div>
+                )}
+
+                 {step === 4 && (
+                     <div className="space-y-6">
+                        <h3 className="text-2xl font-bold">Ben bir...</h3>
+                        <FormField control={form.control} name="gender" render={({ field }) => (
+                            <FormItem className="space-y-3">
+                                <FormControl>
+                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="space-y-2">
+                                        <FormItem>
+                                            <FormControl>
+                                               <Button type="button" variant={field.value === 'female' ? 'default': 'outline'} onClick={() => field.onChange('female')} className="w-full h-12 text-base justify-start pl-4 rounded-full">Kadın</Button>
+                                            </FormControl>
+                                        </FormItem>
+                                        <FormItem>
+                                            <FormControl>
+                                               <Button type="button" variant={field.value === 'male' ? 'default': 'outline'} onClick={() => field.onChange('male')} className="w-full h-12 text-base justify-start pl-4 rounded-full">Erkek</Button>
+                                            </FormControl>
+                                        </FormItem>
+                                        <FormItem>
+                                            <FormControl>
+                                               <Button type="button" variant={field.value === 'other' ? 'default': 'outline'} onClick={() => field.onChange('other')} className="w-full h-12 text-base justify-start pl-4 rounded-full">Diğer</Button>
+                                            </FormControl>
+                                        </FormItem>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage className="text-center pt-2" />
+                            </FormItem>
+                        )} />
+                     </div>
+                )}
+
+
+                {step === 5 && (
+                     <div className="space-y-4">
+                        <h3 className="text-2xl font-bold">Fotoğraflarını Ekle</h3>
+                        <p className="text-muted-foreground text-sm">
+                            Profilinde gösterilecek en az 2 fotoğraf ekle. İlk fotoğraf profil resmin olacak.
+                        </p>
+                        <FormField control={form.control} name="images" render={({ field }) => (
+                            <FormItem>
+                               <FormControl>
+                                    <div className="grid grid-cols-3 gap-3">
+                                         {field.value.map((src, index) => (
+                                             <div key={index} className="relative aspect-w-1 aspect-h-1">
+                                                 <Image src={src} alt={`Eşleşme fotoğrafı ${index+1}`} layout="fill" className="rounded-lg object-cover"/>
+                                                  {index === 0 && <div className="absolute bottom-1 right-1 text-xs bg-black/50 text-white px-1.5 py-0.5 rounded-full">Profil</div>}
+                                             </div>
+                                         ))}
+                                         {field.value.length < 9 && (
+                                             <label htmlFor="match-pics-upload" className="flex flex-col items-center justify-center aspect-w-1 aspect-h-1 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
+                                                {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/> : <Camera className="h-8 w-8 text-muted-foreground"/>}
+                                             </label>
+                                         )}
+                                         <Input id="match-pics-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleMatchPicturesUpload} disabled={isUploading} />
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                )}
+
+                <div className="pt-8">
+                   <Button 
+                        type={step === TOTAL_STEPS ? "submit" : "button"}
+                        onClick={async () => {
+                            const isValid = await form.trigger();
+                            if (isValid) {
+                                if (step === TOTAL_STEPS) {
+                                    onFinalSubmit();
+                                } else {
+                                    nextStep();
+                                }
                             }
-                            if (step === 2 && !form.getValues("profilePicture")) {
-                                toast({ title: "Profil Resmi Gerekli", description: "Lütfen devam etmeden önce bir profil resmi yükleyin.", variant: "destructive" });
-                                return;
-                            }
-                            if(step === 3 && !location) {
-                                 toast({ title: "Konum Gerekli", description: "Lütfen devam etmeden önce konum bilginizi paylaşın.", variant: "destructive" });
-                                 return;
-                            }
-                            nextStep();
-                        }
-                    }}
-                    className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={
-                        (step === 3 && !location) || 
-                        isUploading || 
-                        isGeocoding || 
-                        (step === 1 && !form.formState.isValid) ||
-                        (step === 2 && !form.formState.isValid) ||
-                        (step === 3 && !form.formState.isValid) ||
-                        (step === 4 && !form.formState.isValid) ||
-                        (step === 5 && !form.formState.isValid)
-                    }
-                 >
-                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                    {isUploading ? 'Resim Yükleniyor...' : isGeocoding ? 'Adres Alınıyor...' : 'Devam Et'}
-                 </Button>
-               ) : (
-                <Button 
-                    type='submit'
-                    className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={isLoading || isUploading}
-                >
-                    {isLoading || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PartyPopper className="mr-2 h-5 w-5" />}
-                    {isLoading || isUploading ? 'Kaydediliyor...' : 'Kaydı Tamamla'}
-                </Button>
-               )}
-            </div>
-        </form>
-      </Form>
+                        }}
+                        className="w-full h-12 text-base font-bold rounded-full" 
+                        disabled={isLoading || isUploading}
+                   >
+                        {isLoading || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                        {isLoading ? 'Kaydediliyor...' : isUploading ? 'Yükleniyor...' : 'Devam Et'}
+                   </Button>
+                </div>
+            </form>
+        </Form>
+      </div>
+    </div>
   );
 }
