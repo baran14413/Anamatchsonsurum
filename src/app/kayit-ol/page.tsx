@@ -21,7 +21,7 @@ export default function SignupPage() {
             <SignupForm />
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Zaten bir hesabın var mı?{" "}
-              <Link href="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+              <Link href="/" className="font-semibold text-primary underline-offset-4 hover:underline">
                 Giriş Yap
               </Link>
             </div>

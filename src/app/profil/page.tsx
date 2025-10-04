@@ -58,7 +58,7 @@ export default function ProfilPage() {
       try {
         if (auth) {
           await signOut(auth);
-          router.push('/login');
+          router.push('/');
           toast({
             title: 'Çıkış Yapıldı',
             description: 'Başarıyla çıkış yaptınız.',

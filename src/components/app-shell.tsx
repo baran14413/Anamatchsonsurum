@@ -13,7 +13,7 @@ import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 
-const publicPaths = ["/login", "/kayit-ol", "/"];
+const publicPaths = ["/", "/kayit-ol"];
 const appRoot = "/anasayfa";
 
 const Header = () => {
@@ -52,7 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     try {
       if (auth) {
         await signOut(auth);
-        router.push('/login');
+        router.push('/');
         toast({
           title: 'Çıkış Yapıldı',
           description: 'Başarıyla çıkış yaptınız.',
@@ -114,7 +114,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     } else {
       // If there is no user and they are on a protected page, redirect to login
       if (!isPublicPage) {
-        router.replace("/login");
+        router.replace("/");
       }
     }
   }, [user, isUserLoading, pathname, router]);
