@@ -21,24 +21,25 @@ export async function GET(req: NextRequest) {
         // Add current user to interacted set to filter them out
         interactedUserIds.add(currentUserId);
         
-        // 2. Get all user profiles from the 'users' collection
-        const allUsersSnapshot = await adminDb.collection('users').get();
+        // 2. Use a collectionGroup query to fetch ONLY the profile documents.
+        // This is the key fix to avoid reading parent documents without profile data.
+        const profilesSnapshot = await adminDb.collectionGroup('profile').get();
         
         const allUsers: UserProfile[] = [];
-        allUsersSnapshot.forEach(doc => {
+        profilesSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure basic data integrity, especially the uid field
+            // Ensure the profile belongs to a user (has a uid) and isn't the current user
             if (userData && userData.uid) {
                 allUsers.push({
-                    id: doc.id,
+                    id: doc.id, // The ID of the profile document (which is 'profile')
                     ...userData,
-                    // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
                     images: userData.images || [], 
                 } as UserProfile);
             }
         });
         
         // 3. Filter out users the current user has already interacted with
+        // Note: We filter by `uid` field from the profile document, not the doc.id
         const potentialMatches = allUsers.filter(user => !interactedUserIds.has(user.uid));
 
         // 4. Shuffle the potential matches for randomness
