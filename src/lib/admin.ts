@@ -1,4 +1,7 @@
 "use server-only";
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import * as admin from 'firebase-admin';
 
 function parseServiceAccount(): admin.ServiceAccount {
