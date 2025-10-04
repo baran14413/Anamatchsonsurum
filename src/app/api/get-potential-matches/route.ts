@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/admin';
 import { UserProfile } from '@/lib/types';
@@ -36,6 +37,10 @@ export async function GET(req: NextRequest) {
 
         // 2. Get all users from the 'users' collection
         const allUsersSnapshot = await adminDb.collection('users').get();
+        
+        if (allUsersSnapshot.empty) {
+            return NextResponse.json([]);
+        }
 
         // 3. Filter out the current user and users they've already interacted with
         const potentialMatches = allUsersSnapshot.docs
@@ -43,6 +48,10 @@ export async function GET(req: NextRequest) {
             .filter(user => 
                 user.id !== currentUserId && !interactedUserIds.includes(user.id)
             );
+        
+        if (potentialMatches.length === 0) {
+            return NextResponse.json([]);
+        }
         
         // 4. Shuffle and take a limited number of profiles (e.g., 10)
         const shuffled = potentialMatches.sort(() => 0.5 - Math.random());
