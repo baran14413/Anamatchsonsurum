@@ -1,5 +1,5 @@
 
-import "server-only";
+"use server-only";
 import * as admin from 'firebase-admin';
 require('dotenv').config({ path: '.env' });
 
@@ -39,7 +39,7 @@ if (!admin.apps.length) {
   } catch (e: any) {
     console.error('Firebase Admin initialization error', e.message);
     // Propagate the error to make it visible during build/runtime
-    throw new Error("Could not initialize Firebase Admin SDK.");
+    throw new Error(`Could not initialize Firebase Admin SDK. Reason: ${e.message}`);
   }
 }
 
