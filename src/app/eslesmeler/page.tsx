@@ -6,34 +6,53 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Loader2, MessageSquare } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // This component will fetch the details for a single match
 function MatchItem({ match }: { match: any }) {
   const firestore = useFirestore();
-  // In a real app, you'd fetch the other user's profile to get their name and avatar.
-  // For now, we'll use placeholder data.
-  const otherUserId = match.user1Id === useUser().user?.uid ? match.user2Id : match.user1Id;
+  const { user: currentUser } = useUser();
+
+  // Determine the ID of the other user in the match
+  const otherUserId = match.user1Id === currentUser?.uid ? match.user2Id : match.user1Id;
+
+  // Create a memoized reference to the other user's profile document
+  const otherUserProfileRef = useMemoFirebase(() => {
+    if (!firestore || !otherUserId) return null;
+    return doc(firestore, `users/${otherUserId}`);
+  }, [firestore, otherUserId]);
+
+  // Fetch the other user's profile data
+  const { data: otherUserProfile, isLoading: isProfileLoading } = useDoc(otherUserProfileRef);
 
   return (
     <Link href={`/sohbet/${match.id}`} className="block">
       <Card className="hover:bg-muted/50 transition-colors">
         <CardContent className="p-4 flex items-center gap-4">
-          <Image
-            src={`https://picsum.photos/seed/${otherUserId}/100/100`}
-            alt="Match Avatar"
-            width={64}
-            height={64}
-            className="rounded-full"
-            data-ai-hint="person avatar"
-          />
+          {isProfileLoading ? (
+            <Skeleton className="h-16 w-16 rounded-full" />
+          ) : (
+            <Image
+              src={otherUserProfile?.profilePicture || `https://picsum.photos/seed/${otherUserId}/100/100`}
+              alt="Match Avatar"
+              width={64}
+              height={64}
+              className="rounded-full object-cover"
+              data-ai-hint="person avatar"
+            />
+          )}
           <div className="flex-1">
             <div className="flex justify-between">
-              <h2 className="font-semibold text-lg">{otherUserId.substring(0,6)}...</h2>
-              {match.matchDate && (
+              {isProfileLoading ? (
+                 <Skeleton className="h-6 w-32" />
+              ) : (
+                <h2 className="font-semibold text-lg">{otherUserProfile?.fullName || 'Kullanıcı'}</h2>
+              )}
+              {match.matchDate?.seconds && (
                 <p className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: tr })}
                 </p>
@@ -89,5 +108,3 @@ export default function EslesmelerPage() {
     </div>
   );
 }
-
-    
