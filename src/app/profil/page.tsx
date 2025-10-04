@@ -27,14 +27,18 @@ export default function ProfilPage() {
     <div className="bg-muted/40 dark:bg-black h-full overflow-y-auto pb-24">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10">
-        <Icons.tinder className="h-8 w-8 text-primary" />
+        <Icons.logo className="h-8 w-8 text-primary" />
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon">
-            <Shield className="h-6 w-6 text-muted-foreground" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="h-6 w-6 text-muted-foreground" />
-          </Button>
+          <Link href="/profil/duzenle">
+            <Button variant="ghost" size="icon">
+              <Shield className="h-6 w-6 text-muted-foreground" />
+            </Button>
+          </Link>
+          <Link href="/profil/duzenle">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-6 w-6 text-muted-foreground" />
+            </Button>
+          </Link>
         </div>
       </header>
 
@@ -60,10 +64,12 @@ export default function ProfilPage() {
                 </h1>
             </div>
             
-            <Button className="w-full max-w-xs rounded-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg">
-                <Pencil className="mr-2 h-4 w-4" />
-                Profili Düzenle
-            </Button>
+            <Link href="/profil/duzenle" className="w-full max-w-xs">
+              <Button className="w-full rounded-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Profili Düzenle
+              </Button>
+            </Link>
         </div>
 
         <div className="space-y-4 mt-8">
@@ -107,7 +113,7 @@ export default function ProfilPage() {
                 <CardContent className="p-6">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                             <Icons.tinder className="h-8 w-8" />
+                             <Icons.logo className="h-8 w-8" />
                              <span className="text-2xl font-extrabold tracking-tight">BeMatch</span>
                              <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">GOLD</span>
                         </div>
