@@ -1,3 +1,4 @@
+
 import {
   ChevronRight,
   User,
@@ -48,7 +49,7 @@ const settingsGroups = [
       {
         icon: Ban,
         label: 'Engellenen Kullanıcılar',
-        href '#',
+        href: '#',
         bgColor: 'bg-gradient-to-br from-red-500 to-red-700',
       },
     ],
