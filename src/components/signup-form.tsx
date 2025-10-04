@@ -33,6 +33,8 @@ import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langEn } from "@/languages/en";
+import { langTr } from "@/languages/tr";
+import { useLanguage } from "@/hooks/use-language";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
@@ -99,7 +101,7 @@ type PhotoSlot = {
 };
 
 
-const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
+const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean, t: any }) => {
     const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
     const [month, setMonth] = useState(() => value ? String(value.getMonth() + 1).padStart(2, '0') : '');
     const [year, setYear] = useState(() => value ? String(value.getFullYear()) : '');
@@ -155,7 +157,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         <div className="flex items-center gap-2">
             <Input
                 ref={dayRef}
-                placeholder={langEn.signup.step3.dayPlaceholder}
+                placeholder={t.dayPlaceholder}
                 maxLength={2}
                 value={day}
                 onChange={(e) => handleDateChange(e, setDay, 'day')}
@@ -166,7 +168,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={monthRef}
-                placeholder={langEn.signup.step3.monthPlaceholder}
+                placeholder={t.monthPlaceholder}
                 maxLength={2}
                 value={month}
                 onChange={(e) => handleDateChange(e, setMonth, 'month')}
@@ -177,7 +179,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={yearRef}
-                placeholder={langEn.signup.step3.yearPlaceholder}
+                placeholder={t.yearPlaceholder}
                 maxLength={4}
                 value={year}
                 onChange={(e) => handleDateChange(e, setYear, 'year')}
@@ -192,6 +194,9 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
 export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+  const t = lang === 'en' ? langEn : langTr;
+  
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -202,7 +207,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: langEn.signup.step12.photoSlotLabels[i] || '' }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: t.signup.step12.photoSlotLabels[i] || '' }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -254,7 +259,7 @@ export default function SignupForm() {
 
   async function onSubmit(data: SignupFormValues) {
     if (!auth || !firestore) {
-      toast({ title: "Error", description: "Database connection could not be established.", variant: "destructive" });
+      toast({ title: t.common.error, description: t.signup.errors.dbConnectionError, variant: "destructive" });
       return;
     }
     setIsLoading(true);
@@ -276,7 +281,7 @@ export default function SignupForm() {
             body: formData,
           });
           if (!response.ok) {
-            throw new Error(`Failed to upload '${file.name}'.`);
+            throw new Error(t.signup.errors.uploadFailed.replace('{fileName}', file.name));
           }
           const result = await response.json();
           photoUrls.push(result.url);
@@ -321,7 +326,7 @@ export default function SignupForm() {
       console.error("Signup error:", error);
       toast({
         title: "Signup Failed",
-        description: error.message || "An error occurred, please try again.",
+        description: error.message || t.signup.errors.signupFailed,
         variant: "destructive",
       });
     } finally {
@@ -336,7 +341,7 @@ export default function SignupForm() {
     setIsLoading(true);
     const email = form.getValues("email");
     if (!auth) {
-        toast({ title: "Error", description: "Authentication service could not be initialized.", variant: "destructive" });
+        toast({ title: t.common.error, description: "Authentication service could not be initialized.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -352,7 +357,7 @@ export default function SignupForm() {
             nextStep();
         } else {
             console.error("Email check error:", error);
-            toast({ title: "Error", description: "An error occurred while checking the email.", variant: "destructive" });
+            toast({ title: t.common.error, description: "An error occurred while checking the email.", variant: "destructive" });
         }
     } finally {
         setIsLoading(false);
@@ -393,14 +398,14 @@ export default function SignupForm() {
       const newSlots = [...photoSlots];
       
       // Remove the clicked one
-      newSlots[index] = { file: null, preview: null, label: langEn.signup.step12.photoSlotLabels[index] || '' };
+      newSlots[index] = { file: null, preview: null, label: t.signup.step12.photoSlotLabels[index] || '' };
 
       // Re-order the array so that filled slots are at the beginning
       const filledSlots = newSlots.filter(p => p.file);
       const emptySlots = Array.from({ length: 6 - filledSlots.length }, (_, i) => ({ 
         file: null, 
         preview: null, 
-        label: langEn.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
+        label: t.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
       }));
 
       const reorderedSlots = [...filledSlots, ...emptySlots];
@@ -451,8 +456,8 @@ export default function SignupForm() {
       },
       (error) => {
         toast({
-            title: langEn.signup.step6.errorTitle,
-            description: langEn.signup.step6.errorMessage,
+            title: t.signup.step6.errorTitle,
+            description: t.signup.step6.errorMessage,
             variant: "destructive"
         });
         setIsLoading(false);
@@ -493,7 +498,7 @@ export default function SignupForm() {
         <Progress value={progressValue} className="h-2 flex-1" />
         {(step === 8 || step === 9 || step === 10 || step === 11) ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
-            {langEn.signup.progressHeader.skip}
+            {t.signup.progressHeader.skip}
           </Button>
         ) : <div className="w-16"></div>}
       </header>
@@ -504,8 +509,8 @@ export default function SignupForm() {
               {step === 1 && (
                 <div className="flex-1 flex flex-col">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langEn.signup.step1.title}</h1>
-                    <p className="text-muted-foreground">{langEn.signup.step1.description}</p>
+                    <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
+                    <p className="text-muted-foreground">{t.signup.step1.description}</p>
                   </div>
                    <div className="space-y-4 pt-8 flex-1 overflow-y-auto -mr-6 pr-6">
                     <FormField
@@ -513,7 +518,7 @@ export default function SignupForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{langEn.signup.step1.emailLabel}</FormLabel>
+                          <FormLabel>{t.signup.step1.emailLabel}</FormLabel>
                           <FormControl>
                             <Input placeholder="example@domain.com" {...field} />
                           </FormControl>
@@ -526,7 +531,7 @@ export default function SignupForm() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{langEn.signup.step1.passwordLabel}</FormLabel>
+                          <FormLabel>{t.signup.step1.passwordLabel}</FormLabel>
                            <div className="relative">
                             <FormControl>
                                 <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
@@ -548,7 +553,7 @@ export default function SignupForm() {
               )}
               {step === 2 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step2.title}</h1>
+                  <h1 className="text-3xl font-bold">{t.signup.step2.title}</h1>
                   <FormField
                     control={form.control}
                     name="name"
@@ -556,13 +561,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langEn.signup.step2.placeholder}
+                            placeholder={t.signup.step2.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langEn.signup.step2.label}
+                          {t.signup.step2.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -572,7 +577,7 @@ export default function SignupForm() {
               )}
               {step === 3 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step3.title}</h1>
+                  <h1 className="text-3xl font-bold">{t.signup.step3.title}</h1>
                   <Controller
                     control={form.control}
                     name="dateOfBirth"
@@ -583,10 +588,11 @@ export default function SignupForm() {
                             value={field.value}
                             onChange={field.onChange}
                             disabled={field.disabled}
+                            t={t.signup.step3}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground pt-2 block">
-                          {langEn.signup.step3.label}
+                          {t.signup.step3.label}
                         </FormLabel>
                         {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
                       </FormItem>
@@ -596,7 +602,7 @@ export default function SignupForm() {
               )}
               {step === 4 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step4.title}</h1>
+                  <h1 className="text-3xl font-bold">{t.signup.step4.title}</h1>
                   <FormField
                     control={form.control}
                     name="gender"
@@ -610,7 +616,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('female')}
                             >
-                              {langEn.signup.step4.woman}
+                              {t.signup.step4.woman}
                             </Button>
                             <Button
                               type="button"
@@ -618,7 +624,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('male')}
                             >
-                              {langEn.signup.step4.man}
+                              {t.signup.step4.man}
                             </Button>
                           </div>
                         </FormControl>
@@ -631,8 +637,8 @@ export default function SignupForm() {
               {step === 5 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langEn.signup.step5.title}</h1>
-                    <p className="text-muted-foreground">{langEn.signup.step5.label}</p>
+                    <h1 className="text-3xl font-bold">{t.signup.step5.title}</h1>
+                    <p className="text-muted-foreground">{t.signup.step5.label}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
                   <FormField
@@ -642,7 +648,7 @@ export default function SignupForm() {
                       <FormItem className="space-y-3">
                         <FormControl>
                           <div className="grid grid-cols-2 gap-3">
-                            {langEn.signup.step5.options.map((option, index) => {
+                            {t.signup.step5.options.map((option: {id: string, label: string}, index: number) => {
                               const Icon = lookingForOptions[index].icon;
                               const isSelected = field.value === option.id;
                               return (
@@ -675,24 +681,24 @@ export default function SignupForm() {
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                     <MapPin className="w-12 h-12 text-primary" />
                   </div>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step6.title}</h1>
+                  <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
                   <p className="text-muted-foreground mt-2 max-w-sm">
-                    {langEn.signup.step6.description}
+                    {t.signup.step6.description}
                   </p>
                 </div>
               )}
               {step === 7 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step7.title}</h1>
-                  <p className="text-muted-foreground">{langEn.signup.step7.description}</p>
+                  <h1 className="text-3xl font-bold">{t.signup.step7.title}</h1>
+                  <p className="text-muted-foreground">{t.signup.step7.description}</p>
                   <FormField
                     control={form.control}
                     name="distancePreference"
                     render={({ field }) => (
                       <FormItem className="pt-12">
                         <div className="flex justify-between items-center mb-4">
-                          <FormLabel className="text-base">{langEn.signup.step7.label}</FormLabel>
-                          <span className="font-bold text-base">{field.value} {langEn.signup.step7.unit}</span>
+                          <FormLabel className="text-base">{t.signup.step7.label}</FormLabel>
+                          <span className="font-bold text-base">{field.value} {t.signup.step7.unit}</span>
                         </div>
                         <FormControl>
                           <Slider
@@ -704,7 +710,7 @@ export default function SignupForm() {
                           />
                         </FormControl>
                         <p className="text-center text-muted-foreground pt-8">
-                          {langEn.signup.step7.info}
+                          {t.signup.step7.info}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -714,7 +720,7 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langEn.signup.step8.title}</h1>
+                  <h1 className="text-3xl font-bold">{t.signup.step8.title}</h1>
                   <FormField
                     control={form.control}
                     name="school"
@@ -722,13 +728,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langEn.signup.step8.placeholder}
+                            placeholder={t.signup.step8.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langEn.signup.step8.label}
+                          {t.signup.step8.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -739,8 +745,8 @@ export default function SignupForm() {
               {step === 9 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langEn.signup.step9.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{langEn.signup.step9.description}</p>
+                      <h1 className="text-3xl font-bold">{t.signup.step9.title.replace('{name}', currentName)}</h1>
+                      <p className="text-muted-foreground">{t.signup.step9.description}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
@@ -749,10 +755,10 @@ export default function SignupForm() {
                         name="drinking"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langEn.signup.step9.drinking.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{t.signup.step9.drinking.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step9.drinking.options.map(opt => (
+                                {t.signup.step9.drinking.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -766,10 +772,10 @@ export default function SignupForm() {
                         name="smoking"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langEn.signup.step9.smoking.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{t.signup.step9.smoking.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step9.smoking.options.map(opt => (
+                                {t.signup.step9.smoking.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -783,10 +789,10 @@ export default function SignupForm() {
                         name="workout"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langEn.signup.step9.workout.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{t.signup.step9.workout.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step9.workout.options.map(opt => (
+                                {t.signup.step9.workout.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -800,10 +806,10 @@ export default function SignupForm() {
                         control={form.control}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langEn.signup.step9.pets.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{t.signup.step9.pets.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step9.pets.options.map(opt => {
+                                {t.signup.step9.pets.options.map((opt: {id: string, label: string}) => {
                                   const isSelected = field.value?.includes(opt.id);
                                   return (
                                     <Button
@@ -835,8 +841,8 @@ export default function SignupForm() {
                {step === 10 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langEn.signup.step10.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{langEn.signup.step10.description}</p>
+                      <h1 className="text-3xl font-bold">{t.signup.step10.title.replace('{name}', currentName)}</h1>
+                      <p className="text-muted-foreground">{t.signup.step10.description}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
@@ -845,10 +851,10 @@ export default function SignupForm() {
                         name="loveLanguage"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langEn.signup.step10.loveLanguage.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{t.signup.step10.loveLanguage.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step10.loveLanguage.options.map(opt => (
+                                {t.signup.step10.loveLanguage.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -862,10 +868,10 @@ export default function SignupForm() {
                         name="communicationStyle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langEn.signup.step10.communication.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{t.signup.step10.communication.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step10.communication.options.map(opt => (
+                                {t.signup.step10.communication.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -879,10 +885,10 @@ export default function SignupForm() {
                         name="educationLevel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langEn.signup.step10.education.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{t.signup.step10.education.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step10.education.options.map(opt => (
+                                {t.signup.step10.education.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -896,10 +902,10 @@ export default function SignupForm() {
                         name="zodiacSign"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langEn.signup.step10.zodiac.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{t.signup.step10.zodiac.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langEn.signup.step10.zodiac.options.map(opt => (
+                                {t.signup.step10.zodiac.options.map((opt: {id: string, label: string}) => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -915,8 +921,8 @@ export default function SignupForm() {
               {step === 11 && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
-                        <h1 className="text-3xl font-bold">{langEn.signup.step11.title}</h1>
-                        <p className="text-muted-foreground">{langEn.signup.step11.description}</p>
+                        <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
+                        <p className="text-muted-foreground">{t.signup.step11.description}</p>
                       </div>
                        <Controller
                           name="interests"
@@ -924,7 +930,7 @@ export default function SignupForm() {
                           render={({ field }) => (
                              <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
                                <div className="space-y-6">
-                                {langEn.signup.step11.categories.map(category => {
+                                {t.signup.step11.categories.map((category: {title: string, icon: string, options: string[]}) => {
                                     const Icon = interestIcons[category.icon] || Tent;
                                     return (
                                         <div key={category.title}>
@@ -967,10 +973,10 @@ export default function SignupForm() {
                {step === 12 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langEn.signup.step12.title}</h1>
+                    <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
                      <div className="flex items-center gap-4 mt-2">
                         <CircularProgress progress={(uploadedPhotoCount / 6) * 100} size={40} />
-                        <p className="text-muted-foreground flex-1">{langEn.signup.step12.description}</p>
+                        <p className="text-muted-foreground flex-1">{t.signup.step12.description}</p>
                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
@@ -1042,7 +1048,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.step6.button}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step6.button}
               </Button>
             ) : step === 9 ? (
               <Button
@@ -1051,7 +1057,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
             ) : step === 10 ? (
                 <Button
@@ -1060,7 +1066,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledMoreInfoCount === 0}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
             ) : step === 11 ? (
                  <Button
@@ -1069,7 +1075,7 @@ export default function SignupForm() {
                     className="w-full h-14 rounded-full text-lg font-bold"
                     disabled={isLoading || selectedInterests.length === 0}
                     >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
                  </Button>
             ) : step === 12 ? (
                 <Button
@@ -1078,7 +1084,7 @@ export default function SignupForm() {
                   className="w-full h-14 rounded-full text-lg font-bold"
                   disabled={isLoading || uploadedPhotoCount < 2}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.step12.button}
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step12.button}
                 </Button>
             ) : (
               <Button
@@ -1087,13 +1093,13 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.next}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
               </Button>
             )}
 
             {step === 12 && (
               <p className="text-center text-sm text-muted-foreground mt-4">
-                  {langEn.signup.step12.requirementText}
+                  {t.signup.step12.requirementText}
               </p>
             )}
           </div>
@@ -1102,14 +1108,14 @@ export default function SignupForm() {
       <AlertDialog open={showEmailExistsDialog} onOpenChange={setShowEmailExistsDialog}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>{langEn.signup.common.emailExistsTitle}</AlertDialogTitle>
+                <AlertDialogTitle>{t.signup.common.emailExistsTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {langEn.signup.common.emailExistsDescription}
+                    {t.signup.common.emailExistsDescription}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogAction onClick={() => router.push(`/login?email=${encodeURIComponent(form.getValues("email"))}`)}>
-                    {langEn.signup.common.goToLogin}
+                    {t.signup.common.goToLogin}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -1117,5 +1123,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    

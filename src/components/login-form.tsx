@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   fetchSignInMethodsForEmail,
@@ -25,19 +25,21 @@ import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
 import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
+import { useLanguage } from "@/hooks/use-language";
 
 const getSchema = (t: any) => z.object({
   email: z.string().email({ message: t.login.errors.invalidEmail }),
   password: z.string().optional(),
 });
 
-export default function LoginForm({ lang }: { lang: string }) {
+export default function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
+  const { lang } = useLanguage();
   const t = lang === 'en' ? langEn : langTr;
   const formSchema = getSchema(t);
 
@@ -200,7 +202,7 @@ export default function LoginForm({ lang }: { lang: string }) {
             <div className="mt-6 text-center text-sm text-muted-foreground">
                 {t.login.noAccount}{" "}
                 <Link
-                    href={`/kayit-ol?lang=${lang}`}
+                    href={`/kayit-ol`}
                     className="font-semibold text-primary underline-offset-4 hover:underline"
                 >
                     {t.login.signupNow}

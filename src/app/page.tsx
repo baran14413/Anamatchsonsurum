@@ -10,12 +10,12 @@ import googleLogo from '@/img/googlelogin.png';
 import emailLogo from '@/img/gmaillogin.png';
 import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
-import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, Globe } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 
 export default function WelcomePage() {
-  const [lang, setLang] = useState('en');
+  const { lang, setLang } = useLanguage();
   const t = lang === 'en' ? langEn : langTr;
 
   return (
@@ -41,11 +41,11 @@ export default function WelcomePage() {
 
         <div className="w-full max-w-sm space-y-6">
           <div className="text-xs text-white/90">
-            <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement }} />
+            <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement.replace('<1>', '<a href="/tos" class="underline">').replace('</1>', '</a>').replace('<3>', '<a href="/privacy" class="underline">').replace('</3>', '</a>').replace('<5>', '<a href="/cookies" class="underline">').replace('</5>', '</a>') }} />
           </div>
 
           <div className="space-y-3">
-            <Link href={`/kurallar?lang=${lang}`} className="w-full block">
+            <Link href="/kurallar" className="w-full block">
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
@@ -54,7 +54,7 @@ export default function WelcomePage() {
                 {t.welcome.continueWithGoogle}
               </Button>
             </Link>
-            <Link href={`/login?lang=${lang}`} className="w-full block">
+            <Link href="/login" className="w-full block">
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
                 {t.welcome.continueWithEmail}
@@ -101,4 +101,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
