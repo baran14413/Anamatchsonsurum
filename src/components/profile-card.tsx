@@ -40,20 +40,19 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
     }
   };
 
+  const images = profile.images && profile.images.length > 0 ? profile.images : ['https://picsum.photos/seed/placeholder/600/800'];
+  const currentImage = images[currentImageIndex] || images[0];
+
   const handleImageNavigation = (e: React.MouseEvent, navDirection: 'prev' | 'next') => {
     e.stopPropagation();
-    if (!profile.images || profile.images.length === 0) return;
     if (navDirection === 'next') {
-      setCurrentImageIndex((prev) => Math.min(prev + 1, profile.images.length - 1));
+      setCurrentImageIndex((prev) => Math.min(prev + 1, images.length - 1));
     } else {
       setCurrentImageIndex((prev) => Math.max(prev - 1, 0));
     }
   };
   
   const userAge = calculateAge(profile.dateOfBirth);
-
-  const images = profile.images && profile.images.length > 0 ? profile.images : ['https://picsum.photos/seed/placeholder/600/800'];
-  const currentImage = images[currentImageIndex] || images[0];
 
   return (
     <motion.div
@@ -100,7 +99,7 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
             <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
               {images.map((_, index) => (
                 <div key={index} className="h-1 flex-1 rounded-full bg-white/40 overflow-hidden">
-                   <div className={`h-full rounded-full transition-all duration-300 ${index <= currentImageIndex ? 'bg-white' : ''}`}></div>
+                   <div className={`h-full rounded-full transition-all duration-300 ${index === currentImageIndex ? 'bg-white' : ''}`}></div>
                 </div>
               ))}
             </div>

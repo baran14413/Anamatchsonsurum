@@ -142,9 +142,12 @@ export default function SignupForm() {
         const cloudinaryUrl = await uploadFile(file);
         if (cloudinaryUrl) {
             form.setValue("profilePicture", cloudinaryUrl, { shouldValidate: true });
-            // Also add it to the images array as the first image
+            // Also add it to the images array as the first image, removing any previous first image
             const currentImages = form.getValues("images");
-            form.setValue("images", [cloudinaryUrl, ...currentImages.filter(img => img !== cloudinaryUrl)], { shouldValidate: true });
+            const otherImages = currentImages.length > 0 && form.getValues("profilePicture") === currentImages[0]
+                ? currentImages.slice(1)
+                : currentImages;
+            form.setValue("images", [cloudinaryUrl, ...otherImages.filter(img => img !== cloudinaryUrl)], { shouldValidate: true });
         }
     }
   };
@@ -218,6 +221,12 @@ export default function SignupForm() {
 
     if (!data.profilePicture) {
         toast({ title: "Profil Resmi Eksik", description: "Lütfen Adım 2'ye geri dönüp profil resminizi yükleyin.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+    
+    if (data.images.length < 2) {
+        toast({ title: "Eksik Galeri Fotoğrafı", description: "Lütfen Adım 4'e geri dönüp en az 2 fotoğraf yükleyin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
