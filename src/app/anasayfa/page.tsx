@@ -7,12 +7,12 @@ import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2, Undo2, Star, Send, RotateCw } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/firebase";
+import { useUser } from "@/firebase";
 import { langTr } from "@/languages/tr";
 
 export default function AnasayfaPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isUserLoading } = useUser();
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,8 +51,14 @@ export default function AnasayfaPage() {
   };
 
   useEffect(() => {
-    fetchProfiles();
-  }, [user]);
+    // Only fetch profiles if the user is loaded and present.
+    if (!isUserLoading && user) {
+      fetchProfiles();
+    } else if (!isUserLoading && !user) {
+        // If user is not logged in after check, stop loading.
+        setIsLoading(false);
+    }
+  }, [user, isUserLoading]);
 
   const activeProfiles = useMemo(() => {
     return profiles.slice(currentIndex, currentIndex + 2).reverse();
@@ -100,7 +106,7 @@ export default function AnasayfaPage() {
   };
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading || isUserLoading) {
       return (
         <div className="flex h-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -158,7 +164,7 @@ export default function AnasayfaPage() {
         </div>
       </div>
 
-      {activeProfiles.length > 0 && (
+      {activeProfiles.length > 0 && !isLoading && (
         <div className="absolute bottom-20 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-3 py-4 shrink-0">
           <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-yellow-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
             <Undo2 className="h-6 w-6" />
