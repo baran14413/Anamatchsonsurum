@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -29,6 +30,10 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  experimental: {
+    // This allows requests from the development environment's domain.
+    allowedDevOrigins: ["*.cloudworkstations.dev"],
   },
 };
 
