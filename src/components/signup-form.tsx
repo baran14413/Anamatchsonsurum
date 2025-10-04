@@ -316,7 +316,7 @@ export default function SignupForm() {
       await setDoc(doc(firestore, "users", user.uid), userProfile);
       
       // 5. Redirect to the app
-      router.push("/kesfet");
+      router.push("/anasayfa");
 
     } catch (error: any) {
       console.error("Signup error:", error);

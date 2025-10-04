@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { Inter } from 'next/font/google';
@@ -21,7 +20,7 @@ export default function RootLayout({
     <html lang="tr" className={inter.className} suppressHydrationWarning>
       <body>
         <FirebaseClientProvider>
-          <AppShell>{children}</AppShell>
+          {children}
         </FirebaseClientProvider>
         <Toaster />
       </body>

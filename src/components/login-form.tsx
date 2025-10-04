@@ -131,7 +131,7 @@ export default function LoginForm() {
             profilePicture: user.photoURL,
         }, { merge: true });
 
-        router.push("/kesfet");
+        router.push("/anasayfa");
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,
@@ -158,7 +158,7 @@ export default function LoginForm() {
     }
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push("/kesfet");
+      router.push("/anasayfa");
     } catch (error: any) {
       form.setError("password", { type: "manual", message: t.login.errors.wrongPassword });
     } finally {

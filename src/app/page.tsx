@@ -51,7 +51,7 @@ export default function WelcomePage() {
             profilePicture: user.photoURL
         }, { merge: true }); // Use merge to avoid overwriting existing data
 
-        router.push("/kesfet");
+        router.push("/anasayfa");
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,
