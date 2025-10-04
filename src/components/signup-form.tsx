@@ -24,6 +24,7 @@ import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -461,92 +462,94 @@ export default function SignupForm() {
                     <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
                     <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
                   </div>
-                  <div className="flex-1 space-y-8 pt-4 overflow-y-auto pb-4">
-                    <FormField
-                      control={form.control}
-                      name="drinking"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.drinking.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="smoking"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.smoking.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="workout"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step8.workout.options.map(opt => (
-                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Controller
-                        name="pets"
+                  <ScrollArea className="flex-1 pr-4 -mr-4">
+                    <div className="space-y-8 pt-4 pb-4">
+                      <FormField
                         control={form.control}
+                        name="drinking"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step8.pets.options.map(opt => {
-                                  const isSelected = field.value?.includes(opt.id);
-                                  return (
-                                    <Button
-                                      key={opt.id}
-                                      type="button"
-                                      variant={isSelected ? 'default' : 'outline'}
-                                      onClick={() => {
-                                        const newValue = isSelected
-                                          ? field.value?.filter(v => v !== opt.id)
-                                          : [...(field.value || []), opt.id];
-                                        field.onChange(newValue);
-                                      }}
-                                      className="rounded-full"
-                                    >
-                                      {opt.label}
-                                    </Button>
-                                  );
-                                })}
+                                {langTr.signup.step8.drinking.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
                               </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                  </div>
+                      <FormField
+                        control={form.control}
+                        name="smoking"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step8.smoking.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="workout"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {langTr.signup.step8.workout.options.map(opt => (
+                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Controller
+                          name="pets"
+                          control={form.control}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
+                              <FormControl>
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                  {langTr.signup.step8.pets.options.map(opt => {
+                                    const isSelected = field.value?.includes(opt.id);
+                                    return (
+                                      <Button
+                                        key={opt.id}
+                                        type="button"
+                                        variant={isSelected ? 'default' : 'outline'}
+                                        onClick={() => {
+                                          const newValue = isSelected
+                                            ? field.value?.filter(v => v !== opt.id)
+                                            : [...(field.value || []), opt.id];
+                                          field.onChange(newValue);
+                                        }}
+                                        className="rounded-full"
+                                      >
+                                        {opt.label}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </div>
+                  </ScrollArea>
                 </>
               )}
             </div>
