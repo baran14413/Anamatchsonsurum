@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
 import { Loader2, MapPin, AlertTriangle, Building } from 'lucide-react';
@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { useDoc } from '@/firebase/firestore/use-doc';
+
 
 // A simple component to simulate a map
 const SimulatedMap = ({ location }: { location: { latitude: number; longitude: number } | null }) => {
@@ -68,7 +70,6 @@ export default function KonumPage() {
             
             if (response.ok && data.address) {
                 const adr = data.address;
-                // Gracefully construct the address from available fields
                 const formattedAddress = [
                     adr.streetName,
                     adr.streetNumber,
@@ -99,24 +100,31 @@ export default function KonumPage() {
     setIsUpdating(true);
     setError(null);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const newLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
-        try {
-          if (userProfileRef) {
-            await updateDoc(userProfileRef, { location: newLocation });
-            mutate(); // Re-fetches the user profile data, which will trigger the useEffect for geocoding
-            toast({
-              title: "Konum Güncellendi",
-              description: "Yeni konumunuz başarıyla kaydedildi.",
+        
+        if (userProfileRef) {
+          updateDoc(userProfileRef, { location: newLocation })
+            .then(() => {
+              mutate(); // Re-fetches the user profile data
+              toast({
+                title: "Konum Güncellendi",
+                description: "Yeni konumunuz başarıyla kaydedildi.",
+              });
+              setError(null); // Clear any previous errors
+            })
+            .catch((e) => {
+                console.error("Firestore update error:", e);
+                setError("Konum veritabanına kaydedilemedi.");
+            })
+            .finally(() => {
+              setIsUpdating(false);
             });
-          }
-        } catch (e) {
-            setError("Konum veritabanına kaydedilemedi.");
-            toast({ title: "Hata", description: "Konum veritabanına kaydedilemedi.", variant: "destructive" });
-        } finally {
+        } else {
+            setError("Kullanıcı profili referansı bulunamadı.");
             setIsUpdating(false);
         }
       },
@@ -134,13 +142,12 @@ export default function KonumPage() {
             break;
         }
         setError(errorMessage);
-        toast({ title: "Konum Hatası", description: errorMessage, variant: "destructive" });
         setIsUpdating(false);
       }
     );
   };
 
-  if (isLoading) {
+  if (isLoading && !userProfile) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
