@@ -21,13 +21,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper } from "lucide-react";
+import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper, Map } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 import Image from "next/image";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 
 const TOTAL_STEPS = 5;
 
@@ -93,15 +94,15 @@ export default function SignupForm() {
     ),
     mode: "onChange",
     defaultValues: {
-      email: "",
-      fullName: "",
-      dateOfBirth: "",
-      profilePicture: "",
-      gender: undefined,
-      matchPictures: [],
-      password: "",
-      confirmPassword: "",
-      terms: false,
+        email: "",
+        fullName: "",
+        dateOfBirth: "",
+        profilePicture: "",
+        gender: undefined,
+        matchPictures: [],
+        password: "",
+        confirmPassword: "",
+        terms: false,
     }
   });
 
@@ -142,12 +143,11 @@ export default function SignupForm() {
         const localUrl = URL.createObjectURL(file);
         form.setValue("profilePicture", localUrl, { shouldValidate: true });
 
-        setIsUploading(true);
+        // Start upload in the background
         uploadFile(file).then(cloudinaryUrl => {
             if (cloudinaryUrl) {
                 setFinalProfilePictureUrl(cloudinaryUrl);
             }
-            setIsUploading(false);
         });
     }
   };
@@ -174,6 +174,7 @@ export default function SignupForm() {
   
   const handleLocationRequest = () => {
     setLocationError(null);
+    setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation({
@@ -181,12 +182,26 @@ export default function SignupForm() {
           longitude: position.coords.longitude,
         });
         setLocationError(null);
+        setIsLoading(false);
       },
       (error) => {
-        setLocationError("Konum izni reddedildi. Kayıt için bu izin gereklidir.");
-      }
+        setLocationError("Otomatik konum alınamadı. Eşleşmelerin doğru ve sürdürülebilir olması için lütfen konumunuzu manuel olarak girin.");
+        setIsLoading(false);
+      },
+      { timeout: 10000 }
     );
   };
+  
+  const handleManualLocationSelect = () => {
+    // In a real app, this would open a map modal.
+    // Here we simulate it by setting a predefined location.
+    setLocation({ latitude: 41.0082, longitude: 28.9784 }); // Istanbul as default
+    setLocationError(null);
+    toast({
+        title: "Konum Ayarlandı",
+        description: "Konumunuz manuel olarak ayarlandı.",
+    });
+  }
 
 
   const onFinalSubmit = async (data: SignupFormValues) => {
@@ -199,13 +214,13 @@ export default function SignupForm() {
     }
 
     if (!finalProfilePictureUrl) {
-        toast({ title: "Profil Resmi Eksik", description: "Lütfen profil resminizin yüklenmesini bekleyin veya tekrar yükleyin.", variant: "destructive" });
+        toast({ title: "Profil Resmi Eksik", description: "Lütfen Adım 2'ye geri dönüp profil resminizin yüklenmesini bekleyin veya tekrar yükleyin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
     if (!location) {
-        toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 3'e geri dönüp konum izni verin.", variant: "destructive" });
+        toast({ title: "Konum Bilgisi Eksik", description: "Lütfen Adım 3'e geri dönüp konum izni verin veya manuel olarak seçin.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -305,16 +320,12 @@ export default function SignupForm() {
                                         ): (
                                              <Camera className="h-16 w-16 text-muted-foreground" />
                                         )}
-                                        {isUploading && (
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
-                                            </div>
-                                        )}
                                     </div>
                                     <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()} disabled={isUploading}>
-                                        <Upload className="mr-2 h-4 w-4" /> Fotoğraf Yükle
+                                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
+                                        {isUploading ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
                                     </Button>
-                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} disabled={isUploading} />
+                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -354,22 +365,48 @@ export default function SignupForm() {
                      <div>
                         <FormLabel>Konum</FormLabel>
                         <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor.</p>
-                        {!location ? (
-                            <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full">
-                                <MapPin className="mr-2 h-4 w-4"/> Konum İzni Ver
-                            </Button>
-                        ) : (
+                        
+                        {location ? (
                             <div className="flex items-center justify-center p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
                                 <Check className="h-5 w-5 mr-2"/>
                                 <span className="text-sm font-medium">Konum Başarıyla Alındı!</span>
                             </div>
-                        )}
-                        {locationError && (
-                          <Alert variant="destructive" className="mt-2">
-                            <Terminal className="h-4 w-4" />
-                            <AlertTitle>Konum Hatası</AlertTitle>
-                            <AlertDescription>{locationError}</AlertDescription>
-                          </Alert>
+                        ) : (
+                          <>
+                            {locationError ? (
+                                <div className="space-y-2">
+                                <Alert variant="destructive">
+                                    <Terminal className="h-4 w-4" />
+                                    <AlertTitle>Konum Hatası</AlertTitle>
+                                    <AlertDescription>{locationError}</AlertDescription>
+                                </Alert>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button type="button" variant="outline" className="w-full">
+                                            <Map className="mr-2 h-4 w-4"/> Haritadan Seç
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Konumu Manuel Olarak Seç</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                            Uygulama, gelecekte burada bir harita görüntüleyerek konumunuzu seçmenize olanak tanıyacaktır. Şimdilik, devam etmek için temsili bir konumu ayarlamak üzere "Ayarla" düğmesine tıklayın.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleManualLocationSelect}>Ayarla</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                </div>
+                            ) : (
+                                <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full" disabled={isLoading}>
+                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4"/>}
+                                    {isLoading ? 'Konum Alınıyor...' : 'Konum İzni Ver'}
+                                </Button>
+                            )}
+                          </>
                         )}
                     </div>
                  </div>
@@ -447,7 +484,7 @@ export default function SignupForm() {
                     onClick={async () => {
                         const isValid = await form.trigger();
                         if (isValid) {
-                            if (step === 2 && isUploading) {
+                            if (step === 2 && isUploading && !finalProfilePictureUrl) {
                                 toast({ title: "Lütfen Bekleyin", description: "Profil fotoğrafınız hala yükleniyor." });
                                 return;
                             }
@@ -455,7 +492,7 @@ export default function SignupForm() {
                         }
                     }}
                     className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={(step === 3 && !location)}
+                    disabled={step === 3 && !location}
                  >
                     Devam Et
                  </Button>
@@ -465,9 +502,8 @@ export default function SignupForm() {
                     className="w-full h-12 text-base font-bold rounded-full" 
                     disabled={isLoading || isUploading}
                 >
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <PartyPopper className="mr-2 h-5 w-5" />
-                    Kaydı Tamamla
+                    {isLoading || isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PartyPopper className="mr-2 h-5 w-5" />}
+                    {isLoading || isUploading ? 'Kaydediliyor...' : 'Kaydı Tamamla'}
                 </Button>
                )}
             </div>
