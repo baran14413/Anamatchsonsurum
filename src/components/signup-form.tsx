@@ -152,14 +152,14 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(8);
   const auth = useAuth();
   const firestore = useFirestore();
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      name: "Baran",
       gender: undefined,
       lookingFor: "",
       distancePreference: 80,
@@ -251,7 +251,7 @@ export default function SignupForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
         {step > 1 && (
           <Button variant="ghost" size="icon" onClick={prevStep}>
@@ -268,7 +268,7 @@ export default function SignupForm() {
       <main className="flex flex-1 flex-col p-6 overflow-hidden">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-4 overflow-y-auto">
+            <div className="flex-1 space-y-4 overflow-y-auto flex flex-col">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -457,9 +457,9 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <div className="flex-1 flex flex-col min-h-0">
-                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-                  <div className="flex-1 space-y-8 pt-4 overflow-y-auto">
+                  <h1 className="text-3xl font-bold shrink-0">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
+                  <p className="text-muted-foreground shrink-0">{langTr.signup.step8.description}</p>
+                  <div className="flex-1 space-y-8 pt-4 overflow-y-auto pb-4">
                     <FormField
                       control={form.control}
                       name="drinking"
