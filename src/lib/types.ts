@@ -1,9 +1,10 @@
+
 export type UserProfile = {
   id: string;
-  name: string;
-  age: number;
+  fullName?: string;
+  dateOfBirth?: string;
   images: string[];
-  bio: string;
+  bio?: string;
   interests: string[];
   location?: {
     latitude: number;

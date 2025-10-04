@@ -1,26 +1,35 @@
 
 "use client";
 
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile as UserProfileType } from "@/lib/types";
 import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform } from "framer-motion";
 import { useState } from "react";
-import { ChevronUp, Info, MapPin, Heart, X } from "lucide-react";
+import { Info, MapPin, Heart, X } from "lucide-react";
 
 interface ProfileCardProps {
-  profile: UserProfile;
+  profile: UserProfileType;
   onSwipe: (direction: 'left' | 'right') => void;
   isTopCard: boolean;
 }
+
+const calculateAge = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+};
 
 export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const x = useMotionValue(0);
   
-  // Rotate the card as it's dragged
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  
-  // Opacity of like/nope indicators
   const likeOpacity = useTransform(x, [10, 100], [0, 1]);
   const nopeOpacity = useTransform(x, [-100, -10], [1, 0]);
 
@@ -33,26 +42,23 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   };
 
   const handleImageNavigation = (e: React.MouseEvent, navDirection: 'prev' | 'next') => {
-    e.stopPropagation(); // Prevent card drag
-    if(navDirection === 'next') {
-        setCurrentImageIndex((prev) => Math.min(prev + 1, profile.images.length - 1));
+    e.stopPropagation();
+    if (navDirection === 'next') {
+      setCurrentImageIndex((prev) => Math.min(prev + 1, profile.images.length - 1));
     } else {
-        setCurrentImageIndex((prev) => Math.max(prev - 1, 0));
+      setCurrentImageIndex((prev) => Math.max(prev - 1, 0));
     }
   };
+  
+  const userAge = calculateAge(profile.dateOfBirth);
 
   return (
     <motion.div
       className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      style={{ 
-        x, 
-        rotate, 
-        zIndex: isTopCard ? 2 : 1 
-      }}
+      style={{ x, rotate, zIndex: isTopCard ? 2 : 1 }}
       drag={isTopCard ? "x" : false}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      // Animate properties when card enters/leaves the stack
       initial={{ scale: 1, y: 0, opacity: 1 }}
       animate={{
         scale: isTopCard ? 1 : 0.95,
@@ -68,7 +74,6 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
       transition={{ type: "spring", stiffness: 300, damping: 35 }}
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-xl">
-        {/* Swipe Indicators */}
         <motion.div style={{ opacity: likeOpacity }} className="absolute left-8 top-8 z-10 transform">
             <Heart className="h-32 w-32 text-green-400 fill-green-400" strokeWidth={1} />
         </motion.div>
@@ -76,26 +81,22 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
             <X className="h-32 w-32 text-red-500" strokeWidth={1} />
         </motion.div>
 
-        {/* Main Image */}
         <div className="absolute inset-0">
           <Image
             src={profile.images[currentImageIndex]}
-            alt={profile.name}
+            alt={profile.fullName || 'Profil fotosu'}
             fill
             className="object-cover"
             priority={isTopCard}
             data-ai-hint="person portrait"
           />
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent"></div>
           
-          {/* Image Navigation */}
           <div className="absolute inset-0 flex">
             <div className="flex-1" onClick={(e) => handleImageNavigation(e, 'prev')} />
             <div className="flex-1" onClick={(e) => handleImageNavigation(e, 'next')} />
           </div>
 
-          {/* Image Progress Bar */}
           {profile.images.length > 1 && (
             <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
               {profile.images.map((_, index) => (
@@ -107,14 +108,15 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
           )}
         </div>
 
-        {/* Info at bottom */}
         <div className="absolute bottom-0 w-full p-5 text-white z-10 space-y-1">
           <div className="flex items-end justify-between">
             <div className="max-w-[calc(100%-50px)]">
               <h2 className="text-3xl font-bold drop-shadow-lg">
-                {profile.name}, <span className="font-light">{profile.age}</span>
+                {profile.fullName}, <span className="font-light">{userAge}</span>
               </h2>
-              <p className="mt-1 text-white/95 drop-shadow-md text-base truncate">{profile.interests.join(' • ')}</p>
+              {profile.interests && profile.interests.length > 0 && (
+                 <p className="mt-1 text-white/95 drop-shadow-md text-base truncate">{profile.interests.join(' • ')}</p>
+              )}
             </div>
             <button className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
               <Info className="h-6 w-6" />
