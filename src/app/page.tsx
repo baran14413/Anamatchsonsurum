@@ -5,6 +5,8 @@ import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
 import Image from 'next/image';
+import googleLogo from '@/img/googlelogin.png';
+import emailLogo from '@/img/gmaillogin.png';
 
 export default function WelcomePage() {
   return (
@@ -30,13 +32,13 @@ export default function WelcomePage() {
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
-                <Image src="/img/googlelogin.png" alt="Google logo" width={24} height={24} className="mr-4" />
+                <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
                 Google ile devam et
               </Button>
             </Link>
             <Link href="/login" className='w-full block'>
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-                <Image src="/img/gmaillogin.png" alt="Email logo" width={24} height={24} className="mr-4" />
+                <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
                 E-posta ile devam et
               </Button>
             </Link>
