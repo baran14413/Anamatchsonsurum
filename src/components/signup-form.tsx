@@ -62,35 +62,47 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         }
     };
     
+    const smartInputHandler = (
+      e: React.ChangeEvent<HTMLInputElement>,
+      field: 'day' | 'month'
+    ) => {
+      const val = e.target.value.replace(/[^0-9]/g, '');
+      
+      if (field === 'day') {
+        if (parseInt(val) > 31) return;
+        if (val.length > 1 && parseInt(val.charAt(0)) > 3) return;
+        handleDateChange(val, month, year);
+        if (val.length === 2) monthRef.current?.focus();
+
+      } else if (field === 'month') {
+        if (parseInt(val) > 12) return;
+        if (val.length > 1 && parseInt(val.charAt(0)) > 1) return;
+        handleDateChange(day, val, year);
+        if (val.length === 2) yearRef.current?.focus();
+      }
+    };
+
     return (
         <div className="flex items-center gap-2">
             <Input
                 placeholder="GG"
                 maxLength={2}
                 value={day}
-                onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    handleDateChange(val, month, year);
-                    if (val.length === 2) monthRef.current?.focus();
-                }}
+                onChange={(e) => smartInputHandler(e, 'day')}
                 disabled={disabled}
-                className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
+                className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
-            <span className="text-2xl text-muted-foreground">/</span>
+            <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={monthRef}
                 placeholder="AA"
                 maxLength={2}
                 value={month}
-                onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    handleDateChange(day, val, year);
-                    if (val.length === 2) yearRef.current?.focus();
-                }}
+                onChange={(e) => smartInputHandler(e, 'month')}
                 disabled={disabled}
-                 className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
+                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
-            <span className="text-2xl text-muted-foreground">/</span>
+            <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={yearRef}
                 placeholder="YYYY"
@@ -101,7 +113,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                      handleDateChange(day, month, val);
                 }}
                 disabled={disabled}
-                className="text-2xl text-center h-16 w-28 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
+                className="text-xl text-center h-14 w-24 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
         </div>
     )
@@ -120,6 +132,7 @@ export default function SignupForm() {
     defaultValues: {
       name: "",
     },
+    mode: "onChange",
   });
 
   const nextStep = () => setStep((prev) => prev + 1);
