@@ -1,17 +1,11 @@
 "use server-only";
 import * as admin from 'firebase-admin';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
 
-// This ensures that the .env file is loaded at the root of the project
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-// This function ensures that the service account JSON is properly parsed,
-// whether it's a raw string or base64 encoded.
 function parseServiceAccount(): admin.ServiceAccount {
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
+
     if (!serviceAccountString) {
-        throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. Please ensure your .env file is correctly set up.");
+        throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set. Please ensure it's available in your deployment environment.");
     }
 
     try {
@@ -22,7 +16,7 @@ function parseServiceAccount(): admin.ServiceAccount {
         try {
             const decodedString = Buffer.from(serviceAccountString, 'base64').toString('utf8');
             if (!decodedString) {
-                 throw new Error("Base64 decoding resulted in an empty string.");
+                 throw new Error("Base64 decoding of FIREBASE_SERVICE_ACCOUNT resulted in an empty string.");
             }
             return JSON.parse(decodedString);
         } catch (e2: any) {
@@ -32,6 +26,7 @@ function parseServiceAccount(): admin.ServiceAccount {
     }
 }
 
+
 if (!admin.apps.length) {
   try {
     const serviceAccount = parseServiceAccount();
@@ -39,8 +34,7 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount),
     });
   } catch (e: any) {
-    console.error('Firebase Admin initialization error', e.message);
-    // Propagate the error to make it visible during build/runtime
+    console.error('Firebase Admin initialization error:', e.message);
     throw new Error(`Could not initialize Firebase Admin SDK. Reason: ${e.message}`);
   }
 }
