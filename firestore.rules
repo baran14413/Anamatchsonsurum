@@ -1,3 +1,21 @@
+/**
+ * @file Firestore Security Rules for BeMatch application.
+ *
+ * @core_philosophy This ruleset enforces a strict user-ownership model. Each user has exclusive
+ *   access to their profile data, matches, and associated chat messages.
+ *
+ * @data_structure The data is structured hierarchically under `/users/{userId}`, with
+ *   matches stored in the `/users/{userId}/matches/{matchId}` subcollection and chat messages in
+ *   `/users/{userId}/matches/{matchId}/messages/{messageId}`.
+ *
+ * @key_security_decisions
+ *   - User listing is disallowed.
+ *   - Strict ownership is enforced for all data: a user can only access data under their own userId.
+ *
+ * @denormalization_justification
+ *   The data structure avoids costly `get()` calls by nesting data under user-specific paths,
+ *   allowing security rules to rely on path parameters and `request.auth.uid` for authorization.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -5,88 +23,73 @@ service cloud.firestore {
     /**
      * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) Authenticated user can create their own profile.
-     * @allow (get, update, delete) Authenticated user can read, update and delete their own profile.
-     * @deny (create) Authenticated user cannot create profile for another user.
-     * @deny (get, update, delete) Authenticated user cannot read, update and delete another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc if the profile id matches their UID.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, or delete their profile at /users/user_abc.
+     * @deny (create) - User with UID 'user_xyz' cannot create a profile at /users/user_abc.
+     * @deny (update, delete) - User with UID 'user_xyz' cannot update or delete the profile at /users/user_abc.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
+      // Verifies that the user is signed in.
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      // Allows a user to create their own profile, enforcing that the userId matches their auth UID.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      // Allows a user to update their own profile.  The id field is immutable.
+      allow update: if isSignedIn() && isExistingOwner(userId) && resource.data.id == request.resource.data.id;
+      // Allows a user to delete their own profile.
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
      * @description Controls access to match documents for a specific user.
      * @path /users/{userId}/matches/{matchId}
-     * @allow (create) Authenticated user can create a match under their user ID.
-     * @allow (get, list, update, delete) Authenticated user can read, list, update and delete matches under their user ID.
-     * @deny (create) Authenticated user cannot create match under another user ID.
-     * @deny (get, list, update, delete) Authenticated user cannot read, list, update and delete matches under another user ID.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - User with UID 'user_abc' can create a match document under their profile.
+     * @allow (get, list, update, delete) - User with UID 'user_abc' can read, list, update, or delete match documents under their profile.
+     * @deny (create) - User with UID 'user_xyz' cannot create a match document under /users/user_abc.
+     * @deny (get, list, update, delete) - User with UID 'user_xyz' cannot read, list, update, or delete match documents under /users/user_abc.
+     * @principle Restricts access to a user's own matches.
      */
     match /users/{userId}/matches/{matchId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to chat message documents within a specific match for a user.
+     * @description Controls access to chat messages within a match.
      * @path /users/{userId}/matches/{matchId}/messages/{messageId}
-     * @allow (create) Authenticated user can create a chat message under their user ID and match ID.
-     * @allow (get, list, update, delete) Authenticated user can read, list, update and delete chat messages under their user ID and match ID.
-     * @deny (create) Authenticated user cannot create chat message under another user ID or match ID.
-     * @deny (get, list, update, delete) Authenticated user cannot read, list, update and delete chat messages under another user ID or match ID.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - User with UID 'user_abc' can create a message in a match they are part of.
+     * @allow (get, list) - User with UID 'user_abc' can read messages in a match they are part of.
+     * @allow (update, delete) - User with UID 'user_abc' cannot update or delete messages (not allowed).
+     * @deny (create) - User with UID 'user_xyz' cannot create a message under /users/user_abc/matches/{matchId}.
+     * @principle Restricts access to chat messages to users within the specific match.
      */
     match /users/{userId}/matches/{matchId}/messages/{messageId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow update: if false;
+      allow delete: if false;
     }
+  }
+
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the requesting user is the owner of the resource.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  // Helper function to determine if the requesting user is the existing owner of the resource,
+  // and that the resource exists.  This is critical for update/delete operations to prevent
+  // attempts to modify or delete non-existent data.
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
   }
 }
