@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useAuth } from "@/firebase";
@@ -14,11 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import { langTr } from "@/languages/tr";
 
-const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies", "/quit"];
+const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies"];
 const appRoot = "/anasayfa";
 
 const Header = () => {
-    const t = langTr;
     return (
         <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b">
             <Link href={appRoot} className="flex items-center gap-2 font-bold text-xl">
@@ -50,14 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const t = langTr;
 
   const handleLogout = useCallback(async () => {
-    if (!auth) {
-        toast({
-            title: t.ayarlar.toasts.logoutErrorTitle,
-            description: "Auth service not available.",
-            variant: 'destructive',
-        });
-        return;
-    }
+    if (!auth) return;
     try {
       await signOut(auth);
       router.replace('/'); 
@@ -81,20 +72,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, handleLogout]);
 
   useEffect(() => {
-    if (isUserLoading) {
-      return; 
-    }
+    if (isUserLoading) return;
 
     const isPublicPage = publicPaths.some(path => pathname.startsWith(path));
 
-    if (user) {
-      if (isPublicPage) {
-        router.replace(appRoot);
-      }
-    } else {
-      if (!isPublicPage) {
-        router.replace("/");
-      }
+    if (user && isPublicPage) {
+      router.replace(appRoot);
+    } else if (!user && !isPublicPage) {
+      router.replace("/");
     }
   }, [user, isUserLoading, pathname, router]);
 
@@ -106,9 +91,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const isAppPage = !publicPaths.some(path => pathname.startsWith(path));
+  const isAppPage = user && !publicPaths.some(path => pathname.startsWith(path));
 
-  if (!isAppPage || !user) {
+  if (!isAppPage) {
     return <>{children}</>;
   }
 

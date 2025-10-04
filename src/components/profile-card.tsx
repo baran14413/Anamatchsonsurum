@@ -1,10 +1,9 @@
-
 "use client";
 
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MapPin, Heart, X, ArrowUp } from "lucide-react";
 import { langTr } from "@/languages/tr";
 
@@ -28,7 +27,6 @@ const calculateAge = (dateString: string | undefined) => {
 
 export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const t = langTr;
   const x = useMotionValue(0);
   
@@ -38,17 +36,17 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.x < -100) {
-      setSwipeDirection('left');
       onSwipe('left');
     } else if (info.offset.x > 100) {
-      setSwipeDirection('right');
       onSwipe('right');
     }
   };
 
-  const images = profile.images && profile.images.length > 0 
-    ? profile.images 
-    : ['https://picsum.photos/seed/placeholder/600/800'];
+  const images = useMemo(() => {
+    return profile.images && profile.images.length > 0 
+      ? profile.images 
+      : ['https://picsum.photos/seed/placeholder/600/800'];
+  }, [profile.images]);
 
   const handleImageNavigation = (e: React.MouseEvent, navDirection: 'prev' | 'next') => {
     e.stopPropagation();
@@ -69,12 +67,12 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      exit={{
-        x: swipeDirection === 'right' ? 300 : -300,
-        opacity: 0,
-        scale: 0.8,
-        transition: { duration: 0.3 }
+      animate={{
+        scale: isTop ? 1 : 0.95,
+        y: isTop ? 0 : -20,
+        zIndex: isTop ? 10 : 0,
       }}
+      exit={{ x: 300, opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-xl">
