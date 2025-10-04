@@ -9,8 +9,15 @@ import { motion } from 'framer-motion';
 import googleLogo from '@/img/googlelogin.png';
 import emailLogo from '@/img/gmaillogin.png';
 import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
+import { useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, Globe } from 'lucide-react';
 
 export default function WelcomePage() {
+  const [lang, setLang] = useState('en');
+  const t = lang === 'en' ? langEn : langTr;
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center p-8 text-center">
@@ -34,40 +41,63 @@ export default function WelcomePage() {
 
         <div className="w-full max-w-sm space-y-6">
           <div className="text-xs text-white/90">
-            <p>
-              {langEn.welcome.agreement.split('<1>')[0]}
-              <Link href="/tos" className="font-bold underline">{langEn.welcome.agreement.split('<1>')[1].split('</1>')[0]}</Link>
-              {langEn.welcome.agreement.split('</1>')[1].split('<3>')[0]}
-              <Link href="/privacy" className="font-bold underline">{langEn.welcome.agreement.split('<3>')[1].split('</3>')[0]}</Link>
-              {langEn.welcome.agreement.split('</3>')[1].split('<5>')[0]}
-              <Link href="/cookies" className="font-bold underline">{langEn.welcome.agreement.split('<5>')[1].split('</5>')[0]}</Link>
-              {langEn.welcome.agreement.split('</5>')[1]}
-            </p>
+            <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement }} />
           </div>
 
           <div className="space-y-3">
-            <Link href="/kurallar" className="w-full block">
+            <Link href={`/kurallar?lang=${lang}`} className="w-full block">
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
-                {langEn.welcome.continueWithGoogle}
+                {t.welcome.continueWithGoogle}
               </Button>
             </Link>
-            <Link href="/login" className="w-full block">
+            <Link href={`/login?lang=${lang}`} className="w-full block">
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
-                {langEn.welcome.continueWithEmail}
+                {t.welcome.continueWithEmail}
               </Button>
             </Link>
           </div>
 
           <Link href="/help" className="text-sm font-semibold hover:underline">
-            {langEn.welcome.loginIssues}
+            {t.welcome.loginIssues}
           </Link>
         </div>
       </main>
+
+       <div className="absolute bottom-4 right-4">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10 rounded-full">
+                <Globe className="mr-2 h-4 w-4" />
+                {lang === 'en' ? 'English' : 'Türkçe'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2 bg-background/80 backdrop-blur-md border-white/20">
+              <div className="space-y-1">
+                 <Button
+                    variant="ghost"
+                    onClick={() => setLang('en')}
+                    className={`w-full justify-start ${lang === 'en' ? 'font-semibold' : 'font-normal'}`}
+                  >
+                   {lang === 'en' && <Check className="mr-2 h-4 w-4" />}
+                   English
+                 </Button>
+                 <Button
+                    variant="ghost"
+                    onClick={() => setLang('tr')}
+                    className={`w-full justify-start ${lang === 'tr' ? 'font-semibold' : 'font-normal'}`}
+                  >
+                    {lang === 'tr' && <Check className="mr-2 h-4 w-4" />}
+                    Türkçe
+                 </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+      </div>
     </div>
   );
 }
