@@ -192,7 +192,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(12);
+  const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const auth = useAuth();
@@ -942,10 +942,9 @@ export default function SignupForm() {
                      <div className="grid grid-cols-2 gap-4">
                       {photoSlots.map((slot, index) => (
                         <div key={index} className="aspect-[3/4] group">
-                           <button
-                            type="button"
+                           <div
                             onClick={() => openFilePicker(index)}
-                            className="w-full h-full border-2 border-dashed bg-muted/50 rounded-xl flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
+                            className="cursor-pointer w-full h-full border-2 border-dashed bg-muted/50 rounded-xl flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
                               <>
@@ -964,7 +963,7 @@ export default function SignupForm() {
                                     <Camera className="w-8 h-8" />
                                 </div>
                             )}
-                           </button>
+                           </div>
                         </div>
                       ))}
                      </div>
