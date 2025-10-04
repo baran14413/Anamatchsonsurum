@@ -50,8 +50,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
         zIndex: isTopCard ? 2 : 1 
       }}
       drag={isTopCard ? "x" : false}
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0.5}
+      dragElastic={0.7}
       onDragEnd={handleDragEnd}
       // Animate properties when card enters/leaves the stack
       initial={{ scale: 1, y: 0, opacity: 1 }}
@@ -64,9 +63,9 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
         x: x.get() > 0 ? 300 : -300,
         opacity: 0,
         scale: 0.8,
-        transition: { duration: 0.3 }
+        transition: { duration: 0.2 }
       }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      transition={{ type: "spring", stiffness: 300, damping: 35 }}
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-xl">
         {/* Swipe Indicators */}
