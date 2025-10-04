@@ -369,7 +369,7 @@ export default function SignupForm() {
                         {location ? (
                             <div className="flex items-center justify-center p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
                                 <Check className="h-5 w-5 mr-2"/>
-                                <span className="text-sm font-medium">Konum Başarıyla Alındı!</span>
+                                <span className="text-sm font-medium">Konum: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</span>
                             </div>
                         ) : (
                           <>
