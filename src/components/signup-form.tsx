@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { langTr } from "@/languages/tr";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -48,52 +49,13 @@ const formSchema = z.object({
 type SignupFormValues = z.infer<typeof formSchema>;
 
 const lookingForOptions = [
-    { id: 'long-term', label: 'Uzun süreli ilişki', icon: Heart },
-    { id: 'short-term', label: 'Kısa süreli ilişki', icon: GlassWater },
-    { id: 'friends', label: 'Yeni arkadaşlar', icon: Users },
-    { id: 'casual', label: 'Takılmak için', icon: Briefcase },
-    { id: 'not-sure', label: 'Emin değilim', icon: Sparkles },
-    { id: 'whatever', label: 'Her şeye açığım', icon: Hand },
+    { id: 'long-term', icon: Heart },
+    { id: 'short-term', icon: GlassWater },
+    { id: 'friends', icon: Users },
+    { id: 'casual', icon: Briefcase },
+    { id: 'not-sure', icon: Sparkles },
+    { id: 'whatever', icon: Hand },
 ];
-
-const lifestyleOptions = {
-  drinking: [
-    { id: 'not_for_me', label: 'Bana göre değil' },
-    { id: 'dont_drink', label: 'İçmiyorum' },
-    { id: 'rarely', label: 'Nadiren' },
-    { id: 'special_occasions', label: 'Özel günlerde' },
-    { id: 'socially_weekends', label: 'Hafta sonları sosyalleşirken' },
-    { id: 'most_nights', label: 'Çoğu gece' },
-  ],
-  smoking: [
-    { id: 'social_smoker', label: 'Sosyal içici' },
-    { id: 'with_drinks', label: 'İçkiyle birlikte' },
-    { id: 'non_smoker', label: 'Kullanmıyorum' },
-    { id: 'smoker', label: 'Sigara Kullanan' },
-    { id: 'trying_to_quit', label: 'Bırakmaya çalışıyorum' },
-  ],
-  workout: [
-    { id: 'everyday', label: 'Her gün' },
-    { id: 'often', label: 'Sık sık' },
-    { id: 'sometimes', label: 'Ara sıra' },
-    { id: 'never', label: 'Asla yapmam'},
-  ],
-  pets: [
-    { id: 'dog', label: 'Köpek' },
-    { id: 'cat', label: 'Kedi' },
-    { id: 'reptile', label: 'Sürüngen' },
-    { id: 'amphibian', label: 'Amfibik' },
-    { id: 'bird', label: 'Kuş' },
-    { id: 'fish', label: 'Balık' },
-    { id: 'none_but_love', label: 'Hayvanım yok ama çok severim' },
-    { id: 'other', label: 'Diğer' },
-    { id: 'turtle', label: 'Kaplumbağa' },
-    { id: 'hamster', label: 'Hamster' },
-    { id: 'rabbit', label: 'Tavşan' },
-    { id: 'dont_like', label: 'Hoşlanmam' },
-    { id: 'all_pets', label: 'Tüm evcil hayvanlar' },
-  ]
-};
 
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
@@ -114,17 +76,25 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         let newDay = day, newMonth = month, newYear = year;
 
         if (field === 'day') {
-            if (val.length > 0 && parseInt(val.charAt(0)) > 3) val = day;
-            else if (val.length > 1 && parseInt(val) > 31) val = day;
-            setDay(val);
-            newDay = val;
-            if (val.length === 2) monthRef.current?.focus();
+            if (val.length > 0 && parseInt(val.charAt(0)) > 3) {
+                // do nothing
+            } else if (val.length > 1 && parseInt(val) > 31) {
+                // do nothing
+            } else {
+              setDay(val);
+              newDay = val;
+              if (val.length === 2) monthRef.current?.focus();
+            }
         } else if (field === 'month') {
-            if (val.length > 0 && parseInt(val.charAt(0)) > 1) val = month;
-            else if (val.length > 1 && parseInt(val) > 12) val = month;
-            setMonth(val);
-            newMonth = val;
-            if (val.length === 2) yearRef.current?.focus();
+             if (val.length > 0 && parseInt(val.charAt(0)) > 1) {
+                // do nothing
+            } else if (val.length > 1 && parseInt(val) > 12) {
+                // do nothing
+            } else {
+              setMonth(val);
+              newMonth = val;
+              if (val.length === 2) yearRef.current?.focus();
+            }
         } else {
             setYear(val);
             newYear = val;
@@ -144,7 +114,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         <div className="flex items-center gap-2">
             <Input
                 ref={dayRef}
-                placeholder="GG"
+                placeholder={langTr.signup.step2.dayPlaceholder}
                 maxLength={2}
                 value={day}
                 onChange={(e) => handleDateChange(e, setDay, 'day')}
@@ -155,7 +125,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={monthRef}
-                placeholder="AA"
+                placeholder={langTr.signup.step2.monthPlaceholder}
                 maxLength={2}
                 value={month}
                 onChange={(e) => handleDateChange(e, setMonth, 'month')}
@@ -166,7 +136,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={yearRef}
-                placeholder="YYYY"
+                placeholder={langTr.signup.step2.yearPlaceholder}
                 maxLength={4}
                 value={year}
                 onChange={(e) => handleDateChange(e, setYear, 'year')}
@@ -206,7 +176,6 @@ export default function SignupForm() {
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
 
   const filledLifestyleCount = useMemo(() => {
-    // We count 'pets' array differently. If it has items, it counts as 1.
     return lifestyleValues.filter((value, index) => {
         if (index === 3) { // This is the 'pets' array
             return Array.isArray(value) && value.length > 0;
@@ -239,7 +208,7 @@ export default function SignupForm() {
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
       if (step === 8) {
-         toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
+         toast({title: langTr.signup.common.tempToast, description: langTr.signup.common.tempToastDescription})
       } else {
         nextStep();
       }
@@ -259,8 +228,8 @@ export default function SignupForm() {
       },
       (error) => {
         toast({
-            title: "Konum İzni Reddedildi",
-            description: "Eşleşmeleri bulmak için konum izni gereklidir. Lütfen tarayıcı ayarlarından izin verin.",
+            title: langTr.signup.step5.errorTitle,
+            description: langTr.signup.step5.errorMessage,
             variant: "destructive"
         });
         setIsLoading(false);
@@ -292,7 +261,7 @@ export default function SignupForm() {
         <Progress value={progressValue} className="h-2 flex-1" />
         {(step === 7 || step === 8) && (
             <Button variant="ghost" onClick={handleSkip} className="shrink-0">
-              Atla
+              {langTr.signup.progressHeader.skip}
             </Button>
         )}
       </header>
@@ -302,7 +271,7 @@ export default function SignupForm() {
             <div className="flex-1 space-y-4 overflow-y-auto">
               {step === 1 && (
                 <>
-                  <h1 className="text-3xl font-bold">Adın ne?</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
                   <FormField
                     control={form.control}
                     name="name"
@@ -310,13 +279,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="Adını gir"
+                            placeholder={langTr.signup.step1.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          Profilinde bu şekilde görünecek. Bunu daha sonra değiştiremezsin.
+                          {langTr.signup.step1.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -326,7 +295,7 @@ export default function SignupForm() {
               )}
                {step === 2 && (
                 <>
-                  <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
                     <Controller
                         control={form.control}
                         name="dateOfBirth"
@@ -340,7 +309,7 @@ export default function SignupForm() {
                                     />
                                 </FormControl>
                                 <FormLabel className="text-muted-foreground pt-2 block">
-                                    Profilinde yaşın gösterilir, doğum tarihin değil.
+                                    {langTr.signup.step2.label}
                                 </FormLabel>
                                 {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
                             </FormItem>
@@ -350,7 +319,7 @@ export default function SignupForm() {
               )}
               {step === 3 && (
                  <>
-                   <h1 className="text-3xl font-bold">Ben bir...</h1>
+                   <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
                    <FormField
                     control={form.control}
                     name="gender"
@@ -364,7 +333,7 @@ export default function SignupForm() {
                                 className="w-full h-14 rounded-full text-lg"
                                 onClick={() => field.onChange('female')}
                               >
-                                Kadın
+                                {langTr.signup.step3.woman}
                               </Button>
                               <Button
                                 type="button"
@@ -372,7 +341,7 @@ export default function SignupForm() {
                                 className="w-full h-14 rounded-full text-lg"
                                 onClick={() => field.onChange('male')}
                               >
-                                Erkek
+                                {langTr.signup.step3.man}
                               </Button>
                            </div>
                         </FormControl>
@@ -384,8 +353,8 @@ export default function SignupForm() {
               )}
                {step === 4 && (
                  <>
-                   <h1 className="text-3xl font-bold">Ne arıyorsun?</h1>
-                   <p className="text-muted-foreground">Merak etme, bunu daha sonra profilinden istediğin zaman değiştirebilirsin.</p>
+                   <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
+                   <p className="text-muted-foreground">{langTr.signup.step4.label}</p>
                    <FormField
                     control={form.control}
                     name="lookingFor"
@@ -393,8 +362,8 @@ export default function SignupForm() {
                       <FormItem className="space-y-3 pt-4">
                         <FormControl>
                            <div className="grid grid-cols-2 gap-3">
-                                {lookingForOptions.map(option => {
-                                    const Icon = option.icon;
+                                {langTr.signup.step4.options.map((option, index) => {
+                                    const Icon = lookingForOptions[index].icon;
                                     const isSelected = field.value === option.id;
                                     return (
                                         <button
@@ -425,24 +394,24 @@ export default function SignupForm() {
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                      <MapPin className="w-12 h-12 text-primary" />
                   </div>
-                  <h1 className="text-3xl font-bold">Konumunu Paylaş</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
                   <p className="text-muted-foreground mt-2 max-w-sm">
-                    Çevrendeki potansiyel eşleşmeleri görebilmek için konumunu bizimle paylaşman gerekiyor.
+                    {langTr.signup.step5.description}
                   </p>
                 </div>
               )}
               {step === 6 && (
                 <>
-                  <h1 className="text-3xl font-bold">Mesafe tercihin nedir?</h1>
-                  <p className="text-muted-foreground">Potansiyel eşleşmelerin bulunmasını istediğin maksimum mesafeyi ayarlamak için kaydırıcıyı kullan.</p>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step6.title}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step6.description}</p>
                   <FormField
                     control={form.control}
                     name="distancePreference"
                     render={({ field }) => (
                       <FormItem className="pt-12">
                         <div className="flex justify-between items-center mb-4">
-                            <FormLabel className="text-base">Mesafe Tercihi</FormLabel>
-                            <span className="font-bold text-base">{field.value} Km</span>
+                            <FormLabel className="text-base">{langTr.signup.step6.label}</FormLabel>
+                            <span className="font-bold text-base">{field.value} {langTr.signup.step6.unit}</span>
                         </div>
                         <FormControl>
                             <Slider
@@ -454,7 +423,7 @@ export default function SignupForm() {
                             />
                         </FormControl>
                          <p className="text-center text-muted-foreground pt-8">
-                            Tercihleri daha sonra Ayarlar'dan değiştirebilirsin
+                            {langTr.signup.step6.info}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -464,7 +433,7 @@ export default function SignupForm() {
               )}
               {step === 7 && (
                 <>
-                  <h1 className="text-3xl font-bold">Okulunu yazmak istersen...</h1>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
                   <FormField
                     control={form.control}
                     name="school"
@@ -472,13 +441,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="Okulunu gir"
+                            placeholder={langTr.signup.step7.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          Profilinde bu şekilde görünecek.
+                          {langTr.signup.step7.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -488,19 +457,18 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <div className="flex-1 space-y-8 overflow-y-auto">
-                  <h1 className="text-3xl font-bold">{currentName}, biraz da yaşam tarzı alışkanlıklarından bahsedelim</h1>
-                  <p className="text-muted-foreground">Eşleşme adaylarının alışkanlıkları, seninkilerle uyumlu mu? İlk sen başla.</p>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
                   <div className="space-y-8 pt-4">
-                    {/* Drinking */}
                     <FormField
                       control={form.control}
                       name="drinking"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />Ne sıklıkla içki içersin?</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
-                              {lifestyleOptions.drinking.map(opt => (
+                              {langTr.signup.step8.drinking.options.map(opt => (
                                 <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                               ))}
                             </div>
@@ -509,16 +477,15 @@ export default function SignupForm() {
                         </FormItem>
                       )}
                     />
-                     {/* Smoking */}
                     <FormField
                       control={form.control}
                       name="smoking"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />Ne sıklıkla sigara içersin?</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
-                              {lifestyleOptions.smoking.map(opt => (
+                              {langTr.signup.step8.smoking.options.map(opt => (
                                 <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                               ))}
                             </div>
@@ -527,16 +494,15 @@ export default function SignupForm() {
                         </FormItem>
                       )}
                     />
-                     {/* Workout */}
                     <FormField
                       control={form.control}
                       name="workout"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />Spor yapıyor musun?</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
-                              {lifestyleOptions.workout.map(opt => (
+                              {langTr.signup.step8.workout.options.map(opt => (
                                 <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                               ))}
                             </div>
@@ -545,16 +511,15 @@ export default function SignupForm() {
                         </FormItem>
                       )}
                     />
-                     {/* Pets */}
                     <Controller
                         name="pets"
                         control={form.control}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />Evcil hayvanın var mı?</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {lifestyleOptions.pets.map(opt => {
+                                {langTr.signup.step8.pets.options.map(opt => {
                                   const isSelected = field.value?.includes(opt.id);
                                   return (
                                     <Button
@@ -592,7 +557,7 @@ export default function SignupForm() {
                     className="w-full h-14 rounded-full text-lg font-bold"
                     disabled={isLoading}
                 >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Konumumu Paylaş'}
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step5.button}
               </Button>
               ) : step === 8 ? (
                 <Button
@@ -601,7 +566,7 @@ export default function SignupForm() {
                   className="w-full h-14 rounded-full text-lg font-bold"
                   disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Sonraki ${filledLifestyleCount}/4`}
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
                 </Button>
               ) : (
                 <Button
@@ -610,7 +575,7 @@ export default function SignupForm() {
                     className="w-full h-14 rounded-full text-lg font-bold"
                     disabled={isLoading}
                 >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'İlerle'}
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.next}
                 </Button>
               )}
             </div>
