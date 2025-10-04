@@ -24,7 +24,7 @@ export default function AnasayfaPage() {
   const currentProfile = profiles[currentIndex];
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden">
+    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative">
         <AnimatePresence>
             {currentProfile ? (
                  <ProfileCard
@@ -40,9 +40,9 @@ export default function AnasayfaPage() {
             )}
         </AnimatePresence>
         
-        {/* Action Buttons */}
-        <div className="px-4 pb-4 bg-background">
-            <div className="flex justify-around items-center h-24">
+        {/* Action Buttons are now part of the main layout, not a separate div at the bottom of content */}
+        <div className="absolute bottom-4 left-0 right-0 px-4 z-20">
+            <div className="flex justify-around items-center h-24 max-w-md mx-auto">
                 <button className="h-14 w-14 rounded-full bg-white shadow-lg flex items-center justify-center text-yellow-500 hover:bg-gray-100 transition-transform transform hover:scale-110">
                     <Undo size={28} />
                 </button>

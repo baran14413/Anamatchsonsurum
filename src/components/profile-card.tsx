@@ -51,15 +51,16 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
       setImageIndex(prev => Math.max(0, prev - 1));
     } else {
       // Clicked on the right side
-      setImageIndex(prev => Math.min(profile.images.length - 1, prev + 1));
+      setImageIndex(prev => Math.min((profile.images || []).length - 1, prev + 1));
     }
   };
 
   const age = calculateAge(profile.dateOfBirth);
+  const images = profile.images || [];
 
   return (
      <motion.div
-      className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center p-4 pt-16 pb-28"
+      className="absolute inset-0 flex items-center justify-center p-4 pt-4 pb-28" // Adjust padding
       style={{ touchAction: 'pan-y' }}
     >
       <motion.div
@@ -71,28 +72,32 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
       >
         <div className="relative w-full h-full" onClick={handleImageNavigation}>
             {/* Image Progress Bars */}
-            {profile.images.length > 1 && (
+            {images.length > 1 && (
                 <div className="absolute top-2 left-2 right-2 z-10 flex gap-1">
-                    {profile.images.map((_, index) => (
+                    {images.map((_, index) => (
                     <div key={index} className="flex-1 h-1 rounded-full bg-white/50">
-                        <motion.div 
-                          className="h-1 rounded-full bg-white"
-                          initial={{ width: '0%' }}
-                          animate={{ width: index === imageIndex ? '100%' : '0%' }}
-                          transition={{ duration: 0.3, ease: 'linear' }}
+                        <div 
+                          className={`h-1 rounded-full ${index === imageIndex ? 'bg-white' : ''}`}
                         />
                     </div>
                     ))}
                 </div>
             )}
-            <Image
-                src={profile.images[imageIndex]}
-                alt={profile.fullName || 'Profile image'}
-                layout="fill"
-                objectFit="cover"
-                className="pointer-events-none"
-                priority
-            />
+            {images.length > 0 ? (
+                <Image
+                    src={images[imageIndex]}
+                    alt={profile.fullName || 'Profile image'}
+                    layout="fill"
+                    objectFit="cover"
+                    className="pointer-events-none"
+                    priority
+                />
+            ) : (
+                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <p className="text-gray-500">No image</p>
+                </div>
+            )}
+
             {/* Swipe Indicators */}
             <motion.div
               style={{ opacity: likeOpacity }}
@@ -109,7 +114,7 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
         </div>
 
         {/* Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white z-10">
           <div className="flex items-center justify-between">
             <div>
                 <h3 className="text-2xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>

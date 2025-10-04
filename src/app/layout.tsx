@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { Inter } from 'next/font/google';
+import AppShell from "@/components/app-shell";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="tr" className={inter.className} suppressHydrationWarning>
       <body>
         <FirebaseClientProvider>
-          {children}
+          <AppShell>
+            {children}
+          </AppShell>
         </FirebaseClientProvider>
         <Toaster />
       </body>
