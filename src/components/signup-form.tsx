@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, User } from "firebase/auth";
-import { doc } from "firebase/firestore";
-import { useAuth, useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useAuth, useFirestore } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,108 +20,155 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, MapPin } from "lucide-react";
+import { Loader2, Eye, EyeOff, MapPin, Camera, Upload, ArrowLeft, Check, PartyPopper } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Checkbox } from "./ui/checkbox";
+import Image from "next/image";
 
-const formSchema = z.object({
+const TOTAL_STEPS = 5;
+
+// Step 1 Schema
+const step1Schema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
-  password: z.string().min(8, { message: "Şifre en az 8 karakter olmalıdır." })
-    .regex(/[a-z]/, { message: "Şifre en az bir küçük harf içermelidir." })
-    .regex(/[A-Z]/, { message: "Şifre en az bir büyük harf içermelidir." })
-    .regex(/[0-9]/, { message: "Şifre en az bir rakam içermelidir." })
-    .regex(/[^a-zA-Z0-9]/, { message: "Şifre en az bir özel karakter içermelidir." }),
+  fullName: z.string().min(3, { message: "Kullanıcı adı en az 3 karakter olmalıdır." }),
+  dateOfBirth: z.string().refine((dob) => new Date(dob) < new Date(), { message: "Doğum tarihi geçmiş bir tarih olmalıdır."}),
+});
+
+// Step 2 Schema
+const step2Schema = z.object({
+    profilePicture: z.string().url({ message: "Lütfen geçerli bir profil resmi yükleyin." }),
+});
+
+// Step 3 Schema
+const step3Schema = z.object({
+    gender: z.enum(["male", "female", "other"], { required_error: "Lütfen cinsiyetinizi seçin." }),
+});
+
+// Step 4 Schema
+const step4Schema = z.object({
+    matchPictures: z.array(z.string().url()).min(2, { message: "Lütfen en az 2 fotoğraf yükleyin." }),
+});
+
+// Step 5 Schema
+const step5Schema = z.object({
+  password: z.string().min(8, { message: "Şifre en az 8 karakter olmalıdır." }),
   confirmPassword: z.string(),
+  terms: z.boolean().refine(val => val === true, { message: "Kullanım koşullarını kabul etmelisiniz."}),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Şifreler eşleşmiyor.",
   path: ["confirmPassword"],
 });
 
-const getPasswordStrength = (password: string) => {
-  let score = 0;
-  if (!password) return 0;
-  if (password.length >= 8) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
-  return score;
-};
+
+const combinedSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema).merge(step5Schema);
+
+type SignupFormValues = z.infer<typeof combinedSchema>;
 
 export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [createdUser, setCreatedUser] = useState<User | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const auth = useAuth();
   const firestore = useFirestore();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(
+       step === 1 ? step1Schema :
+       step === 2 ? step2Schema :
+       step === 3 ? step3Schema :
+       step === 4 ? step4Schema :
+       step5Schema
+    ),
+    mode: "onChange",
     defaultValues: {
       email: "",
-      password: "",
-      confirmPassword: "",
-    },
-    mode: "onChange"
+      fullName: "",
+      profilePicture: "",
+      matchPictures: [],
+      terms: false,
+    }
   });
-  
-  const passwordValue = form.watch("password");
-  const passwordStrength = getPasswordStrength(passwordValue);
-  const strengthPercentage = passwordStrength > 0 ? (passwordStrength / 5) * 100 : 0;
-  
-  const strengthColors: { [key: number]: string } = {
-    0: "bg-transparent",
-    1: "bg-red-500",
-    2: "bg-orange-500",
-    3: "bg-yellow-500",
-    4: "bg-green-400",
-    5: "bg-green-500",
-  };
 
-  async function onAccountSubmit(values: z.infer<typeof formSchema>) {
+  const uploadFile = async (file: File) => {
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password
-      );
-      
-      const userDocRef = doc(firestore, "users", userCredential.user.uid);
-      
-      setDocumentNonBlocking(userDocRef, {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        createdAt: new Date(),
-        profileComplete: false,
-      }, { merge: true });
+        const formData = new FormData();
+        formData.append('file', file);
 
-      setCreatedUser(userCredential.user);
-      setStep(2);
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+        });
 
-    } catch (error: any) {
-        let description = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
-        if (error.code === 'auth/email-already-in-use') {
-            description = "Bu e-posta adresi zaten kullanılıyor.";
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Upload failed');
         }
-      toast({
-        title: "Kayıt Başarısız",
-        description,
-        variant: "destructive",
-      });
+        
+        const { url } = await response.json();
+        return url;
+    } catch (error: any) {
+        console.error('Upload failed:', error);
+        toast({
+            title: "Yükleme Başarısız",
+            description: `Resim yüklenirken bir hata oluştu: ${error.message}`,
+            variant: 'destructive',
+        });
+        return null;
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   }
 
-  const handleLocationPermission = () => {
+  const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        const url = await uploadFile(file);
+        if (url) {
+            form.setValue("profilePicture", url, { shouldValidate: true });
+        }
+    }
+  };
+
+  const handleMatchPicturesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+        const currentPictures = form.getValues("matchPictures") || [];
+        if(currentPictures.length + files.length > 5) {
+            toast({ title: "Hata", description: "En fazla 5 fotoğraf yükleyebilirsiniz.", variant: "destructive" });
+            return;
+        }
+
+        const uploadPromises = Array.from(files).map(file => uploadFile(file));
+        const urls = await Promise.all(uploadPromises);
+        const validUrls = urls.filter((url): url is string => url !== null);
+        
+        form.setValue("matchPictures", [...currentPictures, ...validUrls], { shouldValidate: true });
+    }
+  };
+
+  const nextStep = () => setStep(s => s + 1);
+  const prevStep = () => setStep(s => s - 1);
+
+  const handleStep1Submit = async (data: Pick<SignupFormValues, "email" | "fullName" | "dateOfBirth">) => {
+    setIsLoading(true);
+    // TODO: Add check for unique username
+    setIsLoading(false);
+    nextStep();
+  }
+
+  const handleStep2Submit = () => {
+    nextStep();
+  }
+
+  const handleStep3Submit = () => {
     setIsLoading(true);
     setLocationError(null);
     if (!navigator.geolocation) {
@@ -132,19 +179,9 @@ export default function SignupForm() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
-        if (createdUser) {
-          const userDocRef = doc(firestore, "users", createdUser.uid);
-          updateDocumentNonBlocking(userDocRef, {
-            location: { latitude, longitude },
-            profileComplete: true, // Assuming this is the last step for now
-          });
-          toast({
-            title: "Kayıt Tamamlandı!",
-            description: "Hesabınız oluşturuldu ve konumunuz kaydedildi. Maceraya hazırsın!",
-          });
-          router.push("/anasayfa");
-        }
+        // Location will be saved at the final step
+        nextStep();
+        setIsLoading(false);
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
@@ -155,114 +192,260 @@ export default function SignupForm() {
         setIsLoading(false);
       }
     );
-  };
-
-
-  if (step === 2) {
-    return (
-      <div className="space-y-6 text-center">
-        <div>
-          <h3 className="text-xl font-semibold">Son Bir Adım Kaldı!</h3>
-          <p className="text-muted-foreground mt-2">
-            BeMatch'in çevrendeki potansiyel eşleşmeleri sana gösterebilmesi için konum izni vermen gerekiyor.
-          </p>
-        </div>
-        
-        {locationError && (
-          <Alert variant="destructive">
-            <Terminal className="h-4 w-4" />
-            <AlertTitle>Hata</AlertTitle>
-            <AlertDescription>
-              {locationError}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Button onClick={handleLocationPermission} className="w-full h-12 text-base font-bold rounded-full" disabled={isLoading}>
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <MapPin className="mr-2 h-5 w-5" />
-          )}
-          Konum İzni Ver
-        </Button>
-      </div>
-    )
   }
 
+  const handleStep4Submit = () => {
+    nextStep();
+  }
+
+  const onFinalSubmit = async (data: SignupFormValues) => {
+    setIsLoading(true);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        const user = userCredential.user;
+
+        const userDocRef = doc(firestore, "users", user.uid);
+        
+        // Finalize location gathering inside final submission
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+
+            await setDoc(userDocRef, {
+                uid: user.uid,
+                email: data.email,
+                fullName: data.fullName,
+                dateOfBirth: data.dateOfBirth,
+                profilePicture: data.profilePicture,
+                gender: data.gender,
+                images: data.matchPictures, // Changed from matchPictures
+                location: { latitude, longitude },
+                createdAt: new Date(),
+                profileComplete: true,
+            });
+
+            toast({
+                title: "Kayıt Tamamlandı!",
+                description: "Hesabın oluşturuldu. Maceraya hazırsın!",
+                className: "bg-green-500 text-white",
+            });
+            router.push("/anasayfa");
+
+        }, (error) => {
+            // This fallback shouldn't ideally be hit if step 3 is mandatory
+            setLocationError("Konum bilgisi alınamadı. Kayıt tamamlanamadı.");
+            setIsLoading(false);
+        });
+
+    } catch (error: any) {
+        let description = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "Bu e-posta adresi zaten kullanılıyor. Lütfen Adım 1'e geri dönün.";
+        }
+        toast({
+            title: "Kayıt Başarısız",
+            description,
+            variant: "destructive",
+        });
+        setIsLoading(false);
+    }
+  };
+  
+  const progress = (step / TOTAL_STEPS) * 100;
 
   return (
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onAccountSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>E-posta</FormLabel>
-                <FormControl>
-                  <Input placeholder="ornek@eposta.com" {...field} className="bg-white/50 dark:bg-black/20" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+        <form onSubmit={form.handleSubmit(
+            step === 1 ? handleStep1Submit :
+            step === 2 ? handleStep2Submit :
+            step === 3 ? handleStep3Submit :
+            step === 4 ? handleStep4Submit :
+            onFinalSubmit
+        )} className="space-y-6">
+            <Progress value={progress} className="h-2" />
+            
+            {step > 1 && (
+                <Button variant="ghost" onClick={prevStep} className="absolute top-6 left-4 text-muted-foreground">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Geri
+                </Button>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Şifre</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="bg-white/50 dark:bg-black/20"/>
-                  </FormControl>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+
+            {step === 1 && (
+                <div className="space-y-4 pt-8">
+                    <h3 className="text-xl font-semibold">Hesabını Oluştur</h3>
+                    <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>E-posta</FormLabel>
+                            <FormControl><Input placeholder="ornek@eposta.com" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="fullName" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Kullanıcı Adı</FormLabel>
+                            <FormControl><Input placeholder="benzersiz_kullanici_adin" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="dateOfBirth" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Doğum Tarihi</FormLabel>
+                            <FormControl><Input type="date" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
-                 {passwordValue && (
-                  <div className="space-y-1 pt-1">
-                    <Progress value={strengthPercentage} className={'h-1.5'} indicatorClassName={strengthColors[passwordStrength]} />
-                    <p className="text-xs text-muted-foreground">
-                      Şifre gücü
+            )}
+
+            {step === 2 && (
+                <div className="space-y-4 text-center pt-8">
+                    <h3 className="text-xl font-semibold">Profil Fotoğrafı Ekle</h3>
+                    <p className="text-muted-foreground text-sm">İlk izlenim önemlidir. Yüzünün net göründüğü bir fotoğraf seç.</p>
+                    <FormField control={form.control} name="profilePicture" render={({ field }) => (
+                        <FormItem>
+                           <FormControl>
+                                <div className="flex flex-col items-center gap-4">
+                                    <Avatar className="w-40 h-40 border-4 border-muted">
+                                        <AvatarImage src={field.value} alt="Profil resmi" />
+                                        <AvatarFallback className="bg-muted">
+                                             <Camera className="h-16 w-16 text-muted-foreground" />
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()}>
+                                        <Upload className="mr-2 h-4 w-4" /> Fotoğraf Yükle
+                                    </Button>
+                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
+            )}
+            
+            {step === 3 && (
+                 <div className="space-y-6 pt-8">
+                    <div>
+                        <h3 className="text-xl font-semibold">Biraz Daha Detay</h3>
+                        <p className="text-muted-foreground text-sm mt-1">Bu bilgiler profilinde görünecek.</p>
+                    </div>
+                    <FormField control={form.control} name="gender" render={({ field }) => (
+                        <FormItem className="space-y-3">
+                            <FormLabel>Cinsiyetiniz</FormLabel>
+                            <FormControl>
+                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                        <FormControl><RadioGroupItem value="female" /></FormControl>
+                                        <FormLabel className="font-normal">Kadın</FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                        <FormControl><RadioGroupItem value="male" /></FormControl>
+                                        <FormLabel className="font-normal">Erkek</FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0">
+                                        <FormControl><RadioGroupItem value="other" /></FormControl>
+                                        <FormLabel className="font-normal">Diğer</FormLabel>
+                                    </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                     <div>
+                        <FormLabel>Konum İzni</FormLabel>
+                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor. Bu adımı geçmek için "Devam Et" butonuna tıkla.</p>
+                        {locationError && (
+                          <Alert variant="destructive" className="mt-2">
+                            <Terminal className="h-4 w-4" />
+                            <AlertTitle>Konum Hatası</AlertTitle>
+                            <AlertDescription>{locationError}</AlertDescription>
+                          </Alert>
+                        )}
+                    </div>
+                 </div>
+            )}
+
+            {step === 4 && (
+                 <div className="space-y-4 pt-8 text-center">
+                    <h3 className="text-xl font-semibold">Eşleşme Fotoğrafları</h3>
+                    <p className="text-muted-foreground text-sm">
+                        Kendine ait, net ve farklı anlarını yansıtan en az 2 fotoğraf daha ekle. 
+                        Bu fotoğraflar eşleşme ekranında diğer kullanıcılara gösterilecek.
                     </p>
-                  </div>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Şifre Tekrar</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} className="bg-white/50 dark:bg-black/20"/>
-                  </FormControl>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+                    <FormField control={form.control} name="matchPictures" render={({ field }) => (
+                        <FormItem>
+                           <FormControl>
+                                <div className="grid grid-cols-3 gap-2">
+                                     {field.value.map((src, index) => (
+                                         <div key={index} className="relative aspect-square">
+                                             <Image src={src} alt={`Eşleşme fotoğrafı ${index+1}`} layout="fill" className="rounded-md object-cover"/>
+                                         </div>
+                                     ))}
+                                     {field.value.length < 5 && (
+                                         <label htmlFor="match-pics-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-md cursor-pointer hover:bg-muted">
+                                            <Upload className="h-8 w-8 text-muted-foreground"/>
+                                            <span className="text-xs text-muted-foreground mt-1">Yükle</span>
+                                         </label>
+                                     )}
+                                     <Input id="match-pics-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleMatchPicturesUpload} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
-                <FormMessage />
-              </FormItem>
             )}
-          />
-          <Button type="submit" className="w-full h-12 text-base font-bold rounded-full mt-6" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Kayıt Ol ve Başla
-          </Button>
+
+            {step === 5 && (
+                 <div className="space-y-4 pt-8">
+                    <h3 className="text-xl font-semibold">Neredeyse Bitti!</h3>
+                     <FormField control={form.control} name="password" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Şifre</FormLabel>
+                            <div className="relative">
+                                <FormControl><Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} /></FormControl>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Şifre Tekrar</FormLabel>
+                            <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                     <FormField control={form.control} name="terms" render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>Kullanım koşullarını ve gizlilik politikasını kabul ediyorum.</FormLabel>
+                                <FormMessage />
+                            </div>
+                        </FormItem>
+                    )} />
+                 </div>
+            )}
+           
+            <div className="pt-4">
+               <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-bold rounded-full" 
+                disabled={isLoading}
+               >
+                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                 {step === TOTAL_STEPS ? (
+                     <>
+                        <PartyPopper className="mr-2 h-5 w-5" />
+                        Kaydı Tamamla
+                     </>
+                 ) : (
+                    "Devam Et"
+                 )}
+               </Button>
+            </div>
         </form>
       </Form>
   );

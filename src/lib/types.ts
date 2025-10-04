@@ -5,7 +5,7 @@ export type UserProfile = {
   images: string[];
   bio: string;
   interests: string[];
-  location: {
+  location?: {
     latitude: number;
     longitude: number;
   };

@@ -12,7 +12,7 @@
         },
         "fullName": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "The user's full name or unique username."
         },
         "email": {
           "type": "string",
@@ -22,7 +22,7 @@
         "dateOfBirth": {
           "type": "string",
           "description": "The user's date of birth.",
-          "format": "date-time"
+          "format": "date"
         },
         "gender": {
           "type": "string",
@@ -30,8 +30,16 @@
         },
         "profilePicture": {
           "type": "string",
-          "description": "URL of the user's profile picture, hosted on Cloudinary.",
+          "description": "URL of the user's main profile picture, hosted on Cloudinary.",
           "format": "uri"
+        },
+        "images": {
+            "type": "array",
+            "description": "A list of image URLs for the user's swipe card, hosted on Cloudinary.",
+            "items": {
+                "type": "string",
+                "format": "uri"
+            }
         },
         "interests": {
           "type": "array",
@@ -68,9 +76,7 @@
         "dateOfBirth",
         "gender",
         "profilePicture",
-        "interests",
-        "bio",
-        "location"
+        "images"
       ]
     },
     "Match": {
