@@ -5,41 +5,55 @@ import { useState, useEffect, useMemo } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
-import { Heart, X, Undo, Loader2 } from "lucide-react";
+import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, getDocs, query } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 
 type SwipeAction = 'like' | 'nope';
-type SwipeRecord = {
-  profileId: string;
-  action: SwipeAction;
-};
 
 export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
-  // Fetches all users
+  // Fetches all users - This approach is problematic with default security rules
+  // but we will filter on client-side for this project's scope.
+  // In a production app, a backend would provide a curated list of profiles.
   const usersCollectionRef = useMemoFirebase(() => 
     firestore ? collection(firestore, "users") : null, 
     [firestore]
   );
   const { data: allUsers, isLoading: areUsersLoading } = useCollection<UserProfileType>(usersCollectionRef);
 
-  // State for profiles to be shown
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
-  // State to keep track of user's swipes in the current session
-  const [swiped, setSwiped] = useState<SwipeRecord[]>([]);
+  const [swipedProfileIds, setSwipedProfileIds] = useState<Set<string>>(new Set());
+  const [isFetchingInteractions, setIsFetchingInteractions] = useState(true);
 
+  // Fetch profiles the current user has already interacted with
   useEffect(() => {
-    if (allUsers && currentUser) {
-      const swipedIds = new Set(swiped.map(s => s.profileId));
-      const filteredProfiles = allUsers.filter(p => p.id !== currentUser.uid && !swipedIds.has(p.id));
+    async function fetchInteractions() {
+      if (!currentUser || !firestore) return;
+
+      setIsFetchingInteractions(true);
+      const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
+      const interactionsSnapshot = await getDocs(interactionsCollectionRef);
+      const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+      setSwipedProfileIds(interactedIds);
+      setIsFetchingInteractions(false);
+    }
+    fetchInteractions();
+  }, [currentUser, firestore]);
+
+  // Filter profiles once all data is loaded
+  useEffect(() => {
+    if (!areUsersLoading && !isFetchingInteractions && allUsers && currentUser) {
+      const filteredProfiles = allUsers.filter(p => 
+        p.id !== currentUser.uid && !swipedProfileIds.has(p.id)
+      );
       setProfiles(filteredProfiles);
     }
-  }, [allUsers, currentUser, swiped]);
+  }, [allUsers, areUsersLoading, isFetchingInteractions, currentUser, swipedProfileIds]);
 
   const handleSwipe = async (profile: UserProfileType, direction: 'left' | 'right') => {
     if (!currentUser || !firestore) return;
@@ -48,17 +62,18 @@ export default function AnasayfaPage() {
 
     // Optimistically update UI
     setProfiles(prev => prev.filter(p => p.id !== profile.id));
-    setSwiped(prev => [...prev, { profileId: profile.id, action }]);
+    setSwipedProfileIds(prev => new Set(prev).add(profile.id));
 
     // Perform Firestore write
     const batch = writeBatch(firestore);
     
-    // Add to current user's interactions
+    // Add to current user's interactions subcollection
     const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profile.id);
     batch.set(currentUserInteractionRef, { action, timestamp: serverTimestamp() });
 
     if (action === 'like') {
-      // Create a match document for both users
+      // In a real app, you would check if the other user has also liked the current user.
+      // For this project, we'll create a match directly.
       const matchId = [currentUser.uid, profile.id].sort().join('_');
       
       const matchDocForCurrentUser = doc(firestore, `users/${currentUser.uid}/matches`, matchId);
@@ -82,7 +97,13 @@ export default function AnasayfaPage() {
       await batch.commit();
     } catch (error) {
       console.error("Failed to save swipe action:", error);
-      // Here you could add logic to revert the optimistic UI update if needed
+      // Optional: Revert optimistic UI update on failure
+      setProfiles(prev => [profile, ...prev]);
+      setSwipedProfileIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(profile.id);
+          return newSet;
+      });
     }
   };
 
@@ -94,7 +115,9 @@ export default function AnasayfaPage() {
     }
   };
 
-  if (areUsersLoading) {
+  const isLoading = areUsersLoading || isFetchingInteractions;
+
+  if (isLoading) {
     return (
         <div className="flex h-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
