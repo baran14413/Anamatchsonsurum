@@ -22,10 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Calendar } from "./ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { Slider } from "@/components/ui/slider";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -36,6 +33,7 @@ const formSchema = z.object({
         .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
     lookingFor: z.string({ required_error: "Lütfen birini seç." }).min(1, { message: "Lütfen birini seç." }),
+    distancePreference: z.number().min(1).max(100).default(80),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -159,7 +157,8 @@ export default function SignupForm() {
     defaultValues: {
       name: "",
       gender: undefined,
-      lookingFor: ""
+      lookingFor: "",
+      distancePreference: 80,
     },
     mode: "onChange",
   });
@@ -167,15 +166,12 @@ export default function SignupForm() {
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
 
-  // This will be the final submit function when all steps are complete
   async function onSubmit(data: SignupFormValues) {
-    // For now, we just log the data and move to a placeholder success page
     console.log(data);
-    // In the future, this will handle user creation in Firebase
     nextStep(); 
   }
   
-  const progressValue = (step / 5) * 100; // Assuming 5 steps total for now
+  const progressValue = (step / 5) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -183,11 +179,12 @@ export default function SignupForm() {
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
     if (step === 4) fieldsToValidate = ['lookingFor'];
+    if (step === 5) fieldsToValidate = ['distancePreference'];
 
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 4) {
+      if (step === 5) {
          toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
       } else {
         nextStep();
@@ -236,50 +233,24 @@ export default function SignupForm() {
                {step === 2 && (
                 <>
                   <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
-                    <FormField
-                      control={form.control}
-                      name="dateOfBirth"
-                      render={({ field }) => (
-                        <FormItem className="pt-8">
-                            <FormControl>
-                               <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-[280px] justify-start text-left font-normal h-14 text-lg",
-                                        !field.value && "text-muted-foreground"
-                                    )}
-                                    >
-                                    {field.value ? (
-                                        format(field.value, "dd LLL, yyyy")
-                                    ) : (
-                                        <span>Doğum tarihini seç</span>
-                                    )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                    mode="single"
-                                    captionLayout="dropdown-buttons"
-                                    fromYear={1950}
-                                    toYear={eighteenYearsAgo.getFullYear()}
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) =>
-                                        date > new Date() || date < new Date("1900-01-01")
-                                    }
-                                    initialFocus
+                    <Controller
+                        control={form.control}
+                        name="dateOfBirth"
+                        render={({ field, fieldState }) => (
+                            <FormItem className="pt-8">
+                                <FormControl>
+                                    <DateInput
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        disabled={field.disabled}
                                     />
-                                </PopoverContent>
-                                </Popover>
-                            </FormControl>
-                           <FormLabel className="text-muted-foreground pt-2 block">
-                             Profilinde yaşın gösterilir, doğum tarihin değil.
-                           </FormLabel>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                                </FormControl>
+                                <FormLabel className="text-muted-foreground pt-2 block">
+                                    Profilinde yaşın gösterilir, doğum tarihin değil.
+                                </FormLabel>
+                                {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
+                            </FormItem>
+                        )}
                     />
                 </>
               )}
@@ -336,12 +307,11 @@ export default function SignupForm() {
                                             key={option.id}
                                             type="button"
                                             onClick={() => field.onChange(option.id)}
-                                            className={cn(
-                                                "p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors",
+                                            className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors ${
                                                 isSelected
                                                 ? "bg-primary text-primary-foreground border-primary"
                                                 : "bg-background hover:bg-accent"
-                                            )}
+                                            }`}
                                             >
                                             <Icon className="w-8 h-8" />
                                             <span className="text-sm font-semibold text-center">{option.label}</span>
@@ -355,6 +325,37 @@ export default function SignupForm() {
                     )}
                   />
                  </>
+              )}
+              {step === 5 && (
+                <>
+                  <h1 className="text-3xl font-bold">Mesafe tercihin nedir?</h1>
+                  <p className="text-muted-foreground">Potansiyel eşleşmelerin bulunmasını istediğin maksimum mesafeyi ayarlamak için kaydırıcıyı kullan.</p>
+                  <FormField
+                    control={form.control}
+                    name="distancePreference"
+                    render={({ field }) => (
+                      <FormItem className="pt-12">
+                        <div className="flex justify-between items-center mb-4">
+                            <FormLabel className="text-base">Mesafe Tercihi</FormLabel>
+                            <span className="font-bold text-base">{field.value} Km</span>
+                        </div>
+                        <FormControl>
+                            <Slider
+                                value={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                max={100}
+                                min={1}
+                                step={1}
+                            />
+                        </FormControl>
+                         <p className="text-center text-muted-foreground pt-8">
+                            Tercihleri daha sonra Ayarlar'dan değiştirebilirsin
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
             </div>
 
@@ -374,3 +375,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
