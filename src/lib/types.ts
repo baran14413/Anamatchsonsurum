@@ -5,6 +5,10 @@ export type UserProfile = {
   images: string[];
   bio: string;
   interests: string[];
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
 };
 
 export type Match = {

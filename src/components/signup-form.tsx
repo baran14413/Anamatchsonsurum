@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, User } from "firebase/auth";
 import { doc } from "firebase/firestore";
-import { useAuth, useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { useAuth, useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
@@ -51,6 +53,10 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState(1);
+  const [createdUser, setCreatedUser] = useState<User | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const auth = useAuth();
@@ -79,7 +85,7 @@ export default function SignupForm() {
     5: "bg-green-500",
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onAccountSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -97,11 +103,9 @@ export default function SignupForm() {
         profileComplete: false,
       }, { merge: true });
 
-      toast({
-        title: "Kayıt Başarılı!",
-        description: "Hesabınız oluşturuldu. Maceraya hazırsın!",
-      });
-      router.push("/anasayfa");
+      setCreatedUser(userCredential.user);
+      setStep(2);
+
     } catch (error: any) {
         let description = "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
         if (error.code === 'auth/email-already-in-use') {
@@ -117,9 +121,79 @@ export default function SignupForm() {
     }
   }
 
+  const handleLocationPermission = () => {
+    setIsLoading(true);
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Tarayıcınız konum servislerini desteklemiyor.");
+      setIsLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (createdUser) {
+          const userDocRef = doc(firestore, "users", createdUser.uid);
+          updateDocumentNonBlocking(userDocRef, {
+            location: { latitude, longitude },
+            profileComplete: true, // Assuming this is the last step for now
+          });
+          toast({
+            title: "Kayıt Tamamlandı!",
+            description: "Hesabınız oluşturuldu ve konumunuz kaydedildi. Maceraya hazırsın!",
+          });
+          router.push("/anasayfa");
+        }
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationError("Aşkı bulmana yardımcı olmamız için konum izni vermen gerekiyor. Lütfen tarayıcı ayarlarından izni etkinleştir ve tekrar dene.");
+        } else {
+          setLocationError("Konum alınamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.");
+        }
+        setIsLoading(false);
+      }
+    );
+  };
+
+
+  if (step === 2) {
+    return (
+      <div className="space-y-6 text-center">
+        <div>
+          <h3 className="text-xl font-semibold">Son Bir Adım Kaldı!</h3>
+          <p className="text-muted-foreground mt-2">
+            BeMatch'in çevrendeki potansiyel eşleşmeleri sana gösterebilmesi için konum izni vermen gerekiyor.
+          </p>
+        </div>
+        
+        {locationError && (
+          <Alert variant="destructive">
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Hata</AlertTitle>
+            <AlertDescription>
+              {locationError}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Button onClick={handleLocationPermission} className="w-full h-12 text-base font-bold rounded-full" disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <MapPin className="mr-2 h-5 w-5" />
+          )}
+          Konum İzni Ver
+        </Button>
+      </div>
+    )
+  }
+
+
   return (
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onAccountSubmit)} className="space-y-4">
           <FormField
             control={form.control}
             name="email"

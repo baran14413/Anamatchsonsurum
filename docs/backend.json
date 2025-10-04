@@ -43,6 +43,18 @@
         "bio": {
           "type": "string",
           "description": "A short biography or description of the user."
+        },
+        "location": {
+          "type": "object",
+          "description": "The user's geographical location.",
+          "properties": {
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            }
+          }
         }
       },
       "required": [
