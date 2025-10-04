@@ -101,69 +101,53 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
     const [month, setMonth] = useState(() => value ? String(value.getMonth() + 1).padStart(2, '0') : '');
     const [year, setYear] = useState(() => value ? String(value.getFullYear()) : '');
 
+    const dayRef = useRef<HTMLInputElement>(null);
     const monthRef = useRef<HTMLInputElement>(null);
     const yearRef = useRef<HTMLInputElement>(null);
 
-    const smartInputHandler = (
+    const handleDateChange = (
       e: React.ChangeEvent<HTMLInputElement>,
       setter: React.Dispatch<React.SetStateAction<string>>,
-      field: 'day' | 'month'
+      field: 'day' | 'month' | 'year'
     ) => {
         let val = e.target.value.replace(/[^0-9]/g, '');
-        
+        let newDay = day, newMonth = month, newYear = year;
+
         if (field === 'day') {
             if (val.length > 0 && parseInt(val.charAt(0)) > 3) val = day;
             else if (val.length > 1 && parseInt(val) > 31) val = day;
             setDay(val);
+            newDay = val;
             if (val.length === 2) monthRef.current?.focus();
         } else if (field === 'month') {
-            if (val.length > 0 && parseInt(val.charAt(0)) > 1) {
-              val = month;
-            } else if (val.length > 1 && parseInt(val) > 12) {
-              val = month;
-            }
+            if (val.length > 0 && parseInt(val.charAt(0)) > 1) val = month;
+            else if (val.length > 1 && parseInt(val) > 12) val = month;
             setMonth(val);
+            newMonth = val;
             if (val.length === 2) yearRef.current?.focus();
+        } else {
+            setYear(val);
+            newYear = val;
         }
 
-        const newDay = field === 'day' ? val : day;
-        const newMonth = field === 'month' ? val : month;
-
-        if (newDay.length === 2 && newMonth.length === 2 && year.length === 4) {
-            const date = new Date(`${year}-${newMonth}-${newDay}`);
-             if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
+        if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
+            const date = new Date(`${newYear}-${newMonth}-${newDay}`);
+            if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
                 onChange(date);
             } else {
                 onChange(new Date('invalid'));
             }
         }
     };
-    
-    const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let val = e.target.value.replace(/[^0-9]/g, '');
-        setYear(val);
-
-        if (day.length === 2 && month.length === 2 && val.length === 4) {
-            const date = new Date(`${val}-${month}-${day}`);
-            if (!isNaN(date.getTime()) && 
-                date.getDate() === parseInt(day, 10) &&
-                date.getMonth() + 1 === parseInt(month, 10) &&
-                date.getFullYear() === parseInt(val, 10)) {
-            onChange(date);
-            } else {
-            onChange(new Date('invalid'));
-            }
-        }
-    };
-
 
     return (
         <div className="flex items-center gap-2">
             <Input
+                ref={dayRef}
                 placeholder="GG"
                 maxLength={2}
                 value={day}
-                onChange={(e) => smartInputHandler(e, setDay, 'day')}
+                onChange={(e) => handleDateChange(e, setDay, 'day')}
                 disabled={disabled}
                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
@@ -173,9 +157,9 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 placeholder="AA"
                 maxLength={2}
                 value={month}
-                onChange={(e) => smartInputHandler(e, setMonth, 'month')}
+                onChange={(e) => handleDateChange(e, setMonth, 'month')}
                 disabled={disabled}
-                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
+                className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
             <span className="text-xl text-muted-foreground">/</span>
             <Input
@@ -183,7 +167,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 placeholder="YYYY"
                 maxLength={4}
                 value={year}
-                onChange={handleYearChange}
+                onChange={(e) => handleDateChange(e, setYear, 'year')}
                 disabled={disabled}
                 className="text-xl text-center h-14 w-24 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
@@ -309,10 +293,10 @@ export default function SignupForm() {
             </Button>
         )}
       </header>
-      <main className="flex flex-1 flex-col p-6 overflow-y-auto">
+      <main className="flex flex-1 flex-col p-6 overflow-hidden">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">Adın ne?</h1>
@@ -633,3 +617,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
