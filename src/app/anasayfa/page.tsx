@@ -10,6 +10,7 @@ import { Heart, X, Loader2, Undo2, Star, Send } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/firebase";
+import { mockProfiles } from "@/lib/data"; // Import dummy data
 
 const fetcher = async (url: string, idToken: string) => {
     const res = await fetch(url, {
@@ -43,14 +44,39 @@ export default function AnasayfaPage() {
     return () => unsubscribe();
   }, [auth]);
 
-  const { data: profiles, error, isLoading, mutate } = useSWR(
+  const { data: fetchedProfiles, error, isLoading, mutate } = useSWR(
     idToken ? ['/api/get-potential-matches', idToken] : null,
     ([url, token]) => fetcher(url, token)
   );
 
+  const [profiles, setProfiles] = useState<UserProfileType[]>([]);
+  const [usingMockData, setUsingMockData] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (error || !fetchedProfiles || fetchedProfiles.length === 0) {
+        // If there's an error or no profiles, use mock data
+        setProfiles(mockProfiles);
+        setUsingMockData(true);
+      } else {
+        // Otherwise, use the fetched profiles
+        setProfiles(fetchedProfiles);
+        setUsingMockData(false);
+      }
+    }
+  }, [fetchedProfiles, error, isLoading]);
+
+
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
+    // If using mock data, just remove from local state
+    if (usingMockData) {
+        setProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedUserId));
+        return;
+    }
+      
     if (!idToken) return;
 
+    // Optimistic UI update for real data
     mutate(
         (currentProfiles: UserProfileType[] = []) => currentProfiles.filter(p => p.id !== swipedUserId),
         false
@@ -87,6 +113,7 @@ export default function AnasayfaPage() {
         description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
+      // Revalidate to get the correct state back
       mutate();
     }
   };
@@ -104,16 +131,6 @@ export default function AnasayfaPage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
     );
-  }
-
-  if (error) {
-      return (
-          <div className="flex flex-col h-full items-center justify-center text-center text-red-500 px-4">
-              <X className="h-12 w-12 mb-4" />
-              <h2 className="text-xl font-semibold">Profil Yükleme Hatası</h2>
-              <p>{error.message}</p>
-          </div>
-      )
   }
 
   const activeProfile = profiles && profiles.length > 0 ? profiles[profiles.length - 1] : null;

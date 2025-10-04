@@ -1,5 +1,5 @@
 
-import type { Post } from './types';
+import type { Post, UserProfile } from './types';
 
 // mockProfiles and mockMatches are no longer needed as we use Firestore.
 
@@ -98,4 +98,47 @@ export const mockPosts: Post[] = [
       comments: 320,
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 80),
     },
-]
+];
+
+export const mockProfiles: UserProfile[] = [
+    {
+      id: 'mock-1',
+      uid: 'mock-1',
+      fullName: 'Aslı',
+      dateOfBirth: '1995-03-15',
+      images: ['https://picsum.photos/seed/mock1/600/800'],
+      bio: 'Gezmeyi, yeni yerler keşfetmeyi ve lezzetli yemekler tatmayı severim. Maceraya her zaman hazırım!',
+      interests: ['seyahat', 'yemek', 'fotoğrafçılık'],
+      gender: 'female',
+    },
+    {
+      id: 'mock-2',
+      uid: 'mock-2',
+      fullName: 'Berk',
+      dateOfBirth: '1992-08-22',
+      images: ['https://picsum.photos/seed/mock2/600/800', 'https://picsum.photos/seed/mock2_2/600/800'],
+      bio: 'Hafta sonları bisiklete biner, hafta içi kod yazarım. İyi bir kahve ve iyi bir sohbet her zaman günümü güzelleştirir.',
+      interests: ['bisiklet', 'yazılım', 'kahve'],
+      gender: 'male',
+    },
+    {
+      id: 'mock-3',
+      uid: 'mock-3',
+      fullName: 'Ceyda',
+      dateOfBirth: '1998-11-05',
+      images: ['https://picsum.photos/seed/mock3/600/800'],
+      bio: 'Sanat galerilerini gezmek, film eleştirileri okumak ve kedimle vakit geçirmek en büyük keyfim.',
+      interests: ['sanat', 'sinema', 'hayvanlar'],
+      gender: 'female',
+    },
+    {
+      id: 'mock-4',
+      uid: 'mock-4',
+      fullName: 'Deniz',
+      dateOfBirth: '1994-06-30',
+      images: ['https://picsum.photos/seed/mock4/600/800', 'https://picsum.photos/seed/mock4_2/600/800', 'https://picsum.photos/seed/mock4_3/600/800'],
+      bio: 'Müziğin ritmiyle yaşarım. Konserlere gitmek ve yeni gruplar keşfetmek vazgeçilmezim.',
+      interests: ['müzik', 'konser', 'dans'],
+      gender: 'other',
+    },
+];
