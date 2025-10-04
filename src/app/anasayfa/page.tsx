@@ -31,6 +31,7 @@ export default function AnasayfaPage() {
   const [idToken, setIdToken] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const token = await user.getIdToken();
