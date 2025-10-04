@@ -1,19 +1,71 @@
 
 "use client";
 
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
+import { signOut } from 'firebase/auth';
+import { useToast } from "@/hooks/use-toast";
 
 const publicPaths = ["/login", "/kayit-ol", "/"];
 const appRoot = "/anasayfa";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { toast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
+
+  const [inputBuffer, setInputBuffer] = useState('');
+
+  const handleLogout = useCallback(async () => {
+    try {
+      if (auth) {
+        await signOut(auth);
+        router.push('/login');
+        toast({
+          title: 'Çıkış Yapıldı',
+          description: 'Başarıyla çıkış yaptınız.',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Hata',
+        description: 'Çıkış yapılırken bir hata oluştu.',
+        variant: 'destructive',
+      });
+    }
+  }, [auth, router, toast]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      let newBuffer;
+      if (event.key === 'Backspace') {
+        newBuffer = inputBuffer.slice(0, -1);
+      } else if (event.key.length === 1) { // Ignore keys like Shift, Control, etc.
+        newBuffer = inputBuffer + event.key;
+      } else {
+        newBuffer = inputBuffer;
+      }
+      
+      // Keep the buffer from growing too large
+      newBuffer = newBuffer.slice(-6);
+      setInputBuffer(newBuffer);
+
+      if (newBuffer.endsWith('/quit')) {
+        handleLogout();
+        setInputBuffer(''); // Reset buffer after command
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [inputBuffer, handleLogout]);
 
   useEffect(() => {
     if (isUserLoading) {
