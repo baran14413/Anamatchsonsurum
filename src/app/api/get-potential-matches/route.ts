@@ -11,6 +11,10 @@ export async function GET(req: NextRequest) {
     }
     
     const idToken = authorization.split('Bearer ')[1];
+    if (!idToken) {
+         return NextResponse.json({ error: 'Unauthorized: Token is missing' }, { status: 401 });
+    }
+    
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const currentUserId = decodedToken.uid;
 
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Error in get-potential-matches:', error);
-     if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
+     if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error' || error.code === 'auth/invalid-id-token') {
         return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
