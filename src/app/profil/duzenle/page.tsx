@@ -36,7 +36,9 @@ import {
 import { useMemoFirebase } from '@/firebase/provider';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/hooks/use-language';
 import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 export default function DuzenlePage() {
     const { user } = useUser();
@@ -47,8 +49,9 @@ export default function DuzenlePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     
-    const t = langEn.ayarlar;
-    const commonT = langEn.common;
+    const { lang } = useLanguage();
+    const t = lang === 'en' ? langEn : langTr;
+    const commonT = t.common;
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -85,15 +88,15 @@ export default function DuzenlePage() {
             if (userProfileRef) {
                 await updateDoc(userProfileRef, { profilePicture: url });
                 toast({
-                    title: t.toasts.pictureUpdatedTitle,
-                    description: t.toasts.pictureUpdatedDesc,
+                    title: t.ayarlar.toasts.pictureUpdatedTitle,
+                    description: t.ayarlar.toasts.pictureUpdatedDesc,
                 });
             }
         } catch (error: any) {
             console.error('Upload failed:', error);
             toast({
-                title: t.toasts.uploadFailedTitle,
-                description: t.toasts.uploadFailedDesc.replace('{error}', error.message),
+                title: t.ayarlar.toasts.uploadFailedTitle,
+                description: t.ayarlar.toasts.uploadFailedDesc.replace('{error}', error.message),
                 variant: 'destructive',
             });
         } finally {
@@ -107,14 +110,14 @@ export default function DuzenlePage() {
           await signOut(auth);
           router.push('/login');
           toast({
-            title: t.toasts.logoutSuccessTitle,
-            description: t.toasts.logoutSuccessDesc,
+            title: t.ayarlar.toasts.logoutSuccessTitle,
+            description: t.ayarlar.toasts.logoutSuccessDesc,
           });
         }
       } catch (error) {
         toast({
-          title: t.toasts.logoutErrorTitle,
-          description: t.toasts.logoutErrorDesc,
+          title: t.ayarlar.toasts.logoutErrorTitle,
+          description: t.ayarlar.toasts.logoutErrorDesc,
           variant: 'destructive',
         });
       }
@@ -122,69 +125,69 @@ export default function DuzenlePage() {
     
     const settingsGroups = [
       {
-        title: t.groups.account,
+        title: t.ayarlar.groups.account,
         items: [
           {
             icon: User,
-            label: t.items.personalInfo,
+            label: t.ayarlar.items.personalInfo,
             href: '/profil/duzenle/kisisel-bilgiler',
             bgColor: 'bg-gradient-to-br from-blue-400 to-blue-600',
           },
           {
             icon: Images,
-            label: t.items.gallery,
+            label: t.ayarlar.items.gallery,
             href: '/profil/duzenle/galeri',
             bgColor: 'bg-gradient-to-br from-pink-400 to-pink-600',
           },
           {
             icon: MapPin,
-            label: t.items.location,
+            label: t.ayarlar.items.location,
             href: '/profil/duzenle/konum',
             bgColor: 'bg-gradient-to-br from-green-400 to-green-600',
           },
           {
             icon: Bell,
-            label: t.items.notifications,
+            label: t.ayarlar.items.notifications,
             href: '/profil/duzenle/bildirimler',
             bgColor: 'bg-gradient-to-br from-red-400 to-red-600',
           },
         ],
       },
       {
-        title: t.groups.privacy,
+        title: t.ayarlar.groups.privacy,
         items: [
           {
             icon: Lock,
-            label: t.items.accountPrivacy,
+            label: t.ayarlar.items.accountPrivacy,
             href: '/profil/duzenle/gizlilik',
             bgColor: 'bg-gradient-to-br from-gray-500 to-gray-700',
           },
           {
             icon: Ban,
-            label: t.items.blockedUsers,
+            label: t.ayarlar.items.blockedUsers,
             href: '/profil/duzenle/engellenenler',
             bgColor: 'bg-gradient-to-br from-red-500 to-red-700',
           },
         ],
       },
       {
-        title: t.groups.support,
+        title: t.ayarlar.groups.support,
         items: [
           {
             icon: ShieldQuestion,
-            label: t.items.helpCenter,
+            label: t.ayarlar.items.helpCenter,
             href: '/profil/duzenle/yardim',
             bgColor: 'bg-gradient-to-br from-teal-400 to-teal-600',
           },
           {
             icon: HeartHandshake,
-            label: t.items.communityRules,
+            label: t.ayarlar.items.communityRules,
             href: '/profil/duzenle/topluluk-kurallari',
             bgColor: 'bg-gradient-to-br from-purple-400 to-purple-600',
           },
           {
             icon: FileText,
-            label: t.items.termsOfUse,
+            label: t.ayarlar.items.termsOfUse,
             href: '/profil/duzenle/kullanim-kosullari',
             bgColor: 'bg-gradient-to-br from-gray-400 to-gray-600',
           },
@@ -255,7 +258,7 @@ export default function DuzenlePage() {
         ))}
         <div>
             <h2 className="px-4 pb-2 text-lg font-semibold text-muted-foreground">
-              {t.groups.exit}
+              {t.ayarlar.groups.exit}
             </h2>
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
                 <AlertDialogTrigger asChild>
@@ -286,5 +289,3 @@ export default function DuzenlePage() {
     </AlertDialog>
   );
 }
-
-    

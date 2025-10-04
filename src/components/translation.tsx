@@ -5,7 +5,9 @@ import { useState, useEffect } from "react";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 import { langEn } from "@/languages/en";
+import { langTr } from "@/languages/tr";
 
 interface TranslationProps {
   text: string;
@@ -17,7 +19,9 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
-  const t = langEn.kesfet.translation;
+  
+  const { lang } = useLanguage();
+  const t = (lang === 'en' ? langEn : langTr).kesfet.translation;
 
   useEffect(() => {
     const lang = navigator.language.split("-")[0];
@@ -79,5 +83,3 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
     </div>
   );
 }
-
-    

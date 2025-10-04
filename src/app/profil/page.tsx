@@ -20,7 +20,9 @@ import {
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/use-language';
 import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -28,7 +30,8 @@ export default function ProfilPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const t = langEn.profil;
+  const { lang } = useLanguage();
+  const t = lang === 'en' ? langEn : langTr;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -55,14 +58,14 @@ export default function ProfilPage() {
           await signOut(auth);
           router.push('/');
           toast({
-            title: langEn.ayarlar.toasts.logoutSuccessTitle,
-            description: langEn.ayarlar.toasts.logoutSuccessDesc,
+            title: t.ayarlar.toasts.logoutSuccessTitle,
+            description: t.ayarlar.toasts.logoutSuccessDesc,
           });
         }
       } catch (error) {
         toast({
-          title: langEn.ayarlar.toasts.logoutErrorTitle,
-          description: langEn.ayarlar.toasts.logoutErrorDesc,
+          title: t.ayarlar.toasts.logoutErrorTitle,
+          description: t.ayarlar.toasts.logoutErrorDesc,
           variant: 'destructive',
         });
       }
@@ -78,9 +81,9 @@ export default function ProfilPage() {
   }, [userProfile]);
   
   const premiumFeatures = [
-    { name: t.featureSeeLikes, free: false, gold: true },
-    { name: t.featureTopPicks, free: false, gold: true },
-    { name: t.featureFreeSuperLikes, free: false, gold: true },
+    { name: t.profil.featureSeeLikes, free: false, gold: true },
+    { name: t.profil.featureTopPicks, free: false, gold: true },
+    { name: t.profil.featureFreeSuperLikes, free: false, gold: true },
   ];
 
 
@@ -104,7 +107,7 @@ export default function ProfilPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>{t.logout}</span>
+                <span>{t.profil.logout}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -125,7 +128,7 @@ export default function ProfilPage() {
 
             <div className="text-center">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    {userProfile?.fullName || t.user}, {userAge > 0 ? userAge : ''}
+                    {userProfile?.fullName || t.profil.user}, {userAge > 0 ? userAge : ''}
                     <Check className="h-5 w-5 p-0.5 rounded-full bg-blue-500 text-white" strokeWidth={3} />
                 </h1>
             </div>
@@ -133,7 +136,7 @@ export default function ProfilPage() {
             <Link href="/profil/duzenle" className="w-full max-w-xs">
               <Button className="w-full rounded-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg">
                   <Pencil className="mr-2 h-4 w-4" />
-                  {langEn.common.editProfile}
+                  {t.common.editProfile}
               </Button>
             </Link>
         </div>
@@ -145,8 +148,8 @@ export default function ProfilPage() {
                         <Gem className="h-6 w-6 text-pink-500" />
                     </div>
                     <div className="flex-1">
-                        <h2 className="font-semibold">{t.tryDoubleDate}</h2>
-                        <p className="text-sm text-muted-foreground">{t.tryDoubleDateDesc}</p>
+                        <h2 className="font-semibold">{t.profil.tryDoubleDate}</h2>
+                        <p className="text-sm text-muted-foreground">{t.profil.tryDoubleDateDesc}</p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </CardContent>
@@ -156,19 +159,19 @@ export default function ProfilPage() {
                 <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Star className="h-8 w-8 text-blue-500 fill-blue-500" />
-                     <p className="font-bold mt-1">{t.superLikes.replace('{count}', '0')}</p>
-                     <Link href="#" className="text-xs font-semibold text-blue-500 hover:underline mt-0.5">{t.getMore}</Link>
+                     <p className="font-bold mt-1">{t.profil.superLikes.replace('{count}', '0')}</p>
+                     <Link href="#" className="text-xs font-semibold text-blue-500 hover:underline mt-0.5">{t.profil.getMore}</Link>
                 </Card>
                  <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Zap className="h-8 w-8 text-purple-500 fill-purple-500" />
-                     <p className="font-bold mt-1">{t.myBoosts}</p>
-                     <Link href="#" className="text-xs font-semibold text-purple-500 hover:underline mt-0.5">{t.getMore}</Link>
+                     <p className="font-bold mt-1">{t.profil.myBoosts}</p>
+                     <Link href="#" className="text-xs font-semibold text-purple-500 hover:underline mt-0.5">{t.profil.getMore}</Link>
                 </Card>
                  <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Icons.tinderFlame className="h-8 w-8 text-primary" />
-                     <p className="font-bold mt-1">{t.subscriptions}</p>
+                     <p className="font-bold mt-1">{t.profil.subscriptions}</p>
                 </Card>
             </div>
             
@@ -178,17 +181,17 @@ export default function ProfilPage() {
                         <div className="flex items-center gap-2">
                              <Icons.logo width={32} height={32} />
                              <span className="text-2xl font-extrabold tracking-tight">BeMatch</span>
-                             <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">{t.gold.toUpperCase()}</span>
+                             <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">{t.profil.gold.toUpperCase()}</span>
                         </div>
-                        <Button className="bg-black text-white rounded-full font-bold hover:bg-gray-800">Yükselt</Button>
+                        <Button className="bg-black text-white rounded-full font-bold hover:bg-gray-800">{t.profil.upgrade}</Button>
                     </div>
 
                     <div className="mt-6">
                         <div className="flex justify-between items-center font-bold text-sm text-black/70 px-2">
-                            <p>{t.features}</p>
+                            <p>{t.profil.features}</p>
                             <div className="flex gap-8">
-                                <p>{t.free}</p>
-                                <p>{t.gold}</p>
+                                <p>{t.profil.free}</p>
+                                <p>{t.profil.gold}</p>
                             </div>
                         </div>
                         <div className="space-y-3 mt-3">
@@ -204,7 +207,7 @@ export default function ProfilPage() {
                         </div>
                     </div>
                     <div className="text-center mt-6">
-                        <Link href="#" className="font-bold hover:underline">{t.viewAllFeatures}</Link>
+                        <Link href="#" className="font-bold hover:underline">{t.profil.viewAllFeatures}</Link>
                     </div>
                 </CardContent>
             </Card>
@@ -219,5 +222,3 @@ export default function ProfilPage() {
     </div>
   );
 }
-
-    
