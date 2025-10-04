@@ -43,6 +43,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
 
   const handleImageNavigation = (e: React.MouseEvent, navDirection: 'prev' | 'next') => {
     e.stopPropagation();
+    if (!profile.images || profile.images.length === 0) return;
     if (navDirection === 'next') {
       setCurrentImageIndex((prev) => Math.min(prev + 1, profile.images.length - 1));
     } else {
@@ -51,6 +52,9 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   };
   
   const userAge = calculateAge(profile.dateOfBirth);
+
+  const images = profile.images && profile.images.length > 0 ? profile.images : ['https://picsum.photos/seed/placeholder/600/800'];
+  const currentImage = images[currentImageIndex] || images[0];
 
   return (
     <motion.div
@@ -83,7 +87,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
 
         <div className="absolute inset-0">
           <Image
-            src={profile.images[currentImageIndex]}
+            src={currentImage}
             alt={profile.fullName || 'Profil fotosu'}
             fill
             className="object-cover"
@@ -97,9 +101,9 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
             <div className="flex-1" onClick={(e) => handleImageNavigation(e, 'next')} />
           </div>
 
-          {profile.images.length > 1 && (
+          {images.length > 1 && (
             <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
-              {profile.images.map((_, index) => (
+              {images.map((_, index) => (
                 <div key={index} className="h-1 flex-1 rounded-full bg-white/40 overflow-hidden">
                    <div className={`h-full rounded-full transition-all duration-300 ${index <= currentImageIndex ? 'bg-white' : ''}`}></div>
                 </div>
@@ -112,7 +116,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
           <div className="flex items-end justify-between">
             <div className="max-w-[calc(100%-50px)]">
               <h2 className="text-3xl font-bold drop-shadow-lg">
-                {profile.fullName}, <span className="font-light">{userAge}</span>
+                {profile.fullName || 'Kullanıcı'}, <span className="font-light">{userAge || ''}</span>
               </h2>
               {profile.interests && profile.interests.length > 0 && (
                  <p className="mt-1 text-white/95 drop-shadow-md text-base truncate">{profile.interests.join(' • ')}</p>

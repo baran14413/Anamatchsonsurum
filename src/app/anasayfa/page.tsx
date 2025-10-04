@@ -16,9 +16,7 @@ export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
-  const [allUsers, setAllUsers] = useState<UserProfileType[]>([]);
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
-  const [swipedProfileIds, setSwipedProfileIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +34,7 @@ export default function AnasayfaPage() {
           path: usersCollectionRef.path,
         });
         errorEmitter.emit('permission-error', contextualError);
-        return { docs: [] } as QuerySnapshot<DocumentData>; // Return an empty snapshot on error
+        return { docs: [] } as QuerySnapshot<DocumentData>; // Hata durumunda boş bir anlık görüntü döndür
       }),
       getDocs(interactionsCollectionRef).catch(serverError => {
         const contextualError = new FirestorePermissionError({
@@ -44,95 +42,89 @@ export default function AnasayfaPage() {
           path: interactionsCollectionRef.path,
         });
         errorEmitter.emit('permission-error', contextualError);
-        return { docs: [] } as QuerySnapshot<DocumentData>; // Return an empty snapshot on error
+        return { docs: [] } as QuerySnapshot<DocumentData>; // Hata durumunda boş bir anlık görüntü döndür
       }),
     ]).then(([usersSnapshot, interactionsSnapshot]) => {
-      // 1. Process all users
+      // 1. Tüm kullanıcıları işle
       const allUsersData = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfileType));
-      setAllUsers(allUsersData);
 
-      // 2. Process interactions
+      // 2. Etkileşimleri işle
       const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
-      setSwipedProfileIds(interactedIds);
       
-      // 3. Filter profiles
+      // 3. Profilleri filtrele
       const filteredProfiles = allUsersData.filter(p => 
         p.id !== currentUser.uid && !interactedIds.has(p.id)
       );
       setProfiles(filteredProfiles);
 
     }).catch(error => {
-        // Errors are now emitted globally, so a console log here is for debug purposes only if needed.
-        // The FirebaseErrorListener will handle displaying the error to the user.
+        // Hatalar artık küresel olarak yayınlanıyor, bu yüzden buradaki bir konsol günlüğü yalnızca gerekirse hata ayıklama amaçlıdır.
+        // FirebaseErrorListener, hatanın kullanıcıya görüntülenmesini ele alacaktır.
     }).finally(() => {
       setIsLoading(false);
     });
 
   }, [currentUser, firestore]);
 
-  const handleSwipe = async (profile: UserProfileType, direction: 'left' | 'right') => {
+  const handleSwipe = async (profileId: string, direction: 'left' | 'right') => {
     if (!currentUser || !firestore) return;
 
     const action: SwipeAction = direction === 'right' ? 'like' : 'nope';
 
-    // Optimistically update UI
-    setProfiles(prev => prev.filter(p => p.id !== profile.id));
-    setSwipedProfileIds(prev => new Set(prev).add(profile.id));
+    // UI'yi iyimser bir şekilde güncelle
+    setProfiles(prev => prev.filter(p => p.id !== profileId));
 
     const batch = writeBatch(firestore);
     
-    // Record the interaction for the current user
-    const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profile.id);
+    // Mevcut kullanıcı için etkileşimi kaydet
+    const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profileId);
     batch.set(currentUserInteractionRef, { action, timestamp: serverTimestamp() });
 
+    // Eğer beğenildiyse, bir eşleşme belgesi oluştur
     if (action === 'like') {
-      const matchId = [currentUser.uid, profile.id].sort().join('_');
-      
-      const matchDocForCurrentUser = doc(firestore, `users/${currentUser.uid}/matches`, matchId);
-      batch.set(matchDocForCurrentUser, {
-        id: matchId,
-        user1Id: currentUser.uid,
-        user2Id: profile.id,
-        matchDate: serverTimestamp(),
-        // Add a field to know who this match is with
-        matchedWith: profile.id, 
-      });
-      
-      const matchDocForOtherUser = doc(firestore, `users/${profile.id}/matches`, matchId);
-      batch.set(matchDocForOtherUser, {
-        id: matchId,
-        user1Id: currentUser.uid,
-        user2Id: profile.id,
-        matchDate: serverTimestamp(),
-        // Add a field to know who this match is with
-        matchedWith: currentUser.uid,
-      });
+        const otherUserDoc = await getDocs(collection(firestore, `users/${profileId}/interactions`));
+        const otherUserLikes = otherUserDoc.docs.find(d => d.id === currentUser.uid && d.data().action === 'like');
+
+        if (otherUserLikes) {
+            const matchId = [currentUser.uid, profileId].sort().join('_');
+            
+            const matchDocForCurrentUser = doc(firestore, `users/${currentUser.uid}/matches`, matchId);
+            batch.set(matchDocForCurrentUser, {
+                id: matchId,
+                users: [currentUser.uid, profileId],
+                matchDate: serverTimestamp(),
+            });
+            
+            const matchDocForOtherUser = doc(firestore, `users/${profileId}/matches`, matchId);
+            batch.set(matchDocForOtherUser, {
+                id: matchId,
+                users: [currentUser.uid, profileId],
+                matchDate: serverTimestamp(),
+            });
+        }
     }
 
     try {
       await batch.commit();
     } catch (error) {
-      // Revert the optimistic UI update on failure
-      setProfiles(prev => [profile, ...prev]);
-      setSwipedProfileIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(profile.id);
-          return newSet;
-      });
-      // Emit a contextual error for the failed write operation
+      // Başarısızlık durumunda iyimser UI güncellemesini geri al
+      const originalProfile = profiles.find(p => p.id === profileId);
+      if (originalProfile) {
+          setProfiles(prev => [originalProfile, ...prev]);
+      }
+      
       const contextualError = new FirestorePermissionError({
-        operation: 'write', // 'write' covers set/update in a batch
-        path: `users/${currentUser.uid}/interactions/${profile.id}`, // Example path, might need more detail
+        operation: 'write', // toplu setteki set/update'i kapsar
+        path: `users/${currentUser.uid}/interactions/${profileId}`, // Örnek yol, daha fazla ayrıntı gerekebilir
       });
       errorEmitter.emit('permission-error', contextualError);
     }
   };
 
-  const activeProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
-
   const triggerSwipe = (direction: 'left' | 'right') => {
-    if (activeProfile) {
-      handleSwipe(activeProfile, direction);
+    if (profiles.length > 0) {
+      const topProfile = profiles[profiles.length - 1];
+      handleSwipe(topProfile.id, direction);
     }
   };
 
@@ -144,19 +136,21 @@ export default function AnasayfaPage() {
     );
   }
 
+  const activeProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
+
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-16">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {activeProfile ? (
+            {profiles.length > 0 ? (
               profiles.map((profile, index) => {
                 const isTopCard = index === profiles.length - 1;
                 return (
                   <ProfileCard
                     key={profile.id}
                     profile={profile}
-                    onSwipe={(dir) => handleSwipe(profile, dir)}
+                    onSwipe={(dir) => handleSwipe(profile.id, dir)}
                     isTopCard={isTopCard}
                   />
                 );
@@ -185,3 +179,4 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
