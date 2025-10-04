@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -132,7 +131,7 @@ export default function LoginForm() {
             profilePicture: user.photoURL,
         }, { merge: true });
 
-        router.push("/anasayfa");
+        router.push("/kesfet");
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,
@@ -159,7 +158,7 @@ export default function LoginForm() {
     }
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push("/anasayfa");
+      router.push("/kesfet");
     } catch (error: any) {
       form.setError("password", { type: "manual", message: t.login.errors.wrongPassword });
     } finally {

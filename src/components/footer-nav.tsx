@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -13,7 +12,6 @@ export default function FooterNav() {
   const t = langTr;
 
   const navLinks = [
-    { href: "/anasayfa", label: t.footerNav.home, icon: Icons.tinderFlame },
     { href: "/kesfet", label: t.footerNav.discover, icon: Compass },
     { href: "/begeniler", label: t.footerNav.likes, icon: Heart },
     { href: "/eslesmeler", label: t.footerNav.chats, icon: MessageSquare },
@@ -22,7 +20,7 @@ export default function FooterNav() {
 
   return (
     <nav className="relative z-20 shrink-0 border-t bg-background dark:bg-black">
-      <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center justify-items-center">
+      <div className="mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-items-center">
         {navLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (
@@ -36,7 +34,7 @@ export default function FooterNav() {
             >
               <Icon 
                 className={cn("h-7 w-7")}
-                fill={isActive && (href === "/begeniler" || href === "/anasayfa") ? "currentColor" : "none"}
+                fill={isActive && href === "/begeniler" ? "currentColor" : "none"}
                 stroke="currentColor"
               />
             </Link>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -317,7 +316,7 @@ export default function SignupForm() {
       await setDoc(doc(firestore, "users", user.uid), userProfile);
       
       // 5. Redirect to the app
-      router.push("/anasayfa");
+      router.push("/kesfet");
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -1124,4 +1123,3 @@ export default function SignupForm() {
     </div>
   );
 }
-

@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { langTr } from "@/languages/tr";
 
 const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies"];
-const appRoot = "/anasayfa";
+const appRoot = "/kesfet";
 
 const Header = () => {
     return (

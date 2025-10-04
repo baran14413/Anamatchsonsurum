@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -52,7 +51,7 @@ export default function WelcomePage() {
             profilePicture: user.photoURL
         }, { merge: true }); // Use merge to avoid overwriting existing data
 
-        router.push("/anasayfa");
+        router.push("/kesfet");
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,
