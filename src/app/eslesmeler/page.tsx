@@ -24,8 +24,7 @@ function MatchItem({ match }: { match: any }) {
   // Create a memoized reference to the other user's profile document
   const otherUserProfileRef = useMemoFirebase(() => {
     if (!firestore || !otherUserId) return null;
-    // Correct path to the profile subcollection
-    return doc(firestore, `users/${otherUserId}/profile`);
+    return doc(firestore, `users/${otherUserId}`);
   }, [firestore, otherUserId]);
 
   // Fetch the other user's profile data

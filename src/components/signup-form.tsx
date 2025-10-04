@@ -230,7 +230,7 @@ export default function SignupForm() {
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
 
-        const userDocRef = doc(firestore, "users", user.uid, "profile");
+        const userDocRef = doc(firestore, "users", user.uid);
         
         await setDoc(userDocRef, {
             uid: user.uid,
@@ -512,3 +512,5 @@ export default function SignupForm() {
       </Form>
   );
 }
+
+    

@@ -32,7 +32,7 @@ export default function GaleriPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid, 'profile');
+    return doc(firestore, 'users', user.uid);
   }, [user, firestore]);
 
   const { data: userProfile, isLoading, error } = useDoc(userProfileRef);
@@ -223,3 +223,5 @@ export default function GaleriPage() {
     </AlertDialog>
   );
 }
+
+    

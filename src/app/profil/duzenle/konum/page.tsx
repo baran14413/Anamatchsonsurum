@@ -55,7 +55,7 @@ export default function KonumPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid, 'profile');
+    return doc(firestore, 'users', user.uid);
   }, [user, firestore]);
 
   const { data: userProfile, isLoading, error: docError } = useDoc(userProfileRef);
@@ -217,3 +217,5 @@ export default function KonumPage() {
     </div>
   );
 }
+
+    
