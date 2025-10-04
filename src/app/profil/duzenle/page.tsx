@@ -16,8 +16,8 @@ import {
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useDoc, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useRef, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useMemoFirebase } from '@/firebase/provider';
 
 export default function DuzenlePage() {
     const { user } = useUser();
@@ -67,23 +68,24 @@ export default function DuzenlePage() {
             });
 
             if (!response.ok) {
-                throw new Error('Upload failed');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Upload failed');
             }
             
             const { url } = await response.json();
 
             if (userProfileRef) {
-                await updateDocumentNonBlocking(userProfileRef, { profilePicture: url });
+                await updateDoc(userProfileRef, { profilePicture: url });
                 toast({
                     title: "Profil Resmi Güncellendi",
                     description: "Yeni profil resminiz başarıyla kaydedildi.",
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload failed:', error);
             toast({
                 title: "Yükleme Başarısız",
-                description: "Resim yüklenirken bir hata oluştu. Lütfen tekrar deneyin.",
+                description: `Resim yüklenirken bir hata oluştu: ${error.message}`,
                 variant: 'destructive',
             });
         } finally {
