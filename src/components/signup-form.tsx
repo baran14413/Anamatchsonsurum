@@ -149,6 +149,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 value={day}
                 onChange={(e) => handleDateChange(e, setDay, 'day')}
                 disabled={disabled}
+                inputMode="numeric"
                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
             <span className="text-xl text-muted-foreground">/</span>
@@ -159,6 +160,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 value={month}
                 onChange={(e) => handleDateChange(e, setMonth, 'month')}
                 disabled={disabled}
+                inputMode="numeric"
                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
             <span className="text-xl text-muted-foreground">/</span>
@@ -169,6 +171,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 value={year}
                 onChange={(e) => handleDateChange(e, setYear, 'year')}
                 disabled={disabled}
+                inputMode="numeric"
                 className="text-xl text-center h-14 w-24 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
         </div>
@@ -484,7 +487,7 @@ export default function SignupForm() {
                 </>
               )}
               {step === 8 && (
-                <>
+                <div className="flex-1 space-y-8 overflow-y-auto">
                   <h1 className="text-3xl font-bold">{currentName}, biraz da yaşam tarzı alışkanlıklarından bahsedelim</h1>
                   <p className="text-muted-foreground">Eşleşme adaylarının alışkanlıkları, seninkilerle uyumlu mu? İlk sen başla.</p>
                   <div className="space-y-8 pt-4">
@@ -577,7 +580,7 @@ export default function SignupForm() {
                         )}
                       />
                   </div>
-                </>
+                </div>
               )}
             </div>
 
@@ -617,5 +620,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
