@@ -76,14 +76,22 @@ const lifestyleOptions = {
     { id: 'everyday', label: 'Her gün' },
     { id: 'often', label: 'Sık sık' },
     { id: 'sometimes', label: 'Ara sıra' },
+    { id: 'never', label: 'Asla yapmam'},
   ],
   pets: [
     { id: 'dog', label: 'Köpek' },
     { id: 'cat', label: 'Kedi' },
+    { id: 'reptile', label: 'Sürüngen' },
+    { id: 'amphibian', label: 'Amfibik' },
+    { id: 'bird', label: 'Kuş' },
+    { id: 'fish', label: 'Balık' },
     { id: 'none_but_love', label: 'Hayvanım yok ama çok severim' },
-    { id: 'none', label: 'Hayvanım yok' },
     { id: 'other', label: 'Diğer' },
-    { id: 'want_one', label: 'Bir gün sahiplenmek isterim' },
+    { id: 'turtle', label: 'Kaplumbağa' },
+    { id: 'hamster', label: 'Hamster' },
+    { id: 'rabbit', label: 'Tavşan' },
+    { id: 'dont_like', label: 'Hoşlanmam' },
+    { id: 'all_pets', label: 'Tüm evcil hayvanlar' },
   ]
 };
 
@@ -109,8 +117,11 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             setDay(val);
             if (val.length === 2) monthRef.current?.focus();
         } else if (field === 'month') {
-            if (val.length > 0 && parseInt(val.charAt(0)) > 1) val = month;
-            else if (val.length > 1 && parseInt(val) > 12) val = month.slice(0,1);
+            if (val.length > 0 && parseInt(val.charAt(0)) > 1) {
+              val = month;
+            } else if (val.length > 1 && parseInt(val) > 12) {
+              val = month;
+            }
             setMonth(val);
             if (val.length === 2) yearRef.current?.focus();
         }
@@ -205,10 +216,16 @@ export default function SignupForm() {
   });
   
   const currentName = form.watch("name");
-  const lifestyleValues = form.watch(['drinking', 'smoking', 'workout']);
+  const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
 
   const filledLifestyleCount = useMemo(() => {
-    return lifestyleValues.filter(Boolean).length;
+    // We count 'pets' array differently. If it has items, it counts as 1.
+    return lifestyleValues.filter((value, index) => {
+        if (index === 3) { // This is the 'pets' array
+            return Array.isArray(value) && value.length > 0;
+        }
+        return !!value;
+    }).length;
   }, [lifestyleValues]);
 
   const nextStep = () => setStep((prev) => prev + 1);
@@ -595,9 +612,9 @@ export default function SignupForm() {
                   type="button"
                   onClick={handleNextStep}
                   className="w-full h-14 rounded-full text-lg font-bold"
-                  disabled={isLoading || filledLifestyleCount < 3}
+                  disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Sonraki ${filledLifestyleCount}/3`}
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Sonraki ${filledLifestyleCount}/4`}
                 </Button>
               ) : (
                 <Button
@@ -616,5 +633,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
