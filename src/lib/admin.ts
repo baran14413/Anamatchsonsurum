@@ -1,8 +1,5 @@
-
 "use server-only";
 import * as admin from 'firebase-admin';
-require('dotenv').config({ path: '.env' });
-
 
 // This function ensures that the service account JSON is properly parsed,
 // whether it's a raw string or base64 encoded.
