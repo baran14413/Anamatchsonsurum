@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
+import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import { Loader2, MapPin, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, MapPin, Check, AlertTriangle, Building } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // A simple component to simulate a map
 const SimulatedMap = ({ location }: { location: { latitude: number; longitude: number } | null }) => {
@@ -47,6 +47,8 @@ export default function KonumPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const userProfileRef = useMemoFirebase(() => {
@@ -55,6 +57,31 @@ export default function KonumPage() {
   }, [user, firestore]);
 
   const { data: userProfile, isLoading, mutate } = useDoc(userProfileRef);
+
+  useEffect(() => {
+    const fetchAddress = async (lat: number, lon: number) => {
+        setIsGeocoding(true);
+        try {
+            const response = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
+            const data = await response.json();
+            if (response.ok && data.address) {
+                const adr = data.address;
+                const formattedAddress = [adr.streetName, adr.streetNumber, adr.district, adr.city, adr.state, adr.country].filter(Boolean).join(', ');
+                setAddress(formattedAddress);
+            } else {
+                setAddress("Adres bulunamadı.");
+            }
+        } catch (err) {
+            setAddress("Adres alınamadı.");
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
+
+    if (userProfile?.location) {
+      fetchAddress(userProfile.location.latitude, userProfile.location.longitude);
+    }
+  }, [userProfile?.location]);
 
   const handleUpdateLocation = () => {
     setIsUpdating(true);
@@ -68,7 +95,7 @@ export default function KonumPage() {
         try {
           if (userProfileRef) {
             await updateDoc(userProfileRef, { location: newLocation });
-            mutate(); // Re-fetch the data after update
+            mutate();
             toast({
               title: "Konum Güncellendi",
               description: "Yeni konumunuz başarıyla kaydedildi.",
@@ -114,14 +141,21 @@ export default function KonumPage() {
           <SimulatedMap location={userProfile?.location || null} />
 
           {userProfile?.location ? (
-            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                <h3 className="font-semibold text-lg text-green-800 dark:text-green-300">Kayıtlı Konum</h3>
-                <p className="font-mono text-sm text-green-700 dark:text-green-400 mt-1">
-                    Enlem: {userProfile.location.latitude.toFixed(5)}
-                </p>
-                 <p className="font-mono text-sm text-green-700 dark:text-green-400">
-                    Boylam: {userProfile.location.longitude.toFixed(5)}
-                </p>
+            <div className="p-4 rounded-lg bg-muted border">
+                <h3 className="font-semibold text-lg text-foreground flex items-center gap-2">
+                  <Building className="h-5 w-5 text-muted-foreground" />
+                  Yaklaşık Konumunuz
+                </h3>
+                {isGeocoding ? (
+                   <div className="flex items-center gap-2 mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Adres getiriliyor...</span>
+                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-2 pl-7">
+                    {address || 'Adres bilgisi mevcut değil.'}
+                  </p>
+                )}
             </div>
           ) : (
              <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
