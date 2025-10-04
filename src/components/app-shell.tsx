@@ -4,7 +4,6 @@
 import { useUser } from "@/firebase";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import Header from "./header";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
 
@@ -47,7 +46,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isAppPage && user) {
     return (
       <div className="flex h-dvh flex-col bg-background dark:bg-black">
-        <Header />
         <main className="flex-1 overflow-hidden">{children}</main>
         <FooterNav />
       </div>

@@ -5,7 +5,7 @@ import type { UserProfile } from "@/lib/types";
 import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform } from "framer-motion";
 import { useState } from "react";
-import { ChevronUp, Info, MapPin } from "lucide-react";
+import { ChevronUp, Info, MapPin, Heart, X } from "lucide-react";
 
 interface ProfileCardProps {
   profile: UserProfile;
@@ -70,15 +70,11 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
     >
       <div className="relative h-full w-full select-none overflow-hidden rounded-2xl bg-card shadow-xl">
         {/* Swipe Indicators */}
-        <motion.div style={{ opacity: likeOpacity }} className="absolute left-4 top-8 z-10 -rotate-12 transform">
-          <div className="rounded-lg border-2 border-green-400 px-4 py-1">
-            <h2 className="text-3xl font-extrabold text-green-400">BEĞENDİN</h2>
-          </div>
+        <motion.div style={{ opacity: likeOpacity }} className="absolute left-8 top-8 z-10 transform">
+            <Heart className="h-32 w-32 text-green-400 fill-green-400" strokeWidth={1} />
         </motion.div>
-        <motion.div style={{ opacity: nopeOpacity }} className="absolute right-4 top-8 z-10 rotate-12 transform">
-          <div className="rounded-lg border-2 border-red-500 px-4 py-1">
-            <h2 className="text-3xl font-extrabold text-red-500">BEĞENMEDİN</h2>
-          </div>
+        <motion.div style={{ opacity: nopeOpacity }} className="absolute right-8 top-8 z-10 transform">
+            <X className="h-32 w-32 text-red-500" strokeWidth={1} />
         </motion.div>
 
         {/* Main Image */}
