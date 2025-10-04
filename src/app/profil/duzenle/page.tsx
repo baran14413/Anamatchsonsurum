@@ -13,7 +13,8 @@ import {
   LogOut,
   ShieldQuestion,
   Camera,
-  Loader2
+  Loader2,
+  Images // Galeri için yeni ikon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
@@ -123,6 +124,12 @@ export default function DuzenlePage() {
             label: 'Kişisel Bilgiler',
             href: '/profil/duzenle/kisisel-bilgiler',
             bgColor: 'bg-gradient-to-br from-blue-400 to-blue-600',
+          },
+          {
+            icon: Images,
+            label: 'Galeri Yönetimi',
+            href: '/profil/duzenle/galeri',
+            bgColor: 'bg-gradient-to-br from-pink-400 to-pink-600',
           },
           {
             icon: MapPin,
