@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useState, useMemo, useRef, createRef, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
@@ -19,23 +19,93 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, CalendarIcon } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
-  dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." }),
+    name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
+    dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
+        .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
+
+const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
+    const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
+    const [month, setMonth] = useState(() => value ? String(value.getMonth() + 1).padStart(2, '0') : '');
+    const [year, setYear] = useState(() => value ? String(value.getFullYear()) : '');
+
+    const monthRef = useRef<HTMLInputElement>(null);
+    const yearRef = useRef<HTMLInputElement>(null);
+
+    const handleDateChange = (newDay: string, newMonth: string, newYear: string) => {
+        setDay(newDay);
+        setMonth(newMonth);
+        setYear(newYear);
+
+        if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
+            const date = new Date(`${newYear}-${newMonth}-${newDay}`);
+             // Check if the constructed date is valid
+            if (!isNaN(date.getTime()) && 
+                date.getDate() === parseInt(newDay, 10) &&
+                date.getMonth() + 1 === parseInt(newMonth, 10) &&
+                date.getFullYear() === parseInt(newYear, 10)) {
+                onChange(date);
+            } else {
+                 // Propagate an invalid date to trigger validation
+                 onChange(new Date('invalid'));
+            }
+        }
+    };
+    
+    return (
+        <div className="flex items-center gap-2">
+            <Input
+                placeholder="GG"
+                maxLength={2}
+                value={day}
+                onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    handleDateChange(val, month, year);
+                    if (val.length === 2) monthRef.current?.focus();
+                }}
+                disabled={disabled}
+                className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none"
+            />
+            <span className="text-2xl text-muted-foreground">/</span>
+            <Input
+                ref={monthRef}
+                placeholder="AA"
+                maxLength={2}
+                value={month}
+                onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    handleDateChange(day, val, year);
+                    if (val.length === 2) yearRef.current?.focus();
+                }}
+                disabled={disabled}
+                 className="text-2xl text-center h-16 w-20 p-0 border-0 border-b-2 rounded-none"
+            />
+            <span className="text-2xl text-muted-foreground">/</span>
+            <Input
+                ref={yearRef}
+                placeholder="YYYY"
+                maxLength={4}
+                value={year}
+                onChange={(e) => {
+                     const val = e.target.value.replace(/[^0-9]/g, '');
+                     handleDateChange(day, month, val);
+                }}
+                disabled={disabled}
+                className="text-2xl text-center h-16 w-28 p-0 border-0 border-b-2 rounded-none"
+            />
+        </div>
+    )
+}
 
 export default function SignupForm() {
   const router = useRouter();
@@ -125,43 +195,11 @@ export default function SignupForm() {
                       control={form.control}
                       name="dateOfBirth"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col pt-4">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal h-14 text-lg",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value ? (
-                                    format(field.value, "dd LLL, yyyy", { locale: tr })
-                                  ) : (
-                                    <span>Doğum tarihini seç</span>
-                                  )}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() || date < new Date("1920-01-01")
-                                }
-                                defaultMonth={eighteenYearsAgo}
-                                fromYear={1920}
-                                toYear={new Date().getFullYear() - 18}
-                                captionLayout="dropdown-buttons"
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                           <FormLabel className="text-muted-foreground mt-2">
+                        <FormItem className="pt-8">
+                            <FormControl>
+                                <DateInput {...field} />
+                            </FormControl>
+                           <FormLabel className="text-muted-foreground pt-2 block">
                              Profilinde yaşın gösterilir, doğum tarihin değil.
                            </FormLabel>
                           <FormMessage />
