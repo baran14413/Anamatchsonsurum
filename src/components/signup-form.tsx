@@ -204,7 +204,8 @@ export default function SignupForm() {
   }
 
 
-  const onFinalSubmit = async (data: SignupFormValues) => {
+  const onFinalSubmit = async () => {
+    const data = form.getValues();
     setIsLoading(true);
 
     if (isUploading) {
@@ -492,7 +493,7 @@ export default function SignupForm() {
                         }
                     }}
                     className="w-full h-12 text-base font-bold rounded-full" 
-                    disabled={step === 3 && !location}
+                    disabled={(step === 3 && !location) || (isUploading && step === 2)}
                  >
                     Devam Et
                  </Button>
@@ -512,3 +513,4 @@ export default function SignupForm() {
   );
 }
 
+    
