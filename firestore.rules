@@ -1,94 +1,78 @@
 /**
  * @file Firestore Security Rules for BeMatch application.
  *
- * @core_philosophy This ruleset enforces a strict user-ownership model. Each user has exclusive
- *   access to their profile data, matches, and associated chat messages.
+ * @corePhilosophy This ruleset enforces a strict user-ownership model, ensuring that users can only access and modify data associated with their own user ID.
+ * @dataStructure All data is nested under /users/{userId}, creating a clear hierarchy that simplifies access control. Matches and messages are stored as subcollections, maintaining the user-centric organization.
+ * @keySecurityDecisions Listing of users is disallowed.  Write operations are restricted to authenticated users and must adhere to the ownership model.
  *
- * @data_structure The data is structured hierarchically under `/users/{userId}`, with
- *   matches stored in the `/users/{userId}/matches/{matchId}` subcollection and chat messages in
- *   `/users/{userId}/matches/{matchId}/messages/{messageId}`.
- *
- * @key_security_decisions
- *   - User listing is disallowed.
- *   - Strict ownership is enforced for all data: a user can only access data under their own userId.
- *
- * @denormalization_justification
- *   The data structure avoids costly `get()` calls by nesting data under user-specific paths,
- *   allowing security rules to rely on path parameters and `request.auth.uid` for authorization.
+ * @denormalizationForAuthorization  The data structure inherently supports authorization independence, eliminating the need for additional `get()` calls.  The `userId` is embedded in the path, making ownership checks simple and efficient.
+ * @structuralSegregation N/A - All user data is private and stored under the `/users/{userId}` path.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc if the profile id matches their UID.
-     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, or delete their profile at /users/user_abc.
-     * @deny (create) - User with UID 'user_xyz' cannot create a profile at /users/user_abc.
-     * @deny (update, delete) - User with UID 'user_xyz' cannot update or delete the profile at /users/user_abc.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create their own profile.
+     * @allow (get, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, update, or delete their own profile.
+     * @deny (create) User 'attackerId' cannot create a profile with userId 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1'.
+     * @deny (get, update, delete) User 'attackerId' cannot get, update, or delete user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Verifies that the user is signed in.
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false;
-      // Allows a user to create their own profile, enforcing that the userId matches their auth UID.
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      // Allows a user to update their own profile.  The id field is immutable.
-      allow update: if isSignedIn() && isExistingOwner(userId) && resource.data.id == request.resource.data.id;
-      // Allows a user to delete their own profile.
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to match documents for a specific user.
+     * @description Rules for matches of a user.
      * @path /users/{userId}/matches/{matchId}
-     * @allow (create) - User with UID 'user_abc' can create a match document under their profile.
-     * @allow (get, list, update, delete) - User with UID 'user_abc' can read, list, update, or delete match documents under their profile.
-     * @deny (create) - User with UID 'user_xyz' cannot create a match document under /users/user_abc.
-     * @deny (get, list, update, delete) - User with UID 'user_xyz' cannot read, list, update, or delete match documents under /users/user_abc.
-     * @principle Restricts access to a user's own matches.
+     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create matches within their profile.
+     * @allow (get, list, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, list, update, or delete matches within their profile.
+     * @deny (create) User 'attackerId' cannot create matches within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
+     * @deny (get, list, update, delete) User 'attackerId' cannot get, list, update, or delete matches within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' profile.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId}/matches/{matchId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to chat messages within a match.
+     * @description Rules for chat messages within a match.
      * @path /users/{userId}/matches/{matchId}/messages/{messageId}
-     * @allow (create) - User with UID 'user_abc' can create a message in a match they are part of.
-     * @allow (get, list) - User with UID 'user_abc' can read messages in a match they are part of.
-     * @allow (update, delete) - User with UID 'user_abc' cannot update or delete messages (not allowed).
-     * @deny (create) - User with UID 'user_xyz' cannot create a message under /users/user_abc/matches/{matchId}.
-     * @principle Restricts access to chat messages to users within the specific match.
+     * @allow (create) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can create messages within their matches.
+     * @allow (get, list, update, delete) User 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' can get, list, update, or delete messages within their matches.
+     * @deny (create) User 'attackerId' cannot create messages within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' matches.
+     * @deny (get, list, update, delete) User 'attackerId' cannot get, list, update, or delete messages within user 'yRYfOjIHP7dP2mZoMVMbzTt3cbg1' matches.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId}/matches/{matchId}/messages/{messageId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-      allow update: if false;
-      allow delete: if false;
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
   }
 
-  // Helper function to determine if the user is signed in.
+  // Helper functions
   function isSignedIn() {
     return request.auth != null;
   }
 
-  // Helper function to determine if the requesting user is the owner of the resource.
   function isOwner(userId) {
     return request.auth.uid == userId;
   }
 
-  // Helper function to determine if the requesting user is the existing owner of the resource,
-  // and that the resource exists.  This is critical for update/delete operations to prevent
-  // attempts to modify or delete non-existent data.
   function isExistingOwner(userId) {
     return isOwner(userId) && resource != null;
   }
