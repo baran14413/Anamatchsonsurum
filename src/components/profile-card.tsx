@@ -10,6 +10,7 @@ import { MapPin, Heart, X, ArrowUp } from "lucide-react";
 interface ProfileCardProps {
   profile: UserProfileType;
   onSwipe: (direction: 'left' | 'right') => void;
+  isTop: boolean;
 }
 
 const calculateAge = (dateString: string | undefined) => {
@@ -24,7 +25,7 @@ const calculateAge = (dateString: string | undefined) => {
     return age;
 };
 
-export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
+export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const x = useMotionValue(0);
   
@@ -56,9 +57,10 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
 
   return (
     <motion.div
-      className="absolute inset-0 cursor-grab active:cursor-grabbing"
+      className="absolute inset-0 cursor-grab"
       style={{ x, rotate }}
-      drag="x"
+      drag={isTop}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
       initial={{ scale: 0.95, y: 20, opacity: 0 }}
@@ -114,7 +116,7 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
               </h2>
                <div className="flex items-center gap-1.5 pt-1">
                  <MapPin className="h-4 w-4" />
-                 <p className="font-semibold text-sm">{(Math.random() * 200).toFixed(0)} km uzakta</p>
+                 <p className="font-semibold text-sm">{(Math.random() * 20).toFixed(0)} km uzakta</p>
                </div>
             </div>
             <button className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">

@@ -36,6 +36,7 @@ export default function AnasayfaPage() {
   const { toast } = useToast();
   const auth = useAuth();
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
 
   useEffect(() => {
     if (!auth) return;
@@ -60,34 +61,23 @@ export default function AnasayfaPage() {
     ([url, token]) => fetcher(url, token),
     { revalidateOnFocus: false }
   );
-
-  const profilesToRender = useMemo(() => {
-    if (fetchedProfiles && !error) {
-      return fetchedProfiles;
-    }
-    // If there's an error or it's loading and there are no profiles yet, use mocks.
-    return mockProfiles;
-  }, [fetchedProfiles, error]);
-
-  const [currentIndex, setCurrentIndex] = useState(profilesToRender.length - 1);
   
   useEffect(() => {
-    setCurrentIndex(profilesToRender.length - 1);
-  }, [profilesToRender]);
+    const profilesToUse = (!isLoading && fetchedProfiles) ? fetchedProfiles : mockProfiles;
+    setVisibleProfiles(profilesToUse);
+  }, [fetchedProfiles, isLoading]);
 
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
-    const isMock = !fetchedProfiles || !!error;
+    // Optimistically remove the card from the UI
+    setVisibleProfiles(prev => prev.filter(p => p.id !== swipedUserId));
 
-    // Immediately remove card from UI by decrementing index
-    setCurrentIndex(prev => prev - 1);
+    const isMock = !fetchedProfiles || !!error;
 
     if (isMock || !idToken) {
         return;
     }
     
-    // Don't use SWR's mutate for optimistic UI, we manage it with currentIndex
-  
     try {
         const response = await fetch('/api/record-swipe', {
             method: 'POST',
@@ -112,8 +102,9 @@ export default function AnasayfaPage() {
                 duration: 5000,
             });
         }
-        // If we've run out of real profiles, refetch
-        if (currentIndex <= 0) {
+       
+        // If we've run out of profiles, refetch
+        if (visibleProfiles.length <= 1) {
           mutate();
         }
 
@@ -124,13 +115,13 @@ export default function AnasayfaPage() {
         description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
-      // On error, trigger a revalidation to get fresh data.
-      mutate();
+      // On error, trigger a revalidation to get fresh data, and restore the swiped card
+      setVisibleProfiles(prev => [...prev, visibleProfiles.find(p => p.id === swipedUserId)!]);
     }
   };
 
   const triggerSwipe = (direction: 'left' | 'right') => {
-    const topProfile = profilesToRender[currentIndex];
+    const topProfile = visibleProfiles[visibleProfiles.length - 1];
     if (topProfile) {
       handleSwipe(topProfile.id, direction);
     }
@@ -144,19 +135,20 @@ export default function AnasayfaPage() {
     );
   }
 
-  const topProfile = profilesToRender[currentIndex];
-
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {topProfile ? (
-              <ProfileCard
-                key={topProfile.id}
-                profile={topProfile}
-                onSwipe={(dir) => handleSwipe(topProfile.id, dir)}
-              />
+            {visibleProfiles.length > 0 ? (
+                visibleProfiles.map((profile, index) => (
+                    <ProfileCard
+                      key={profile.id}
+                      profile={profile}
+                      isTop={index === visibleProfiles.length - 1}
+                      onSwipe={(dir) => handleSwipe(profile.id, dir)}
+                    />
+                ))
             ) : (
               <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground px-8">
                 <Heart className="h-16 w-16 mb-4 text-gray-300" />
@@ -168,7 +160,7 @@ export default function AnasayfaPage() {
         </div>
       </div>
 
-      {topProfile && (
+      {visibleProfiles.length > 0 && (
         <div className="absolute bottom-20 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-3 py-4 shrink-0">
           <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-yellow-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
             <Undo2 className="h-6 w-6" />

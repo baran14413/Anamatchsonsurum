@@ -8,6 +8,7 @@ import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
 import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
+import { AnimatePresence, motion } from "framer-motion";
 
 const publicPaths = ["/login", "/kayit-ol", "/"];
 const appRoot = "/anasayfa";
@@ -93,7 +94,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
-        <Icons.logo className="h-24 w-24 animate-pulse text-[#FD5068]" />
+        <Icons.logo className="h-24 w-24 animate-pulse text-primary" />
       </div>
     );
   }
@@ -103,7 +104,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isAppPage && user) {
     return (
       <div className="flex h-dvh flex-col bg-background dark:bg-black">
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 overflow-hidden"
+          >
+            {children}
+          </motion.main>
+        </AnimatePresence>
         <FooterNav />
       </div>
     );

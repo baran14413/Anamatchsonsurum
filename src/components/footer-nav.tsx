@@ -28,15 +28,17 @@ export default function FooterNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary",
-                isActive ? "text-primary" : "text-gray-500"
+                "flex flex-col items-center justify-center gap-1 text-gray-500 transition-colors hover:text-primary",
+                isActive && "text-primary"
               )}
             >
               <Icon 
                 className={cn(
                   "h-7 w-7", 
-                  { 'fill-current': isActive }
-                )} 
+                  isActive && (href === "/begeniler" || href === "/anasayfa") ? 'fill-current' : ''
+                )}
+                fill={isActive && (href === "/begeniler" || href === "/anasayfa") ? "currentColor" : "none"}
+                stroke="currentColor"
               />
                {/* Always show label for better UX */}
             </Link>
