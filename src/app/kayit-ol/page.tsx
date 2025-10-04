@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Icons } from "@/components/icons";
 import SignupForm from "@/components/signup-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function SignupPage() {
   return (
@@ -21,7 +27,10 @@ export default function SignupPage() {
             <SignupForm />
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Zaten bir hesabın var mı?{" "}
-              <Link href="/" className="font-semibold text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/"
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+              >
                 Giriş Yap
               </Link>
             </div>

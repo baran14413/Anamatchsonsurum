@@ -44,6 +44,15 @@ export default function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    if (!auth) {
+      toast({
+        title: "Hata",
+        description: "Kimlik doğrulama hizmeti yüklenemedi. Lütfen sayfayı yenileyin.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/anasayfa");
@@ -68,7 +77,7 @@ export default function LoginForm() {
             <FormItem>
               <FormLabel>E-posta</FormLabel>
               <FormControl>
-                <Input placeholder="ornek@eposta.com" {...field} className="bg-white/50 dark:bg-black/20"/>
+                <Input placeholder="ornek@eposta.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -82,7 +91,7 @@ export default function LoginForm() {
               <FormLabel>Şifre</FormLabel>
               <div className="relative">
                 <FormControl>
-                  <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="bg-white/50 dark:bg-black/20"/>
+                  <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
                 </FormControl>
                 <button
                   type="button"
