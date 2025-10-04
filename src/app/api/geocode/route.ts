@@ -19,20 +19,8 @@ export async function GET(req: NextRequest) {
   try {
     const res = await geocoder.reverse({ lat: parseFloat(lat), lon: parseFloat(lon) });
     if (res && res.length > 0) {
-      const {
-        streetName,
-        streetNumber,
-        city,
-        state,
-        zipcode,
-        country,
-        district
-      } = res[0];
-      
-      const address = [streetName, streetNumber, district, city, zipcode, state, country]
-        .filter(Boolean)
-        .join(', ');
-
+      // Return the entire first result object.
+      // The client will be responsible for formatting it.
       return NextResponse.json({ address: res[0] });
     } else {
       return NextResponse.json({ error: 'Address not found' }, { status: 404 });

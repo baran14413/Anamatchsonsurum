@@ -4,7 +4,7 @@
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/provider';
-import { Loader2, MapPin, Check, AlertTriangle, Building } from 'lucide-react';
+import { Loader2, MapPin, AlertTriangle, Building } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -61,18 +61,30 @@ export default function KonumPage() {
   useEffect(() => {
     const fetchAddress = async (lat: number, lon: number) => {
         setIsGeocoding(true);
+        setError(null);
         try {
             const response = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
             const data = await response.json();
+            
             if (response.ok && data.address) {
                 const adr = data.address;
-                const formattedAddress = [adr.streetName, adr.streetNumber, adr.district, adr.city, adr.state, adr.country].filter(Boolean).join(', ');
-                setAddress(formattedAddress);
+                // Gracefully construct the address from available fields
+                const formattedAddress = [
+                    adr.streetName,
+                    adr.streetNumber,
+                    adr.district,
+                    adr.city,
+                    adr.zipcode,
+                    adr.state,
+                    adr.country
+                ].filter(Boolean).join(', ');
+                setAddress(formattedAddress || "Adres detayı bulunamadı.");
             } else {
-                setAddress("Adres bulunamadı.");
+                setAddress("Adres bilgisi alınamadı.");
             }
         } catch (err) {
-            setAddress("Adres alınamadı.");
+            console.error("Geocoding fetch error:", err);
+            setAddress("Adres bilgisi alınamadı.");
         } finally {
             setIsGeocoding(false);
         }
@@ -95,22 +107,34 @@ export default function KonumPage() {
         try {
           if (userProfileRef) {
             await updateDoc(userProfileRef, { location: newLocation });
-            mutate();
+            mutate(); // Re-fetches the user profile data, which will trigger the useEffect for geocoding
             toast({
               title: "Konum Güncellendi",
               description: "Yeni konumunuz başarıyla kaydedildi.",
             });
           }
         } catch (e) {
-            setError("Konum güncellenirken bir hata oluştu.");
-            toast({ title: "Hata", description: "Veritabanına yazılamadı.", variant: "destructive" });
+            setError("Konum veritabanına kaydedilemedi.");
+            toast({ title: "Hata", description: "Konum veritabanına kaydedilemedi.", variant: "destructive" });
         } finally {
             setIsUpdating(false);
         }
       },
       (geoError) => {
-        setError("Konum izni alınamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.");
-        toast({ title: "Konum Hatası", description: "Konum izni reddedildi veya alınamadı.", variant: "destructive" });
+        let errorMessage = "Konum izni alınamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.";
+        switch(geoError.code) {
+          case geoError.PERMISSION_DENIED:
+            errorMessage = "Konum izni reddedildi.";
+            break;
+          case geoError.POSITION_UNAVAILABLE:
+            errorMessage = "Konum bilgisi mevcut değil.";
+            break;
+          case geoError.TIMEOUT:
+            errorMessage = "Konum alma isteği zaman aşımına uğradı.";
+            break;
+        }
+        setError(errorMessage);
+        toast({ title: "Konum Hatası", description: errorMessage, variant: "destructive" });
         setIsUpdating(false);
       }
     );
@@ -147,7 +171,7 @@ export default function KonumPage() {
                   Yaklaşık Konumunuz
                 </h3>
                 {isGeocoding ? (
-                   <div className="flex items-center gap-2 mt-2">
+                   <div className="flex items-center gap-2 mt-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Adres getiriliyor...</span>
                    </div>
@@ -170,7 +194,7 @@ export default function KonumPage() {
           )}
 
            {error && (
-            <p className="text-sm font-medium text-destructive">{error}</p>
+            <p className="text-sm font-medium text-destructive text-center">{error}</p>
           )}
 
           <Button onClick={handleUpdateLocation} disabled={isUpdating} className="w-full">
