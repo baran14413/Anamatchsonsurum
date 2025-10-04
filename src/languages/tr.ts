@@ -210,6 +210,20 @@ export const langTr = {
                 ]
             },
             {
+                title: 'TV ve filmler',
+                icon: 'Clapperboard',
+                options: [
+                    'Aksiyon filmleri', 'Animasyon filmleri', 'Suç dizileri', 'Drama dizileri', 'Fantastik filmler', 'Belgeseller', 'Bağımsız filmler', 'Reality dizileri', 'Romantik komediler', 'Spor dizileri', 'Gerilim filmleri', 'Kore dizileri', 'Hayalet Filmleri', 'Bollywood', 'Sinema', 'Bilim Kurgu', 'Anime', 'Komedi'
+                ]
+            },
+            {
+                title: 'Yaratıcılık',
+                icon: 'Paintbrush',
+                options: [
+                    'El işi', 'Yazarlık', 'Dans', 'Resim', 'Tasarım', 'Makyaj'
+                ]
+            },
+            {
                 title: 'Oyun',
                 icon: 'Gamepad2',
                 options: [
@@ -220,7 +234,7 @@ export const langTr = {
                 title: 'Sağlık ve yaşam tarzı',
                 icon: 'Sprout',
                 options: [
-                    'Öz Sevgi', 'Yeni Şeyler Denemek', 'Tarot', 'Spa', 'Kişisel Bakım', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Makyaj', 'Astroloji', 'Mindfulness', 'Sauna', 'Aktif Yaşam', 'Yoga'
+                    'Öz Sevgi', 'Yeni Şeyler Denemek', 'Tarot', 'Spa', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Makyaj', 'Astroloji', 'Mindfulness', 'Sauna', 'Aktif Yaşam', 'Yoga'
                 ]
             },
             {
@@ -252,3 +266,5 @@ export const langTr = {
     },
   },
 };
+
+    
