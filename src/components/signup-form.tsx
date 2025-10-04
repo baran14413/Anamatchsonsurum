@@ -269,7 +269,7 @@ export default function SignupForm() {
       <main className="flex flex-1 flex-col p-6 overflow-hidden">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-4 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto space-y-4">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -458,12 +458,11 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <>
-                  <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
-                    <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-                  </div>
-                  <ScrollArea className="flex-1 pr-4 -mr-4">
-                    <div className="space-y-8 pt-4 pb-4">
+                    <div className="shrink-0">
+                        <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
+                        <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-8 py-4 pr-2 -mr-4">
                       <FormField
                         control={form.control}
                         name="drinking"
@@ -549,7 +548,6 @@ export default function SignupForm() {
                           )}
                         />
                     </div>
-                  </ScrollArea>
                 </>
               )}
             </div>
