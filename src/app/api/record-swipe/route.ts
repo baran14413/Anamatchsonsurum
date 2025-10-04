@@ -33,8 +33,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid swipe data' }, { status: 400 });
         }
 
-        // 1. Record the interaction for the current user
-        // This swipe is stored in a subcollection of the user who is doing the swiping.
+        // Record the interaction for the current user
         const interactionRef = adminDb
             .collection('users')
             .doc(currentUserId)
@@ -46,9 +45,7 @@ export async function POST(req: NextRequest) {
             timestamp: FieldValue.serverTimestamp(),
         });
 
-        // 2. If it was a 'right' swipe, check for a match
         if (direction === 'right') {
-            // Check if the other user has also swiped right on the current user.
             const otherUserInteractionRef = adminDb
                 .collection('users')
                 .doc(swipedUserId)
@@ -61,16 +58,19 @@ export async function POST(req: NextRequest) {
                 // It's a MATCH!
                 const matchId = [currentUserId, swipedUserId].sort().join('_');
                 const matchDate = FieldValue.serverTimestamp();
+                
+                // Define user IDs clearly
+                const [user1Id, user2Id] = [currentUserId, swipedUserId].sort();
+
                 const matchData = {
                     id: matchId,
-                    users: [currentUserId, swipedUserId],
+                    user1Id: user1Id,
+                    user2Id: user2Id,
                     matchDate: matchDate,
                 };
 
-                // Use a batch write to ensure atomicity
                 const batch = adminDb.batch();
 
-                // Create match document for the current user
                 const currentUserMatchRef = adminDb
                     .collection('users')
                     .doc(currentUserId)
@@ -78,23 +78,19 @@ export async function POST(req: NextRequest) {
                     .doc(matchId);
                 batch.set(currentUserMatchRef, matchData);
                 
-
-                // Create match document for the other user
                 const otherUserMatchRef = adminDb
                     .collection('users')
-                    doc(swipedUserId)
+                    .doc(swipedUserId)
                     .collection('matches')
                     .doc(matchId);
                 batch.set(otherUserMatchRef, matchData);
 
                 await batch.commit();
                 
-                // Return that a match was made
                 return NextResponse.json({ match: true });
             }
         }
         
-        // No match, just a regular swipe
         return NextResponse.json({ match: false });
 
     } catch (error) {
