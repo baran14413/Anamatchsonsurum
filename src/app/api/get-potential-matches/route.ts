@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/admin';
+import { adminDb, adminAuth } from '@/lib/admin';
 import type { UserProfile } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -16,21 +16,55 @@ const mockProfiles: Omit<UserProfile, 'id'>[] = [
     { fullName: 'Hakan', dateOfBirth: '1994-08-30', images: ['https://picsum.photos/seed/hakan1/600/800'], interests: ['Finans', 'Golf', 'Klasik Müzik'], bio: 'Disiplin ve odaklanma başarının anahtarıdır.' }
 ];
 
-
-export async function GET(req: NextRequest) {
+async function getAuthenticatedUser(req: NextRequest) {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return null;
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        return decodedToken.uid;
+    } catch (error) {
+        console.error('Error verifying auth token:', error);
+        return null;
+    }
+}
+
+export async function GET(req: NextRequest) {
+    const currentUserId = await getAuthenticatedUser(req);
+    if (!currentUserId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In a real scenario, we'd use the current user's data to filter these.
-    // For now, we'll just return the mock profiles as is for testing.
-    
-    // Add unique IDs to the mock profiles
-    const profilesWithIds = mockProfiles.map((profile, index) => ({
-        ...profile,
-        id: `mock_user_${index + 1}`
-    }));
+    try {
+        // 1. Get real users from Firestore
+        const usersSnapshot = await adminDb.collection('users').get();
+        const realUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
 
-    return NextResponse.json(profilesWithIds);
+        // 2. Add unique IDs to mock profiles
+        const mockUsersWithIds = mockProfiles.map((profile, index) => ({
+            ...profile,
+            id: `mock_user_${index + 1}`
+        }));
+
+        // 3. Combine real and mock users
+        const allUsers = [...realUsers, ...mockUsersWithIds];
+        
+        // 4. Get users the current user has already interacted with
+        const interactionsSnapshot = await adminDb.collection('users').doc(currentUserId).collection('interactions').get();
+        const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+
+        // 5. Filter out the current user and interacted users
+        let potentialMatches = allUsers.filter(user => user.id !== currentUserId && !interactedUserIds.has(user.id));
+        
+        // 6. Shuffle the results
+        potentialMatches.sort(() => Math.random() - 0.5);
+
+        return NextResponse.json(potentialMatches);
+
+    } catch (error) {
+        console.error("Error fetching potential matches:", error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
 }
