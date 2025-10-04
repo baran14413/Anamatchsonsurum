@@ -63,15 +63,28 @@ export default function LoginForm() {
       setIsLoading(false);
       return;
     }
+    
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailValue);
       if (methods.length > 0) {
+        // Email exists, proceed to password step
         setStep('password');
       } else {
+        // Email does not exist
         form.setError("email", { type: "manual", message: "Bu e-posta kayıtlı değil. Lütfen önce kayıt olunuz." });
       }
-    } catch (error) {
-       form.setError("email", { type: "manual", message: "Geçersiz e-posta adresi." });
+    } catch (error: any) {
+        // Handle specific errors, like invalid email format
+        if (error.code === 'auth/invalid-email') {
+            form.setError("email", { type: "manual", message: "Geçersiz e-posta adresi." });
+        } else {
+            // Handle other potential errors (network, etc.)
+            toast({
+                title: "Bir hata oluştu",
+                description: "E-posta kontrol edilirken bir sorun yaşandı. Lütfen tekrar deneyin.",
+                variant: "destructive"
+            });
+        }
     } finally {
       setIsLoading(false);
     }
