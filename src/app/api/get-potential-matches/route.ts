@@ -27,10 +27,11 @@ export async function GET(req: NextRequest) {
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure basic data integrity, especially the uid field
+            // Ensure basic data integrity, especially the uid field. This filters out documents
+            // that are just containers for subcollections (like 'interactions' or 'matches').
             if (userData && userData.uid) {
                 allUsers.push({
-                    id: doc.id,
+                    id: doc.id, // The document ID is the user's UID
                     ...userData,
                     // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
                     images: userData.images || [], 
