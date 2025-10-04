@@ -268,7 +268,7 @@ export default function SignupForm() {
       <main className="flex flex-1 flex-col p-6 overflow-hidden">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-4 overflow-y-auto flex flex-col">
+            <div className="flex-1 space-y-4 flex flex-col min-h-0">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
