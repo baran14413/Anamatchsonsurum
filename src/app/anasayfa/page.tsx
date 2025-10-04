@@ -49,28 +49,22 @@ export default function AnasayfaPage() {
     ([url, token]) => fetcher(url, token)
   );
 
-  // Determine which profiles to use. Fallback to mock data if fetch fails or returns empty.
-  const profiles = (!isLoading && (error || !fetchedProfiles || fetchedProfiles.length === 0)) 
-    ? mockProfiles 
-    : fetchedProfiles || [];
-
-  const usingMockData = (!isLoading && (error || !fetchedProfiles || fetchedProfiles.length === 0));
-
-  const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
-
-  useEffect(() => {
-    setVisibleProfiles(profiles);
-  }, [profiles]);
+  // Use fetched profiles if available and not empty, otherwise fallback to mock data.
+  // This also covers the error case gracefully.
+  const profiles = (fetchedProfiles && fetchedProfiles.length > 0) ? fetchedProfiles : mockProfiles;
+  const usingMockData = !fetchedProfiles || fetchedProfiles.length === 0;
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
-    // Optimistic UI update
-    setVisibleProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedUserId));
-
     if (usingMockData) {
+        // For mock data, just remove the card locally without an API call.
+        mutate(currentProfiles => (currentProfiles || []).filter(p => p.id !== swipedUserId), false);
         return;
     }
       
     if (!idToken) return;
+
+    // Optimistic UI update: remove the card immediately.
+    mutate(currentProfiles => (currentProfiles || []).filter(p => p.id !== swipedUserId), false);
   
     try {
         const response = await fetch('/api/record-swipe', {
@@ -96,6 +90,7 @@ export default function AnasayfaPage() {
                 duration: 5000,
             });
         }
+        // No need to re-fetch here, optimistic update is enough for swiping
     } catch (error: any) {
       console.error("Error recording interaction:", error);
       toast({
@@ -103,14 +98,14 @@ export default function AnasayfaPage() {
         description: error.message || "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       });
-      // Revert optimistic update on error
+      // On error, trigger a revalidation to revert the optimistic update and get fresh data.
       mutate();
     }
   };
 
   const triggerSwipe = (direction: 'left' | 'right') => {
-    if (visibleProfiles.length > 0) {
-      const topProfile = visibleProfiles[visibleProfiles.length - 1];
+    if (profiles.length > 0) {
+      const topProfile = profiles[profiles.length - 1];
       handleSwipe(topProfile.id, direction);
     }
   };
@@ -122,17 +117,23 @@ export default function AnasayfaPage() {
         </div>
     );
   }
+  
+  if (error && usingMockData) {
+      // This block can be used to show a specific error UI if needed,
+      // but for now, we just fall back to mock data.
+      console.warn("Failed to fetch profiles, showing mock data. Error:", error.message);
+  }
 
-  const activeProfile = visibleProfiles.length > 0 ? visibleProfiles[visibleProfiles.length - 1] : null;
+  const activeProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
       <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
-            {visibleProfiles.length > 0 ? (
-              visibleProfiles.map((profile: UserProfileType, index: number) => {
-                const isTopCard = index === visibleProfiles.length - 1;
+            {profiles.length > 0 ? (
+              profiles.map((profile: UserProfileType, index: number) => {
+                const isTopCard = index === profiles.length - 1;
                 return (
                   <ProfileCard
                     key={profile.id}
