@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
 import { Icons } from "./icons";
 
@@ -138,17 +138,21 @@ export default function LoginForm() {
                 <>
                     <h1 className="text-3xl font-bold">E-postan nedir?</h1>
                     <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormControl>
-                            <Input placeholder="E-posta adresini gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormControl>
+                              <Input placeholder="E-posta adresini gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
+                          </FormControl>
+                          <FormMessage />
+                          </FormItem>
+                      )}
                     />
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 pt-2">
+                        Lütfen sistemde kayıtlı e-mail adresinizi giriniz, ardından şifre adımına yönlendirileceksiniz.
+                        <Heart className="h-4 w-4 text-red-500 fill-current" />
+                    </p>
                 </>
                 ) : (
                 <>
