@@ -1,5 +1,10 @@
 "use server-only";
 import * as admin from 'firebase-admin';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// This ensures that the .env file is loaded at the root of the project
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // This function ensures that the service account JSON is properly parsed,
 // whether it's a raw string or base64 encoded.
