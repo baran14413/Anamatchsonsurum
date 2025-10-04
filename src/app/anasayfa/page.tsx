@@ -56,11 +56,13 @@ export default function AnasayfaPage() {
       }
     };
 
-    fetchProfiles();
+    if (currentUser) {
+        fetchProfiles();
+    }
   }, [currentUser, auth, toast]);
 
   const handleSwipe = async (profileId: string, direction: 'left' | 'right') => {
-    if (!currentUser) return;
+    if (!currentUser || !firestore) return;
   
     // Optimistically update the UI
     setProfiles(prev => prev.filter(p => p.id !== profileId));
@@ -68,31 +70,20 @@ export default function AnasayfaPage() {
     const interactionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profileId);
     
     try {
+      // Only record the interaction.
+      // The logic for creating a match should be handled server-side
+      // by a Cloud Function that checks if both users swiped right.
       await setDoc(interactionRef, {
         swipe: direction,
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        userId: currentUser.uid,
       });
   
-      if (direction === 'right') {
-        // This logic creates a match document in both users' subcollections.
-        const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches`, profileId);
-        const otherUserMatchRef = doc(firestore, `users/${profileId}/matches`, currentUser.uid);
-        
-        const matchData = {
-          matchDate: serverTimestamp(),
-          user1Id: currentUser.uid,
-          user2Id: profileId,
-        };
+      // TODO: In the future, a Cloud Function will listen to writes on `interactions`.
+      // If user A swipes right on user B, and user B has already swiped right on user A,
+      // the function will create a match document in both users' `matches` subcollection.
+      // For now, we are just recording the swipe.
 
-        await setDoc(currentUserMatchRef, matchData);
-        await setDoc(otherUserMatchRef, matchData);
-
-        toast({
-          title: "Harika! Yeni bir eşleşme!",
-          description: "Mesajlar sekmesinden sohbet etmeye başlayabilirsin.",
-          className: "bg-gradient-to-r from-green-400 to-blue-500 text-white"
-        });
-      }
     } catch (error) {
       console.error("Error recording interaction:", error);
       // Optionally revert UI update or show an error toast
