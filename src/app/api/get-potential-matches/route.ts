@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/admin';
 import type { UserProfile } from '@/lib/types';
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
     usersSnapshot.forEach(doc => {
       // Ensure the document data matches the UserProfile type, at least partially.
       const userData = doc.data() as Partial<UserProfile>;
+      // IMPORTANT: Only add users that have a UID to prevent issues.
       if(userData.uid) {
         allUsers.push({ id: doc.id, ...userData } as UserProfile);
       }
