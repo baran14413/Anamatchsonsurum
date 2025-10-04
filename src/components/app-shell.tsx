@@ -2,16 +2,42 @@
 "use client";
 
 import { useUser, useAuth } from "@/firebase";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
+import { Button } from "./ui/button";
+import { Settings, Shield } from "lucide-react";
 import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 
 const publicPaths = ["/login", "/kayit-ol", "/"];
 const appRoot = "/anasayfa";
+
+const Header = () => {
+    return (
+        <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b">
+            <Link href={appRoot} className="flex items-center gap-2 font-bold text-xl">
+                 <Icons.logo className="h-8 w-8 text-primary" />
+                 <span>BeMatch</span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/profil/duzenle">
+                <Button variant="ghost" size="icon">
+                  <Shield className="h-6 w-6 text-muted-foreground" />
+                </Button>
+              </Link>
+              <Link href="/profil/duzenle">
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-6 w-6 text-muted-foreground" />
+                </Button>
+              </Link>
+            </div>
+      </header>
+    )
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -72,24 +98,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [inputBuffer, handleLogout]);
 
   useEffect(() => {
+    // Wait until the authentication check is complete
     if (isUserLoading) {
       return; 
     }
 
     const isPublicPage = publicPaths.includes(pathname);
 
+    // If there is a user
     if (user) {
+      // And they are on a public page, redirect to the app root
       if (isPublicPage) {
         router.replace(appRoot);
       }
     } else {
+      // If there is no user and they are on a protected page, redirect to login
       if (!isPublicPage) {
         router.replace("/login");
       }
     }
   }, [user, isUserLoading, pathname, router]);
 
-  if (isUserLoading && !publicPaths.includes(pathname)) {
+  // While checking user auth, show a global loading screen
+  // This prevents the flicker of showing a page before the redirect happens
+  if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
         <Icons.logo className="h-24 w-24 animate-pulse text-primary" />
@@ -99,9 +131,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const isAppPage = !publicPaths.includes(pathname);
 
+  // If the user is on a page within the app shell (and we have a user)
   if (isAppPage && user) {
     return (
       <div className="flex h-dvh flex-col bg-background dark:bg-black">
+        <Header />
         <AnimatePresence mode="wait">
           <motion.main
             key={pathname}
@@ -119,5 +153,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // For public pages (Home, Login, Signup), just render the children
   return <>{children}</>;
 }

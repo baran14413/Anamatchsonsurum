@@ -62,23 +62,6 @@ export default function ProfilPage() {
 
   return (
     <div className="bg-muted/40 dark:bg-black h-full overflow-y-auto pb-24">
-      {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10">
-        <Icons.logo className="h-8 w-8 text-primary" />
-        <div className="flex items-center gap-4">
-          <Link href="/profil/duzenle">
-            <Button variant="ghost" size="icon">
-              <Shield className="h-6 w-6 text-muted-foreground" />
-            </Button>
-          </Link>
-          <Link href="/profil/duzenle">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-6 w-6 text-muted-foreground" />
-            </Button>
-          </Link>
-        </div>
-      </header>
-
       <div className="container mx-auto max-w-lg px-4 py-8">
         <div className="flex flex-col items-center gap-4">
             {/* Profile Avatar and Info */}
@@ -193,5 +176,3 @@ export default function ProfilPage() {
     </div>
   );
 }
-
-    

@@ -33,10 +33,7 @@ export default function FooterNav() {
               )}
             >
               <Icon 
-                className={cn(
-                  "h-7 w-7", 
-                  isActive && (href === "/begeniler" || href === "/anasayfa") ? 'fill-current' : ''
-                )}
+                className={cn("h-7 w-7")}
                 fill={isActive && (href === "/begeniler" || href === "/anasayfa") ? "currentColor" : "none"}
                 stroke="currentColor"
               />
