@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUser, useAuth } from "@/firebase";
@@ -19,7 +18,7 @@ const appRoot = "/anasayfa";
 
 const Header = () => {
     return (
-        <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b">
+        <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b shrink-0">
             <Link href={appRoot} className="flex items-center gap-2 font-bold text-xl">
                  <Icons.logo width={32} height={32} />
                  <span>BeMatch</span>

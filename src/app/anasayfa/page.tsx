@@ -1,5 +1,3 @@
-"use client";
-
 import { langTr } from "@/languages/tr";
 
 export default function AnasayfaPage() {
