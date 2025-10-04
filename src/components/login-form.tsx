@@ -9,8 +9,10 @@ import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   fetchSignInMethodsForEmail,
+  signInWithPopup,
+  GoogleAuthProvider,
 } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,6 +26,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
 import { langTr } from "@/languages/tr";
+import Image from 'next/image';
+import googleLogo from '@/img/googlelogin.png';
+import { doc, setDoc } from "firebase/firestore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const getSchema = (t: any) => z.object({
   email: z.string().email({ message: t.login.errors.invalidEmail }),
@@ -36,7 +51,9 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
+  const [showGoogleRedirectDialog, setShowGoogleRedirectDialog] = useState(false);
   const auth = useAuth();
+  const firestore = useFirestore();
   const t = langTr;
   const formSchema = getSchema(t);
 
@@ -68,10 +85,15 @@ export default function LoginForm() {
     
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailValue);
-      if (methods.length > 0) {
-        setStep('password');
-      } else {
+      if (methods.length === 0) {
         form.setError("email", { type: "manual", message: t.login.errors.emailNotRegistered });
+      } else if (methods.includes('password')) {
+        setStep('password');
+      } else if (methods.includes('google.com')) {
+        setShowGoogleRedirectDialog(true);
+      } else {
+        // Fallback for other providers if any
+        form.setError("email", { type: "manual", message: t.login.errors.otherProvider.replace('{provider}', methods.join(', ')) });
       }
     } catch (error: any) {
         if (error.code === 'auth/invalid-email') {
@@ -85,6 +107,40 @@ export default function LoginForm() {
         }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    if (!auth || !firestore) {
+      toast({ title: t.common.error, description: t.login.errors.authServiceError, variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Check if user profile exists, if not, create it (first time Google login)
+        const userDocRef = doc(firestore, "users", user.uid);
+        await setDoc(userDocRef, {
+            uid: user.uid,
+            fullName: user.displayName,
+            email: user.email,
+            profilePicture: user.photoURL,
+        }, { merge: true });
+
+        router.push("/anasayfa");
+    } catch (error: any) {
+        toast({
+            title: t.login.errors.googleLoginFailedTitle,
+            description: error.message || t.login.errors.googleLoginFailed,
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+        setShowGoogleRedirectDialog(false);
     }
   };
 
@@ -207,6 +263,27 @@ export default function LoginForm() {
             </div>
         </div>
       </div>
+      <AlertDialog open={showGoogleRedirectDialog} onOpenChange={setShowGoogleRedirectDialog}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>{t.login.errors.googleRedirectTitle}</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {t.login.errors.googleRedirectDescription}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                 <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleGoogleSignIn} disabled={isLoading}>
+                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
+                    <Image src={googleLogo} alt="Google logo" width={20} height={20} className="mr-2" />
+                   }
+                   {t.welcome.continueWithGoogle}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    

@@ -4,7 +4,7 @@ export const langTr = {
     back: 'Geri',
     save: 'Kaydet',
     next: 'İlerle',
-    nextDynamic: 'Sonraki {count}/{total}',
+    nextDynamic: 'İlerle ({count}/{total})',
     loading: 'Yükleniyor...',
     done: 'Bitir',
     skip: 'Atla',
@@ -43,6 +43,11 @@ export const langTr = {
       emailNotRegistered: 'Bu e-posta kayıtlı değil. Lütfen önce kayıt olunuz.',
       invalidEmail: 'Geçersiz e-posta adresi.',
       wrongPassword: 'Şifreniz yanlış. Lütfen tekrar deneyin.',
+      googleRedirectTitle: 'Google Hesabı Tespit Edildi',
+      googleRedirectDescription: 'Bu e-posta bir Google hesabıyla ilişkilendirilmiştir. Lütfen Google ile devam ederek giriş yapın.',
+      otherProvider: 'Bu e-posta {provider} ile kayıtlı. Lütfen o yöntemle giriş yapın.',
+      googleLoginFailedTitle: 'Google ile Giriş Başarısız',
+      googleLoginFailed: 'Google ile giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.',
     },
   },
   rules: {
@@ -98,13 +103,13 @@ export const langTr = {
     },
     step5: {
       title: 'Ne arıyorsun?',
-      label: 'Merak etme, bunu daha sonra profilinden istediğin zaman değiştirebilirsin.',
+      label: "Merak etme, bunu daha sonra profilinden istediğin zaman değiştirebilirsin.",
       options: [
         { id: 'long-term', label: 'Uzun süreli ilişki' },
         { id: 'short-term', label: 'Kısa süreli ilişki' },
         { id: 'friends', label: 'Yeni arkadaşlar' },
         { id: 'casual', label: 'Takılmak için' },
-        { id: 'not-sure', label: 'Emin değilim' },
+        { id: 'not-sure', label: "Emin değilim" },
         { id: 'whatever', label: 'Her şeye açığım' },
       ],
     },
@@ -134,7 +139,7 @@ export const langTr = {
         question: 'Ne sıklıkla içki içersin?',
         options: [
           { id: 'not_for_me', label: 'Bana göre değil' },
-          { id: 'dont_drink', label: 'İçmiyorum' },
+          { id: 'dont_drink', label: "İçmiyorum" },
           { id: 'rarely', label: 'Nadiren' },
           { id: 'special_occasions', label: 'Özel günlerde' },
           { id: 'socially_weekends', label: 'Hafta sonları sosyalleşirken' },
@@ -174,14 +179,14 @@ export const langTr = {
           { id: 'turtle', label: 'Kaplumbağa' },
           { id: 'hamster', label: 'Hamster' },
           { id: 'rabbit', label: 'Tavşan' },
-          { id: 'dont_like', label: 'Hoşlanmam' },
+          { id: 'dont_like', label: "Hoşlanmam" },
           { id: 'all_pets', label: 'Tüm evcil hayvanlar' },
         ],
       },
     },
     step10: {
         title: '{name}, seni sen yapan başka neler var?',
-        description: 'Kendini ortaya koymaktan çekinme. Özgün olmak cazibelidir.',
+        description: "Kendini ortaya koymaktan çekinme. Özgün olmak cazibelidir.",
         communication: {
             question: 'İletişim tarzını nasıl tanımlarsın?',
             options: [
@@ -239,103 +244,79 @@ export const langTr = {
             {
                 title: 'Müzik',
                 icon: 'Music',
-                options: [
-                    'Kilise müziği', 'Müzik grupları', 'Rock müzik', 'Soul müzik', 'Pop müzik', 'K-Pop', 'Punk rock', 'Rap müzik', 'Halk müziği', 'Latin müziği', 'Alternatif müzik', 'Tekno', 'Caz', 'House müzik', 'EDM', 'R&B', 'Bağımsız müzik', 'Opera', 'Heavy Metal', 'Funk müziği', 'Reggaeton', 'Country Müziği', 'Hip Hop', 'J-Pop', 'Elektronik Müzik', 'Grime', "90'lar Britpop", 'Trap Müzik', 'Müzik'
-                ]
+                options: [ 'Gospel', 'Bands', 'Rock', 'Soul', 'Pop', 'K-Pop', 'Punk', 'Rap', 'Folk', 'Latin', 'Alternative', 'Techno', 'Jazz', 'House', 'EDM', 'R&B', 'Indie', 'Opera', 'Heavy Metal', 'Funk', 'Reggaeton', 'Country', 'Hip Hop', 'J-Pop', 'Electronic', 'Grime', '90s Britpop', 'Trap', 'Music' ]
             },
             {
                 title: 'Dışarı Çıkmak',
                 icon: 'DoorOpen',
-                options: [
-                    'Kaçış odaları', 'Barlar', 'İkinci el alışveriş', 'Müzeler', 'Rave partileri', 'Arabalı sinema', 'Müzikal', 'Kafeden kafeye gezmek', 'Akvaryum', 'Kulüpte Partilemek', 'Sergi', 'Alışveriş', 'Arabalar', 'Pub Quiz', 'Festivaller', 'Happy hour', 'Stand up Komedi', 'Karaoke', 'Ev Partileri', 'Tiyatro', 'Nargile', 'Paten', 'Canlı Müzik', 'Barları Turlamak', 'Bowling', 'Motosikletler', 'Partiler'
-                ]
+                options: [ 'Escape Rooms', 'Bars', 'Thrifting', 'Museums', 'Raves', 'Drive-in Movies', 'Musicals', 'Cafe Hopping', 'Aquarium', 'Clubbing', 'Exhibitions', 'Shopping', 'Cars', 'Pub Quiz', 'Festivals', 'Happy Hour', 'Stand-up Comedy', 'Karaoke', 'House Parties', 'Theatre', 'Hookah', 'Skating', 'Live Music', 'Bar Hopping', 'Bowling', 'Motorcycles', 'Parties' ]
             },
             {
                 title: 'Açık hava ve macera',
                 icon: 'Tent',
-                options: [
-                    'Kürek', 'Dalış', 'Jet ski', 'Yürüyüş turları', 'Doğa', 'Kaplıcalar', 'Köpek Gezdirme', 'Kayak', 'Kanoculuk', 'Snowboard', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Kürek Sörfü', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelkencilik', 'Doğa Yürüyüşü', 'Dağlar', 'Sırt Çantasıyla Gezi', 'Kaya Tırmanışı', 'Balıkçılık', 'Kampçılık', 'Açık Hava', 'Piknik Yapmak'
-                ]
+                options: [ 'Paddling', 'Scuba Diving', 'Jet Skiing', 'Walking Tours', 'Nature', 'Hot Springs', 'Dog Walking', 'Skiing', 'Canoeing', 'Snowboarding', 'Road Trips', 'Couchsurfing', 'Freediving', 'Travel', 'Stand-up Paddle', 'Surfing', 'Beach Bars', 'Paragliding', 'Sailing', 'Hiking', 'Mountains', 'Backpacking', 'Rock Climbing', 'Fishing', 'Camping', 'Outdoors', 'Picnics' ]
             },
             {
                 title: 'Değerler ve amaçlar',
                 icon: 'Globe',
-                options: [
-                    'Mental Health Awareness', 'Seçmen Hakları', 'İklim Değişikliği', 'LGBTQIA+ Hakları', 'Feminizm', 'Black Lives Matter', 'Kapsayıcılık', 'İnsan Hakları', 'Sosyal Gelişim', 'Gönüllü İşler', 'Çevrecilik', 'Dünya Barışı', 'Pride', 'Gençliğin Güçlendirilmesi', 'Eşitlik', 'Politika', 'Aktivizm', 'Engelli Hakları'
-                ]
+                options: [ 'Mental Health Awareness', 'Voter Rights', 'Climate Change', 'LGBTQIA+ Rights', 'Feminism', 'Black Lives Matter', 'Inclusivity', 'Human Rights', 'Social Development', 'Volunteering', 'Environmentalism', 'World Peace', 'Pride', 'Youth Empowerment', 'Equality', 'Politics', 'Activism', 'Disability Rights' ]
             },
             {
                 title: 'Evde takılmak',
                 icon: 'Home',
-                options: [
-                    'Okumak', 'Peş Peşe Dizi İzlemek', 'Evde Spor Yapmak', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online alışveriş', 'Bahçıvanlık', 'Masa Üstü Oyunlar', 'Fırın Lezzetleri'
-                ]
+                options: [ 'Reading', 'Binge-watching', 'Home Workouts', 'Trivia', 'Cooking', 'Online Games', 'Online Shopping', 'Gardening', 'Board Games', 'Baking' ]
             },
             {
                 title: 'Kurmaca evrenler',
                 icon: 'Sparkles',
-                options: [
-                    'Çizgi roman fuarı', 'Harry Potter', "90'larda Çocuk Olmak", 'NBA', 'MLB', 'Dungeons & Dragons', 'Manga', 'Marvel', 'Disney'
-                ]
+                options: [ 'Comic Con', 'Harry Potter', '90s Kid', 'NBA', 'MLB', 'Dungeons & Dragons', 'Manga', 'Marvel', 'Disney' ]
             },
              {
                 title: 'TV ve filmler',
                 icon: 'Clapperboard',
-                options: [
-                    'Aksiyon filmleri', 'Animasyon filmleri', 'Suç dizileri', 'Drama dizileri', 'Fantastik filmler', 'Belgeseller', 'Bağımsız filmler', 'Reality dizileri', 'Romantik komediler', 'Spor dizileri', 'Gerilim filmleri', 'Kore dizileri', 'Hayalet Filmleri', 'Bollywood', 'Sinema', 'Bilim Kurgu', 'Anime', 'Komedi'
-                ]
+                options: [ 'Action Movies', 'Animated Movies', 'Crime Shows', 'Drama Shows', 'Fantasy Movies', 'Documentaries', 'Indie Movies', 'Reality Shows', 'Rom-Coms', 'Sports Shows', 'Thrillers', 'K-Dramas', 'Horror Movies', 'Bollywood', 'Cinema', 'Sci-Fi', 'Anime', 'Comedy' ]
             },
             {
                 title: 'Yaratıcılık',
                 icon: 'Paintbrush',
-                options: [
-                    'El işi', 'Yazarlık', 'Dans', 'Resim', 'Tasarım', 'Makyaj'
-                ]
+                options: [ 'Crafts', 'Writing', 'Dancing', 'Painting', 'Design', 'Makeup' ]
             },
             {
                 title: 'Oyun',
                 icon: 'Gamepad2',
-                options: [
-                    'PlayStation', 'E-Spor', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Atari', 'Roblox'
-                ]
+                options: [ 'PlayStation', 'Esports', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Arcade', 'Roblox' ]
             },
             {
                 title: 'Sağlık ve yaşam tarzı',
                 icon: 'Sprout',
-                options: [
-                    'Öz Sevgi', 'Yeni Şeyler Denemek', 'Tarot', 'Spa', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Makyaj', 'Astroloji', 'Mindfulness', 'Sauna', 'Aktif Yaşam', 'Yoga'
-                ]
+                options: [ 'Self Love', 'Trying New Things', 'Tarot', 'Spa', 'Personal Growth', 'Meditation', 'Skincare', 'Makeup', 'Astrology', 'Mindfulness', 'Sauna', 'Active Lifestyle', 'Yoga' ]
             },
              {
                 title: 'Sosyal medya içerikleri',
                 icon: 'MessageCircle',
-                options: [
-                    'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', "Vlogger'lık", 'YouTube', 'Sanal Gerçeklik', "Esprili caps'ler", 'Metaverse', "Podcast'ler", 'TikTok', 'Twitch', 'Netflix'
-                ]
+                options: [ 'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Social Media', 'Vlogging', 'YouTube', 'Virtual Reality', 'Memes', 'Metaverse', 'Podcasts', 'TikTok', 'Twitch', 'Netflix' ]
             },
             {
                 title: 'Spor ve fitness',
                 icon: 'Dumbbell',
-                options: [
-                    'Buz Hokeyi', 'Atıcılık', 'Atletizm', 'Spor', 'Yürüyüş', 'Plaj sporları', 'Fitness dersleri', 'Paten kaymak', 'Ragbi', 'Boks'
-                ]
+                options: [ 'Ice Hockey', 'Shooting', 'Track & Field', 'Sports', 'Walking', 'Beach Sports', 'Fitness Classes', 'Skateboarding', 'Rugby', 'Boxing' ]
             }
         ]
     },
     step12: {
-        title: 'Yeni fotoğraflarını ekle',
-        description: 'Baştan aşağı tarzını ortaya koy.',
-        requirementText: '2 fotoğraf gerekli',
-        button: 'İlerle',
-        photoSlotLabels: [
-            '', // First one is main, no label needed
-            'Boy fotoğrafı',
-            'Gülümseyen',
-            'Sosyal',
-            'Yaşam Tarzı',
-            'Poz vermeden'
-        ],
-    },
+      title: 'Yeni fotoğraflarını ekle',
+      description: 'Baştan aşağı tarzını ortaya koy. ({count}/6)',
+      requirementText: 'En az 2 fotoğraf yüklemen gerekir.',
+      button: 'Bitir',
+      photoSlotLabels: [
+          '', 
+          'Boy fotoğrafı',
+          'Gülümseyen',
+          'Sosyal',
+          'Yaşam Tarzı',
+          'Poz vermeden'
+      ],
+  },
     errors: {
       dbConnectionError: 'Veritabanı bağlantısı kurulamadı.',
       signupFailed: 'Bir hata oluştu, lütfen tekrar deneyin.',
@@ -402,7 +383,8 @@ export const langTr = {
     featureTopPicks: 'En Seçkin Profiller',
     featureFreeSuperLikes: 'Ücretsiz Super Like\'lar',
     viewAllFeatures: 'Tüm Özellikleri Gör',
-    logout: 'Güvenli Çıkış Yap'
+    logout: 'Güvenli Çıkış Yap',
+    upgrade: 'YÜKSELT'
   },
   ayarlar: {
     title: 'Ayarlar ve Profil',
@@ -626,3 +608,5 @@ export const langTr = {
     profile: 'Profil',
   }
 };
+
+    

@@ -9,9 +9,60 @@ import { motion } from 'framer-motion';
 import googleLogo from '@/img/googlelogin.png';
 import emailLogo from '@/img/gmaillogin.png';
 import { langTr } from '@/languages/tr';
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { useAuth, useFirestore } from '@/firebase';
+import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function WelcomePage() {
   const t = langTr;
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    if (!auth || !firestore) {
+        toast({
+            title: t.common.error,
+            description: t.login.errors.authServiceError,
+            variant: "destructive"
+        });
+        setIsGoogleLoading(false);
+        return;
+    }
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Check if user document exists, if not, it's a first-time sign-in
+        // and we might need to redirect to a profile setup page.
+        // For now, we'll just ensure a basic document exists.
+        const userDocRef = doc(firestore, "users", user.uid);
+         await setDoc(userDocRef, {
+            uid: user.uid,
+            fullName: user.displayName,
+            email: user.email,
+            profilePicture: user.photoURL
+        }, { merge: true }); // Use merge to avoid overwriting existing data
+
+        router.push("/anasayfa");
+    } catch (error: any) {
+        toast({
+            title: t.login.errors.googleLoginFailedTitle,
+            description: error.message || t.login.errors.googleLoginFailed,
+            variant: "destructive",
+        });
+    } finally {
+        setIsGoogleLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
@@ -40,15 +91,19 @@ export default function WelcomePage() {
           </div>
 
           <div className="space-y-3">
-            <Link href="/kurallar" className="w-full block">
-              <Button
+             <Button
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
-                <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
+                {isGoogleLoading ? (
+                   <Loader2 className="mr-4 h-5 w-5 animate-spin" />
+                ) : (
+                   <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
+                )}
                 {t.welcome.continueWithGoogle}
               </Button>
-            </Link>
             <Link href="/login" className="w-full block">
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
@@ -65,3 +120,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
