@@ -22,6 +22,7 @@ export type UserProfile = {
   communicationStyle?: string;
   loveLanguage?: string;
   educationLevel?: string;
+  zodiacSign?: string;
 };
 
 export type Match = {

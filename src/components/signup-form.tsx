@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -48,6 +48,7 @@ const formSchema = z.object({
     communicationStyle: z.string().optional(),
     loveLanguage: z.string().optional(),
     educationLevel: z.string().optional(),
+    zodiacSign: z.string().optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -175,13 +176,14 @@ export default function SignupForm() {
       communicationStyle: undefined,
       loveLanguage: undefined,
       educationLevel: undefined,
+      zodiacSign: undefined,
     },
     mode: "onChange",
   });
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
-  const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel']);
+  const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
 
 
   const filledLifestyleCount = useMemo(() => {
@@ -218,7 +220,7 @@ export default function SignupForm() {
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
-    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel'];
+    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
@@ -266,6 +268,7 @@ export default function SignupForm() {
         form.setValue('communicationStyle', undefined);
         form.setValue('loveLanguage', undefined);
         form.setValue('educationLevel', undefined);
+        form.setValue('zodiacSign', undefined);
     }
     handleNextStep();
   }
@@ -573,21 +576,21 @@ export default function SignupForm() {
                 </>
               )}
                {step === 9 && (
-                <>
-                 <div className="shrink-0">
+                 <div className="flex-1 flex flex-col min-h-0">
+                  <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{langTr.signup.step9.title}</h1>
                       <p className="text-muted-foreground">{langTr.signup.step9.description}</p>
                   </div>
                   <div className="flex-1 space-y-8 py-4 pr-2 -mr-4 overflow-y-auto">
                     <FormField
                       control={form.control}
-                      name="communicationStyle"
+                      name="loveLanguage"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step9.communication.question}</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step9.loveLanguage.question}</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.communication.options.map(opt => (
+                              {langTr.signup.step9.loveLanguage.options.map(opt => (
                                 <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                               ))}
                             </div>
@@ -598,13 +601,13 @@ export default function SignupForm() {
                     />
                      <FormField
                       control={form.control}
-                      name="loveLanguage"
+                      name="communicationStyle"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step9.loveLanguage.question}</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step9.communication.question}</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
-                              {langTr.signup.step9.loveLanguage.options.map(opt => (
+                              {langTr.signup.step9.communication.options.map(opt => (
                                 <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                               ))}
                             </div>
@@ -630,8 +633,25 @@ export default function SignupForm() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="zodiacSign"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langTr.signup.step9.zodiac.question}</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {langTr.signup.step9.zodiac.options.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </>
+                </div>
               )}
           <div className="shrink-0 pt-6">
             {step === 5 ? (
@@ -659,7 +679,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledMoreInfoCount === 0}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '3')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
             ) : (
               <Button
