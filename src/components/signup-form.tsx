@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 
@@ -33,6 +33,10 @@ const formSchema = z.object({
         .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
     lookingFor: z.string({ required_error: "Lütfen birini seç." }).min(1, { message: "Lütfen birini seç." }),
+    location: z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+    }).optional(),
     distancePreference: z.number().min(1).max(100).default(80),
 });
 
@@ -60,38 +64,39 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
       e: React.ChangeEvent<HTMLInputElement>,
       field: 'day' | 'month'
     ) => {
-      let val = e.target.value.replace(/[^0-9]/g, '');
-      let newDay = day, newMonth = month, newYear = year;
+        let val = e.target.value.replace(/[^0-9]/g, '');
+        let currentVal = field === 'day' ? day : month;
 
-      if (field === 'day') {
-        if (val.length > 0 && parseInt(val.charAt(0)) > 3) val = day;
-        if (val.length > 1 && parseInt(val) > 31) val = day;
-        newDay = val;
-        if (val.length === 2) monthRef.current?.focus();
-      } else if (field === 'month') {
-        if (val.length > 0 && parseInt(val.charAt(0)) > 1) val = month;
-        if (val.length > 1 && parseInt(val) > 12) val = month;
-        newMonth = val;
-        if (val.length === 2) yearRef.current?.focus();
-      }
-      
-      setDay(newDay);
-      setMonth(newMonth);
-      setYear(newYear);
-      
-      if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
-        const date = new Date(`${newYear}-${newMonth}-${newDay}`);
-        if (!isNaN(date.getTime()) && 
-            date.getDate() === parseInt(newDay, 10) &&
-            date.getMonth() + 1 === parseInt(newMonth, 10) &&
-            date.getFullYear() === parseInt(newYear, 10)) {
-          onChange(date);
-        } else {
-          onChange(new Date('invalid'));
+        if (val.length > 0) {
+            if (field === 'day' && parseInt(val.charAt(0)) > 3) val = currentVal;
+            if (field === 'month' && parseInt(val.charAt(0)) > 1) val = currentVal;
         }
-      }
-    };
+        if (val.length > 1) {
+            if (field === 'day' && parseInt(val) > 31) val = currentVal;
+            if (field === 'month' && parseInt(val) > 12) val = currentVal;
+        }
 
+        if (field === 'day') {
+            setDay(val);
+            if (val.length === 2) monthRef.current?.focus();
+        } else if (field === 'month') {
+            setMonth(val);
+            if (val.length === 2) yearRef.current?.focus();
+        }
+
+        const newDay = field === 'day' ? val : day;
+        const newMonth = field === 'month' ? val : month;
+
+        if (newDay.length === 2 && newMonth.length === 2 && year.length === 4) {
+            const date = new Date(`${year}-${newMonth}-${newDay}`);
+             if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
+                onChange(date);
+            } else {
+                onChange(new Date('invalid'));
+            }
+        }
+    };
+    
     const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/[^0-9]/g, '');
         setYear(val);
@@ -171,7 +176,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const progressValue = (step / 5) * 100;
+  const progressValue = (step / 6) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -179,17 +184,40 @@ export default function SignupForm() {
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
     if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['distancePreference'];
+    if (step === 5) fieldsToValidate = ['location'];
+    if (step === 6) fieldsToValidate = ['distancePreference'];
 
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 5) {
+      if (step === 6) {
          toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
       } else {
         nextStep();
       }
     }
+  };
+
+  const handleLocationRequest = () => {
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        form.setValue('location', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+        });
+        setIsLoading(false);
+        nextStep();
+      },
+      (error) => {
+        toast({
+            title: "Konum İzni Reddedildi",
+            description: "Eşleşmeleri bulmak için konum izni gereklidir. Lütfen tarayıcı ayarlarından izin verin.",
+            variant: "destructive"
+        });
+        setIsLoading(false);
+      }
+    );
   };
 
   return (
@@ -326,7 +354,18 @@ export default function SignupForm() {
                   />
                  </>
               )}
-              {step === 5 && (
+               {step === 5 && (
+                <div className="flex flex-col items-center text-center h-full justify-center">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                     <MapPin className="w-12 h-12 text-primary" />
+                  </div>
+                  <h1 className="text-3xl font-bold">Konumunu Paylaş</h1>
+                  <p className="text-muted-foreground mt-2 max-w-sm">
+                    Çevrendeki potansiyel eşleşmeleri görebilmek için konumunu bizimle paylaşman gerekiyor.
+                  </p>
+                </div>
+              )}
+              {step === 6 && (
                 <>
                   <h1 className="text-3xl font-bold">Mesafe tercihin nedir?</h1>
                   <p className="text-muted-foreground">Potansiyel eşleşmelerin bulunmasını istediğin maksimum mesafeyi ayarlamak için kaydırıcıyı kullan.</p>
@@ -360,14 +399,25 @@ export default function SignupForm() {
             </div>
 
             <div className="shrink-0">
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'İlerle'}
+              {step === 5 ? (
+                 <Button
+                    type="button"
+                    onClick={handleLocationRequest}
+                    className="w-full h-14 rounded-full text-lg font-bold"
+                    disabled={isLoading}
+                >
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Konumumu Paylaş'}
               </Button>
+              ) : (
+                <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full h-14 rounded-full text-lg font-bold"
+                    disabled={isLoading}
+                >
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'İlerle'}
+                </Button>
+              )}
             </div>
           </form>
         </Form>
@@ -375,5 +425,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
