@@ -179,7 +179,7 @@ export default function ProfilPage() {
                 <CardContent className="p-6">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                             <Icons.logo className="h-8 w-8" />
+                             <Icons.logo width={32} height={32} />
                              <span className="text-2xl font-extrabold tracking-tight">BeMatch</span>
                              <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">GOLD</span>
                         </div>

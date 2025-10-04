@@ -38,7 +38,7 @@ export default function RulesPage() {
       <main className="flex-1 overflow-y-auto p-6">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
-            <Icons.logo className="h-10 w-10 text-primary" />
+            <Icons.logo width={40} height={40} />
             <h1 className="text-3xl font-bold">BeMatch'e Hoş Geldin.</h1>
           </div>
           <p className="text-muted-foreground">

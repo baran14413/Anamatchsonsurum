@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { Mail } from 'lucide-react';
 import Image from 'next/image';
 import googleLogo from '@/img/googlelogin.png';
 import emailLogo from '@/img/gmaillogin.png';
@@ -14,7 +13,7 @@ export default function WelcomePage() {
       <main className="flex flex-1 flex-col items-center justify-center p-8 text-center">
         <div className="flex-1 flex flex-col justify-center items-center">
           <div className="flex items-center gap-4 mb-12">
-            <Icons.logo className="h-16 w-16 text-white" />
+            <Icons.logo width={64} height={64} />
             <h1 className="text-5xl font-bold tracking-tighter">BeMatch</h1>
           </div>
         </div>
@@ -36,7 +35,7 @@ export default function WelcomePage() {
                 Google ile devam et
               </Button>
             </Link>
-            <Link href="/login" className='w-full block'>
+            <Link href="/login" className='wfull block'>
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
                 E-posta ile devam et

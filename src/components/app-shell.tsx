@@ -20,7 +20,7 @@ const Header = () => {
     return (
         <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b">
             <Link href={appRoot} className="flex items-center gap-2 font-bold text-xl">
-                 <Icons.logo className="h-8 w-8 text-primary" />
+                 <Icons.logo width={32} height={32} />
                  <span>BeMatch</span>
             </Link>
             <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
-        <Icons.logo className="h-24 w-24 animate-pulse text-primary" />
+        <Icons.logo className="h-24 w-24 animate-pulse" />
       </div>
     );
   }
