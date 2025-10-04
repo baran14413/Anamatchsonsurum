@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import Link from 'next/link';
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -1181,3 +1183,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
