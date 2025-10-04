@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useUser, useFirestore } from "@/firebase";
-import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from "firebase/firestore";
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, doc, writeBatch, serverTimestamp, getDocs } from "firebase/firestore";
 
 type SwipeAction = 'like' | 'nope';
 
@@ -22,41 +22,52 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchProfilesAndInteractions() {
-      if (!currentUser || !firestore) return;
+    if (!currentUser || !firestore) return;
 
-      setIsLoading(true);
+    setIsLoading(true);
 
-      try {
-        // 1. Fetch IDs of users already interacted with
-        const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
-        const interactionsSnapshot = await getDocs(interactionsCollectionRef);
-        const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
-        setSwipedProfileIds(interactedIds);
+    const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
+    const usersCollectionRef = collection(firestore, "users");
 
-        // 2. Fetch all users
-        // This is still a potential security issue if rules don't allow listing users.
-        // In a production app, this should be a Cloud Function that returns a curated list.
-        const usersCollectionRef = collection(firestore, "users");
-        const usersSnapshot = await getDocs(usersCollectionRef);
-        const allUsersData = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfileType));
-        setAllUsers(allUsersData);
-        
-        // 3. Filter profiles
-        const filteredProfiles = allUsersData.filter(p => 
-          p.id !== currentUser.uid && !interactedIds.has(p.id)
-        );
-        setProfiles(filteredProfiles);
+    Promise.all([
+      getDocs(interactionsCollectionRef).catch(serverError => {
+        const contextualError = new FirestorePermissionError({
+          operation: 'list',
+          path: interactionsCollectionRef.path,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        throw contextualError; // Stop execution if this fails
+      }),
+      getDocs(usersCollectionRef).catch(serverError => {
+        const contextualError = new FirestorePermissionError({
+          operation: 'list',
+          path: usersCollectionRef.path,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        throw contextualError; // Stop execution if this fails
+      }),
+    ]).then(([interactionsSnapshot, usersSnapshot]) => {
+      // 1. Process interactions
+      const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+      setSwipedProfileIds(interactedIds);
 
-      } catch (error) {
-        console.error("Failed to fetch profiles:", error);
-        // We will let the FirebaseErrorListener handle displaying the error
-      } finally {
-        setIsLoading(false);
-      }
-    }
+      // 2. Process all users
+      const allUsersData = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfileType));
+      setAllUsers(allUsersData);
+      
+      // 3. Filter profiles
+      const filteredProfiles = allUsersData.filter(p => 
+        p.id !== currentUser.uid && !interactedIds.has(p.id)
+      );
+      setProfiles(filteredProfiles);
 
-    fetchProfilesAndInteractions();
+    }).catch(error => {
+        // Errors are already emitted, just log for debugging if needed, but no console.error
+        // The FirebaseErrorListener will handle displaying the error to the user.
+    }).finally(() => {
+      setIsLoading(false);
+    });
+
   }, [currentUser, firestore]);
 
   const handleSwipe = async (profile: UserProfileType, direction: 'left' | 'right') => {
@@ -101,8 +112,9 @@ export default function AnasayfaPage() {
     try {
       await batch.commit();
     } catch (error) {
+      // This is a write operation, so we can also create a contextual error here if it fails
+      // For now, we revert the UI state.
       console.error("Failed to save swipe action:", error);
-      // Optional: Revert optimistic UI update on failure
       setProfiles(prev => [profile, ...prev]);
       setSwipedProfileIds(prev => {
           const newSet = new Set(prev);
