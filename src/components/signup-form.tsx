@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -60,6 +60,7 @@ const formSchema = z.object({
     loveLanguage: z.string().optional(),
     educationLevel: z.string().optional(),
     zodiacSign: z.string().optional(),
+    interests: z.array(z.string()).max(10, { message: 'En fazla 10 ilgi alanı seçebilirsin.'}).optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -130,7 +131,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         <div className="flex items-center gap-2">
             <Input
                 ref={dayRef}
-                placeholder={langTr.signup.step2.dayPlaceholder}
+                placeholder={langTr.signup.step3.dayPlaceholder}
                 maxLength={2}
                 value={day}
                 onChange={(e) => handleDateChange(e, setDay, 'day')}
@@ -141,7 +142,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={monthRef}
-                placeholder={langTr.signup.step2.monthPlaceholder}
+                placeholder={langTr.signup.step3.monthPlaceholder}
                 maxLength={2}
                 value={month}
                 onChange={(e) => handleDateChange(e, setMonth, 'month')}
@@ -152,7 +153,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={yearRef}
-                placeholder={langTr.signup.step2.yearPlaceholder}
+                placeholder={langTr.signup.step3.yearPlaceholder}
                 maxLength={4}
                 value={year}
                 onChange={(e) => handleDateChange(e, setYear, 'year')}
@@ -168,7 +169,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(10);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const auth = useAuth();
@@ -192,6 +193,7 @@ export default function SignupForm() {
       loveLanguage: undefined,
       educationLevel: undefined,
       zodiacSign: undefined,
+      interests: [],
     },
     mode: "onChange",
   });
@@ -199,6 +201,7 @@ export default function SignupForm() {
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
+  const selectedInterests = form.watch('interests') || [];
 
 
   const filledLifestyleCount = useMemo(() => {
@@ -242,8 +245,6 @@ export default function SignupForm() {
             nextStep();
         }
     } catch (error: any) {
-        // Firebase throws an error for invalid email format, which is okay to ignore here
-        // as zod validation will catch it. We only care about the "already exists" case.
         if (error.code === 'auth/invalid-email') {
             nextStep();
         } else {
@@ -266,6 +267,8 @@ export default function SignupForm() {
     if (step === 8) fieldsToValidate = ['school'];
     if (step === 9) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
     if (step === 10) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
+    if (step === 11) fieldsToValidate = ['interests'];
+
 
     const isValid = await form.trigger(fieldsToValidate);
 
@@ -293,8 +296,8 @@ export default function SignupForm() {
       },
       (error) => {
         toast({
-            title: langTr.signup.step5.errorTitle,
-            description: langTr.signup.step5.errorMessage,
+            title: langTr.signup.step6.errorTitle,
+            description: langTr.signup.step6.errorMessage,
             variant: "destructive"
         });
         setIsLoading(false);
@@ -318,6 +321,9 @@ export default function SignupForm() {
         form.setValue('educationLevel', undefined);
         form.setValue('zodiacSign', undefined);
     }
+    if (step === 11) {
+        form.setValue('interests', []);
+    }
     handleNextStep();
   }
 
@@ -330,7 +336,7 @@ export default function SignupForm() {
           </Button>
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
-        {(step === 8 || step === 9 || step === 10) && (
+        {(step === 8 || step === 9 || step === 10 || step === 11) && (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0">
             {langTr.signup.progressHeader.skip}
           </Button>
@@ -339,7 +345,7 @@ export default function SignupForm() {
       
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
-            <div className="flex-1 overflow-y-auto -mr-6 pr-6">
+            <div className="flex-1 flex flex-col min-h-0">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -745,6 +751,55 @@ export default function SignupForm() {
                   </ScrollArea>
                 </div>
               )}
+              {step === 11 && (
+                  <div className="flex-1 flex flex-col min-h-0">
+                      <div className="shrink-0">
+                        <h1 className="text-3xl font-bold">{langTr.signup.step11.title}</h1>
+                        <p className="text-muted-foreground">{langTr.signup.step11.description}</p>
+                      </div>
+                       <Controller
+                          name="interests"
+                          control={form.control}
+                          render={({ field }) => (
+                            <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
+                               <div className="space-y-6">
+                                {langTr.signup.step11.categories.map(category => (
+                                    <div key={category.title}>
+                                        <h2 className="text-lg font-semibold flex items-center gap-2 mb-2">
+                                            <Tent className="w-5 h-5" /> {category.title}
+                                        </h2>
+                                        <div className="flex flex-wrap gap-2">
+                                            {category.options.map(option => {
+                                                const isSelected = field.value?.includes(option);
+                                                return (
+                                                    <Button
+                                                        key={option}
+                                                        type="button"
+                                                        variant={isSelected ? 'default' : 'outline'}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                field.onChange(field.value?.filter(item => item !== option));
+                                                            } else if (field.value && field.value.length < 10) {
+                                                                field.onChange([...field.value, option]);
+                                                            } else if (!field.value) {
+                                                                field.onChange([option]);
+                                                            }
+                                                        }}
+                                                        className="rounded-full"
+                                                    >
+                                                        {option}
+                                                    </Button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                               </div>
+                            </div>
+                          )}
+                        />
+                  </div>
+              )}
             </div>
 
           <div className="shrink-0 pt-6">
@@ -775,6 +830,15 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
+            ) : step === 11 ? (
+                 <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full h-14 rounded-full text-lg font-bold"
+                    disabled={isLoading || selectedInterests.length === 0}
+                    >
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
+                 </Button>
             ) : (
               <Button
                 type="button"
@@ -806,5 +870,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    

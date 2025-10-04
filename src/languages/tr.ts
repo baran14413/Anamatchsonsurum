@@ -163,6 +163,18 @@ export const langTr = {
             ],
         },
     },
+    step11: {
+        title: 'İlgini çeken konular neler?',
+        description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline 10 ilgi alanı ekle.',
+        categories: [
+            {
+                title: 'Açık hava ve macera',
+                options: [
+                    'Kürek', 'Dalış', 'Jet ski', 'Yürüyüş turları', 'Doğa', 'Kaplıcalar', 'Köpek Gezdirme', 'Kayak', 'Kanoculuk', 'Snowboard', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Kürek Sörfü', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelkencilik', 'Doğa Yürüyüşü', 'Dağlar', 'Sırt Çantasıyla Gezi', 'Kaya Tırmanışı', 'Balıkçılık', 'Kampçılık', 'Açık Hava', 'Piknik Yapmak'
+                ]
+            }
+        ]
+    },
     common: {
       next: 'İlerle',
       nextDynamic: 'Sonraki {count}/{total}',
@@ -176,5 +188,3 @@ export const langTr = {
     },
   },
 };
-
-    
