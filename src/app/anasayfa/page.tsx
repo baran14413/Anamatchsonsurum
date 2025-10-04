@@ -37,10 +37,16 @@ export default function AnasayfaPage() {
 
       setIsFetchingInteractions(true);
       const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
-      const interactionsSnapshot = await getDocs(interactionsCollectionRef);
-      const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
-      setSwipedProfileIds(interactedIds);
-      setIsFetchingInteractions(false);
+      try {
+        const interactionsSnapshot = await getDocs(interactionsCollectionRef);
+        const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+        setSwipedProfileIds(interactedIds);
+      } catch (error) {
+        console.error("Failed to fetch interactions:", error);
+        // Handle error, maybe show a toast
+      } finally {
+        setIsFetchingInteractions(false);
+      }
     }
     fetchInteractions();
   }, [currentUser, firestore]);
