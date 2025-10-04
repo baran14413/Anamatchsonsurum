@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from "react";
@@ -239,10 +240,12 @@ export default function SignupForm() {
             dateOfBirth: data.dateOfBirth,
             profilePicture: finalProfilePictureUrl,
             gender: data.gender,
-            images: data.matchPictures,
+            images: data.matchPictures, // Ensure 'images' field is populated
             location: location,
             createdAt: new Date(),
             profileComplete: true,
+            interests: [], // Initialize interests as empty array
+            bio: "" // Initialize bio as empty string
         });
 
         toast({
@@ -512,5 +515,3 @@ export default function SignupForm() {
       </Form>
   );
 }
-
-    

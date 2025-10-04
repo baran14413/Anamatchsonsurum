@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/admin';
 import type { UserProfile } from '@/lib/types';
@@ -20,22 +21,27 @@ export async function GET(req: NextRequest) {
         // Add current user to interacted set to filter them out
         interactedUserIds.add(currentUserId);
         
-        // 2. Get all user profiles
-        const allUsersSnapshot = await adminDb.collectionGroup('profile').get();
+        // 2. Get all user profiles from the 'users' collection
+        const allUsersSnapshot = await adminDb.collection('users').get();
         
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure basic data integrity
+            // Ensure basic data integrity, especially the uid field
             if (userData && userData.uid) {
-                allUsers.push({ id: doc.id, ...userData } as UserProfile);
+                allUsers.push({
+                    id: doc.id,
+                    ...userData,
+                    // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
+                    images: userData.images || [], 
+                } as UserProfile);
             }
         });
         
         // 3. Filter out users the current user has already interacted with
         const potentialMatches = allUsers.filter(user => !interactedUserIds.has(user.uid));
 
-        // 4. Shuffle the potential matches
+        // 4. Shuffle the potential matches for randomness
         const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
 
         return NextResponse.json(shuffledMatches);
