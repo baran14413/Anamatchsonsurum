@@ -14,6 +14,7 @@ export type UserProfile = {
     latitude: number;
     longitude: number;
   };
+  school?: string;
 };
 
 export type Match = {

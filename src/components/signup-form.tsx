@@ -38,6 +38,7 @@ const formSchema = z.object({
         longitude: z.number(),
     }).optional(),
     distancePreference: z.number().min(1).max(100).default(80),
+    school: z.string().optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -65,21 +66,15 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
       field: 'day' | 'month'
     ) => {
         let val = e.target.value.replace(/[^0-9]/g, '');
-        let currentVal = field === 'day' ? day : month;
-
-        if (val.length > 0) {
-            if (field === 'day' && parseInt(val.charAt(0)) > 3) val = currentVal;
-            if (field === 'month' && parseInt(val.charAt(0)) > 1) val = currentVal;
-        }
-        if (val.length > 1) {
-            if (field === 'day' && parseInt(val) > 31) val = currentVal;
-            if (field === 'month' && parseInt(val) > 12) val = currentVal;
-        }
-
+        
         if (field === 'day') {
+            if (parseInt(val.charAt(0)) > 3) val = day;
+            else if (parseInt(val) > 31) val = day;
             setDay(val);
             if (val.length === 2) monthRef.current?.focus();
         } else if (field === 'month') {
+            if (parseInt(val.charAt(0)) > 1) val = month;
+            else if (parseInt(val) > 12) val = month;
             setMonth(val);
             if (val.length === 2) yearRef.current?.focus();
         }
@@ -164,6 +159,7 @@ export default function SignupForm() {
       gender: undefined,
       lookingFor: "",
       distancePreference: 80,
+      school: "",
     },
     mode: "onChange",
   });
@@ -176,7 +172,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const progressValue = (step / 6) * 100;
+  const progressValue = (step / 7) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -186,11 +182,11 @@ export default function SignupForm() {
     if (step === 4) fieldsToValidate = ['lookingFor'];
     if (step === 5) fieldsToValidate = ['location'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
-
+    if (step === 7) fieldsToValidate = ['school'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 6) {
+      if (step === 7) {
          toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
       } else {
         nextStep();
@@ -219,16 +215,29 @@ export default function SignupForm() {
       }
     );
   };
+  
+  const handleSkip = () => {
+    // We don't need to validate when skipping
+    if (step === 7) {
+        form.setValue('school', ''); // Ensure school is empty if skipped
+    }
+    handleNextStep();
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
+       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
         {step > 1 && (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
+        {step === 7 && (
+            <Button variant="ghost" onClick={handleSkip} className="shrink-0">
+              Atla
+            </Button>
+        )}
       </header>
       <main className="flex flex-1 flex-col p-6">
         <Form {...form}>
@@ -390,6 +399,30 @@ export default function SignupForm() {
                          <p className="text-center text-muted-foreground pt-8">
                             Tercihleri daha sonra Ayarlar'dan değiştirebilirsin
                         </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+              {step === 7 && (
+                <>
+                  <h1 className="text-3xl font-bold">Okulunu yazmak istersen...</h1>
+                  <FormField
+                    control={form.control}
+                    name="school"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="Okulunu gir"
+                            className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-muted-foreground">
+                          Profilinde bu şekilde görünecek.
+                        </FormLabel>
                         <FormMessage />
                       </FormItem>
                     )}
