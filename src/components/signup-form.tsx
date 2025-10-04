@@ -253,7 +253,7 @@ export default function SignupForm() {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
         {step > 1 && (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
@@ -261,15 +261,16 @@ export default function SignupForm() {
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
         {(step === 7 || step === 8) && (
-            <Button variant="ghost" onClick={handleSkip} className="shrink-0">
-              {langTr.signup.progressHeader.skip}
-            </Button>
+          <Button variant="ghost" onClick={handleSkip} className="shrink-0">
+            {langTr.signup.progressHeader.skip}
+          </Button>
         )}
       </header>
-      <main className="flex flex-1 flex-col p-6 overflow-hidden">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto space-y-4">
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
+          {step < 8 && (
+             <div className="flex-1 space-y-4">
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -294,106 +295,106 @@ export default function SignupForm() {
                   />
                 </>
               )}
-               {step === 2 && (
+              {step === 2 && (
                 <>
                   <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
-                    <Controller
-                        control={form.control}
-                        name="dateOfBirth"
-                        render={({ field, fieldState }) => (
-                            <FormItem className="pt-8">
-                                <FormControl>
-                                    <DateInput
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={field.disabled}
-                                    />
-                                </FormControl>
-                                <FormLabel className="text-muted-foreground pt-2 block">
-                                    {langTr.signup.step2.label}
-                                </FormLabel>
-                                {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
-                            </FormItem>
-                        )}
-                    />
+                  <Controller
+                    control={form.control}
+                    name="dateOfBirth"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="pt-8">
+                        <FormControl>
+                          <DateInput
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={field.disabled}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-muted-foreground pt-2 block">
+                          {langTr.signup.step2.label}
+                        </FormLabel>
+                        {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
               {step === 3 && (
-                 <>
-                   <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
-                   <FormField
+                <>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
+                  <FormField
                     control={form.control}
                     name="gender"
                     render={({ field }) => (
                       <FormItem className="space-y-4 pt-8">
                         <FormControl>
-                           <div className="space-y-3">
-                              <Button
-                                type="button"
-                                variant={field.value === 'female' ? 'default' : 'outline'}
-                                className="w-full h-14 rounded-full text-lg"
-                                onClick={() => field.onChange('female')}
-                              >
-                                {langTr.signup.step3.woman}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant={field.value === 'male' ? 'default' : 'outline'}
-                                className="w-full h-14 rounded-full text-lg"
-                                onClick={() => field.onChange('male')}
-                              >
-                                {langTr.signup.step3.man}
-                              </Button>
-                           </div>
+                          <div className="space-y-3">
+                            <Button
+                              type="button"
+                              variant={field.value === 'female' ? 'default' : 'outline'}
+                              className="w-full h-14 rounded-full text-lg"
+                              onClick={() => field.onChange('female')}
+                            >
+                              {langTr.signup.step3.woman}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={field.value === 'male' ? 'default' : 'outline'}
+                              className="w-full h-14 rounded-full text-lg"
+                              onClick={() => field.onChange('male')}
+                            >
+                              {langTr.signup.step3.man}
+                            </Button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                 </>
+                </>
               )}
-               {step === 4 && (
-                 <>
-                   <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
-                   <p className="text-muted-foreground">{langTr.signup.step4.label}</p>
-                   <FormField
+              {step === 4 && (
+                <>
+                  <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step4.label}</p>
+                  <FormField
                     control={form.control}
                     name="lookingFor"
                     render={({ field }) => (
                       <FormItem className="space-y-3 pt-4">
                         <FormControl>
-                           <div className="grid grid-cols-2 gap-3">
-                                {langTr.signup.step4.options.map((option, index) => {
-                                    const Icon = lookingForOptions[index].icon;
-                                    const isSelected = field.value === option.id;
-                                    return (
-                                        <button
-                                            key={option.id}
-                                            type="button"
-                                            onClick={() => field.onChange(option.id)}
-                                            className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors ${
-                                                isSelected
-                                                ? "bg-primary text-primary-foreground border-primary"
-                                                : "bg-background hover:bg-accent"
-                                            }`}
-                                            >
-                                            <Icon className="w-8 h-8" />
-                                            <span className="text-sm font-semibold text-center">{option.label}</span>
-                                        </button>
-                                    )
-                                })}
-                           </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {langTr.signup.step4.options.map((option, index) => {
+                              const Icon = lookingForOptions[index].icon;
+                              const isSelected = field.value === option.id;
+                              return (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  onClick={() => field.onChange(option.id)}
+                                  className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors ${
+                                    isSelected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background hover:bg-accent"
+                                  }`}
+                                >
+                                  <Icon className="w-8 h-8" />
+                                  <span className="text-sm font-semibold text-center">{option.label}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                 </>
+                </>
               )}
-               {step === 5 && (
+              {step === 5 && (
                 <div className="flex flex-col items-center text-center h-full justify-center">
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                     <MapPin className="w-12 h-12 text-primary" />
+                    <MapPin className="w-12 h-12 text-primary" />
                   </div>
                   <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
                   <p className="text-muted-foreground mt-2 max-w-sm">
@@ -411,20 +412,20 @@ export default function SignupForm() {
                     render={({ field }) => (
                       <FormItem className="pt-12">
                         <div className="flex justify-between items-center mb-4">
-                            <FormLabel className="text-base">{langTr.signup.step6.label}</FormLabel>
-                            <span className="font-bold text-base">{field.value} {langTr.signup.step6.unit}</span>
+                          <FormLabel className="text-base">{langTr.signup.step6.label}</FormLabel>
+                          <span className="font-bold text-base">{field.value} {langTr.signup.step6.unit}</span>
                         </div>
                         <FormControl>
-                            <Slider
-                                value={[field.value]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                max={100}
-                                min={1}
-                                step={1}
-                            />
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={100}
+                            min={1}
+                            step={1}
+                          />
                         </FormControl>
-                         <p className="text-center text-muted-foreground pt-8">
-                            {langTr.signup.step6.info}
+                        <p className="text-center text-muted-foreground pt-8">
+                          {langTr.signup.step6.info}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -456,135 +457,136 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 8 && (
-                <>
-                    <div className="shrink-0">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
-                        <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-8 py-4 pr-2 -mr-4">
-                      <FormField
-                        control={form.control}
-                        name="drinking"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step8.drinking.options.map(opt => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="smoking"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step8.smoking.options.map(opt => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="workout"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step8.workout.options.map(opt => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Controller
-                          name="pets"
-                          control={form.control}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
-                              <FormControl>
-                                <div className="flex flex-wrap gap-2 pt-2">
-                                  {langTr.signup.step8.pets.options.map(opt => {
-                                    const isSelected = field.value?.includes(opt.id);
-                                    return (
-                                      <Button
-                                        key={opt.id}
-                                        type="button"
-                                        variant={isSelected ? 'default' : 'outline'}
-                                        onClick={() => {
-                                          const newValue = isSelected
-                                            ? field.value?.filter(v => v !== opt.id)
-                                            : [...(field.value || []), opt.id];
-                                          field.onChange(newValue);
-                                        }}
-                                        className="rounded-full"
-                                      >
-                                        {opt.label}
-                                      </Button>
-                                    );
-                                  })}
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                    </div>
-                </>
-              )}
             </div>
+          )}
 
-            <div className="shrink-0 pt-6">
-              {step === 5 ? (
-                 <Button
-                    type="button"
-                    onClick={handleLocationRequest}
-                    className="w-full h-14 rounded-full text-lg font-bold"
-                    disabled={isLoading}
-                >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step5.button}
+          {step === 8 && (
+            <>
+              <div className="shrink-0">
+                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title.replace('{name}', currentName)}</h1>
+                  <p className="text-muted-foreground">{langTr.signup.step8.description}</p>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-8 py-4 pr-2 -mr-4">
+                <FormField
+                  control={form.control}
+                  name="drinking"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step8.drinking.question}</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {langTr.signup.step8.drinking.options.map(opt => (
+                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="smoking"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step8.smoking.question}</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {langTr.signup.step8.smoking.options.map(opt => (
+                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="workout"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step8.workout.question}</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {langTr.signup.step8.workout.options.map(opt => (
+                            <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Controller
+                  name="pets"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step8.pets.question}</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {langTr.signup.step8.pets.options.map(opt => {
+                            const isSelected = field.value?.includes(opt.id);
+                            return (
+                              <Button
+                                key={opt.id}
+                                type="button"
+                                variant={isSelected ? 'default' : 'outline'}
+                                onClick={() => {
+                                  const newValue = isSelected
+                                    ? field.value?.filter(v => v !== opt.id)
+                                    : [...(field.value || []), opt.id];
+                                  field.onChange(newValue);
+                                }}
+                                className="rounded-full"
+                              >
+                                {opt.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="shrink-0 pt-6">
+            {step === 5 ? (
+              <Button
+                type="button"
+                onClick={handleLocationRequest}
+                className="w-full h-14 rounded-full text-lg font-bold"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step5.button}
               </Button>
-              ) : step === 8 ? (
-                <Button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="w-full h-14 rounded-full text-lg font-bold"
-                  disabled={isLoading}
-                >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
-                </Button>
-              ) : (
-                <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full h-14 rounded-full text-lg font-bold"
-                    disabled={isLoading}
-                >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.next}
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
-      </main>
+            ) : step === 8 ? (
+              <Button
+                type="button"
+                onClick={handleNextStep}
+                className="w-full h-14 rounded-full text-lg font-bold"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleNextStep}
+                className="w-full h-14 rounded-full text-lg font-bold"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.next}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }
