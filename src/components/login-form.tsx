@@ -23,10 +23,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
-import { Icons } from "./icons";
+import { langTr } from "@/languages/tr";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
+  email: z.string().email({ message: langTr.login.errors.invalidEmail }),
   password: z.string().optional(),
 });
 
@@ -37,6 +37,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
+  const t = langTr.login;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,8 +57,8 @@ export default function LoginForm() {
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: "Hata",
-        description: "Kimlik doğrulama hizmeti yüklenemedi.",
+        title: langTr.common.error,
+        description: t.errors.authServiceError,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -67,21 +68,17 @@ export default function LoginForm() {
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailValue);
       if (methods.length > 0) {
-        // Email exists, proceed to password step
         setStep('password');
       } else {
-        // Email does not exist
-        form.setError("email", { type: "manual", message: "Bu e-posta kayıtlı değil. Lütfen önce kayıt olunuz." });
+        form.setError("email", { type: "manual", message: t.errors.emailNotRegistered });
       }
     } catch (error: any) {
-        // Handle specific errors, like invalid email format
         if (error.code === 'auth/invalid-email') {
-            form.setError("email", { type: "manual", message: "Geçersiz e-posta adresi." });
+            form.setError("email", { type: "manual", message: t.errors.invalidEmail });
         } else {
-            // Handle other potential errors (network, etc.)
             toast({
-                title: "Bir hata oluştu",
-                description: "E-posta kontrol edilirken bir sorun yaşandı. Lütfen tekrar deneyin.",
+                title: langTr.common.error,
+                description: t.errors.emailCheckError,
                 variant: "destructive"
             });
         }
@@ -91,12 +88,12 @@ export default function LoginForm() {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!values.password) return; // Should not happen in password step
+    if (!values.password) return;
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: "Hata",
-        description: "Kimlik doğrulama hizmeti yüklenemedi.",
+        title: langTr.common.error,
+        description: t.errors.authServiceError,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -106,7 +103,7 @@ export default function LoginForm() {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       router.push("/anasayfa");
     } catch (error: any) {
-      form.setError("password", { type: "manual", message: "Şifreniz yanlış. Lütfen tekrar deneyin." });
+      form.setError("password", { type: "manual", message: t.errors.wrongPassword });
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +125,7 @@ export default function LoginForm() {
             <Button variant="ghost" size="icon" onClick={handleBack}>
                 <ArrowLeft className="h-6 w-6" />
             </Button>
-            <h1 className="text-xl font-bold">E-posta ile Giriş</h1>
+            <h1 className="text-xl font-bold">{t.title}</h1>
       </header>
        <div className="flex-1 flex flex-col p-6 overflow-y-auto">
          <div className="flex-1 flex flex-col">
@@ -136,21 +133,21 @@ export default function LoginForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {step === 'email' ? (
                 <>
-                    <h1 className="text-3xl font-bold">E-postan nedir?</h1>
+                    <h1 className="text-3xl font-bold">{t.emailStepTitle}</h1>
                     <FormField
                       control={form.control}
                       name="email"
                       render={({ field }) => (
                           <FormItem>
                           <FormControl>
-                              <Input placeholder="E-posta adresini gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
+                              <Input placeholder={t.emailPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" />
                           </FormControl>
                           <FormMessage />
                           </FormItem>
                       )}
                     />
                     <p className="text-sm text-muted-foreground flex items-center gap-2 pt-2">
-                        Lütfen sistemde kayıtlı e-mail adresinizi giriniz, ardından şifre adımına yönlendirileceksiniz.
+                        {t.emailHint}
                         <Heart className="h-4 w-4 text-red-500 fill-current" />
                     </p>
                 </>
@@ -158,9 +155,9 @@ export default function LoginForm() {
                 <>
                     <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                         <span className="text-muted-foreground">{emailValue}</span>
-                        <Button variant="link" size="sm" onClick={() => setStep('email')}>Değiştir</Button>
+                        <Button variant="link" size="sm" onClick={() => setStep('email')}>{t.change}</Button>
                     </div>
-                    <h1 className="text-3xl font-bold">Şifreni gir</h1>
+                    <h1 className="text-3xl font-bold">{t.passwordStepTitle}</h1>
                     <FormField
                     control={form.control}
                     name="password"
@@ -168,7 +165,7 @@ export default function LoginForm() {
                         <FormItem>
                         <div className="relative">
                             <FormControl>
-                            <Input type={showPassword ? "text" : "password"} placeholder="Şifreni gir" {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" autoFocus/>
+                            <Input type={showPassword ? "text" : "password"} placeholder={t.passwordPlaceholder} {...field} className="h-12 text-lg border-0 border-b-2 rounded-none px-0" autoFocus/>
                             </FormControl>
                             <button
                             type="button"
@@ -195,16 +192,16 @@ export default function LoginForm() {
                 disabled={isLoading}
             >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {step === 'email' ? 'Devam Et' : 'Giriş Yap'}
+                {step === 'email' ? langTr.common.next : t.title}
             </Button>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                Henüz hesabın yokmu?{" "}
+                {t.noAccount}{" "}
                 <Link
                     href="/kayit-ol"
                     className="font-semibold text-primary underline-offset-4 hover:underline"
                 >
-                    O zaman kayıt ol
+                    {t.signupNow}
                 </Link>
             </div>
         </div>
@@ -212,3 +209,5 @@ export default function LoginForm() {
     </div>
   );
 }
+
+    

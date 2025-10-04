@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
+import { langTr } from '@/languages/tr';
 
 
-// A simple component to simulate a map
 const SimulatedMap = ({ location }: { location: { latitude: number; longitude: number } | null }) => {
   return (
     <div className="relative h-64 w-full rounded-lg bg-muted overflow-hidden border">
@@ -53,6 +53,8 @@ export default function KonumPage() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const t = langTr.ayarlarKonum;
+
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
@@ -79,13 +81,13 @@ export default function KonumPage() {
                     adr.state,
                     adr.country
                 ].filter(Boolean).join(', ');
-                setAddress(formattedAddress || "Adres detayı bulunamadı.");
+                setAddress(formattedAddress || t.addressDetailNotFound);
             } else {
-                setAddress("Adres bilgisi alınamadı.");
+                setAddress(t.addressNotFound);
             }
         } catch (err) {
             console.error("Geocoding fetch error:", err);
-            setAddress("Adres bilgisi alınamadı.");
+            setAddress(t.addressNotFound);
         } finally {
             setIsGeocoding(false);
         }
@@ -94,7 +96,7 @@ export default function KonumPage() {
     if (userProfile?.location) {
       fetchAddress(userProfile.location.latitude, userProfile.location.longitude);
     }
-  }, [userProfile?.location]);
+  }, [userProfile?.location, t]);
 
   const handleUpdateLocation = () => {
     setIsUpdating(true);
@@ -110,34 +112,34 @@ export default function KonumPage() {
           updateDoc(userProfileRef, { location: newLocation })
             .then(() => {
               toast({
-                title: "Konum Güncellendi",
-                description: "Yeni konumunuz başarıyla kaydedildi.",
+                title: t.toasts.successTitle,
+                description: t.toasts.successDesc,
               });
-              setError(null); // Clear any previous errors
+              setError(null);
             })
             .catch((e) => {
                 console.error("Firestore update error:", e);
-                setError("Konum veritabanına kaydedilemedi.");
+                setError(t.errors.dbSaveError);
             })
             .finally(() => {
               setIsUpdating(false);
             });
         } else {
-            setError("Kullanıcı profili referansı bulunamadı.");
+            setError(t.errors.refNotFoundError);
             setIsUpdating(false);
         }
       },
       (geoError) => {
-        let errorMessage = "Konum izni alınamadı. Lütfen tarayıcı ayarlarınızı kontrol edin.";
+        let errorMessage = t.errors.permissionDenied;
         switch(geoError.code) {
           case geoError.PERMISSION_DENIED:
-            errorMessage = "Konum izni reddedildi.";
+            errorMessage = t.errors.permissionDenied;
             break;
           case geoError.POSITION_UNAVAILABLE:
-            errorMessage = "Konum bilgisi mevcut değil.";
+            errorMessage = t.errors.positionUnavailable;
             break;
           case geoError.TIMEOUT:
-            errorMessage = "Konum alma isteği zaman aşımına uğradı.";
+            errorMessage = t.errors.timeout;
             break;
         }
         setError(errorMessage);
@@ -160,10 +162,10 @@ export default function KonumPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-6 w-6 text-primary" />
-            Konum Yönetimi
+            {t.title}
           </CardTitle>
           <CardDescription>
-            Çevrendeki potansiyel eşleşmeleri görmek için konumunu güncel tut.
+            {t.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -174,16 +176,16 @@ export default function KonumPage() {
             <div className="p-4 rounded-lg bg-muted border">
                 <h3 className="font-semibold text-lg text-foreground flex items-center gap-2">
                   <Building className="h-5 w-5 text-muted-foreground" />
-                  Yaklaşık Konumunuz
+                  {t.currentLocation}
                 </h3>
                 {isGeocoding ? (
                    <div className="flex items-center gap-2 mt-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Adres getiriliyor...</span>
+                    <span>{t.gettingAddress}</span>
                    </div>
                 ) : (
                   <p className="text-sm text-muted-foreground mt-2 pl-7">
-                    {address || 'Adres bilgisi mevcut değil.'}
+                    {address || t.addressNotFound}
                   </p>
                 )}
             </div>
@@ -191,10 +193,10 @@ export default function KonumPage() {
              <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
                 <h3 className="font-semibold text-lg text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
-                    Konum Bilgisi Eksik
+                    {t.locationMissingTitle}
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                    Eşleşmeleri görebilmek için konum bilginizi eklemeniz gerekmektedir.
+                    {t.locationMissingDesc}
                 </p>
             </div>
           )}
@@ -209,7 +211,7 @@ export default function KonumPage() {
             ) : (
               <MapPin className="mr-2 h-4 w-4" />
             )}
-            {isUpdating ? 'Konum Alınıyor...' : 'Konumumu Güncelle'}
+            {isUpdating ? t.updatingButton : t.updateButton}
           </Button>
 
         </CardContent>

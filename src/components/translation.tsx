@@ -1,9 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
+import { langTr } from "@/languages/tr";
 
 interface TranslationProps {
   text: string;
@@ -15,9 +17,9 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const t = langTr.kesfet.translation;
 
   useEffect(() => {
-    // This effect runs only on the client-side
     const lang = navigator.language.split("-")[0];
     setBrowserLanguage(lang);
   }, []);
@@ -35,8 +37,7 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
       }
       setShowOriginal(false);
     } catch (error) {
-      console.error("Translation failed:", error);
-      // Optional: show a toast notification to the user
+      console.error(t.translationFailed, error);
     } finally {
       setIsTranslating(false);
     }
@@ -61,16 +62,16 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
         {isTranslating ? (
            <div className="flex items-center text-sm text-muted-foreground">
              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-             Çevriliyor...
+             {t.translating}
            </div>
         ) : (
           showOriginal || !translatedText ? (
             <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={handleTranslate}>
-              Çevirisine bak
+              {t.seeTranslation}
             </Button>
           ) : (
             <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={handleShowOriginal}>
-              Orijinalini gör
+              {t.seeOriginal}
             </Button>
           )
         )}
@@ -78,3 +79,5 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
     </div>
   );
 }
+
+    

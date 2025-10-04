@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/app-shell";
@@ -19,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={inter.className} suppressHydrationWarning>
-      <body className="h-dvh overflow-hidden bg-background dark:bg-black">
+      <body>
         <FirebaseClientProvider>
           <AppShell>{children}</AppShell>
         </FirebaseClientProvider>
@@ -28,3 +29,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

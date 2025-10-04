@@ -20,13 +20,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-
-
-const premiumFeatures = [
-    { name: "Seni Kimlerin Beğendiğini Gör", free: false, gold: true },
-    { name: "En Seçkin Profiller", free: false, gold: true },
-    { name: "Ücretsiz Super Like'lar", free: false, gold: true },
-];
+import { langTr } from '@/languages/tr';
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -34,6 +28,7 @@ export default function ProfilPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const t = langTr.profil;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -60,14 +55,14 @@ export default function ProfilPage() {
           await signOut(auth);
           router.push('/');
           toast({
-            title: 'Çıkış Yapıldı',
-            description: 'Başarıyla çıkış yaptınız.',
+            title: langTr.ayarlar.toasts.logoutSuccessTitle,
+            description: langTr.ayarlar.toasts.logoutSuccessDesc,
           });
         }
       } catch (error) {
         toast({
-          title: 'Hata',
-          description: 'Çıkış yapılırken bir hata oluştu.',
+          title: langTr.ayarlar.toasts.logoutErrorTitle,
+          description: langTr.ayarlar.toasts.logoutErrorDesc,
           variant: 'destructive',
         });
       }
@@ -75,13 +70,19 @@ export default function ProfilPage() {
   
   const userAge = userProfile ? calculateAge(userProfile.dateOfBirth) : 0;
   
-  // A simple calculation for profile completion percentage
   const profileCompletion = useMemoFirebase(() => {
     if (!userProfile) return 0;
     const fields = ['fullName', 'dateOfBirth', 'gender', 'profilePicture', 'interests', 'bio'];
     const completedFields = fields.filter(field => !!userProfile[field] && (Array.isArray(userProfile[field]) ? userProfile[field].length > 0 : true));
     return Math.round((completedFields.length / fields.length) * 100);
   }, [userProfile]);
+  
+  const premiumFeatures = [
+    { name: t.featureSeeLikes, free: false, gold: true },
+    { name: t.featureTopPicks, free: false, gold: true },
+    { name: t.featureFreeSuperLikes, free: false, gold: true },
+  ];
+
 
   if (isLoading) {
     return (
@@ -103,14 +104,13 @@ export default function ProfilPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleLogout} className="text-red-500 focus:text-red-500">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Güvenli Çıkış Yap</span>
+                <span>{t.logout}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       <div className="container mx-auto max-w-lg px-4 py-8">
         <div className="flex flex-col items-center gap-4">
-            {/* Profile Avatar and Info */}
             <div className="relative">
                 <Avatar className="h-32 w-32 border-4 border-white dark:border-black">
                     <AvatarImage src={userProfile?.profilePicture} alt={userProfile?.fullName || ''} />
@@ -125,7 +125,7 @@ export default function ProfilPage() {
 
             <div className="text-center">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    {userProfile?.fullName || 'BeMatch Kullanıcısı'}, {userAge > 0 ? userAge : ''}
+                    {userProfile?.fullName || t.user}, {userAge > 0 ? userAge : ''}
                     <Check className="h-5 w-5 p-0.5 rounded-full bg-blue-500 text-white" strokeWidth={3} />
                 </h1>
             </div>
@@ -133,65 +133,62 @@ export default function ProfilPage() {
             <Link href="/profil/duzenle" className="w-full max-w-xs">
               <Button className="w-full rounded-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg">
                   <Pencil className="mr-2 h-4 w-4" />
-                  Profili Düzenle
+                  {langTr.common.editProfile}
               </Button>
             </Link>
         </div>
 
         <div className="space-y-4 mt-8">
-            {/* Çifte Randevu Card */}
             <Card className="overflow-hidden">
                 <CardContent className="p-4 flex items-center gap-4">
                     <div className="bg-pink-100 p-2 rounded-lg">
                         <Gem className="h-6 w-6 text-pink-500" />
                     </div>
                     <div className="flex-1">
-                        <h2 className="font-semibold">Çifte Randevu'yu dene</h2>
-                        <p className="text-sm text-muted-foreground">Arkadaşlarını davet et ve diğer çiftleri bul.</p>
+                        <h2 className="font-semibold">{t.tryDoubleDate}</h2>
+                        <p className="text-sm text-muted-foreground">{t.tryDoubleDateDesc}</p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </CardContent>
             </Card>
 
-            {/* Premium Actions Grid */}
             <div className="grid grid-cols-3 gap-3 text-center">
                 <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Star className="h-8 w-8 text-blue-500 fill-blue-500" />
-                     <p className="font-bold mt-1">0 Super Like</p>
-                     <Link href="#" className="text-xs font-semibold text-blue-500 hover:underline mt-0.5">DAHA FAZLA AL</Link>
+                     <p className="font-bold mt-1">{t.superLikes.replace('{count}', '0')}</p>
+                     <Link href="#" className="text-xs font-semibold text-blue-500 hover:underline mt-0.5">{t.getMore}</Link>
                 </Card>
                  <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Zap className="h-8 w-8 text-purple-500 fill-purple-500" />
-                     <p className="font-bold mt-1">Boost'larım</p>
-                     <Link href="#" className="text-xs font-semibold text-purple-500 hover:underline mt-0.5">DAHA FAZLA AL</Link>
+                     <p className="font-bold mt-1">{t.myBoosts}</p>
+                     <Link href="#" className="text-xs font-semibold text-purple-500 hover:underline mt-0.5">{t.getMore}</Link>
                 </Card>
                  <Card className="flex flex-col items-center justify-center p-4 aspect-square relative">
                      <button className="absolute top-1 right-1 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground">+</button>
                      <Icons.tinderFlame className="h-8 w-8 text-primary" />
-                     <p className="font-bold mt-1">Abonelikler</p>
+                     <p className="font-bold mt-1">{t.subscriptions}</p>
                 </Card>
             </div>
             
-            {/* Tinder Gold Card */}
             <Card className="bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-400 text-black overflow-hidden shadow-lg">
                 <CardContent className="p-6">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                              <Icons.logo width={32} height={32} />
                              <span className="text-2xl font-extrabold tracking-tight">BeMatch</span>
-                             <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">GOLD</span>
+                             <span className="text-xs font-bold bg-black text-yellow-300 px-2 py-0.5 rounded-md">{t.gold.toUpperCase()}</span>
                         </div>
                         <Button className="bg-black text-white rounded-full font-bold hover:bg-gray-800">Yükselt</Button>
                     </div>
 
                     <div className="mt-6">
                         <div className="flex justify-between items-center font-bold text-sm text-black/70 px-2">
-                            <p>Özellikler</p>
+                            <p>{t.features}</p>
                             <div className="flex gap-8">
-                                <p>Ücretsiz</p>
-                                <p>Gold</p>
+                                <p>{t.free}</p>
+                                <p>{t.gold}</p>
                             </div>
                         </div>
                         <div className="space-y-3 mt-3">
@@ -207,7 +204,7 @@ export default function ProfilPage() {
                         </div>
                     </div>
                     <div className="text-center mt-6">
-                        <Link href="#" className="font-bold hover:underline">Tüm Özellikleri Gör</Link>
+                        <Link href="#" className="font-bold hover:underline">{t.viewAllFeatures}</Link>
                     </div>
                 </CardContent>
             </Card>
@@ -222,3 +219,5 @@ export default function ProfilPage() {
     </div>
   );
 }
+
+    

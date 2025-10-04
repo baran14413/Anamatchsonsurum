@@ -6,6 +6,7 @@ import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { MapPin, Heart, X, ArrowUp } from "lucide-react";
+import { langTr } from "@/languages/tr";
 
 interface ProfileCardProps {
   profile: UserProfileType;
@@ -132,7 +133,7 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
               </h2>
                <div className="flex items-center gap-1.5 pt-1">
                  <MapPin className="h-4 w-4" />
-                 <p className="font-semibold text-sm">{(Math.random() * 20).toFixed(0)} km uzakta</p>
+                 <p className="font-semibold text-sm">{langTr.anasayfa.distance.replace('{distance}', (Math.random() * 20).toFixed(0))}</p>
                </div>
             </div>
             <button className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
@@ -144,3 +145,5 @@ export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProp
     </motion.div>
   );
 }
+
+    

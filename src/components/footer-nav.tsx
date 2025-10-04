@@ -6,13 +6,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Compass, MessageSquare, User, Heart } from "lucide-react";
 import { Icons } from "./icons";
+import { langTr } from "@/languages/tr";
 
 const navLinks = [
-  { href: "/anasayfa", label: "Ana sayfa", icon: Icons.tinderFlame },
-  { href: "/kesfet", label: "Keşfet", icon: Compass },
-  { href: "/begeniler", label: "Beğeniler", icon: Heart },
-  { href: "/eslesmeler", label: "Sohbetler", icon: MessageSquare },
-  { href: "/profil", label: "Profil", icon: User },
+  { href: "/anasayfa", label: langTr.footerNav.home, icon: Icons.tinderFlame },
+  { href: "/kesfet", label: langTr.footerNav.discover, icon: Compass },
+  { href: "/begeniler", label: langTr.footerNav.likes, icon: Heart },
+  { href: "/eslesmeler", label: langTr.footerNav.chats, icon: MessageSquare },
+  { href: "/profil", label: langTr.footerNav.profile, icon: User },
 ];
 
 export default function FooterNav() {
@@ -37,7 +38,6 @@ export default function FooterNav() {
                 fill={isActive && (href === "/begeniler" || href === "/anasayfa") ? "currentColor" : "none"}
                 stroke="currentColor"
               />
-               {/* Always show label for better UX */}
             </Link>
           );
         })}
@@ -45,3 +45,5 @@ export default function FooterNav() {
     </nav>
   );
 }
+
+    

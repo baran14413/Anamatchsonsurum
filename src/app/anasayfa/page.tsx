@@ -9,6 +9,7 @@ import { Heart, X, Loader2, Undo2, Star, Send } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { mockProfiles } from "@/lib/data";
+import { langTr } from "@/languages/tr";
 
 export default function AnasayfaPage() {
   const { toast } = useToast();
@@ -27,8 +28,8 @@ export default function AnasayfaPage() {
         // Simulate a match randomly
         if (Math.random() > 0.7) { // 30% chance of a match
             toast({
-                title: "Harika! Yeni bir eşleşme!",
-                description: "Hemen bir mesaj göndererek sohbeti başlat.",
+                title: langTr.anasayfa.matchToastTitle,
+                description: langTr.anasayfa.matchToastDescription,
                 className: "bg-gradient-to-r from-pink-500 to-orange-400 text-white",
                 duration: 5000,
             });
@@ -37,7 +38,7 @@ export default function AnasayfaPage() {
     
     // If we've run out of mock profiles, reset them for continuous testing
     if (visibleProfiles.length <= 1) {
-      toast({ title: "Profiller bitti!", description: "Yeniden başlıyoruz." });
+      toast({ title: langTr.anasayfa.resetToastTitle, description: langTr.anasayfa.resetToastDescription });
       setVisibleProfiles(mockProfiles);
     }
   };
@@ -75,8 +76,8 @@ export default function AnasayfaPage() {
             ) : (
               <div className="flex flex-col items-center justify-center text-center h-full text-muted-foreground px-8">
                 <Heart className="h-16 w-16 mb-4 text-gray-300" />
-                <h2 className="text-2xl font-semibold text-foreground">Herkes Tükendi!</h2>
-                <p>Çevrendeki tüm profilleri gördün. Daha sonra tekrar kontrol et.</p>
+                <h2 className="text-2xl font-semibold text-foreground">{langTr.anasayfa.outOfProfilesTitle}</h2>
+                <p>{langTr.anasayfa.outOfProfilesDescription}</p>
               </div>
             )}
           </AnimatePresence>
@@ -105,3 +106,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    

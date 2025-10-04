@@ -12,8 +12,9 @@ import { Settings, Shield } from "lucide-react";
 import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
+import { langTr } from "@/languages/tr";
 
-const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar"];
+const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies"];
 const appRoot = "/anasayfa";
 
 const Header = () => {
@@ -54,14 +55,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         await signOut(auth);
         router.push('/');
         toast({
-          title: 'Çıkış Yapıldı',
-          description: 'Başarıyla çıkış yaptınız.',
+          title: langTr.ayarlar.toasts.logoutSuccessTitle,
+          description: langTr.ayarlar.toasts.logoutSuccessDesc,
         });
       }
     } catch (error) {
       toast({
-        title: 'Hata',
-        description: 'Çıkış yapılırken bir hata oluştu.',
+        title: langTr.ayarlar.toasts.logoutErrorTitle,
+        description: langTr.ayarlar.toasts.logoutErrorDesc,
         variant: 'destructive',
       });
     }
@@ -98,29 +99,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [inputBuffer, handleLogout]);
 
   useEffect(() => {
-    // Wait until the authentication check is complete before doing any routing
     if (isUserLoading) {
       return; 
     }
 
-    const isPublicPage = publicPaths.includes(pathname);
+    const isPublicPage = publicPaths.some(path => pathname.startsWith(path));
 
-    // If there is a user
     if (user) {
-      // And they are on a public page, redirect to the app root
       if (isPublicPage) {
         router.replace(appRoot);
       }
     } else {
-      // If there is no user and they are on a protected page, redirect to login
       if (!isPublicPage) {
         router.replace("/");
       }
     }
   }, [user, isUserLoading, pathname, router]);
 
-  // While checking user auth, show a global loading screen.
-  // This is the key to preventing the flicker of showing a page before the redirect happens.
   if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
@@ -129,15 +124,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const isAppPage = !publicPaths.includes(pathname);
+  const isAppPage = !publicPaths.some(path => pathname.startsWith(path));
 
-  // If we're on a public page, or the user is not authenticated yet for a protected page,
-  // we just render the children (which might be the login page or the loading screen).
   if (!isAppPage || !user) {
     return <>{children}</>;
   }
 
-  // If the user is authenticated and on a protected app page, render the full shell.
   return (
     <div className="flex h-dvh flex-col bg-background dark:bg-black">
       <Header />
@@ -157,3 +149,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,23 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { langTr } from '@/languages/tr';
 
 const rules = [
   {
-    title: 'Kendin ol.',
-    description: 'Fotoğraflarının, yaşının ve biyografinin gerçeği yansıttığından emin ol.',
+    title: langTr.rules.rule1Title,
+    description: langTr.rules.rule1Desc,
   },
   {
-    title: 'Nazik ol.',
-    description: 'Diğer kullanıcılara saygı göster ve sana nasıl davranılmasını istiyorsan onlara da öyle davran.',
+    title: langTr.rules.rule2Title,
+    description: langTr.rules.rule2Desc,
   },
   {
-    title: 'Dikkatli ol.',
-    description: 'Kişisel bilgilerini paylaşmadan önce iyi düşün. Güvenliğin bizim için önemli.',
+    title: langTr.rules.rule3Title,
+    description: langTr.rules.rule3Desc,
   },
   {
-    title: 'Proaktif ol.',
-    description: 'Topluluğumuzu güvende tutmak için uygunsuz davranışları mutlaka bize bildir.',
+    title: langTr.rules.rule4Title,
+    description: langTr.rules.rule4Desc,
   },
 ];
 
@@ -39,10 +41,10 @@ export default function RulesPage() {
         <div className="space-y-8">
           <div className="flex items-center gap-3">
             <Icons.logo width={40} height={40} />
-            <h1 className="text-3xl font-bold">BeMatch'e Hoş Geldin.</h1>
+            <h1 className="text-3xl font-bold">{langTr.rules.welcome}</h1>
           </div>
           <p className="text-muted-foreground">
-            Harika bir topluluk oluşturmamıza yardımcı olmak için lütfen aşağıdaki kurallara uymayı unutma.
+            {langTr.rules.description}
           </p>
           <div className="space-y-6">
             {rules.map((rule) => (
@@ -62,9 +64,11 @@ export default function RulesPage() {
             onClick={() => router.push('/kayit-ol')}
             className="w-full h-14 rounded-full text-lg font-bold"
           >
-            Onaylıyorum
+            {langTr.rules.agree}
           </Button>
       </div>
     </div>
   );
 }
+
+    

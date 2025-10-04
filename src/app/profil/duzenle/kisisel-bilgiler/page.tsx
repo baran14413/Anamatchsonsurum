@@ -9,13 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { langTr } from '@/languages/tr';
 
 const profileSchema = z.object({
   fullName: z.string().min(3, { message: "İsim en az 3 karakter olmalıdır." }),
@@ -28,7 +28,8 @@ export default function KisiselBilgilerPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  
+  const t = langTr.ayarlarPersonalInfo;
+
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
@@ -62,13 +63,13 @@ export default function KisiselBilgilerPage() {
         bio: data.bio,
       });
       toast({
-        title: "Profil Güncellendi",
-        description: "Kişisel bilgileriniz başarıyla kaydedildi.",
+        title: t.toasts.successTitle,
+        description: t.toasts.successDesc,
       });
     } catch (error) {
       toast({
-        title: "Güncelleme Başarısız",
-        description: "Bilgileriniz güncellenirken bir hata oluştu.",
+        title: t.toasts.errorTitle,
+        description: t.toasts.errorDesc,
         variant: "destructive",
       });
     }
@@ -90,10 +91,10 @@ export default function KisiselBilgilerPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-6 w-6 text-primary" />
-            Kişisel Bilgiler
+            {t.title}
           </CardTitle>
           <CardDescription>
-            Profilinde görünecek temel bilgileri buradan düzenleyebilirsin.
+            {t.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,9 +105,9 @@ export default function KisiselBilgilerPage() {
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tam Adın</FormLabel>
+                    <FormLabel>{t.nameLabel}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Adın ve Soyadın" {...field} />
+                      <Input placeholder={t.namePlaceholder} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -117,10 +118,10 @@ export default function KisiselBilgilerPage() {
                 name="bio"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Hakkında</FormLabel>
+                    <FormLabel>{t.bioLabel}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Kendinden kısaca bahset..."
+                        placeholder={t.bioPlaceholder}
                         className="resize-none"
                         {...field}
                       />
@@ -131,7 +132,7 @@ export default function KisiselBilgilerPage() {
               />
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Değişiklikleri Kaydet
+                {t.button}
               </Button>
             </form>
           </Form>

@@ -1,7 +1,9 @@
+
 'use client';
 
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { langTr } from '@/languages/tr';
 
 export default function DuzenleLayout({
   children,
@@ -16,10 +18,12 @@ export default function DuzenleLayout({
           className="flex items-center gap-2 text-foreground"
         >
           <ArrowLeft className="h-6 w-6" />
-          <h1 className="text-xl font-bold">Ayarlar ve Profil</h1>
+          <h1 className="text-xl font-bold">{langTr.ayarlar.title}</h1>
         </Link>
       </header>
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
+
+    

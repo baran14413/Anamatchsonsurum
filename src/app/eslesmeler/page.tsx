@@ -12,22 +12,19 @@ import { collection, doc } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Loader2, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { langTr } from "@/languages/tr";
 
-// This component will fetch the details for a single match
 function MatchItem({ match }: { match: any }) {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
 
-  // Determine the ID of the other user in the match
   const otherUserId = match.user1Id === currentUser?.uid ? match.user2Id : match.user1Id;
 
-  // Create a memoized reference to the other user's profile document
   const otherUserProfileRef = useMemoFirebase(() => {
     if (!firestore || !otherUserId) return null;
     return doc(firestore, `users/${otherUserId}`);
   }, [firestore, otherUserId]);
 
-  // Fetch the other user's profile data
   const { data: otherUserProfile, isLoading: isProfileLoading } = useDoc(otherUserProfileRef);
 
   return (
@@ -51,7 +48,7 @@ function MatchItem({ match }: { match: any }) {
               {isProfileLoading ? (
                  <Skeleton className="h-6 w-32" />
               ) : (
-                <h2 className="font-semibold text-lg">{otherUserProfile?.fullName || 'Kullanıcı'}</h2>
+                <h2 className="font-semibold text-lg">{otherUserProfile?.fullName || langTr.eslesmeler.user}</h2>
               )}
               {match.matchDate?.seconds && (
                 <p className="text-xs text-muted-foreground">
@@ -60,7 +57,7 @@ function MatchItem({ match }: { match: any }) {
               )}
             </div>
             <p className="text-sm text-muted-foreground truncate">
-              Eşleştiniz! Bir merhaba de.
+              {langTr.eslesmeler.defaultMessage}
             </p>
           </div>
         </CardContent>
@@ -82,7 +79,7 @@ export default function EslesmelerPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4 md:py-8 h-full flex flex-col">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">Sohbetler</h1>
+      <h1 className="mb-6 text-3xl font-bold tracking-tight">{langTr.eslesmeler.title}</h1>
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-full">
@@ -101,11 +98,13 @@ export default function EslesmelerPage() {
         {!isLoading && (!matches || matches.length === 0) && (
           <div className="text-center py-20 flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Henüz Sohbetin Yok</h2>
-            <p>Eşleştiğin kişilerle sohbetlerin burada görünecek.</p>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">{langTr.eslesmeler.noChatsTitle}</h2>
+            <p>{langTr.eslesmeler.noChatsDescription}</p>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+    

@@ -5,18 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Lock, EyeOff, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { langTr } from '@/languages/tr';
 
 export default function GizlilikPage() {
+  const t = langTr.ayarlarGizlilik;
   return (
     <div className="p-4 sm:p-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-6 w-6 text-primary" />
-            Hesap Gizliliği
+            {t.title}
           </CardTitle>
           <CardDescription>
-            Profilinin ve bilgilerinin nasıl görüneceğini yönet.
+            {t.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -24,10 +26,10 @@ export default function GizlilikPage() {
             <div className="space-y-0.5">
               <Label htmlFor="private-profile" className="text-base flex items-center gap-2">
                 <Shield className="h-5 w-5 text-muted-foreground" />
-                Gizli Profil
+                {t.privateProfile}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Aktif edilirse profilin sadece eşleştiğin kişiler tarafından görülür.
+                {t.privateProfileDesc}
               </p>
             </div>
             <Switch id="private-profile" />
@@ -36,10 +38,10 @@ export default function GizlilikPage() {
             <div className="space-y-0.5">
               <Label htmlFor="show-activity" className="text-base flex items-center gap-2">
                 <EyeOff className="h-5 w-5 text-muted-foreground" />
-                Aktivite Durumunu Gizle
+                {t.hideActivity}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Aktif olup olmadığını diğer kullanıcılardan gizle.
+                {t.hideActivityDesc}
               </p>
             </div>
             <Switch id="show-activity" defaultChecked />
@@ -49,3 +51,5 @@ export default function GizlilikPage() {
     </div>
   );
 }
+
+    

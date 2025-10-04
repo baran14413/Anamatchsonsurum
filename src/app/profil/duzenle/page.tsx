@@ -1,5 +1,4 @@
 
-
 'use client';
 import {
   ChevronRight,
@@ -14,7 +13,7 @@ import {
   ShieldQuestion,
   Camera,
   Loader2,
-  Images // Galeri için yeni ikon
+  Images
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
@@ -37,6 +36,7 @@ import {
 import { useMemoFirebase } from '@/firebase/provider';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { langTr } from '@/languages/tr';
 
 export default function DuzenlePage() {
     const { user } = useUser();
@@ -46,6 +46,9 @@ export default function DuzenlePage() {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
+    
+    const t = langTr.ayarlar;
+    const commonT = langTr.common;
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -82,15 +85,15 @@ export default function DuzenlePage() {
             if (userProfileRef) {
                 await updateDoc(userProfileRef, { profilePicture: url });
                 toast({
-                    title: "Profil Resmi Güncellendi",
-                    description: "Yeni profil resminiz başarıyla kaydedildi.",
+                    title: t.toasts.pictureUpdatedTitle,
+                    description: t.toasts.pictureUpdatedDesc,
                 });
             }
         } catch (error: any) {
             console.error('Upload failed:', error);
             toast({
-                title: "Yükleme Başarısız",
-                description: `Resim yüklenirken bir hata oluştu: ${error.message}`,
+                title: t.toasts.uploadFailedTitle,
+                description: t.toasts.uploadFailedDesc.replace('{error}', error.message),
                 variant: 'destructive',
             });
         } finally {
@@ -104,14 +107,14 @@ export default function DuzenlePage() {
           await signOut(auth);
           router.push('/login');
           toast({
-            title: 'Çıkış Yapıldı',
-            description: 'Başarıyla çıkış yaptınız.',
+            title: t.toasts.logoutSuccessTitle,
+            description: t.toasts.logoutSuccessDesc,
           });
         }
       } catch (error) {
         toast({
-          title: 'Hata',
-          description: 'Çıkış yapılırken bir hata oluştu.',
+          title: t.toasts.logoutErrorTitle,
+          description: t.toasts.logoutErrorDesc,
           variant: 'destructive',
         });
       }
@@ -119,69 +122,69 @@ export default function DuzenlePage() {
     
     const settingsGroups = [
       {
-        title: 'Hesap Ayarları',
+        title: t.groups.account,
         items: [
           {
             icon: User,
-            label: 'Kişisel Bilgiler',
+            label: t.items.personalInfo,
             href: '/profil/duzenle/kisisel-bilgiler',
             bgColor: 'bg-gradient-to-br from-blue-400 to-blue-600',
           },
           {
             icon: Images,
-            label: 'Galeri Yönetimi',
+            label: t.items.gallery,
             href: '/profil/duzenle/galeri',
             bgColor: 'bg-gradient-to-br from-pink-400 to-pink-600',
           },
           {
             icon: MapPin,
-            label: 'Konum',
+            label: t.items.location,
             href: '/profil/duzenle/konum',
             bgColor: 'bg-gradient-to-br from-green-400 to-green-600',
           },
           {
             icon: Bell,
-            label: 'Bildirim Ayarları',
+            label: t.items.notifications,
             href: '/profil/duzenle/bildirimler',
             bgColor: 'bg-gradient-to-br from-red-400 to-red-600',
           },
         ],
       },
       {
-        title: 'Gizlilik ve Güvenlik',
+        title: t.groups.privacy,
         items: [
           {
             icon: Lock,
-            label: 'Hesap Gizliliği',
+            label: t.items.accountPrivacy,
             href: '/profil/duzenle/gizlilik',
             bgColor: 'bg-gradient-to-br from-gray-500 to-gray-700',
           },
           {
             icon: Ban,
-            label: 'Engellenen Kullanıcılar',
+            label: t.items.blockedUsers,
             href: '/profil/duzenle/engellenenler',
             bgColor: 'bg-gradient-to-br from-red-500 to-red-700',
           },
         ],
       },
       {
-        title: 'Destek ve Hakkında',
+        title: t.groups.support,
         items: [
           {
             icon: ShieldQuestion,
-            label: 'Yardım Merkezi',
+            label: t.items.helpCenter,
             href: '/profil/duzenle/yardim',
             bgColor: 'bg-gradient-to-br from-teal-400 to-teal-600',
           },
           {
             icon: HeartHandshake,
-            label: 'Topluluk Kuralları',
+            label: t.items.communityRules,
             href: '/profil/duzenle/topluluk-kurallari',
             bgColor: 'bg-gradient-to-br from-purple-400 to-purple-600',
           },
           {
             icon: FileText,
-            label: 'Kullanım Koşulları',
+            label: t.items.termsOfUse,
             href: '/profil/duzenle/kullanim-kosullari',
             bgColor: 'bg-gradient-to-br from-gray-400 to-gray-600',
           },
@@ -219,11 +222,10 @@ export default function DuzenlePage() {
               <h2 className="text-2xl font-bold">{userProfile?.fullName || 'Kullanıcı'}</h2>
               <Link href="/profil/duzenle/kisisel-bilgiler">
                 <Button variant="outline" className="rounded-full">
-                    Profili Düzenle
+                    {commonT.editProfile}
                 </Button>
               </Link>
           </div>
-
 
         {settingsGroups.map((group) => (
           <div key={group.title}>
@@ -253,7 +255,7 @@ export default function DuzenlePage() {
         ))}
         <div>
             <h2 className="px-4 pb-2 text-lg font-semibold text-muted-foreground">
-              Uygulamadan Çık
+              {t.groups.exit}
             </h2>
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
                 <AlertDialogTrigger asChild>
@@ -263,7 +265,7 @@ export default function DuzenlePage() {
                     >
                       <LogOut className="h-5 w-5" />
                     </div>
-                    <span className="flex-1 font-medium text-left">Çıkış Yap</span>
+                    <span className="flex-1 font-medium text-left">{commonT.logout}</span>
                  </button>
                 </AlertDialogTrigger>
             </div>
@@ -271,14 +273,14 @@ export default function DuzenlePage() {
       </div>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Çıkış Yapmak İstediğinizden Emin misiniz?</AlertDialogTitle>
+          <AlertDialogTitle>{commonT.logoutConfirmTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            Bu işlem sizi mevcut oturumunuzdan çıkaracaktır. Tekrar erişmek için giriş yapmanız gerekecektir.
+            {commonT.logoutConfirmDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>İptal</AlertDialogCancel>
-          <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">Çıkış Yap</AlertDialogAction>
+          <AlertDialogCancel>{commonT.cancel}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">{commonT.logout}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

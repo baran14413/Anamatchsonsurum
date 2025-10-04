@@ -20,7 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { langTr } from '@/languages/tr';
 
 export default function GaleriPage() {
   const { user } = useUser();
@@ -29,6 +30,9 @@ export default function GaleriPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+
+  const t = langTr.ayarlarGaleri;
+  const commonT = langTr.common;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -46,8 +50,8 @@ export default function GaleriPage() {
 
     if (files.length > maxUploadCount) {
       toast({
-        title: "Limit Aşıldı",
-        description: `Galerinizde ${currentImageCount} fotoğraf var. En fazla ${maxUploadCount} fotoğraf daha ekleyebilirsiniz.`,
+        title: t.toasts.limitExceededTitle,
+        description: t.toasts.limitExceededDesc.replace('{count}', String(currentImageCount)).replace('{maxUploadCount}', String(maxUploadCount)),
         variant: "destructive"
       });
       return;
@@ -77,19 +81,18 @@ export default function GaleriPage() {
           images: arrayUnion(...newUrls)
         });
         toast({
-          title: "Fotoğraflar Eklendi",
-          description: `${newUrls.length} yeni fotoğraf galerinize eklendi.`,
+          title: t.toasts.uploadSuccessTitle,
+          description: t.toasts.uploadSuccessDesc.replace('{count}', String(newUrls.length)),
         });
       }
     } catch (error: any) {
       toast({
-        title: "Yükleme Başarısız",
-        description: error.message || 'Bir veya daha fazla fotoğraf yüklenirken bir hata oluştu.',
+        title: t.toasts.uploadFailedTitle,
+        description: error.message || t.toasts.uploadFailedDesc,
         variant: 'destructive',
       });
     } finally {
       setIsUploading(false);
-      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -101,8 +104,8 @@ export default function GaleriPage() {
     
     if(userProfile?.images?.length <= 1) {
        toast({
-        title: "Silme Başarısız",
-        description: "Galerinizde en az 1 fotoğraf bulunmalıdır.",
+        title: t.toasts.deleteFailedMinRequiredTitle,
+        description: t.toasts.deleteFailedMinRequiredDesc,
         variant: "destructive"
        });
        setImageToDelete(null);
@@ -114,13 +117,13 @@ export default function GaleriPage() {
         images: arrayRemove(imageToDelete)
       });
       toast({
-        title: "Fotoğraf Silindi",
-        description: "Fotoğraf galerinizden kaldırıldı."
+        title: t.toasts.deleteSuccessTitle,
+        description: t.toasts.deleteSuccessDesc,
       });
     } catch (error) {
        toast({
-        title: "Silme Başarısız",
-        description: "Fotoğraf silinirken bir hata oluştu.",
+        title: t.toasts.deleteErrorTitle,
+        description: t.toasts.deleteErrorDesc,
         variant: "destructive"
       });
     } finally {
@@ -146,10 +149,10 @@ export default function GaleriPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Images className="h-6 w-6 text-primary" />
-              Galeri Yönetimi
+              {t.title}
             </CardTitle>
             <CardDescription>
-              Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin. ({imageCount}/9)
+              {t.description.replace('{count}', String(imageCount))}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -188,7 +191,7 @@ export default function GaleriPage() {
                   ) : (
                     <>
                       <Upload className="h-8 w-8" />
-                      <span className="mt-2 text-sm font-medium">Fotoğraf Yükle</span>
+                      <span className="mt-2 text-sm font-medium">{t.upload}</span>
                     </>
                   )}
                 </button>
@@ -207,15 +210,15 @@ export default function GaleriPage() {
         
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Fotoğrafı Silmek İstiyor musun?</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Bu işlem geri alınamaz. Bu fotoğraf galerinizden kalıcı olarak silinecektir.
+              {t.deleteConfirmDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setImageToDelete(null)}>İptal</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setImageToDelete(null)}>{commonT.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteImage} className="bg-destructive hover:bg-destructive/90">
-              Sil
+              {commonT.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
