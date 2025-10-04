@@ -15,6 +15,10 @@ export type UserProfile = {
     longitude: number;
   };
   school?: string;
+  drinking?: string;
+  smoking?: string;
+  workout?: string;
+  pets?: string[];
 };
 
 export type Match = {

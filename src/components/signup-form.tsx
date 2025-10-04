@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 
@@ -39,6 +39,10 @@ const formSchema = z.object({
     }).optional(),
     distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
+    drinking: z.string().optional(),
+    smoking: z.string().optional(),
+    workout: z.string().optional(),
+    pets: z.array(z.string()).optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -51,6 +55,35 @@ const lookingForOptions = [
     { id: 'not-sure', label: 'Emin değilim', icon: Sparkles },
     { id: 'whatever', label: 'Her şeye açığım', icon: Hand },
 ];
+
+const lifestyleOptions = {
+  drinking: [
+    { id: 'frequently', label: 'Sık sık' },
+    { id: 'socially', label: 'Sosyal içiciyim' },
+    { id: 'rarely', label: 'Nadiren' },
+    { id: 'never', label: 'Hiç' },
+  ],
+  smoking: [
+    { id: 'socially', label: 'Sosyal içiciyim' },
+    { id: 'frequently', label: 'Sık sık' },
+    { id: 'rarely', label: 'Nadiren' },
+    { id: 'never', label: 'Hiç' },
+  ],
+  workout: [
+    { id: 'everyday', label: 'Her gün' },
+    { id'almost_everyday', label: 'Neredeyse her gün'},
+    { id: 'sometimes', label: 'Bazen' },
+    { id: 'never', label: 'Hiç' },
+  ],
+  pets: [
+    { id: 'dog', label: 'Köpek' },
+    { id: 'cat', label: 'Kedi' },
+    { id: 'none_but_love', label: 'Hayvanım yok ama çok severim' },
+    { id: 'none', label: 'Hayvanım yok' },
+    { id: 'other', label: 'Diğer' },
+    { id: 'want_one', label: 'Bir gün sahiplenmek isterim' },
+  ]
+};
 
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
@@ -74,7 +107,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             if (val.length === 2) monthRef.current?.focus();
         } else if (field === 'month') {
             if (parseInt(val.charAt(0)) > 1) val = month;
-            else if (parseInt(val) > 12) val = month;
+            else if (val.length === 2 && parseInt(val) > 12) val = month.slice(0, 1);
             setMonth(val);
             if (val.length === 2) yearRef.current?.focus();
         }
@@ -160,9 +193,15 @@ export default function SignupForm() {
       lookingFor: "",
       distancePreference: 80,
       school: "",
+      drinking: undefined,
+      smoking: undefined,
+      workout: undefined,
+      pets: [],
     },
     mode: "onChange",
   });
+  
+  const currentName = form.watch("name");
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
@@ -172,7 +211,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const progressValue = (step / 7) * 100;
+  const progressValue = (step / 8) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -183,10 +222,11 @@ export default function SignupForm() {
     if (step === 5) fieldsToValidate = ['location'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
+    if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
-      if (step === 7) {
+      if (step === 8) {
          toast({title: "Şimdilik bu kadar!", description: "Tasarım devam ediyor."})
       } else {
         nextStep();
@@ -217,9 +257,14 @@ export default function SignupForm() {
   };
   
   const handleSkip = () => {
-    // We don't need to validate when skipping
     if (step === 7) {
-        form.setValue('school', ''); // Ensure school is empty if skipped
+        form.setValue('school', '');
+    }
+    if (step === 8) {
+        form.setValue('drinking', undefined);
+        form.setValue('smoking', undefined);
+        form.setValue('workout', undefined);
+        form.setValue('pets', []);
     }
     handleNextStep();
   }
@@ -233,13 +278,13 @@ export default function SignupForm() {
           </Button>
         )}
         <Progress value={progressValue} className="h-2 flex-1" />
-        {step === 7 && (
+        {(step === 7 || step === 8) && (
             <Button variant="ghost" onClick={handleSkip} className="shrink-0">
               Atla
             </Button>
         )}
       </header>
-      <main className="flex flex-1 flex-col p-6">
+      <main className="flex flex-1 flex-col p-6 overflow-y-auto">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col">
             <div className="flex-1 space-y-4">
@@ -429,9 +474,104 @@ export default function SignupForm() {
                   />
                 </>
               )}
+              {step === 8 && (
+                <>
+                  <h1 className="text-3xl font-bold">{currentName}, biraz da yaşam tarzından bahsedelim</h1>
+                  <div className="space-y-8 pt-4">
+                    {/* Drinking */}
+                    <FormField
+                      control={form.control}
+                      name="drinking"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />Ne sıklıkla içki içersin?</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {lifestyleOptions.drinking.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     {/* Smoking */}
+                    <FormField
+                      control={form.control}
+                      name="smoking"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />Ne sıklıkla sigara içersin?</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {lifestyleOptions.smoking.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     {/* Workout */}
+                    <FormField
+                      control={form.control}
+                      name="workout"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />Ne sıklıkla spor yaparsın?</FormLabel>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {lifestyleOptions.workout.map(opt => (
+                                <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     {/* Pets */}
+                    <Controller
+                        name="pets"
+                        control={form.control}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />Evcil hayvanın var mı?</FormLabel>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {lifestyleOptions.pets.map(opt => {
+                                  const isSelected = field.value?.includes(opt.id);
+                                  return (
+                                    <Button
+                                      key={opt.id}
+                                      type="button"
+                                      variant={isSelected ? 'default' : 'outline'}
+                                      onClick={() => {
+                                        const newValue = isSelected
+                                          ? field.value?.filter(v => v !== opt.id)
+                                          : [...(field.value || []), opt.id];
+                                        field.onChange(newValue);
+                                      }}
+                                      className="rounded-full"
+                                    >
+                                      {opt.label}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0 pt-6">
               {step === 5 ? (
                  <Button
                     type="button"
