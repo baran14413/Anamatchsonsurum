@@ -63,6 +63,7 @@ const formSchema = z.object({
     zodiacSign: z.string().optional(),
     interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
+    uid: z.string().optional(), // To hold uid for Google Signups
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -197,6 +198,8 @@ export default function SignupForm() {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
+  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
+
   const auth = useAuth();
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -229,12 +232,37 @@ export default function SignupForm() {
     },
     mode: "onChange",
   });
+
+  useEffect(() => {
+    try {
+        const googleDataString = sessionStorage.getItem('googleSignupData');
+        if (googleDataString) {
+            const googleData = JSON.parse(googleDataString);
+            form.setValue('email', googleData.email || '');
+            form.setValue('name', googleData.name || '');
+            form.setValue('uid', googleData.uid);
+            
+            if (googleData.profilePicture) {
+                const initialSlots = [...photoSlots];
+                initialSlots[0] = { file: null, preview: googleData.profilePicture, label: t.signup.step12.photoSlotLabels[0] };
+                setPhotoSlots(initialSlots);
+                form.setValue('photos', [googleData.profilePicture]);
+            }
+
+            setIsGoogleSignup(true);
+            setStep(2); // Skip email/password step
+            sessionStorage.removeItem('googleSignupData');
+        }
+    } catch (error) {
+        console.error("Failed to parse Google signup data", error);
+    }
+  }, []);
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
-  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.file).length, [photoSlots]);
+  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.file || p.preview).length, [photoSlots]);
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -251,22 +279,46 @@ export default function SignupForm() {
 
 
   const nextStep = () => setStep((prev) => prev + 1);
-  const prevStep = () => setStep((prev) => prev - 1);
+  const prevStep = () => {
+    if (isGoogleSignup && step === 2) {
+      router.push('/'); // Go back to welcome screen if coming from Google signup
+    } else {
+      setStep((prev) => prev - 1)
+    }
+  };
 
   async function onSubmit(data: SignupFormValues) {
-    if (!auth || !firestore) {
+    if (!firestore) {
       toast({ title: t.common.error, description: t.signup.errors.dbConnectionError, variant: "destructive" });
       return;
     }
     setIsLoading(true);
     try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
+      let userId = data.uid;
+      
+      // 1. Create user in Firebase Auth if it's not a Google signup
+      if (!isGoogleSignup) {
+        if (!auth) {
+            toast({ title: t.common.error, description: t.login.errors.authServiceError, variant: "destructive" });
+            setIsLoading(false);
+            return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        userId = userCredential.user.uid;
+      }
+      
+      if (!userId) {
+          throw new Error("User ID is missing.");
+      }
 
       // 2. Upload photos to a service (e.g., Cloudinary via your API)
       const photoUrls: string[] = [];
       const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
+
+      // Add pre-filled google photo if it exists and no new files are uploaded for that slot
+      if(isGoogleSignup && photoSlots[0].preview && !photoSlots[0].file) {
+          photoUrls.push(photoSlots[0].preview);
+      }
 
       for (const file of filesToUpload) {
         if (file) {
@@ -277,7 +329,8 @@ export default function SignupForm() {
             body: formData,
           });
           if (!response.ok) {
-            throw new Error(t.signup.errors.uploadFailed.replace('{fileName}', file.name));
+            const errorResult = await response.json();
+            throw new Error(errorResult.error || t.signup.errors.uploadFailed.replace('{fileName}', file.name));
           }
           const result = await response.json();
           photoUrls.push(result.url);
@@ -286,7 +339,7 @@ export default function SignupForm() {
 
       // 3. Create user profile object to save in Firestore
       const userProfile = {
-        uid: user.uid,
+        uid: userId,
         fullName: data.name,
         email: data.email,
         dateOfBirth: data.dateOfBirth.toISOString(),
@@ -313,7 +366,7 @@ export default function SignupForm() {
       };
 
       // 4. Save user profile to Firestore
-      await setDoc(doc(firestore, "users", user.uid), userProfile);
+      await setDoc(doc(firestore, "users", userId), userProfile);
       
       // 5. Redirect to the app
       router.push("/anasayfa");
@@ -381,13 +434,11 @@ export default function SignupForm() {
   };
 
   const openFilePicker = (index: number) => {
-    if (photoSlots[index].file) {
-      // If photo exists, clicking opens file picker to change it.
+    if (photoSlots[index].preview) {
       setActiveSlot(index);
       fileInputRef.current?.click();
     } else {
-      // If slot is empty, find the first truly empty slot to fill
-      const firstEmptyIndex = photoSlots.findIndex(p => !p.file);
+      const firstEmptyIndex = photoSlots.findIndex(p => !p.preview);
       setActiveSlot(firstEmptyIndex);
       fileInputRef.current?.click();
     }
@@ -397,11 +448,17 @@ export default function SignupForm() {
       e.stopPropagation(); // Prevent opening file picker
       const newSlots = [...photoSlots];
       
+      const deletedSlot = newSlots[index];
+      // Revoke object URL to prevent memory leaks for client-side files
+      if (deletedSlot.file && deletedSlot.preview) {
+        URL.revokeObjectURL(deletedSlot.preview);
+      }
+
       // Remove the clicked one
       newSlots[index] = { file: null, preview: null, label: t.signup.step12.photoSlotLabels[index] || '' };
 
       // Re-order the array so that filled slots are at the beginning
-      const filledSlots = newSlots.filter(p => p.file);
+      const filledSlots = newSlots.filter(p => p.preview);
       const emptySlots = Array.from({ length: 6 - filledSlots.length }, (_, i) => ({ 
         file: null, 
         preview: null, 
@@ -418,8 +475,8 @@ export default function SignupForm() {
 
 
   const handleNextStep = async () => {
-    let fieldsToValidate: (keyof SignupFormValues)[] = [];
-    if (step === 1) fieldsToValidate = ['email', 'password'];
+    let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
+    if (step === 1 && !isGoogleSignup) fieldsToValidate = ['email', 'password'];
     if (step === 2) fieldsToValidate = ['name'];
     if (step === 3) fieldsToValidate = ['dateOfBirth'];
     if (step === 4) fieldsToValidate = ['gender'];
@@ -430,10 +487,11 @@ export default function SignupForm() {
     if (step === 11) fieldsToValidate = ['interests'];
     if (step === 12) fieldsToValidate = ['photos'];
 
-    const isValid = await form.trigger(fieldsToValidate);
+    const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
+
 
     if (isValid) {
-      if (step === 1) {
+      if (step === 1 && !isGoogleSignup) {
         await checkEmailExists();
       } else if (step === totalSteps) {
          form.handleSubmit(onSubmit)();
@@ -490,11 +548,11 @@ export default function SignupForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        {step > 1 ? (
+        {step > 1 || (isGoogleSignup && step > 2) ? (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
-        ) : <div className="w-10"></div>}
+        ) : <Link href="/" className="w-10"><Button variant="ghost" size="icon"><ArrowLeft className="h-6 w-6" /></Button></Link>}
         <Progress value={progressValue} className="h-2 flex-1" />
         {(step === 8 || step === 9 || step === 10 || step === 11) ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
@@ -506,7 +564,7 @@ export default function SignupForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
-              {step === 1 && (
+              {step === 1 && !isGoogleSignup && (
                 <div className="flex-1 flex flex-col">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
@@ -975,8 +1033,8 @@ export default function SignupForm() {
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
                      <div className="flex items-center gap-4 mt-2">
-                        <CircularProgress progress={(uploadedPhotoCount / 6) * 100} size={40} />
-                        <p className="text-muted-foreground flex-1">{t.signup.step12.description}</p>
+                        <CircularProgress progress={Math.round((uploadedPhotoCount / 6) * 100)} size={40} />
+                        <p className="text-muted-foreground flex-1">{t.signup.step12.description.replace('{count}', String(uploadedPhotoCount))}</p>
                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">

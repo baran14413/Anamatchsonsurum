@@ -16,14 +16,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
   useEffect(() => {
-    if (!isUserLoading && !user && isProtectedRoute) {
-      router.replace('/');
+    if (isUserLoading) {
+      // Still loading, do nothing
+      return;
     }
-  }, [isUserLoading, user, isProtectedRoute, router]);
-  
-  if (isUserLoading && isProtectedRoute) {
+
+    if (!user && isProtectedRoute) {
+      // If not logged in and on a protected route, redirect to welcome page
+      router.replace('/');
+    } else if (user && (pathname === '/' || pathname === '/login')) {
+      // If logged in and on the welcome or login page, redirect to home
+      router.replace('/anasayfa');
+    }
+  }, [isUserLoading, user, pathname, isProtectedRoute, router]);
+
+  if (isUserLoading && (isProtectedRoute || pathname === '/')) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -31,6 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Show shell for logged-in users on protected routes
   if (isProtectedRoute && user) {
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -45,5 +56,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // For public routes or when no user is logged in, just render the children
   return <>{children}</>;
 }

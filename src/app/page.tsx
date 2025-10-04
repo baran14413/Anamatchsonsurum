@@ -10,7 +10,7 @@ import emailLogo from '@/img/gmaillogin.png';
 import { langTr } from '@/languages/tr';
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useAuth, useFirestore } from '@/firebase';
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -40,18 +40,25 @@ export default function WelcomePage() {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Check if user document exists, if not, it's a first-time sign-in
-        // and we might need to redirect to a profile setup page.
-        // For now, we'll just ensure a basic document exists.
         const userDocRef = doc(firestore, "users", user.uid);
-         await setDoc(userDocRef, {
-            uid: user.uid,
-            fullName: user.displayName,
-            email: user.email,
-            profilePicture: user.photoURL
-        }, { merge: true }); // Use merge to avoid overwriting existing data
+        const userDoc = await getDoc(userDocRef);
 
-        router.push("/anasayfa");
+        if (userDoc.exists() && userDoc.data()?.gender) { // Check for a field from later in signup
+            // User profile is complete, log them in
+            router.push("/anasayfa");
+        } else {
+            // New user or incomplete profile, redirect to signup
+            const googleData = {
+                email: user.email,
+                name: user.displayName,
+                profilePicture: user.photoURL,
+                uid: user.uid,
+            };
+            // Store data in session storage to pass to the signup page
+            sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
+            router.push("/kayit-ol");
+        }
+
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,

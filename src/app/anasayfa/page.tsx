@@ -23,7 +23,7 @@ export default function AnasayfaPage() {
   const currentProfile = profiles[currentIndex];
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden">
         <AnimatePresence>
             {currentProfile ? (
                  <ProfileCard
