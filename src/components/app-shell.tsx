@@ -13,7 +13,7 @@ import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 
-const publicPaths = ["/", "/login", "/kayit-ol"];
+const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar"];
 const appRoot = "/anasayfa";
 
 const Header = () => {
