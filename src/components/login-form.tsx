@@ -23,9 +23,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
-import { useLanguage } from "@/hooks/use-language";
 
 const getSchema = (t: any) => z.object({
   email: z.string().email({ message: t.login.errors.invalidEmail }),
@@ -39,8 +37,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
   const formSchema = getSchema(t);
 
   const form = useForm<z.infer<typeof formSchema>>({

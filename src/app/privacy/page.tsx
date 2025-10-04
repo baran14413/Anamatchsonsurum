@@ -7,13 +7,10 @@ import { Icons } from '@/components/icons';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useLanguage } from '@/hooks/use-language';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
 
 export default function PrivacyPage() {
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
   const tp = t.hukuki.privacy;
 
   return (

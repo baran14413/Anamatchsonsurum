@@ -3,8 +3,6 @@
 
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useLanguage } from '@/hooks/use-language';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
 
 export default function DuzenleLayout({
@@ -12,8 +10,7 @@ export default function DuzenleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   return (
     <div className="flex h-full flex-col bg-background">

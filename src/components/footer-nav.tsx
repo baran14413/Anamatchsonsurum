@@ -6,14 +6,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Compass, MessageSquare, User, Heart } from "lucide-react";
 import { Icons } from "./icons";
-import { useLanguage } from "@/hooks/use-language";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
 
 export default function FooterNav() {
   const pathname = usePathname();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   const navLinks = [
     { href: "/anasayfa", label: t.footerNav.home, icon: Icons.tinderFlame },

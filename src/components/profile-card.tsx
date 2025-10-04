@@ -6,8 +6,6 @@ import Image from "next/image";
 import { PanInfo, motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { MapPin, Heart, X, ArrowUp } from "lucide-react";
-import { useLanguage } from "@/hooks/use-language";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
 
 interface ProfileCardProps {
@@ -31,8 +29,7 @@ const calculateAge = (dateString: string | undefined) => {
 export default function ProfileCard({ profile, onSwipe, isTop }: ProfileCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
   const x = useMotionValue(0);
   
   const rotate = useTransform(x, [-200, 200], [-25, 25]);

@@ -32,9 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
-import { useLanguage } from "@/hooks/use-language";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
@@ -194,8 +192,7 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
 export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
   
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);

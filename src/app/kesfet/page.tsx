@@ -9,12 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Send, MoreHorizontal, Repeat } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
-import { enUS, tr } from "date-fns/locale";
+import { tr } from "date-fns/locale";
 import { mockPosts } from "@/lib/data";
 import type { Post } from "@/lib/types";
 import { Translation } from "@/components/translation";
-import { useLanguage } from "@/hooks/use-language";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
 
 // Mock comments for the sheet with different languages
@@ -29,9 +27,7 @@ const mockCommentsData = [
 
 export default function KesfetPage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
-  const dateLocale = lang === 'en' ? enUS : tr;
+  const t = langTr;
 
   return (
     <div className="bg-muted/20 dark:bg-black h-full overflow-y-auto">
@@ -48,7 +44,7 @@ export default function KesfetPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-foreground">{post.username}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(post.timestamp, { addSuffix: true, locale: dateLocale })}
+                      {formatDistanceToNow(post.timestamp, { addSuffix: true, locale: tr })}
                     </p>
                   </div>
                   <Button variant="ghost" size="icon">
@@ -99,7 +95,7 @@ export default function KesfetPage() {
                   </div>
 
                   <div className="mt-2 w-full text-sm">
-                    <p className="font-semibold">{t.kesfet.likes.replace('{count}', post.likes.toLocaleString('en-US'))}</p>
+                    <p className="font-semibold">{t.kesfet.likes.replace('{count}', post.likes.toLocaleString('tr-TR'))}</p>
                     <SheetTrigger asChild onClick={() => setSelectedPost(post)}>
                        <p className="text-muted-foreground mt-1 cursor-pointer hover:underline">
                          {t.kesfet.viewAllComments.replace('{count}', String(post.comments))}

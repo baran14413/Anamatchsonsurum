@@ -20,9 +20,8 @@ import {
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useLanguage } from '@/hooks/use-language';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
+import { useMemo } from 'react';
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -30,8 +29,7 @@ export default function ProfilPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -73,10 +71,10 @@ export default function ProfilPage() {
   
   const userAge = userProfile ? calculateAge(userProfile.dateOfBirth) : 0;
   
-  const profileCompletion = useMemoFirebase(() => {
+  const profileCompletion = useMemo(() => {
     if (!userProfile) return 0;
     const fields = ['fullName', 'dateOfBirth', 'gender', 'profilePicture', 'interests', 'bio'];
-    const completedFields = fields.filter(field => !!userProfile[field] && (Array.isArray(userProfile[field]) ? userProfile[field].length > 0 : true));
+    const completedFields = fields.filter(field => !!userProfile[field as keyof typeof userProfile] && (Array.isArray(userProfile[field as keyof typeof userProfile]) ? (userProfile[field as keyof typeof userProfile] as any[]).length > 0 : true));
     return Math.round((completedFields.length / fields.length) * 100);
   }, [userProfile]);
   

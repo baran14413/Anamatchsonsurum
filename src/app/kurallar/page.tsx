@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
-import { useLanguage } from '@/hooks/use-language';
 
 export default function RulesPage() {
   const router = useRouter();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn.rules : langTr.rules;
+  const t = langTr.rules;
   
   const rules = (t: any) => [
     {

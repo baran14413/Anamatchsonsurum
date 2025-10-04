@@ -9,15 +9,12 @@ import { Heart, X, Loader2, Undo2, Star, Send } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { mockProfiles } from "@/lib/data";
-import { useLanguage } from "@/hooks/use-language";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
 
 export default function AnasayfaPage() {
   const { toast } = useToast();
   const [visibleProfiles, setVisibleProfiles] = useState<UserProfileType[]>([]);
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   useEffect(() => {
     // Load mock profiles on component mount

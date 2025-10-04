@@ -36,8 +36,6 @@ import {
 import { useMemoFirebase } from '@/firebase/provider';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { useLanguage } from '@/hooks/use-language';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
 
 export default function DuzenlePage() {
@@ -49,8 +47,7 @@ export default function DuzenlePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     
-    const { lang } = useLanguage();
-    const t = lang === 'en' ? langEn : langTr;
+    const t = langTr;
     const commonT = t.common;
 
     const userProfileRef = useMemoFirebase(() => {

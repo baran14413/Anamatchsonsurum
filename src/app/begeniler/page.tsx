@@ -3,13 +3,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Heart } from 'lucide-react';
-import { useLanguage } from '@/hooks/use-language';
-import { langEn } from '@/languages/en';
 import { langTr } from '@/languages/tr';
 
 export default function BegenilerPage() {
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   return (
     <div className="container mx-auto max-w-2xl p-4 md:py-8 h-full flex flex-col">

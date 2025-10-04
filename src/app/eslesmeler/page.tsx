@@ -5,23 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { enUS, tr } from "date-fns/locale";
+import { tr } from "date-fns/locale";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { collection, doc } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Loader2, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLanguage } from "@/hooks/use-language";
-import { langEn } from "@/languages/en";
 import { langTr } from "@/languages/tr";
 
 function MatchItem({ match }: { match: any }) {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
-  const dateLocale = lang === 'en' ? enUS : tr;
+  const t = langTr;
 
   const otherUserId = match.user1Id === currentUser?.uid ? match.user2Id : match.user1Id;
 
@@ -57,7 +53,7 @@ function MatchItem({ match }: { match: any }) {
               )}
               {match.matchDate?.seconds && (
                 <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: dateLocale })}
+                  {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: tr })}
                 </p>
               )}
             </div>
@@ -74,8 +70,7 @@ function MatchItem({ match }: { match: any }) {
 export default function EslesmelerPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const { lang } = useLanguage();
-  const t = lang === 'en' ? langEn : langTr;
+  const t = langTr;
 
   const matchesCollectionRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
