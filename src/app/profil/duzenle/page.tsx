@@ -100,12 +100,14 @@ export default function DuzenlePage() {
 
     const handleLogout = async () => {
       try {
-        await signOut(auth);
-        router.push('/login');
-        toast({
-          title: 'Çıkış Yapıldı',
-          description: 'Başarıyla çıkış yaptınız.',
-        });
+        if (auth) {
+          await signOut(auth);
+          router.push('/login');
+          toast({
+            title: 'Çıkış Yapıldı',
+            description: 'Başarıyla çıkış yaptınız.',
+          });
+        }
       } catch (error) {
         toast({
           title: 'Hata',
@@ -188,92 +190,97 @@ export default function DuzenlePage() {
     ];
 
   return (
-    <div className="p-4 space-y-8 pb-12">
-        <div className="flex items-center flex-col gap-4 my-4">
-             <div className="relative w-32 h-32">
-                <Image
-                    src={userProfile?.profilePicture || 'https://picsum.photos/seed/placeholder/200/200'}
-                    alt="Profil Resmi"
-                    width={128}
-                    height={128}
-                    className="rounded-full object-cover w-32 h-32 border-4 border-white"
-                />
-                 <button
-                    onClick={handleIconClick}
-                    className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-blue-500 text-white shadow-md transition-transform hover:scale-110"
-                    disabled={isUploading}
-                >
-                    {isUploading ? <Loader2 className="animate-spin" /> : <Camera className="h-5 w-5" />}
-                </button>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/png, image/jpeg, image/gif"
-                />
-            </div>
-            <h2 className="text-2xl font-bold">{userProfile?.fullName || 'Kullanıcı'}</h2>
-            <Link href="/profil/duzenle/kisisel-bilgiler">
-              <Button variant="outline" className="rounded-full">
-                  Profili Düzenle
-              </Button>
-            </Link>
-        </div>
-
-
-      {settingsGroups.map((group) => (
-        <div key={group.title}>
-          <h2 className="px-4 pb-2 text-lg font-semibold text-muted-foreground">
-            {group.title}
-          </h2>
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-            {group.items.map((item, index) => (
-              <Link href={item.href} key={item.label}>
-                <div
-                  className={`flex items-center p-4 ${
-                    index < group.items.length - 1 ? 'border-b' : ''
-                  } active:bg-muted/50`}
-                >
-                  <div
-                    className={`mr-4 flex h-8 w-8 items-center justify-center rounded-lg text-white ${item.bgColor}`}
+    <AlertDialog>
+      <div className="p-4 space-y-8 pb-12">
+          <div className="flex items-center flex-col gap-4 my-4">
+               <div className="relative w-32 h-32">
+                  <Image
+                      src={userProfile?.profilePicture || 'https://picsum.photos/seed/placeholder/200/200'}
+                      alt="Profil Resmi"
+                      width={128}
+                      height={128}
+                      className="rounded-full object-cover w-32 h-32 border-4 border-white"
+                  />
+                   <button
+                      onClick={handleIconClick}
+                      className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-blue-500 text-white shadow-md transition-transform hover:scale-110"
+                      disabled={isUploading}
                   >
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                  <span className="flex-1 font-medium">{item.label}</span>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </div>
+                      {isUploading ? <Loader2 className="animate-spin" /> : <Camera className="h-5 w-5" />}
+                  </button>
+                  <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/png, image/jpeg, image/gif"
+                  />
+              </div>
+              <h2 className="text-2xl font-bold">{userProfile?.fullName || 'Kullanıcı'}</h2>
+              <Link href="/profil/duzenle/kisisel-bilgiler">
+                <Button variant="outline" className="rounded-full">
+                    Profili Düzenle
+                </Button>
               </Link>
-            ))}
           </div>
-        </div>
-      ))}
-       <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="flex w-full items-center p-4 active:bg-muted/50 text-red-500">
-                   <div
-                    className={`mr-4 flex h-8 w-8 items-center justify-center rounded-lg text-white bg-gradient-to-br from-red-500 to-red-700`}
+
+
+        {settingsGroups.map((group) => (
+          <div key={group.title}>
+            <h2 className="px-4 pb-2 text-lg font-semibold text-muted-foreground">
+              {group.title}
+            </h2>
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+              {group.items.map((item, index) => (
+                <Link href={item.href} key={item.label}>
+                  <div
+                    className={`flex items-center p-4 ${
+                      index < group.items.length - 1 ? 'border-b' : ''
+                    } active:bg-muted/50`}
                   >
-                    <LogOut className="h-5 w-5" />
+                    <div
+                      className={`mr-4 flex h-8 w-8 items-center justify-center rounded-lg text-white ${item.bgColor}`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                    </div>
+                    <span className="flex-1 font-medium">{item.label}</span>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <span className="flex-1 font-medium text-left">Çıkış Yap</span>
-               </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Çıkış Yapmak İstediğinizden Emin misiniz?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Bu işlem sizi mevcut oturumunuzdan çıkaracaktır. Tekrar erişmek için giriş yapmanız gerekecektir.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>İptal</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">Çıkış Yap</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div>
+            <h2 className="px-4 pb-2 text-lg font-semibold text-muted-foreground">
+              Uygulamadan Çık
+            </h2>
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <AlertDialogTrigger asChild>
+                  <button className="flex w-full items-center p-4 active:bg-muted/50 text-red-500">
+                     <div
+                      className={`mr-4 flex h-8 w-8 items-center justify-center rounded-lg text-white bg-gradient-to-br from-red-500 to-red-700`}
+                    >
+                      <LogOut className="h-5 w-5" />
+                    </div>
+                    <span className="flex-1 font-medium text-left">Çıkış Yap</span>
+                 </button>
+                </AlertDialogTrigger>
+            </div>
+        </div>
       </div>
-    </div>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Çıkış Yapmak İstediğinizden Emin misiniz?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Bu işlem sizi mevcut oturumunuzdan çıkaracaktır. Tekrar erişmek için giriş yapmanız gerekecektir.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>İptal</AlertDialogCancel>
+          <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">Çıkış Yap</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
