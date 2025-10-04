@@ -27,7 +27,6 @@ import Link from "next/link";
 import { langTr } from "@/languages/tr";
 import Image from 'next/image';
 import googleLogo from '@/img/googlelogin.png';
-import { doc, setDoc } from "firebase/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +52,6 @@ export default function LoginForm() {
   const [step, setStep] = useState<'email' | 'password'>('email');
   const [showGoogleRedirectDialog, setShowGoogleRedirectDialog] = useState(false);
   const auth = useAuth();
-  const firestore = useFirestore();
   
   const formSchema = getSchema(t);
 
@@ -112,26 +110,16 @@ export default function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    if (!auth || !firestore) {
+    if (!auth) {
       toast({ title: t.common.error, description: t.login.errors.authServiceError, variant: "destructive" });
       setIsLoading(false);
       return;
     }
     const provider = new GoogleAuthProvider();
     try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-
-        // Check if user profile exists, if not, create it (first time Google login)
-        const userDocRef = doc(firestore, "users", user.uid);
-        await setDoc(userDocRef, {
-            uid: user.uid,
-            fullName: user.displayName,
-            email: user.email,
-            profilePicture: user.photoURL,
-        }, { merge: true });
-
-        router.push("/anasayfa");
+        await signInWithPopup(auth, provider);
+        // After successful sign-in, the AppShell logic will redirect to /anasayfa
+        router.push("/anasayfa"); 
     } catch (error: any) {
         toast({
             title: t.login.errors.googleLoginFailedTitle,

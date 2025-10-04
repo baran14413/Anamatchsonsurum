@@ -258,6 +258,7 @@ export default function SignupForm() {
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   const currentName = form.watch("name");
@@ -317,10 +318,10 @@ export default function SignupForm() {
       const photoUrls: string[] = [];
       const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
 
-      // Add pre-filled google photo if it exists and no new files are uploaded for that slot
-      if(isGoogleSignup && photoSlots[0].preview && !photoSlots[0].file) {
-          photoUrls.push(photoSlots[0].preview);
-      }
+      // Collect existing preview URLs (for Google profile pic or already uploaded pics)
+      const existingUrls = photoSlots
+        .map(p => p.preview)
+        .filter((url): url is string => !!url && url.startsWith('http'));
 
       for (const file of filesToUpload) {
         if (file) {
@@ -338,6 +339,8 @@ export default function SignupForm() {
           photoUrls.push(result.url);
         }
       }
+      
+      const allPhotoUrls = [...existingUrls, ...photoUrls];
 
       // 3. Create user profile object to save in Firestore
       const userProfile = {
@@ -362,8 +365,8 @@ export default function SignupForm() {
             zodiacSign: data.zodiacSign,
         },
         interests: data.interests,
-        images: photoUrls,
-        profilePicture: photoUrls[0] || '', // Set first image as profile picture
+        images: allPhotoUrls,
+        profilePicture: allPhotoUrls[0] || '', // Set first image as profile picture
         location: data.location || null,
       };
 
@@ -436,14 +439,10 @@ export default function SignupForm() {
   };
 
   const openFilePicker = (index: number) => {
-    if (photoSlots[index].preview) {
-      setActiveSlot(index);
-      fileInputRef.current?.click();
-    } else {
       const firstEmptyIndex = photoSlots.findIndex(p => !p.preview);
-      setActiveSlot(firstEmptyIndex);
+      const targetIndex = photoSlots[index].preview ? index : firstEmptyIndex;
+      setActiveSlot(targetIndex);
       fileInputRef.current?.click();
-    }
   };
   
   const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
@@ -456,18 +455,16 @@ export default function SignupForm() {
         URL.revokeObjectURL(deletedSlot.preview);
       }
 
-      // Remove the clicked one
-      newSlots[index] = { file: null, preview: null, label: t.signup.step12.photoSlotLabels[index] || '' };
+      newSlots.splice(index, 1);
 
-      // Re-order the array so that filled slots are at the beginning
-      const filledSlots = newSlots.filter(p => p.preview);
-      const emptySlots = Array.from({ length: 6 - filledSlots.length }, (_, i) => ({ 
-        file: null, 
-        preview: null, 
-        label: t.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
+      // Add a new empty slot at the end
+      newSlots.push({ file: null, preview: null, label: '' });
+
+      // Re-label
+      const reorderedSlots = newSlots.map((slot, i) => ({
+          ...slot,
+          label: t.signup.step12.photoSlotLabels[i] || ''
       }));
-
-      const reorderedSlots = [...filledSlots, ...emptySlots];
       
       setPhotoSlots(reorderedSlots);
       
@@ -550,7 +547,7 @@ export default function SignupForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        {step > 1 || (isGoogleSignup && step > 2) ? (
+        {step > 1 ? (
           <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
@@ -1183,5 +1180,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
