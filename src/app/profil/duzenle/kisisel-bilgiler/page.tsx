@@ -15,11 +15,11 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 const profileSchema = z.object({
-  fullName: z.string().min(3, { message: "Name must be at least 3 characters." }),
-  bio: z.string().max(150, { message: "Bio can be at most 150 characters." }).optional(),
+  fullName: z.string().min(3, { message: "İsim en az 3 karakter olmalıdır." }),
+  bio: z.string().max(150, { message: "Biyografi en fazla 150 karakter olabilir." }).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -28,7 +28,7 @@ export default function KisiselBilgilerPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const t = langEn.ayarlarPersonalInfo;
+  const t = langTr.ayarlarPersonalInfo;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -141,5 +141,3 @@ export default function KisiselBilgilerPage() {
     </div>
   );
 }
-
-    

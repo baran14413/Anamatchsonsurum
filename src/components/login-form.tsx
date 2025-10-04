@@ -48,13 +48,14 @@ const getSchema = (t: any) => z.object({
 export default function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = langTr;
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const [showGoogleRedirectDialog, setShowGoogleRedirectDialog] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
-  const t = langTr;
+  
   const formSchema = getSchema(t);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -285,5 +286,3 @@ export default function LoginForm() {
     </div>
   );
 }
-
-    

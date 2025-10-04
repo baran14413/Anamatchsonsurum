@@ -4,7 +4,7 @@
 import { useUser, useAuth } from "@/firebase";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { Icons } from "./icons";
 import FooterNav from "./footer-nav";
 import { Button } from "./ui/button";
@@ -18,6 +18,7 @@ const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy"
 const appRoot = "/anasayfa";
 
 const Header = () => {
+    const t = langTr;
     return (
         <header className="flex items-center justify-between p-4 bg-background dark:bg-black sticky top-0 z-10 border-b">
             <Link href={appRoot} className="flex items-center gap-2 font-bold text-xl">
@@ -46,11 +47,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
+  const t = langTr;
 
   const handleLogout = useCallback(async () => {
     if (!auth) {
         toast({
-            title: langTr.ayarlar.toasts.logoutErrorTitle,
+            title: t.ayarlar.toasts.logoutErrorTitle,
             description: "Auth service not available.",
             variant: 'destructive',
         });
@@ -60,17 +62,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       await signOut(auth);
       router.replace('/'); 
       toast({
-        title: langTr.ayarlar.toasts.logoutSuccessTitle,
-        description: langTr.ayarlar.toasts.logoutSuccessDesc,
+        title: t.ayarlar.toasts.logoutSuccessTitle,
+        description: t.ayarlar.toasts.logoutSuccessDesc,
       });
     } catch (error) {
       toast({
-        title: langTr.ayarlar.toasts.logoutErrorTitle,
-        description: langTr.ayarlar.toasts.logoutErrorDesc,
+        title: t.ayarlar.toasts.logoutErrorTitle,
+        description: t.ayarlar.toasts.logoutErrorDesc,
         variant: 'destructive',
       });
     }
-  }, [auth, router, toast]);
+  }, [auth, router, toast, t]);
 
   useEffect(() => {
     if (pathname === '/quit') {

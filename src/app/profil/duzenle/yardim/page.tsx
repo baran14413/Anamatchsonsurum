@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ShieldQuestion, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 export default function YardimPage() {
-  const t = langEn.ayarlarYardim;
+  const t = langTr.ayarlarYardim;
 
   return (
     <div className="p-4 sm:p-6">
@@ -43,5 +43,3 @@ export default function YardimPage() {
     </div>
   );
 }
-
-    

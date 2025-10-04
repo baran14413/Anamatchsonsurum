@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 export default function GaleriPage() {
   const { user } = useUser();
@@ -31,8 +31,8 @@ export default function GaleriPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
-  const t = langEn.ayarlarGaleri;
-  const commonT = langEn.common;
+  const t = langTr.ayarlarGaleri;
+  const commonT = langTr.common;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -226,5 +226,3 @@ export default function GaleriPage() {
     </AlertDialog>
   );
 }
-
-    

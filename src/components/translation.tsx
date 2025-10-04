@@ -17,10 +17,10 @@ export function Translation({ text, sourceLanguage }: TranslationProps) {
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
-  
   const t = langTr.kesfet.translation;
 
   useEffect(() => {
+    // This hook is now safe because the component is a client component
     const lang = navigator.language.split("-")[0];
     setBrowserLanguage(lang);
   }, []);

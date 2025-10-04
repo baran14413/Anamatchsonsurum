@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { langEn } from '@/languages/en';
+import { langTr } from '@/languages/tr';
 
 
 const SimulatedMap = ({ location }: { location: { latitude: number; longitude: number } | null }) => {
@@ -53,7 +53,7 @@ export default function KonumPage() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const t = langEn.ayarlarKonum;
+  const t = langTr.ayarlarKonum;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -219,5 +219,3 @@ export default function KonumPage() {
     </div>
   );
 }
-
-    
