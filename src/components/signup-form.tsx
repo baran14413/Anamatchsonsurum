@@ -58,22 +58,24 @@ const lookingForOptions = [
 
 const lifestyleOptions = {
   drinking: [
-    { id: 'frequently', label: 'Sık sık' },
-    { id: 'socially', label: 'Sosyal içiciyim' },
+    { id: 'not_for_me', label: 'Bana göre değil' },
+    { id: 'dont_drink', label: 'İçmiyorum' },
     { id: 'rarely', label: 'Nadiren' },
-    { id: 'never', label: 'Hiç' },
+    { id: 'special_occasions', label: 'Özel günlerde' },
+    { id: 'socially_weekends', label: 'Hafta sonları sosyalleşirken' },
+    { id: 'most_nights', label: 'Çoğu gece' },
   ],
   smoking: [
-    { id: 'socially', label: 'Sosyal içiciyim' },
-    { id: 'frequently', label: 'Sık sık' },
-    { id: 'rarely', label: 'Nadiren' },
-    { id: 'never', label: 'Hiç' },
+    { id: 'social_smoker', label: 'Sosyal içici' },
+    { id: 'with_drinks', label: 'İçkiyle birlikte' },
+    { id: 'non_smoker', label: 'Kullanmıyorum' },
+    { id: 'smoker', label: 'Sigara Kullanan' },
+    { id: 'trying_to_quit', label: 'Bırakmaya çalışıyorum' },
   ],
   workout: [
     { id: 'everyday', label: 'Her gün' },
-    { id'almost_everyday', label: 'Neredeyse her gün'},
-    { id: 'sometimes', label: 'Bazen' },
-    { id: 'never', label: 'Hiç' },
+    { id: 'often', label: 'Sık sık' },
+    { id: 'sometimes', label: 'Ara sıra' },
   ],
   pets: [
     { id: 'dog', label: 'Köpek' },
@@ -96,18 +98,19 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
 
     const smartInputHandler = (
       e: React.ChangeEvent<HTMLInputElement>,
+      setter: React.Dispatch<React.SetStateAction<string>>,
       field: 'day' | 'month'
     ) => {
         let val = e.target.value.replace(/[^0-9]/g, '');
         
         if (field === 'day') {
-            if (parseInt(val.charAt(0)) > 3) val = day;
-            else if (parseInt(val) > 31) val = day;
+            if (val.length > 0 && parseInt(val.charAt(0)) > 3) val = day;
+            else if (val.length > 1 && parseInt(val) > 31) val = day;
             setDay(val);
             if (val.length === 2) monthRef.current?.focus();
         } else if (field === 'month') {
-            if (parseInt(val.charAt(0)) > 1) val = month;
-            else if (val.length === 2 && parseInt(val) > 12) val = month.slice(0, 1);
+            if (val.length > 0 && parseInt(val.charAt(0)) > 1) val = month;
+            else if (val.length > 1 && parseInt(val) > 12) val = month.slice(0,1);
             setMonth(val);
             if (val.length === 2) yearRef.current?.focus();
         }
@@ -149,7 +152,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 placeholder="GG"
                 maxLength={2}
                 value={day}
-                onChange={(e) => smartInputHandler(e, 'day')}
+                onChange={(e) => smartInputHandler(e, setDay, 'day')}
                 disabled={disabled}
                 className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
@@ -159,7 +162,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
                 placeholder="AA"
                 maxLength={2}
                 value={month}
-                onChange={(e) => smartInputHandler(e, 'month')}
+                onChange={(e) => smartInputHandler(e, setMonth, 'month')}
                 disabled={disabled}
                  className="text-xl text-center h-14 w-16 p-0 border-0 border-b-2 rounded-none bg-transparent focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0"
             />
@@ -202,6 +205,11 @@ export default function SignupForm() {
   });
   
   const currentName = form.watch("name");
+  const lifestyleValues = form.watch(['drinking', 'smoking', 'workout']);
+
+  const filledLifestyleCount = useMemo(() => {
+    return lifestyleValues.filter(Boolean).length;
+  }, [lifestyleValues]);
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
@@ -476,7 +484,8 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <>
-                  <h1 className="text-3xl font-bold">{currentName}, biraz da yaşam tarzından bahsedelim</h1>
+                  <h1 className="text-3xl font-bold">{currentName}, biraz da yaşam tarzı alışkanlıklarından bahsedelim</h1>
+                  <p className="text-muted-foreground">Eşleşme adaylarının alışkanlıkları, seninkilerle uyumlu mu? İlk sen başla.</p>
                   <div className="space-y-8 pt-4">
                     {/* Drinking */}
                     <FormField
@@ -520,7 +529,7 @@ export default function SignupForm() {
                       name="workout"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />Ne sıklıkla spor yaparsın?</FormLabel>
+                          <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />Spor yapıyor musun?</FormLabel>
                           <FormControl>
                             <div className="flex flex-wrap gap-2 pt-2">
                               {lifestyleOptions.workout.map(opt => (
@@ -581,6 +590,15 @@ export default function SignupForm() {
                 >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Konumumu Paylaş'}
               </Button>
+              ) : step === 8 ? (
+                <Button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="w-full h-14 rounded-full text-lg font-bold"
+                  disabled={isLoading || filledLifestyleCount < 3}
+                >
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Sonraki ${filledLifestyleCount}/3`}
+                </Button>
               ) : (
                 <Button
                     type="button"
@@ -598,3 +616,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
