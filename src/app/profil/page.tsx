@@ -1,20 +1,17 @@
 
 "use client";
 
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Icons } from "@/components/icons";
-import { Shield, Settings, ChevronRight, Star, Zap, Gem, Check, Lock, Pencil } from "lucide-react";
+import { Shield, Settings, ChevronRight, Star, Zap, Gem, Check, Lock, Pencil, Loader2 } from "lucide-react";
 import CircularProgress from "@/components/circular-progress";
 import Link from "next/link";
 
-const mockUser = {
-  name: "Testhesap",
-  age: 19,
-  avatar: "https://picsum.photos/seed/currentuser/200/200",
-  profileCompletion: 5,
-};
 
 const premiumFeatures = [
     { name: "Seni Kimlerin Beğendiğini Gör", free: false, gold: true },
@@ -23,6 +20,46 @@ const premiumFeatures = [
 ];
 
 export default function ProfilPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile, isLoading } = useDoc(userProfileRef);
+
+  const calculateAge = (dateString: string | undefined) => {
+    if (!dateString) return 0;
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+  
+  const userAge = userProfile ? calculateAge(userProfile.dateOfBirth) : 0;
+  
+  // A simple calculation for profile completion percentage
+  const profileCompletion = useMemoFirebase(() => {
+    if (!userProfile) return 0;
+    const fields = ['fullName', 'dateOfBirth', 'gender', 'profilePicture', 'interests', 'bio'];
+    const completedFields = fields.filter(field => !!userProfile[field] && (Array.isArray(userProfile[field]) ? userProfile[field].length > 0 : true));
+    return Math.round((completedFields.length / fields.length) * 100);
+  }, [userProfile]);
+
+  if (isLoading) {
+    return (
+        <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+  }
+
   return (
     <div className="bg-muted/40 dark:bg-black h-full overflow-y-auto pb-24">
       {/* Header */}
@@ -47,19 +84,19 @@ export default function ProfilPage() {
             {/* Profile Avatar and Info */}
             <div className="relative">
                 <Avatar className="h-32 w-32 border-4 border-white dark:border-black">
-                    <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
+                    <AvatarImage src={userProfile?.profilePicture} alt={userProfile?.fullName || ''} />
                     <AvatarFallback className="text-4xl bg-muted">
-                        {mockUser.name.charAt(0)}
+                        {userProfile?.fullName?.charAt(0) || 'B'}
                     </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-2 -right-2">
-                    <CircularProgress progress={mockUser.profileCompletion} />
+                    <CircularProgress progress={profileCompletion} />
                 </div>
             </div>
 
             <div className="text-center">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
-                    {mockUser.name}, {mockUser.age}
+                    {userProfile?.fullName || 'BeMatch Kullanıcısı'}, {userAge > 0 ? userAge : ''}
                     <Check className="h-5 w-5 p-0.5 rounded-full bg-blue-500 text-white" strokeWidth={3} />
                 </h1>
             </div>
@@ -156,3 +193,5 @@ export default function ProfilPage() {
     </div>
   );
 }
+
+    

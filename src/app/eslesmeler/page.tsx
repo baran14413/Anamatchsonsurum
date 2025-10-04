@@ -1,51 +1,93 @@
+
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { mockMatches } from "@/lib/data";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { useMemoFirebase } from "@/firebase/provider";
+import { Loader2, MessageSquare } from "lucide-react";
+
+// This component will fetch the details for a single match
+function MatchItem({ match }: { match: any }) {
+  const firestore = useFirestore();
+  // In a real app, you'd fetch the other user's profile to get their name and avatar.
+  // For now, we'll use placeholder data.
+  const otherUserId = match.user1Id === useUser().user?.uid ? match.user2Id : match.user1Id;
+
+  return (
+    <Link href={`/sohbet/${match.id}`} className="block">
+      <Card className="hover:bg-muted/50 transition-colors">
+        <CardContent className="p-4 flex items-center gap-4">
+          <Image
+            src={`https://picsum.photos/seed/${otherUserId}/100/100`}
+            alt="Match Avatar"
+            width={64}
+            height={64}
+            className="rounded-full"
+            data-ai-hint="person avatar"
+          />
+          <div className="flex-1">
+            <div className="flex justify-between">
+              <h2 className="font-semibold text-lg">{otherUserId.substring(0,6)}...</h2>
+              {match.matchDate && (
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: tr })}
+                </p>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              Eşleştiniz! Bir merhaba de.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 export default function EslesmelerPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const matchesCollectionRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, `users/${user.uid}/matches`);
+  }, [user, firestore]);
+
+  const { data: matches, isLoading } = useCollection(matchesCollectionRef);
+
   return (
-    <div className="container mx-auto max-w-2xl p-4 md:py-8">
+    <div className="container mx-auto max-w-2xl p-4 md:py-8 h-full flex flex-col">
       <h1 className="mb-6 text-3xl font-bold tracking-tight">Mesajlar</h1>
-      <div className="space-y-4">
-        {mockMatches.length > 0 ? (
-          mockMatches.map((match) => (
-            <Link href={`/sohbet/${match.id}`} key={match.id} className="block">
-              <Card className="hover:bg-muted/50 transition-colors">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <Image
-                    src={match.avatarUrl}
-                    alt={match.name}
-                    width={64}
-                    height={64}
-                    className="rounded-full"
-                    data-ai-hint="person avatar"
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h2 className="font-semibold text-lg">{match.name}</h2>
-                      {match.lastMessageTimestamp && (
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(match.lastMessageTimestamp, { addSuffix: true, locale: tr })}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {match.lastMessage}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
-        ) : (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground">Henüz hiç eşleşmen yok.</p>
+      <div className="flex-1 overflow-y-auto">
+        {isLoading && (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        {!isLoading && matches && matches.length > 0 && (
+          <div className="space-y-4">
+            {matches.map((match) => (
+              <MatchItem key={match.id} match={match} />
+            ))}
+          </div>
+        )}
+
+        {!isLoading && (!matches || matches.length === 0) && (
+          <div className="text-center py-20 flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Henüz Eşleşmen Yok</h2>
+            <p>Eşleştiğin kişiler burada görünecek.</p>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+    
