@@ -16,9 +16,9 @@ import {
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { useRef, useState, useMemo } from 'react';
+import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -34,10 +34,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useMemoFirebase } from '@/firebase/provider';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function DuzenlePage() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const auth = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -91,6 +95,23 @@ export default function DuzenlePage() {
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const handleLogout = async () => {
+      try {
+        await signOut(auth);
+        router.push('/login');
+        toast({
+          title: 'Çıkış Yapıldı',
+          description: 'Başarıyla çıkış yaptınız.',
+        });
+      } catch (error) {
+        toast({
+          title: 'Hata',
+          description: 'Çıkış yapılırken bir hata oluştu.',
+          variant: 'destructive',
+        });
+      }
     };
     
     const settingsGroups = [
@@ -160,7 +181,7 @@ export default function DuzenlePage() {
     ];
 
   return (
-    <div className="p-4 space-y-8">
+    <div className="p-4 space-y-8 pb-12">
         <div className="flex items-center flex-col gap-4 my-4">
              <div className="relative w-32 h-32">
                 <Image
@@ -239,7 +260,7 @@ export default function DuzenlePage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>İptal</AlertDialogCancel>
-                  <AlertDialogAction className="bg-destructive hover:bg-destructive/90">Çıkış Yap</AlertDialogAction>
+                  <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">Çıkış Yap</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
