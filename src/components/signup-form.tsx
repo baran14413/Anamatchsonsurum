@@ -72,12 +72,16 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [step, setStep] = useState(1);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   
   const auth = useAuth();
   const firestore = useFirestore();
+
+  // Store the final Cloudinary URL separately
+  const [finalProfilePictureUrl, setFinalProfilePictureUrl] = useState<string>('');
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(
@@ -102,7 +106,8 @@ export default function SignupForm() {
   });
 
   const uploadFile = async (file: File) => {
-    setIsLoading(true);
+    // This function can still indicate loading for individual file uploads if needed
+    setIsUploading(true); 
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -128,17 +133,28 @@ export default function SignupForm() {
         });
         return null;
     } finally {
-        setIsLoading(false);
+        setIsUploading(false);
     }
   }
 
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const url = await uploadFile(file);
-        if (url) {
-            form.setValue("profilePicture", url, { shouldValidate: true });
-        }
+        // 1. Show local preview immediately
+        const localUrl = URL.createObjectURL(file);
+        form.setValue("profilePicture", localUrl, { shouldValidate: true });
+
+        // 2. Start upload in the background
+        setIsUploading(true);
+        uploadFile(file).then(cloudinaryUrl => {
+            if (cloudinaryUrl) {
+                // 3. Store the final URL when ready
+                setFinalProfilePictureUrl(cloudinaryUrl);
+                // Optional: Revoke the local URL to free up memory if the user navigates away
+                // URL.revokeObjectURL(localUrl); 
+            }
+            setIsUploading(false);
+        });
     }
   };
 
@@ -165,19 +181,38 @@ export default function SignupForm() {
   const handleNextStep = async () => {
     const isValid = await form.trigger();
     if (isValid) {
+      if (step === 2 && isUploading) {
+        toast({
+          title: "Lütfen Bekleyin",
+          description: "Profil fotoğrafınız hala yükleniyor.",
+        });
+        return;
+      }
       nextStep();
     }
   }
 
   const onFinalSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
+
+    if (isUploading) {
+        toast({ title: "Lütfen Bekleyin", description: "Resimler hala yükleniyor.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
+    if (!finalProfilePictureUrl) {
+        toast({ title: "Profil Resmi Eksik", description: "Lütfen profil resminizin yüklenmesini bekleyin veya tekrar yükleyin.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
 
         const userDocRef = doc(firestore, "users", user.uid);
         
-        // Finalize location gathering inside final submission
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
 
@@ -186,9 +221,9 @@ export default function SignupForm() {
                 email: data.email,
                 fullName: data.fullName,
                 dateOfBirth: data.dateOfBirth,
-                profilePicture: data.profilePicture,
+                profilePicture: finalProfilePictureUrl, // Use the final URL
                 gender: data.gender,
-                images: data.matchPictures, // Changed from matchPictures
+                images: data.matchPictures,
                 location: { latitude, longitude },
                 createdAt: new Date(),
                 profileComplete: true,
@@ -202,7 +237,6 @@ export default function SignupForm() {
             router.push("/anasayfa");
 
         }, (error) => {
-            // This fallback shouldn't ideally be hit if step 3 is mandatory
             setLocationError("Konum bilgisi alınamadı. Kayıt tamamlanamadı.");
             setIsLoading(false);
         });
@@ -269,17 +303,22 @@ export default function SignupForm() {
                         <FormItem>
                            <FormControl>
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="w-40 h-40 border-4 border-muted rounded-full overflow-hidden flex items-center justify-center bg-muted">
+                                    <div className="w-40 h-40 border-4 border-muted rounded-full overflow-hidden flex items-center justify-center bg-muted relative">
                                         {field.value ? (
                                              <Image src={field.value} alt="Profil resmi" width={160} height={160} className="object-cover w-full h-full" />
                                         ): (
                                              <Camera className="h-16 w-16 text-muted-foreground" />
                                         )}
+                                        {isUploading && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                                            </div>
+                                        )}
                                     </div>
-                                    <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()}>
+                                    <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()} disabled={isUploading}>
                                         <Upload className="mr-2 h-4 w-4" /> Fotoğraf Yükle
                                     </Button>
-                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} />
+                                    <Input id="profile-pic-upload" type="file" accept="image/*" className="hidden" onChange={handleProfilePictureUpload} disabled={isUploading} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -400,7 +439,7 @@ export default function SignupForm() {
                 type={step === TOTAL_STEPS ? 'submit' : 'button'}
                 onClick={step !== TOTAL_STEPS ? handleNextStep : undefined}
                 className="w-full h-12 text-base font-bold rounded-full" 
-                disabled={isLoading}
+                disabled={isLoading || (step === 2 && isUploading)}
                >
                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {step === TOTAL_STEPS ? (
