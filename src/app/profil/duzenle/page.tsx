@@ -121,19 +121,19 @@ export default function DuzenlePage() {
           {
             icon: User,
             label: 'Kişisel Bilgiler',
-            href: '#',
+            href: '/profil/duzenle/kisisel-bilgiler',
             bgColor: 'bg-gradient-to-br from-blue-400 to-blue-600',
           },
           {
             icon: MapPin,
             label: 'Konum',
-            href: '#',
+            href: '/profil/duzenle/konum',
             bgColor: 'bg-gradient-to-br from-green-400 to-green-600',
           },
           {
             icon: Bell,
             label: 'Bildirim Ayarları',
-            href: '#',
+            href: '/profil/duzenle/bildirimler',
             bgColor: 'bg-gradient-to-br from-red-400 to-red-600',
           },
         ],
@@ -144,13 +144,13 @@ export default function DuzenlePage() {
           {
             icon: Lock,
             label: 'Hesap Gizliliği',
-            href: '#',
+            href: '/profil/duzenle/gizlilik',
             bgColor: 'bg-gradient-to-br from-gray-500 to-gray-700',
           },
           {
             icon: Ban,
             label: 'Engellenen Kullanıcılar',
-            href: '#',
+            href: '/profil/duzenle/engellenenler',
             bgColor: 'bg-gradient-to-br from-red-500 to-red-700',
           },
         ],
@@ -161,19 +161,19 @@ export default function DuzenlePage() {
           {
             icon: ShieldQuestion,
             label: 'Yardım Merkezi',
-            href: '#',
+            href: '/profil/duzenle/yardim',
             bgColor: 'bg-gradient-to-br from-teal-400 to-teal-600',
           },
           {
             icon: HeartHandshake,
             label: 'Topluluk Kuralları',
-            href: '#',
+            href: '/profil/duzenle/topluluk-kurallari',
             bgColor: 'bg-gradient-to-br from-purple-400 to-purple-600',
           },
           {
             icon: FileText,
             label: 'Kullanım Koşulları',
-            href: '#',
+            href: '/profil/duzenle/kullanim-kosullari',
             bgColor: 'bg-gradient-to-br from-gray-400 to-gray-600',
           },
         ],
@@ -207,9 +207,11 @@ export default function DuzenlePage() {
                 />
             </div>
             <h2 className="text-2xl font-bold">{userProfile?.fullName || 'Kullanıcı'}</h2>
-            <Button variant="outline" className="rounded-full">
-                Profili Düzenle
-            </Button>
+            <Link href="/profil/duzenle/kisisel-bilgiler">
+              <Button variant="outline" className="rounded-full">
+                  Profili Düzenle
+              </Button>
+            </Link>
         </div>
 
 
