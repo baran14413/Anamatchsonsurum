@@ -22,24 +22,25 @@ export async function GET(req: NextRequest) {
         interactedUserIds.add(currentUserId);
         
         // 2. Use a collectionGroup query to fetch ONLY the profile documents.
-        // This is the key fix to avoid reading parent documents without profile data.
         const profilesSnapshot = await adminDb.collectionGroup('profile').get();
         
         const allUsers: UserProfile[] = [];
         profilesSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure the profile belongs to a user (has a uid) and isn't the current user
+            // Ensure the profile document data exists and has a uid
             if (userData && userData.uid) {
                 allUsers.push({
-                    id: doc.id, // The ID of the profile document (which is 'profile')
+                    // CRITICAL FIX: The `id` for the profile in the app should be the user's UID,
+                    // not the ID of the document itself (which is 'profile').
+                    id: userData.uid, 
                     ...userData,
+                    // Ensure images array always exists, even if it's empty.
                     images: userData.images || [], 
                 } as UserProfile);
             }
         });
         
         // 3. Filter out users the current user has already interacted with
-        // Note: We filter by `uid` field from the profile document, not the doc.id
         const potentialMatches = allUsers.filter(user => !interactedUserIds.has(user.uid));
 
         // 4. Shuffle the potential matches for randomness
