@@ -21,20 +21,19 @@ export async function GET(req: NextRequest) {
         // Add current user to interacted set to filter them out
         interactedUserIds.add(currentUserId);
         
-        // 2. Use a collectionGroup query to fetch ONLY the profile documents.
-        const profilesSnapshot = await adminDb.collectionGroup('profile').get();
+        // 2. Get all user profiles from the 'users' collection
+        const allUsersSnapshot = await adminDb.collection('users').get();
         
         const allUsers: UserProfile[] = [];
-        profilesSnapshot.forEach(doc => {
+        allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure the profile document data exists and has a uid
+            // Ensure basic data integrity, especially the uid field. This filters out documents
+            // that are just containers for subcollections (like 'interactions' or 'matches').
             if (userData && userData.uid) {
                 allUsers.push({
-                    // CRITICAL FIX: The `id` for the profile in the app should be the user's UID,
-                    // not the ID of the document itself (which is 'profile').
-                    id: userData.uid, 
+                    id: doc.id, // The document ID is the user's UID
                     ...userData,
-                    // Ensure images array always exists, even if it's empty.
+                    // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
                     images: userData.images || [], 
                 } as UserProfile);
             }
