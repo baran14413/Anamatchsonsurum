@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -90,8 +91,12 @@ export default function SignupForm() {
     defaultValues: {
       email: "",
       fullName: "",
+      dateOfBirth: "",
       profilePicture: "",
+      gender: undefined,
       matchPictures: [],
+      password: "",
+      confirmPassword: "",
       terms: false,
     }
   });
@@ -304,12 +309,13 @@ export default function SignupForm() {
                         <FormItem>
                            <FormControl>
                                 <div className="flex flex-col items-center gap-4">
-                                    <Avatar className="w-40 h-40 border-4 border-muted">
-                                        <AvatarImage src={field.value} alt="Profil resmi" />
-                                        <AvatarFallback className="bg-muted">
+                                    <div className="w-40 h-40 border-4 border-muted rounded-full overflow-hidden flex items-center justify-center bg-muted">
+                                        {field.value ? (
+                                             <Image src={field.value} alt="Profil resmi" width={160} height={160} className="object-cover w-full h-full" />
+                                        ): (
                                              <Camera className="h-16 w-16 text-muted-foreground" />
-                                        </AvatarFallback>
-                                    </Avatar>
+                                        )}
+                                    </div>
                                     <Button type="button" onClick={() => document.getElementById('profile-pic-upload')?.click()}>
                                         <Upload className="mr-2 h-4 w-4" /> Fotoğraf Yükle
                                     </Button>
@@ -450,3 +456,5 @@ export default function SignupForm() {
       </Form>
   );
 }
+
+    
