@@ -1,11 +1,15 @@
 
+
 export type UserProfile = {
   id: string;
+  uid: string;
   fullName?: string;
   dateOfBirth?: string;
+  profilePicture?: string;
   images: string[];
   bio?: string;
   interests: string[];
+  gender: 'male' | 'female' | 'other';
   location?: {
     latitude: number;
     longitude: number;
@@ -14,11 +18,9 @@ export type UserProfile = {
 
 export type Match = {
   id: string;
-  userId: string;
-  name: string;
-  avatarUrl: string;
-  lastMessage?: string;
-  lastMessageTimestamp?: Date;
+  user1Id: string;
+  user2Id: string;
+  matchDate: any; // Using 'any' for serverTimestamp flexibility
 };
 
 export type Post = {
@@ -32,3 +34,5 @@ export type Post = {
   comments: number;
   timestamp: Date;
 };
+
+    
