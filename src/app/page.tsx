@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { Facebook, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import Image from 'next/image';
 
 export default function WelcomePage() {
@@ -30,19 +30,13 @@ export default function WelcomePage() {
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
-                <Image src="https://www.citypng.com/public/uploads/preview/google-g-logo-icon-png-11658022894o24b1wxfon.png" alt="Google logo" width={24} height={24} className="mr-4" />
+                <Image src="/img/googlelogin.png" alt="Google logo" width={24} height={24} className="mr-4" />
                 Google ile devam et
-              </Button>
-            </Link>
-            <Link href="/kurallar" className='w-full block'>
-              <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-                <Facebook className="mr-4 h-6 w-6" />
-                Facebook ile devam et
               </Button>
             </Link>
             <Link href="/login" className='w-full block'>
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-                <Mail className="mr-4 h-6 w-6" />
+                <Image src="/img/gmaillogin.png" alt="Email logo" width={24} height={24} className="mr-4" />
                 E-posta ile devam et
               </Button>
             </Link>
