@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // 1. Get all real users from Firestore
+        // 1. Get all users from Firestore
         const usersSnapshot = await adminDb.collection('users').get();
         const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
         
