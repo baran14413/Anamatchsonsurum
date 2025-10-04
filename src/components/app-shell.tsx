@@ -5,10 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import FooterNav from './footer-nav';
 import { Loader2 } from 'lucide-react';
+import { Icons } from './icons';
 
-// Routes that require authentication and will be wrapped by the AppShell
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil'];
-// Routes that are public and should not have the AppShell
 const publicRoutes = ['/', '/login', '/kayit-ol', '/kurallar', '/tos', '/privacy', '/cookies'];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -38,7 +37,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isProtectedRoute && user) {
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
-        <main className="flex-1 overflow-hidden">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-center border-b">
+            <Icons.logo width={120} height={40} />
+        </header>
+        <main className="flex-1 overflow-hidden relative">
            {children}
         </main>
         <FooterNav />
