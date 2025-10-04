@@ -5,7 +5,7 @@ import { Chrome, Facebook, Mail } from 'lucide-react';
 
 export default function WelcomePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-pink-500 to-red-500 text-white">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center justify-center p-8 text-center">
         <div className="flex-1 flex flex-col justify-center items-center">
           <div className="flex items-center gap-4 mb-12">
@@ -22,16 +22,16 @@ export default function WelcomePage() {
           </div>
 
           <div className="space-y-3">
-            <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+            <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
               <Chrome className="mr-4 h-6 w-6" />
               Google ile devam et
             </Button>
-            <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+            <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
               <Facebook className="mr-4 h-6 w-6" />
               Facebook ile devam et
             </Button>
             <Link href="/login" className='w-full block'>
-              <Button variant="outline" className="w-full h-12 rounded-full bg-white text-gray-800 hover:bg-gray-100 text-base font-semibold justify-start pl-6">
+              <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Mail className="mr-4 h-6 w-6" />
                 E-posta ile devam et
               </Button>

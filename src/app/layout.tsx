@@ -1,9 +1,11 @@
-
 import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: "BeMatch",
@@ -16,16 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-body antialiased h-dvh overflow-hidden bg-background dark:bg-black">
+    <html lang="tr" className={inter.className} suppressHydrationWarning>
+      <body className="h-dvh overflow-hidden bg-background dark:bg-black">
         <FirebaseClientProvider>
           <AppShell>{children}</AppShell>
         </FirebaseClientProvider>
