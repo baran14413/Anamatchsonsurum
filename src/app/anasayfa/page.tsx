@@ -8,7 +8,7 @@ import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, doc, writeBatch, serverTimestamp, getDocs } from "firebase/firestore";
+import { collection, doc, writeBatch, serverTimestamp, getDocs, QuerySnapshot, DocumentData } from "firebase/firestore";
 
 type SwipeAction = 'like' | 'nope';
 
@@ -26,34 +26,34 @@ export default function AnasayfaPage() {
 
     setIsLoading(true);
 
-    const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
     const usersCollectionRef = collection(firestore, "users");
+    const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
 
     Promise.all([
-      getDocs(interactionsCollectionRef).catch(serverError => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: interactionsCollectionRef.path,
-        });
-        errorEmitter.emit('permission-error', contextualError);
-        throw contextualError; // Stop execution if this fails
-      }),
       getDocs(usersCollectionRef).catch(serverError => {
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path: usersCollectionRef.path,
         });
         errorEmitter.emit('permission-error', contextualError);
-        throw contextualError; // Stop execution if this fails
+        return { docs: [] } as QuerySnapshot<DocumentData>; // Return an empty snapshot on error
       }),
-    ]).then(([interactionsSnapshot, usersSnapshot]) => {
-      // 1. Process interactions
-      const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
-      setSwipedProfileIds(interactedIds);
-
-      // 2. Process all users
+      getDocs(interactionsCollectionRef).catch(serverError => {
+        const contextualError = new FirestorePermissionError({
+          operation: 'list',
+          path: interactionsCollectionRef.path,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        return { docs: [] } as QuerySnapshot<DocumentData>; // Return an empty snapshot on error
+      }),
+    ]).then(([usersSnapshot, interactionsSnapshot]) => {
+      // 1. Process all users
       const allUsersData = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfileType));
       setAllUsers(allUsersData);
+
+      // 2. Process interactions
+      const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+      setSwipedProfileIds(interactedIds);
       
       // 3. Filter profiles
       const filteredProfiles = allUsersData.filter(p => 
@@ -62,7 +62,7 @@ export default function AnasayfaPage() {
       setProfiles(filteredProfiles);
 
     }).catch(error => {
-        // Errors are already emitted, just log for debugging if needed, but no console.error
+        // Errors are now emitted globally, so a console log here is for debug purposes only if needed.
         // The FirebaseErrorListener will handle displaying the error to the user.
     }).finally(() => {
       setIsLoading(false);
@@ -112,15 +112,19 @@ export default function AnasayfaPage() {
     try {
       await batch.commit();
     } catch (error) {
-      // This is a write operation, so we can also create a contextual error here if it fails
-      // For now, we revert the UI state.
-      console.error("Failed to save swipe action:", error);
+      // Revert the optimistic UI update on failure
       setProfiles(prev => [profile, ...prev]);
       setSwipedProfileIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(profile.id);
           return newSet;
       });
+      // Emit a contextual error for the failed write operation
+      const contextualError = new FirestorePermissionError({
+        operation: 'write', // 'write' covers set/update in a batch
+        path: `users/${currentUser.uid}/interactions/${profile.id}`, // Example path, might need more detail
+      });
+      errorEmitter.emit('permission-error', contextualError);
     }
   };
 
