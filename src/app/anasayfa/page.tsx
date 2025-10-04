@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, doc, writeBatch, serverTimestamp, getDocs, query } from "firebase/firestore";
-import { useMemoFirebase } from "@/firebase/provider";
+import { useUser, useFirestore } from "@/firebase";
+import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 
 type SwipeAction = 'like' | 'nope';
 
@@ -17,48 +16,48 @@ export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
 
-  // Fetches all users. In a real-world secure app, this would be a Cloud Function.
-  // We accept the security risk of fetching all users for this project's scope.
-  const usersCollectionRef = useMemoFirebase(() => 
-    firestore ? collection(firestore, "users") : null, 
-    [firestore]
-  );
-  const { data: allUsers, isLoading: areUsersLoading } = useCollection<UserProfileType>(usersCollectionRef);
-
+  const [allUsers, setAllUsers] = useState<UserProfileType[]>([]);
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
   const [swipedProfileIds, setSwipedProfileIds] = useState<Set<string>>(new Set());
-  const [isFetchingInteractions, setIsFetchingInteractions] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch profiles the current user has already interacted with
   useEffect(() => {
-    async function fetchInteractions() {
+    async function fetchProfilesAndInteractions() {
       if (!currentUser || !firestore) return;
 
-      setIsFetchingInteractions(true);
-      const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
+      setIsLoading(true);
+
       try {
+        // 1. Fetch IDs of users already interacted with
+        const interactionsCollectionRef = collection(firestore, `users/${currentUser.uid}/interactions`);
         const interactionsSnapshot = await getDocs(interactionsCollectionRef);
         const interactedIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
         setSwipedProfileIds(interactedIds);
+
+        // 2. Fetch all users
+        // This is still a potential security issue if rules don't allow listing users.
+        // In a production app, this should be a Cloud Function that returns a curated list.
+        const usersCollectionRef = collection(firestore, "users");
+        const usersSnapshot = await getDocs(usersCollectionRef);
+        const allUsersData = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfileType));
+        setAllUsers(allUsersData);
+        
+        // 3. Filter profiles
+        const filteredProfiles = allUsersData.filter(p => 
+          p.id !== currentUser.uid && !interactedIds.has(p.id)
+        );
+        setProfiles(filteredProfiles);
+
       } catch (error) {
-        console.error("Failed to fetch interactions:", error);
-        // In a real app, you might want to show a toast here.
+        console.error("Failed to fetch profiles:", error);
+        // We will let the FirebaseErrorListener handle displaying the error
       } finally {
-        setIsFetchingInteractions(false);
+        setIsLoading(false);
       }
     }
-    fetchInteractions();
-  }, [currentUser, firestore]);
 
-  // Filter profiles once all data is loaded
-  useEffect(() => {
-    if (!areUsersLoading && !isFetchingInteractions && allUsers && currentUser) {
-      const filteredProfiles = allUsers.filter(p => 
-        p.id !== currentUser.uid && !swipedProfileIds.has(p.id)
-      );
-      setProfiles(filteredProfiles);
-    }
-  }, [allUsers, areUsersLoading, isFetchingInteractions, currentUser, swipedProfileIds]);
+    fetchProfilesAndInteractions();
+  }, [currentUser, firestore]);
 
   const handleSwipe = async (profile: UserProfileType, direction: 'left' | 'right') => {
     if (!currentUser || !firestore) return;
@@ -69,16 +68,13 @@ export default function AnasayfaPage() {
     setProfiles(prev => prev.filter(p => p.id !== profile.id));
     setSwipedProfileIds(prev => new Set(prev).add(profile.id));
 
-    // Perform Firestore write
     const batch = writeBatch(firestore);
     
-    // Add to current user's interactions subcollection
+    // Record the interaction for the current user
     const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profile.id);
     batch.set(currentUserInteractionRef, { action, timestamp: serverTimestamp() });
 
     if (action === 'like') {
-      // In a real app, you would check if the other user has also liked the current user.
-      // For this project, we'll create a match directly for simplicity.
       const matchId = [currentUser.uid, profile.id].sort().join('_');
       
       const matchDocForCurrentUser = doc(firestore, `users/${currentUser.uid}/matches`, matchId);
@@ -87,6 +83,8 @@ export default function AnasayfaPage() {
         user1Id: currentUser.uid,
         user2Id: profile.id,
         matchDate: serverTimestamp(),
+        // Add a field to know who this match is with
+        matchedWith: profile.id, 
       });
       
       const matchDocForOtherUser = doc(firestore, `users/${profile.id}/matches`, matchId);
@@ -95,6 +93,8 @@ export default function AnasayfaPage() {
         user1Id: currentUser.uid,
         user2Id: profile.id,
         matchDate: serverTimestamp(),
+        // Add a field to know who this match is with
+        matchedWith: currentUser.uid,
       });
     }
 
@@ -109,7 +109,6 @@ export default function AnasayfaPage() {
           newSet.delete(profile.id);
           return newSet;
       });
-      // Here you might want to use a toast to inform the user
     }
   };
 
@@ -120,8 +119,6 @@ export default function AnasayfaPage() {
       handleSwipe(activeProfile, direction);
     }
   };
-
-  const isLoading = areUsersLoading || isFetchingInteractions;
 
   if (isLoading) {
     return (
