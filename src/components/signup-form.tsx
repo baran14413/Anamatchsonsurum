@@ -321,11 +321,15 @@ export default function SignupForm() {
 
     } catch (error: any) {
       console.error("Signup error:", error);
-      toast({
-        title: "Signup Failed",
-        description: error.message || t.signup.errors.signupFailed,
-        variant: "destructive",
-      });
+       if (error.code === 'auth/email-already-in-use') {
+        setShowEmailExistsDialog(true);
+      } else {
+        toast({
+          title: "Signup Failed",
+          description: error.message || t.signup.errors.signupFailed,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -351,7 +355,7 @@ export default function SignupForm() {
         }
     } catch (error: any) {
         if (error.code === 'auth/invalid-email') {
-            nextStep();
+            form.setError("email", { type: "manual", message: t.login.errors.invalidEmail });
         } else {
             console.error("Email check error:", error);
             toast({ title: t.common.error, description: "An error occurred while checking the email.", variant: "destructive" });
@@ -1120,3 +1124,4 @@ export default function SignupForm() {
     </div>
   );
 }
+
