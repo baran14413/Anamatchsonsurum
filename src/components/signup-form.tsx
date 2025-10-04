@@ -6,7 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { fetchSignInMethodsForEmail } from "firebase/auth";
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -201,7 +201,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    langTr.signup.step12.photoLabels.map(label => ({ file: null, preview: null, label }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: `Slot ${i+1}` }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -252,8 +252,80 @@ export default function SignupForm() {
   const prevStep = () => setStep((prev) => prev - 1);
 
   async function onSubmit(data: SignupFormValues) {
-    console.log(data);
-    nextStep(); 
+    if (!auth || !firestore) {
+      toast({ title: "Hata", description: "Veritabanı bağlantısı kurulamadı.", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // 1. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // 2. Upload photos to a service (e.g., Cloudinary via your API)
+      const photoUrls: string[] = [];
+      const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
+
+      for (const file of filesToUpload) {
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error(`'${file.name}' yüklenemedi.`);
+          }
+          const result = await response.json();
+          photoUrls.push(result.url);
+        }
+      }
+
+      // 3. Create user profile object to save in Firestore
+      const userProfile = {
+        uid: user.uid,
+        fullName: data.name,
+        email: data.email,
+        dateOfBirth: data.dateOfBirth.toISOString(),
+        gender: data.gender,
+        lookingFor: data.lookingFor,
+        distancePreference: data.distancePreference,
+        school: data.school,
+        lifestyle: {
+          drinking: data.drinking,
+          smoking: data.smoking,
+          workout: data.workout,
+          pets: data.pets,
+        },
+        moreInfo: {
+            communicationStyle: data.communicationStyle,
+            loveLanguage: data.loveLanguage,
+            educationLevel: data.educationLevel,
+            zodiacSign: data.zodiacSign,
+        },
+        interests: data.interests,
+        images: photoUrls,
+        profilePicture: photoUrls[0] || '', // Set first image as profile picture
+        location: data.location || null,
+      };
+
+      // 4. Save user profile to Firestore
+      await setDoc(doc(firestore, "users", user.uid), userProfile);
+      
+      // 5. Redirect to the app
+      router.push("/anasayfa");
+
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Kayıt Başarısız",
+        description: error.message || "Bir hata oluştu, lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
   
   const totalSteps = 12;
@@ -276,7 +348,6 @@ export default function SignupForm() {
         }
     } catch (error: any) {
         if (error.code === 'auth/invalid-email') {
-             // This can happen for invalid formats, but for simplicity, we treat it as "not found"
             nextStep();
         } else {
             console.error("Email check error:", error);
@@ -295,14 +366,13 @@ export default function SignupForm() {
       newSlots[activeSlot] = { ...newSlots[activeSlot], file, preview };
       setPhotoSlots(newSlots);
     }
-    setActiveSlot(null); // Reset active slot
+    setActiveSlot(null);
   };
 
   const openFilePicker = (index: number) => {
     setActiveSlot(index);
     fileInputRef.current?.click();
   };
-
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
@@ -314,11 +384,8 @@ export default function SignupForm() {
     if (step === 6) fieldsToValidate = ['location'];
     if (step === 7) fieldsToValidate = ['distancePreference'];
     if (step === 8) fieldsToValidate = ['school'];
-    if (step === 9) { /* no validation, optional */ }
-    if (step === 10) { /* no validation, optional */ }
-    if (step === 11) { /* no validation, optional */ }
-    if (step === 12) { /* Photo validation is handled by button disabled state */ }
-
+    if (step === 11) fieldsToValidate = ['interests'];
+    if (step === 12) fieldsToValidate = ['photos'];
 
     const isValid = await form.trigger(fieldsToValidate);
 
@@ -326,7 +393,7 @@ export default function SignupForm() {
       if (step === 1) {
         await checkEmailExists();
       } else if (step === totalSteps) {
-         toast({title: langTr.signup.common.tempToast, description: langTr.signup.common.tempToastDescription})
+         form.handleSubmit(onSubmit)();
       } else {
         nextStep();
       }
@@ -863,33 +930,40 @@ export default function SignupForm() {
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{langTr.signup.step12.title}</h1>
-                    <div className="flex items-center gap-4 mt-2">
-                       <div className="relative w-12 h-12">
-                          <Progress value={(uploadedPhotoCount / 6) * 100} className="w-12 h-12" indicatorClassName="text-primary" />
-                           <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">
-                             {uploadedPhotoCount}/6
-                           </span>
-                       </div>
-                        <p className="text-muted-foreground text-sm flex-1">{langTr.signup.step12.description}</p>
+                     <p className="text-muted-foreground mt-2">{langTr.signup.step12.description}</p>
+                     <div className="flex items-center gap-4 mt-4">
+                       <Progress value={(uploadedPhotoCount / 6) * 100} className="w-20 h-2" />
+                       <span className="text-sm font-medium text-muted-foreground">
+                         {uploadedPhotoCount}/6
+                       </span>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
-                     <div className="grid grid-cols-3 gap-3">
+                     <div className="grid grid-cols-2 gap-4">
                       {photoSlots.map((slot, index) => (
-                        <div key={index} className="aspect-square">
+                        <div key={index} className="aspect-[3/4] group">
                            <button
                             type="button"
                             onClick={() => openFilePicker(index)}
-                            className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center relative overflow-hidden"
+                            className="w-full h-full border-2 border-dashed bg-muted/50 rounded-xl flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
-                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" />
+                              <>
+                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" className="rounded-xl"/>
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                   <Button variant="ghost" size="icon" className="text-white bg-black/50 hover:bg-black/70 hover:text-white">
+                                     <Pencil className="w-5 h-5"/>
+                                   </Button>
+                                   <Button variant="destructive" size="icon">
+                                     <Trash2 className="w-5 h-5"/>
+                                   </Button>
+                                </div>
+                              </>
                             ) : (
-                                <span className="text-center text-xs text-muted-foreground p-2">{slot.label}</span>
+                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                    <Camera className="w-8 h-8" />
+                                </div>
                             )}
-                            <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white">
-                               <Plus className="w-5 h-5" />
-                            </div>
                            </button>
                         </div>
                       ))}
@@ -989,3 +1063,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
