@@ -3,10 +3,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { HeartHandshake, CheckCircle2 } from 'lucide-react';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function ToplulukKurallariPage() {
-  const t = langTr.ayarlarTopluluk;
+  const t = langEn.ayarlarTopluluk;
   return (
     <div className="p-4 sm:p-6">
       <Card>

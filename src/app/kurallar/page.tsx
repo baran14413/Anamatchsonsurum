@@ -6,29 +6,31 @@ import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
-const rules = [
+const rules = (t: any) => [
   {
-    title: langTr.rules.rule1Title,
-    description: langTr.rules.rule1Desc,
+    title: t.rule1Title,
+    description: t.rule1Desc,
   },
   {
-    title: langTr.rules.rule2Title,
-    description: langTr.rules.rule2Desc,
+    title: t.rule2Title,
+    description: t.rule2Desc,
   },
   {
-    title: langTr.rules.rule3Title,
-    description: langTr.rules.rule3Desc,
+    title: t.rule3Title,
+    description: t.rule3Desc,
   },
   {
-    title: langTr.rules.rule4Title,
-    description: langTr.rules.rule4Desc,
+    title: t.rule4Title,
+    description: t.rule4Desc,
   },
 ];
 
 export default function RulesPage() {
   const router = useRouter();
+  const t = langEn.rules;
+  const ruleData = rules(t);
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -41,13 +43,13 @@ export default function RulesPage() {
         <div className="space-y-8">
           <div className="flex items-center gap-3">
             <Icons.logo width={40} height={40} />
-            <h1 className="text-3xl font-bold">{langTr.rules.welcome}</h1>
+            <h1 className="text-3xl font-bold">{t.welcome}</h1>
           </div>
           <p className="text-muted-foreground">
-            {langTr.rules.description}
+            {t.description}
           </p>
           <div className="space-y-6">
-            {rules.map((rule) => (
+            {ruleData.map((rule) => (
               <div key={rule.title} className="flex items-start gap-4">
                 <CheckCircle2 className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                 <div>
@@ -64,11 +66,9 @@ export default function RulesPage() {
             onClick={() => router.push('/kayit-ol')}
             className="w-full h-14 rounded-full text-lg font-bold"
           >
-            {langTr.rules.agree}
+            {t.agree}
           </Button>
       </div>
     </div>
   );
 }
-
-    

@@ -6,14 +6,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Compass, MessageSquare, User, Heart } from "lucide-react";
 import { Icons } from "./icons";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 
 const navLinks = [
-  { href: "/anasayfa", label: langTr.footerNav.home, icon: Icons.tinderFlame },
-  { href: "/kesfet", label: langTr.footerNav.discover, icon: Compass },
-  { href: "/begeniler", label: langTr.footerNav.likes, icon: Heart },
-  { href: "/eslesmeler", label: langTr.footerNav.chats, icon: MessageSquare },
-  { href: "/profil", label: langTr.footerNav.profile, icon: User },
+  { href: "/anasayfa", label: langEn.footerNav.home, icon: Icons.tinderFlame },
+  { href: "/kesfet", label: langEn.footerNav.discover, icon: Compass },
+  { href: "/begeniler", label: langEn.footerNav.likes, icon: Heart },
+  { href: "/eslesmeler", label: langEn.footerNav.chats, icon: MessageSquare },
+  { href: "/profil", label: langEn.footerNav.profile, icon: User },
 ];
 
 export default function FooterNav() {

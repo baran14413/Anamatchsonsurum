@@ -12,7 +12,7 @@ import { Settings, Shield } from "lucide-react";
 import { signOut } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 
 const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies"];
 const appRoot = "/anasayfa";
@@ -55,14 +55,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         await signOut(auth);
         router.push('/');
         toast({
-          title: langTr.ayarlar.toasts.logoutSuccessTitle,
-          description: langTr.ayarlar.toasts.logoutSuccessDesc,
+          title: langEn.ayarlar.toasts.logoutSuccessTitle,
+          description: langEn.ayarlar.toasts.logoutSuccessDesc,
         });
       }
     } catch (error) {
       toast({
-        title: langTr.ayarlar.toasts.logoutErrorTitle,
-        description: langTr.ayarlar.toasts.logoutErrorDesc,
+        title: langEn.ayarlar.toasts.logoutErrorTitle,
+        description: langEn.ayarlar.toasts.logoutErrorDesc,
         variant: 'destructive',
       });
     }

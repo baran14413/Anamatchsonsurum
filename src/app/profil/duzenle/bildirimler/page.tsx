@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Bell, MessageSquare, Heart } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function BildirimlerPage() {
-  const t = langTr.ayarlarBildirimler;
+  const t = langEn.ayarlarBildirimler;
   return (
     <div className="p-4 sm:p-6">
       <Card>

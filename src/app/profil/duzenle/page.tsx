@@ -36,7 +36,7 @@ import {
 import { useMemoFirebase } from '@/firebase/provider';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function DuzenlePage() {
     const { user } = useUser();
@@ -47,8 +47,8 @@ export default function DuzenlePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
     
-    const t = langTr.ayarlar;
-    const commonT = langTr.common;
+    const t = langEn.ayarlar;
+    const commonT = langEn.common;
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -199,7 +199,7 @@ export default function DuzenlePage() {
                <div className="relative w-32 h-32">
                   <Image
                       src={userProfile?.profilePicture || 'https://picsum.photos/seed/placeholder/200/200'}
-                      alt="Profil Resmi"
+                      alt="Profile Picture"
                       width={128}
                       height={128}
                       className="rounded-full object-cover w-32 h-32 border-4 border-white"
@@ -219,7 +219,7 @@ export default function DuzenlePage() {
                       accept="image/png, image/jpeg, image/gif"
                   />
               </div>
-              <h2 className="text-2xl font-bold">{userProfile?.fullName || 'Kullanıcı'}</h2>
+              <h2 className="text-2xl font-bold">{userProfile?.fullName || 'User'}</h2>
               <Link href="/profil/duzenle/kisisel-bilgiler">
                 <Button variant="outline" className="rounded-full">
                     {commonT.editProfile}

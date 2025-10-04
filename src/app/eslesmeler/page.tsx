@@ -5,14 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { tr } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { collection, doc } from "firebase/firestore";
 import { useMemoFirebase } from "@/firebase/provider";
 import { Loader2, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 
 function MatchItem({ match }: { match: any }) {
   const firestore = useFirestore();
@@ -48,16 +48,16 @@ function MatchItem({ match }: { match: any }) {
               {isProfileLoading ? (
                  <Skeleton className="h-6 w-32" />
               ) : (
-                <h2 className="font-semibold text-lg">{otherUserProfile?.fullName || langTr.eslesmeler.user}</h2>
+                <h2 className="font-semibold text-lg">{otherUserProfile?.fullName || langEn.eslesmeler.user}</h2>
               )}
               {match.matchDate?.seconds && (
                 <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: tr })}
+                  {formatDistanceToNow(new Date(match.matchDate.seconds * 1000), { addSuffix: true, locale: enUS })}
                 </p>
               )}
             </div>
             <p className="text-sm text-muted-foreground truncate">
-              {langTr.eslesmeler.defaultMessage}
+              {langEn.eslesmeler.defaultMessage}
             </p>
           </div>
         </CardContent>
@@ -79,7 +79,7 @@ export default function EslesmelerPage() {
 
   return (
     <div className="container mx-auto max-w-2xl p-4 md:py-8 h-full flex flex-col">
-      <h1 className="mb-6 text-3xl font-bold tracking-tight">{langTr.eslesmeler.title}</h1>
+      <h1 className="mb-6 text-3xl font-bold tracking-tight">{langEn.eslesmeler.title}</h1>
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-full">
@@ -98,8 +98,8 @@ export default function EslesmelerPage() {
         {!isLoading && (!matches || matches.length === 0) && (
           <div className="text-center py-20 flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
-            <h2 className="text-2xl font-semibold text-foreground mb-2">{langTr.eslesmeler.noChatsTitle}</h2>
-            <p>{langTr.eslesmeler.noChatsDescription}</p>
+            <h2 className="text-2xl font-semibold text-foreground mb-2">{langEn.eslesmeler.noChatsTitle}</h2>
+            <p>{langEn.eslesmeler.noChatsDescription}</p>
           </div>
         )}
       </div>

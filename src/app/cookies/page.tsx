@@ -7,17 +7,17 @@ import { Icons } from '@/components/icons';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function CookiesPage() {
-  const { cookies: t } = langTr.hukuki;
+  const { cookies: t } = langEn.hukuki;
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b px-4">
         <Link href="/" className="p-2 -ml-2">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-6 w-6" />
-            <span className="sr-only">{langTr.common.back}</span>
+            <span className="sr-only">{langEn.common.back}</span>
           </Button>
         </Link>
         <Icons.logo width={32} height={32} />

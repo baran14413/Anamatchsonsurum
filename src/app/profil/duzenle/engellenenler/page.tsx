@@ -3,10 +3,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Ban, UserX } from 'lucide-react';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function EngellenenlerPage() {
-  const t = langTr.ayarlarEngellenenler;
+  const t = langEn.ayarlarEngellenenler;
   return (
     <div className="p-4 sm:p-6">
       <Card>

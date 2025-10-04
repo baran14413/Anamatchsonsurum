@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Lock, EyeOff, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function GizlilikPage() {
-  const t = langTr.ayarlarGizlilik;
+  const t = langEn.ayarlarGizlilik;
   return (
     <div className="p-4 sm:p-6">
       <Card>

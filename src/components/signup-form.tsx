@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
@@ -41,13 +41,13 @@ const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-    email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
-    password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
-    name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
-    dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
-        .refine(date => !isNaN(date.getTime()), { message: "Geçerli bir tarih girin." }),
-    gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
-    lookingFor: z.string({ required_error: "Lütfen birini seç." }).min(1, { message: "Lütfen birini seç." }),
+    email: z.string().email({ message: "Please enter a valid email address." }),
+    password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+    name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+    dateOfBirth: z.date().max(eighteenYearsAgo, { message: "You must be at least 18 years old." })
+        .refine(date => !isNaN(date.getTime()), { message: "Please enter a valid date." }),
+    gender: z.enum(['male', 'female'], { required_error: "Please select your gender." }),
+    lookingFor: z.string({ required_error: "Please choose one." }).min(1, { message: "Please choose one." }),
     location: z.object({
         latitude: z.number(),
         longitude: z.number(),
@@ -62,8 +62,8 @@ const formSchema = z.object({
     loveLanguage: z.string().optional(),
     educationLevel: z.string().optional(),
     zodiacSign: z.string().optional(),
-    interests: z.array(z.string()).max(10, { message: 'En fazla 10 ilgi alanı seçebilirsin.'}).optional(),
-    photos: z.array(z.string().url()).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
+    interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
+    photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -155,7 +155,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
         <div className="flex items-center gap-2">
             <Input
                 ref={dayRef}
-                placeholder={langTr.signup.step3.dayPlaceholder}
+                placeholder={langEn.signup.step3.dayPlaceholder}
                 maxLength={2}
                 value={day}
                 onChange={(e) => handleDateChange(e, setDay, 'day')}
@@ -166,7 +166,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={monthRef}
-                placeholder={langTr.signup.step3.monthPlaceholder}
+                placeholder={langEn.signup.step3.monthPlaceholder}
                 maxLength={2}
                 value={month}
                 onChange={(e) => handleDateChange(e, setMonth, 'month')}
@@ -177,7 +177,7 @@ const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (dat
             <span className="text-xl text-muted-foreground">/</span>
             <Input
                 ref={yearRef}
-                placeholder={langTr.signup.step3.yearPlaceholder}
+                placeholder={langEn.signup.step3.yearPlaceholder}
                 maxLength={4}
                 value={year}
                 onChange={(e) => handleDateChange(e, setYear, 'year')}
@@ -202,7 +202,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: langTr.signup.step12.photoSlotLabels[i] || '' }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: langEn.signup.step12.photoSlotLabels[i] || '' }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -213,7 +213,7 @@ export default function SignupForm() {
       name: "",
       gender: undefined,
       lookingFor: "",
-      distancePreference: 80,
+      distancePreference: 50,
       school: "",
       drinking: undefined,
       smoking: undefined,
@@ -254,7 +254,7 @@ export default function SignupForm() {
 
   async function onSubmit(data: SignupFormValues) {
     if (!auth || !firestore) {
-      toast({ title: "Hata", description: "Veritabanı bağlantısı kurulamadı.", variant: "destructive" });
+      toast({ title: "Error", description: "Database connection could not be established.", variant: "destructive" });
       return;
     }
     setIsLoading(true);
@@ -276,7 +276,7 @@ export default function SignupForm() {
             body: formData,
           });
           if (!response.ok) {
-            throw new Error(`'${file.name}' yüklenemedi.`);
+            throw new Error(`Failed to upload '${file.name}'.`);
           }
           const result = await response.json();
           photoUrls.push(result.url);
@@ -320,8 +320,8 @@ export default function SignupForm() {
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
-        title: "Kayıt Başarısız",
-        description: error.message || "Bir hata oluştu, lütfen tekrar deneyin.",
+        title: "Signup Failed",
+        description: error.message || "An error occurred, please try again.",
         variant: "destructive",
       });
     } finally {
@@ -336,7 +336,7 @@ export default function SignupForm() {
     setIsLoading(true);
     const email = form.getValues("email");
     if (!auth) {
-        toast({ title: "Hata", description: "Kimlik doğrulama hizmeti başlatılamadı.", variant: "destructive" });
+        toast({ title: "Error", description: "Authentication service could not be initialized.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -352,7 +352,7 @@ export default function SignupForm() {
             nextStep();
         } else {
             console.error("Email check error:", error);
-            toast({ title: "Hata", description: "E-posta kontrol edilirken bir sorun oluştu.", variant: "destructive" });
+            toast({ title: "Error", description: "An error occurred while checking the email.", variant: "destructive" });
         }
     } finally {
         setIsLoading(false);
@@ -393,14 +393,14 @@ export default function SignupForm() {
       const newSlots = [...photoSlots];
       
       // Remove the clicked one
-      newSlots[index] = { file: null, preview: null, label: langTr.signup.step12.photoSlotLabels[index] || '' };
+      newSlots[index] = { file: null, preview: null, label: langEn.signup.step12.photoSlotLabels[index] || '' };
 
       // Re-order the array so that filled slots are at the beginning
       const filledSlots = newSlots.filter(p => p.file);
       const emptySlots = Array.from({ length: 6 - filledSlots.length }, (_, i) => ({ 
         file: null, 
         preview: null, 
-        label: langTr.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
+        label: langEn.signup.step12.photoSlotLabels[filledSlots.length + i] || ''
       }));
 
       const reorderedSlots = [...filledSlots, ...emptySlots];
@@ -451,8 +451,8 @@ export default function SignupForm() {
       },
       (error) => {
         toast({
-            title: langTr.signup.step6.errorTitle,
-            description: langTr.signup.step6.errorMessage,
+            title: langEn.signup.step6.errorTitle,
+            description: langEn.signup.step6.errorMessage,
             variant: "destructive"
         });
         setIsLoading(false);
@@ -493,7 +493,7 @@ export default function SignupForm() {
         <Progress value={progressValue} className="h-2 flex-1" />
         {(step === 8 || step === 9 || step === 10 || step === 11) ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
-            {langTr.signup.progressHeader.skip}
+            {langEn.signup.progressHeader.skip}
           </Button>
         ) : <div className="w-16"></div>}
       </header>
@@ -504,8 +504,8 @@ export default function SignupForm() {
               {step === 1 && (
                 <div className="flex-1 flex flex-col">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
-                    <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                    <h1 className="text-3xl font-bold">{langEn.signup.step1.title}</h1>
+                    <p className="text-muted-foreground">{langEn.signup.step1.description}</p>
                   </div>
                    <div className="space-y-4 pt-8 flex-1 overflow-y-auto -mr-6 pr-6">
                     <FormField
@@ -513,9 +513,9 @@ export default function SignupForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
+                          <FormLabel>{langEn.signup.step1.emailLabel}</FormLabel>
                           <FormControl>
-                            <Input placeholder="ornek@alanadi.com" {...field} />
+                            <Input placeholder="example@domain.com" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -526,7 +526,7 @@ export default function SignupForm() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
+                          <FormLabel>{langEn.signup.step1.passwordLabel}</FormLabel>
                            <div className="relative">
                             <FormControl>
                                 <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
@@ -548,7 +548,7 @@ export default function SignupForm() {
               )}
               {step === 2 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step2.title}</h1>
                   <FormField
                     control={form.control}
                     name="name"
@@ -556,13 +556,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langTr.signup.step2.placeholder}
+                            placeholder={langEn.signup.step2.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langTr.signup.step2.label}
+                          {langEn.signup.step2.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -572,7 +572,7 @@ export default function SignupForm() {
               )}
               {step === 3 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step3.title}</h1>
                   <Controller
                     control={form.control}
                     name="dateOfBirth"
@@ -586,7 +586,7 @@ export default function SignupForm() {
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground pt-2 block">
-                          {langTr.signup.step3.label}
+                          {langEn.signup.step3.label}
                         </FormLabel>
                         {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
                       </FormItem>
@@ -596,7 +596,7 @@ export default function SignupForm() {
               )}
               {step === 4 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step4.title}</h1>
                   <FormField
                     control={form.control}
                     name="gender"
@@ -610,7 +610,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('female')}
                             >
-                              {langTr.signup.step4.woman}
+                              {langEn.signup.step4.woman}
                             </Button>
                             <Button
                               type="button"
@@ -618,7 +618,7 @@ export default function SignupForm() {
                               className="w-full h-14 rounded-full text-lg"
                               onClick={() => field.onChange('male')}
                             >
-                              {langTr.signup.step4.man}
+                              {langEn.signup.step4.man}
                             </Button>
                           </div>
                         </FormControl>
@@ -631,8 +631,8 @@ export default function SignupForm() {
               {step === 5 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
-                    <p className="text-muted-foreground">{langTr.signup.step5.label}</p>
+                    <h1 className="text-3xl font-bold">{langEn.signup.step5.title}</h1>
+                    <p className="text-muted-foreground">{langEn.signup.step5.label}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
                   <FormField
@@ -642,7 +642,7 @@ export default function SignupForm() {
                       <FormItem className="space-y-3">
                         <FormControl>
                           <div className="grid grid-cols-2 gap-3">
-                            {langTr.signup.step5.options.map((option, index) => {
+                            {langEn.signup.step5.options.map((option, index) => {
                               const Icon = lookingForOptions[index].icon;
                               const isSelected = field.value === option.id;
                               return (
@@ -675,24 +675,24 @@ export default function SignupForm() {
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                     <MapPin className="w-12 h-12 text-primary" />
                   </div>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step6.title}</h1>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step6.title}</h1>
                   <p className="text-muted-foreground mt-2 max-w-sm">
-                    {langTr.signup.step6.description}
+                    {langEn.signup.step6.description}
                   </p>
                 </div>
               )}
               {step === 7 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step7.description}</p>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step7.title}</h1>
+                  <p className="text-muted-foreground">{langEn.signup.step7.description}</p>
                   <FormField
                     control={form.control}
                     name="distancePreference"
                     render={({ field }) => (
                       <FormItem className="pt-12">
                         <div className="flex justify-between items-center mb-4">
-                          <FormLabel className="text-base">{langTr.signup.step7.label}</FormLabel>
-                          <span className="font-bold text-base">{field.value} {langTr.signup.step7.unit}</span>
+                          <FormLabel className="text-base">{langEn.signup.step7.label}</FormLabel>
+                          <span className="font-bold text-base">{field.value} {langEn.signup.step7.unit}</span>
                         </div>
                         <FormControl>
                           <Slider
@@ -704,7 +704,7 @@ export default function SignupForm() {
                           />
                         </FormControl>
                         <p className="text-center text-muted-foreground pt-8">
-                          {langTr.signup.step7.info}
+                          {langEn.signup.step7.info}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -714,7 +714,7 @@ export default function SignupForm() {
               )}
               {step === 8 && (
                 <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step8.title}</h1>
+                  <h1 className="text-3xl font-bold">{langEn.signup.step8.title}</h1>
                   <FormField
                     control={form.control}
                     name="school"
@@ -722,13 +722,13 @@ export default function SignupForm() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder={langTr.signup.step8.placeholder}
+                            placeholder={langEn.signup.step8.placeholder}
                             className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent"
                             {...field}
                           />
                         </FormControl>
                         <FormLabel className="text-muted-foreground">
-                          {langTr.signup.step8.label}
+                          {langEn.signup.step8.label}
                         </FormLabel>
                         <FormMessage />
                       </FormItem>
@@ -739,8 +739,8 @@ export default function SignupForm() {
               {step === 9 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langTr.signup.step9.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{langTr.signup.step9.description}</p>
+                      <h1 className="text-3xl font-bold">{langEn.signup.step9.title.replace('{name}', currentName)}</h1>
+                      <p className="text-muted-foreground">{langEn.signup.step9.description}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
@@ -749,10 +749,10 @@ export default function SignupForm() {
                         name="drinking"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langTr.signup.step9.drinking.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{langEn.signup.step9.drinking.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step9.drinking.options.map(opt => (
+                                {langEn.signup.step9.drinking.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -766,10 +766,10 @@ export default function SignupForm() {
                         name="smoking"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langTr.signup.step9.smoking.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{langEn.signup.step9.smoking.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step9.smoking.options.map(opt => (
+                                {langEn.signup.step9.smoking.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -783,10 +783,10 @@ export default function SignupForm() {
                         name="workout"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langTr.signup.step9.workout.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{langEn.signup.step9.workout.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step9.workout.options.map(opt => (
+                                {langEn.signup.step9.workout.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -800,10 +800,10 @@ export default function SignupForm() {
                         control={form.control}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langTr.signup.step9.pets.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{langEn.signup.step9.pets.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step9.pets.options.map(opt => {
+                                {langEn.signup.step9.pets.options.map(opt => {
                                   const isSelected = field.value?.includes(opt.id);
                                   return (
                                     <Button
@@ -835,8 +835,8 @@ export default function SignupForm() {
                {step === 10 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langTr.signup.step10.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{langTr.signup.step10.description}</p>
+                      <h1 className="text-3xl font-bold">{langEn.signup.step10.title.replace('{name}', currentName)}</h1>
+                      <p className="text-muted-foreground">{langEn.signup.step10.description}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
@@ -845,10 +845,10 @@ export default function SignupForm() {
                         name="loveLanguage"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langTr.signup.step10.loveLanguage.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{langEn.signup.step10.loveLanguage.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step10.loveLanguage.options.map(opt => (
+                                {langEn.signup.step10.loveLanguage.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -862,10 +862,10 @@ export default function SignupForm() {
                         name="communicationStyle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langTr.signup.step10.communication.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{langEn.signup.step10.communication.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step10.communication.options.map(opt => (
+                                {langEn.signup.step10.communication.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -879,10 +879,10 @@ export default function SignupForm() {
                         name="educationLevel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langTr.signup.step10.education.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{langEn.signup.step10.education.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step10.education.options.map(opt => (
+                                {langEn.signup.step10.education.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -896,10 +896,10 @@ export default function SignupForm() {
                         name="zodiacSign"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langTr.signup.step10.zodiac.question}</FormLabel>
+                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{langEn.signup.step10.zodiac.question}</FormLabel>
                             <FormControl>
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {langTr.signup.step10.zodiac.options.map(opt => (
+                                {langEn.signup.step10.zodiac.options.map(opt => (
                                   <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
                                 ))}
                               </div>
@@ -915,8 +915,8 @@ export default function SignupForm() {
               {step === 11 && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step11.title}</h1>
-                        <p className="text-muted-foreground">{langTr.signup.step11.description}</p>
+                        <h1 className="text-3xl font-bold">{langEn.signup.step11.title}</h1>
+                        <p className="text-muted-foreground">{langEn.signup.step11.description}</p>
                       </div>
                        <Controller
                           name="interests"
@@ -924,7 +924,7 @@ export default function SignupForm() {
                           render={({ field }) => (
                              <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
                                <div className="space-y-6">
-                                {langTr.signup.step11.categories.map(category => {
+                                {langEn.signup.step11.categories.map(category => {
                                     const Icon = interestIcons[category.icon] || Tent;
                                     return (
                                         <div key={category.title}>
@@ -967,10 +967,10 @@ export default function SignupForm() {
                {step === 12 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{langTr.signup.step12.title}</h1>
+                    <h1 className="text-3xl font-bold">{langEn.signup.step12.title}</h1>
                      <div className="flex items-center gap-4 mt-2">
                         <CircularProgress progress={(uploadedPhotoCount / 6) * 100} size={40} />
-                        <p className="text-muted-foreground flex-1">{langTr.signup.step12.description}</p>
+                        <p className="text-muted-foreground flex-1">{langEn.signup.step12.description}</p>
                      </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
@@ -1042,7 +1042,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step6.button}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.step6.button}
               </Button>
             ) : step === 9 ? (
               <Button
@@ -1051,7 +1051,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
             ) : step === 10 ? (
                 <Button
@@ -1060,7 +1060,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledMoreInfoCount === 0}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
             ) : step === 11 ? (
                  <Button
@@ -1069,7 +1069,7 @@ export default function SignupForm() {
                     className="w-full h-14 rounded-full text-lg font-bold"
                     disabled={isLoading || selectedInterests.length === 0}
                     >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
                  </Button>
             ) : step === 12 ? (
                 <Button
@@ -1078,7 +1078,7 @@ export default function SignupForm() {
                   className="w-full h-14 rounded-full text-lg font-bold"
                   disabled={isLoading || uploadedPhotoCount < 2}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step12.button}
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.step12.button}
                 </Button>
             ) : (
               <Button
@@ -1087,13 +1087,13 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.next}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langEn.signup.common.next}
               </Button>
             )}
 
             {step === 12 && (
               <p className="text-center text-sm text-muted-foreground mt-4">
-                  {langTr.signup.step12.requirementText}
+                  {langEn.signup.step12.requirementText}
               </p>
             )}
           </div>
@@ -1102,14 +1102,14 @@ export default function SignupForm() {
       <AlertDialog open={showEmailExistsDialog} onOpenChange={setShowEmailExistsDialog}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>{langTr.signup.common.emailExistsTitle}</AlertDialogTitle>
+                <AlertDialogTitle>{langEn.signup.common.emailExistsTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {langTr.signup.common.emailExistsDescription}
+                    {langEn.signup.common.emailExistsDescription}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogAction onClick={() => router.push(`/login?email=${encodeURIComponent(form.getValues("email"))}`)}>
-                    {langTr.signup.common.goToLogin}
+                    {langEn.signup.common.goToLogin}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -1117,3 +1117,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    

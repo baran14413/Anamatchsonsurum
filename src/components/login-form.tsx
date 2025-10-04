@@ -23,10 +23,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, ArrowLeft, Heart } from "lucide-react";
 import Link from "next/link";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 
 const formSchema = z.object({
-  email: z.string().email({ message: langTr.login.errors.invalidEmail }),
+  email: z.string().email({ message: langEn.login.errors.invalidEmail }),
   password: z.string().optional(),
 });
 
@@ -37,7 +37,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'email' | 'password'>('email');
   const auth = useAuth();
-  const t = langTr.login;
+  const t = langEn.login;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,7 +57,7 @@ export default function LoginForm() {
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: langTr.common.error,
+        title: langEn.common.error,
         description: t.errors.authServiceError,
         variant: "destructive",
       });
@@ -77,7 +77,7 @@ export default function LoginForm() {
             form.setError("email", { type: "manual", message: t.errors.invalidEmail });
         } else {
             toast({
-                title: langTr.common.error,
+                title: langEn.common.error,
                 description: t.errors.emailCheckError,
                 variant: "destructive"
             });
@@ -92,7 +92,7 @@ export default function LoginForm() {
     setIsLoading(true);
     if (!auth) {
       toast({
-        title: langTr.common.error,
+        title: langEn.common.error,
         description: t.errors.authServiceError,
         variant: "destructive",
       });
@@ -192,7 +192,7 @@ export default function LoginForm() {
                 disabled={isLoading}
             >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {step === 'email' ? langTr.common.next : t.title}
+                {step === 'email' ? langEn.common.next : t.title}
             </Button>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">

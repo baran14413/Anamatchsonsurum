@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Send, MoreHorizontal, Repeat } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
-import { tr } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { mockPosts } from "@/lib/data";
 import type { Post } from "@/lib/types";
 import { Translation } from "@/components/translation";
-import { langTr } from "@/languages/tr";
+import { langEn } from "@/languages/en";
 
 // Mock comments for the sheet with different languages
 const mockCommentsData = [
@@ -27,7 +27,7 @@ const mockCommentsData = [
 
 export default function KesfetPage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const t = langTr.kesfet;
+  const t = langEn.kesfet;
 
   return (
     <div className="bg-muted/20 dark:bg-black h-full overflow-y-auto">
@@ -44,7 +44,7 @@ export default function KesfetPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-foreground">{post.username}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(post.timestamp, { addSuffix: true, locale: tr })}
+                      {formatDistanceToNow(post.timestamp, { addSuffix: true, locale: enUS })}
                     </p>
                   </div>
                   <Button variant="ghost" size="icon">
@@ -95,7 +95,7 @@ export default function KesfetPage() {
                   </div>
 
                   <div className="mt-2 w-full text-sm">
-                    <p className="font-semibold">{t.likes.replace('{count}', post.likes.toLocaleString('tr-TR'))}</p>
+                    <p className="font-semibold">{t.likes.replace('{count}', post.likes.toLocaleString('en-US'))}</p>
                     <SheetTrigger asChild onClick={() => setSelectedPost(post)}>
                        <p className="text-muted-foreground mt-1 cursor-pointer hover:underline">
                          {t.viewAllComments.replace('{count}', String(post.comments))}

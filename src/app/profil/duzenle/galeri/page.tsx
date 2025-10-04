@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function GaleriPage() {
   const { user } = useUser();
@@ -31,8 +31,8 @@ export default function GaleriPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
-  const t = langTr.ayarlarGaleri;
-  const commonT = langTr.common;
+  const t = langEn.ayarlarGaleri;
+  const commonT = langEn.common;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -68,7 +68,7 @@ export default function GaleriPage() {
         });
 
         if (!response.ok) {
-          throw new Error(`'${file.name}' yüklenemedi`);
+          throw new Error(`Failed to upload '${file.name}'`);
         }
         return response.json();
       });
@@ -161,7 +161,7 @@ export default function GaleriPage() {
                 <div key={index} className="relative group aspect-square">
                   <Image
                     src={url}
-                    alt={`Galeri fotoğrafı ${index + 1}`}
+                    alt={`Gallery photo ${index + 1}`}
                     fill
                     sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                     className="rounded-lg object-cover"

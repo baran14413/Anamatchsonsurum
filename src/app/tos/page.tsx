@@ -7,10 +7,10 @@ import { Icons } from '@/components/icons';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function TosPage() {
-  const { tos: t } = langTr.hukuki;
+  const { tos: t } = langEn.hukuki;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -18,7 +18,7 @@ export default function TosPage() {
         <Link href="/" className="p-2 -ml-2">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-6 w-6" />
-            <span className="sr-only">{langTr.common.back}</span>
+            <span className="sr-only">{langEn.common.back}</span>
           </Button>
         </Link>
         <Icons.logo width={32} height={32} />

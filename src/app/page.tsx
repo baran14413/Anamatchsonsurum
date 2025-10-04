@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import googleLogo from '@/img/googlelogin.png';
 import emailLogo from '@/img/gmaillogin.png';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function WelcomePage() {
   return (
@@ -35,13 +35,13 @@ export default function WelcomePage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-xs text-white/90">
             <p>
-              {langTr.welcome.agreement.split('<1>')[0]}
-              <Link href="/tos" className="font-bold underline">{langTr.welcome.agreement.split('<1>')[1].split('</1>')[0]}</Link>
-              {langTr.welcome.agreement.split('</1>')[1].split('<3>')[0]}
-              <Link href="/privacy" className="font-bold underline">{langTr.welcome.agreement.split('<3>')[1].split('</3>')[0]}</Link>
-              {langTr.welcome.agreement.split('</3>')[1].split('<5>')[0]}
-              <Link href="/cookies" className="font-bold underline">{langTr.welcome.agreement.split('<5>')[1].split('</5>')[0]}</Link>
-              {langTr.welcome.agreement.split('</5>')[1]}
+              {langEn.welcome.agreement.split('<1>')[0]}
+              <Link href="/tos" className="font-bold underline">{langEn.welcome.agreement.split('<1>')[1].split('</1>')[0]}</Link>
+              {langEn.welcome.agreement.split('</1>')[1].split('<3>')[0]}
+              <Link href="/privacy" className="font-bold underline">{langEn.welcome.agreement.split('<3>')[1].split('</3>')[0]}</Link>
+              {langEn.welcome.agreement.split('</3>')[1].split('<5>')[0]}
+              <Link href="/cookies" className="font-bold underline">{langEn.welcome.agreement.split('<5>')[1].split('</5>')[0]}</Link>
+              {langEn.welcome.agreement.split('</5>')[1]}
             </p>
           </div>
 
@@ -52,24 +52,23 @@ export default function WelcomePage() {
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
-                {langTr.welcome.continueWithGoogle}
+                {langEn.welcome.continueWithGoogle}
               </Button>
             </Link>
             <Link href="/login" className="w-full block">
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Image src={emailLogo} alt="Email logo" width={24} height={24} className="mr-4" />
-                {langTr.welcome.continueWithEmail}
+                {langEn.welcome.continueWithEmail}
               </Button>
             </Link>
           </div>
 
           <Link href="/help" className="text-sm font-semibold hover:underline">
-            {langTr.welcome.loginIssues}
+            {langEn.welcome.loginIssues}
           </Link>
         </div>
       </main>
     </div>
   );
 }
-
     

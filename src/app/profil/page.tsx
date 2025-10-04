@@ -20,7 +20,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -28,7 +28,7 @@ export default function ProfilPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const t = langTr.profil;
+  const t = langEn.profil;
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -55,14 +55,14 @@ export default function ProfilPage() {
           await signOut(auth);
           router.push('/');
           toast({
-            title: langTr.ayarlar.toasts.logoutSuccessTitle,
-            description: langTr.ayarlar.toasts.logoutSuccessDesc,
+            title: langEn.ayarlar.toasts.logoutSuccessTitle,
+            description: langEn.ayarlar.toasts.logoutSuccessDesc,
           });
         }
       } catch (error) {
         toast({
-          title: langTr.ayarlar.toasts.logoutErrorTitle,
-          description: langTr.ayarlar.toasts.logoutErrorDesc,
+          title: langEn.ayarlar.toasts.logoutErrorTitle,
+          description: langEn.ayarlar.toasts.logoutErrorDesc,
           variant: 'destructive',
         });
       }
@@ -133,7 +133,7 @@ export default function ProfilPage() {
             <Link href="/profil/duzenle" className="w-full max-w-xs">
               <Button className="w-full rounded-full h-12 text-base font-semibold bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-lg">
                   <Pencil className="mr-2 h-4 w-4" />
-                  {langTr.common.editProfile}
+                  {langEn.common.editProfile}
               </Button>
             </Link>
         </div>

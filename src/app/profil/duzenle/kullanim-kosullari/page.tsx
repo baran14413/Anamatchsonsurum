@@ -4,10 +4,10 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { langTr } from '@/languages/tr';
+import { langEn } from '@/languages/en';
 
 export default function KullanimKosullariPage() {
-  const t = langTr.ayarlarKullanim;
+  const t = langEn.ayarlarKullanim;
   return (
     <div className="p-4 sm:p-6 h-full flex flex-col">
       <Card className="flex-1 flex flex-col">
