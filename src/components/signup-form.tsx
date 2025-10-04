@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -78,6 +78,8 @@ const interestIcons: { [key: string]: React.ElementType } = {
   Tent,
   Globe,
   DoorOpen,
+  Home,
+  Sparkles,
 };
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
@@ -174,7 +176,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(10);
+  const [step, setStep] = useState(11);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const auth = useAuth();
@@ -589,12 +591,12 @@ export default function SignupForm() {
                 </>
               )}
               {step === 9 && (
-                 <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{langTr.signup.step9.title.replace('{name}', currentName)}</h1>
                       <p className="text-muted-foreground">{langTr.signup.step9.description}</p>
                   </div>
-                  <ScrollArea className="flex-1 -mr-6 pr-5">
+                  <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
                       <FormField
                         control={form.control}
@@ -681,7 +683,7 @@ export default function SignupForm() {
                         )}
                       />
                     </div>
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
                {step === 10 && (
@@ -690,7 +692,7 @@ export default function SignupForm() {
                       <h1 className="text-3xl font-bold">{langTr.signup.step10.title.replace('{name}', currentName)}</h1>
                       <p className="text-muted-foreground">{langTr.signup.step10.description}</p>
                   </div>
-                  <ScrollArea className="flex-1 -mr-6 pr-5">
+                  <div className="flex-1 overflow-y-auto -mr-6 pr-5">
                     <div className="space-y-8 py-4">
                       <FormField
                         control={form.control}
@@ -761,7 +763,7 @@ export default function SignupForm() {
                         )}
                       />
                     </div>
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
               {step === 11 && (

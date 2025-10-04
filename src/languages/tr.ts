@@ -187,6 +187,20 @@ export const langTr = {
                 options: [
                     'Mental Health Awareness', 'Seçmen Hakları', 'İklim Değişikliği', 'LGBTQIA+ Hakları', 'Feminizm', 'Black Lives Matter', 'Kapsayıcılık', 'İnsan Hakları', 'Sosyal Gelişim', 'Gönüllü İşler', 'Çevrecilik', 'Dünya Barışı', 'Pride', 'Gençliğin Güçlendirilmesi', 'Eşitlik', 'Politika', 'Aktivizm', 'Engelli Hakları'
                 ]
+            },
+            {
+                title: 'Evde takılmak',
+                icon: 'Home',
+                options: [
+                    'Okumak', 'Peş Peşe Dizi İzlemek', 'Evde Spor Yapmak', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online alışveriş', 'Bahçıvanlık', 'Masa Üstü Oyunlar', 'Fırın Lezzetleri'
+                ]
+            },
+            {
+                title: 'Kurmaca evrenler',
+                icon: 'Sparkles',
+                options: [
+                    'Çizgi roman fuarı', 'Harry Potter', "90'larda Çocuk Olmak", 'NBA', 'MLB', 'Dungeons & Dragons', 'Manga', 'Marvel', 'Disney'
+                ]
             }
         ]
     },
