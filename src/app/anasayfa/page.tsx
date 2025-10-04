@@ -7,55 +7,64 @@ import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useAuth } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore";
-
-async function fetchPotentialMatches(token: string) {
-    const res = await fetch('/api/get-potential-matches', {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'Failed to parse error response' }));
-        throw new Error(errorData.error || 'Failed to fetch matches');
-    }
-    return res.json();
-}
+import { doc, writeBatch, serverTimestamp, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { useMemoFirebase } from "@/firebase/provider";
 
 export default function AnasayfaPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
-  const auth = useAuth();
   const { toast } = useToast();
   
   const [profiles, setProfiles] = useState<UserProfileType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadProfiles = async () => {
-      if (!currentUser || !auth) return;
+  // 1. Get IDs of users the current user has already interacted with (swiped or matched)
+  const interactionsRef = useMemoFirebase(() => {
+    if (!currentUser || !firestore) return null;
+    return collection(firestore, `users/${currentUser.uid}/interactions`);
+  }, [currentUser, firestore]);
+  const { data: interactions } = useCollection(interactionsRef);
 
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) {
-            throw new Error("Authentication token not available.");
-        }
-        const data = await fetchPotentialMatches(token);
-        setProfiles(data);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Potansiyel eşleşmeler yüklenemedi.');
+  // 2. Get all user profiles
+  const allProfilesRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'users');
+  }, [firestore]);
+  const { data: allProfiles, isLoading: profilesLoading } = useCollection(allProfilesRef);
+
+  useEffect(() => {
+    if (profilesLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    if (!currentUser || !allProfiles) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const interactedUserIds = new Set(interactions?.map(i => i.id) || []);
+      
+      const potentialMatches = allProfiles.filter(p => 
+        p.id !== currentUser.uid && !interactedUserIds.has(p.id)
+      );
+
+      // Shuffle the potential matches
+      const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
+      setProfiles(shuffledMatches);
+      setError(null);
+    } catch(err: any) {
+        setError(err.message || 'Profiller filtrelenirken bir hata oluştu.');
         console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadProfiles();
-  }, [currentUser, auth]);
+    } finally {
+       setIsLoading(false);
+    }
+
+  }, [allProfiles, interactions, currentUser, profilesLoading]);
 
 
   const handleSwipe = async (swipedUserId: string, direction: 'right' | 'left') => {
@@ -67,6 +76,7 @@ export default function AnasayfaPage() {
     try {
         const batch = writeBatch(firestore);
 
+        // Record the swipe in the current user's interactions subcollection
         const currentUserInteractionRef = doc(firestore, `users/${currentUser.uid}/interactions/${swipedUserId}`);
         batch.set(currentUserInteractionRef, {
             swipe: direction,
@@ -74,10 +84,12 @@ export default function AnasayfaPage() {
         });
 
         if (direction === 'right') {
+            // Check if the other user has swiped right on the current user
             const otherUserInteractionRef = doc(firestore, `users/${swipedUserId}/interactions/${currentUser.uid}`);
             const otherUserSwipeDoc = await getDoc(otherUserInteractionRef);
 
             if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data().swipe === 'right') {
+                // It's a match!
                 const matchId = [currentUser.uid, swipedUserId].sort().join('_');
                 const matchDate = serverTimestamp();
                 const [user1Id, user2Id] = [currentUser.uid, swipedUserId].sort();
@@ -88,10 +100,12 @@ export default function AnasayfaPage() {
                     user2Id: user2Id,
                     matchDate: matchDate,
                 };
-
+                
+                // Create the match document for the current user
                 const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches/${matchId}`);
                 batch.set(currentUserMatchRef, matchData);
                 
+                // Create the match document for the other user
                 const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
                 batch.set(otherUserMatchRef, matchData);
 
@@ -113,6 +127,8 @@ export default function AnasayfaPage() {
         description: "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
         variant: "destructive"
       })
+      // Optional: Re-add the profile to the list if the commit fails
+      // This is more complex and might not be desired. For now, we'll leave it out.
     }
   };
 
@@ -184,3 +200,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
