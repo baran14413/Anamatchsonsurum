@@ -111,7 +111,7 @@ export const langTr = {
       },
     },
     step10: {
-        title: 'Seni sen yapan başka neler var?',
+        title: '{name}, seni sen yapan başka neler var?',
         description: 'Kendini ortaya koymaktan çekinme. Özgün olmak cazibelidir.',
         communication: {
             question: 'İletişim tarzını nasıl tanımlarsın?',
@@ -169,8 +169,16 @@ export const langTr = {
         categories: [
             {
                 title: 'Açık hava ve macera',
+                icon: 'Tent',
                 options: [
                     'Kürek', 'Dalış', 'Jet ski', 'Yürüyüş turları', 'Doğa', 'Kaplıcalar', 'Köpek Gezdirme', 'Kayak', 'Kanoculuk', 'Snowboard', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Kürek Sörfü', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelkencilik', 'Doğa Yürüyüşü', 'Dağlar', 'Sırt Çantasıyla Gezi', 'Kaya Tırmanışı', 'Balıkçılık', 'Kampçılık', 'Açık Hava', 'Piknik Yapmak'
+                ]
+            },
+            {
+                title: 'Değerler ve amaçlar',
+                icon: 'Globe',
+                options: [
+                    'Mental Health Awareness', 'Seçmen Hakları', 'İklim Değişikliği', 'LGBTQIA+ Hakları', 'Feminizm', 'Black Lives Matter', 'Kapsayıcılık', 'İnsan Hakları', 'Sosyal Gelişim', 'Gönüllü İşler', 'Çevrecilik', 'Dünya Barışı', 'Pride', 'Gençliğin Güçlendirilmesi', 'Eşitlik', 'Politika', 'Aktivizm', 'Engelli Hakları'
                 ]
             }
         ]
@@ -183,8 +191,8 @@ export const langTr = {
       tempToast: 'Şimdilik bu kadar!',
       tempToastDescription: 'Tasarım devam ediyor.',
       emailExistsTitle: 'E-posta Zaten Mevcut',
-      emailExistsDescription: 'Girdiğiniz e-posta adresi zaten bir hesaba bağlı. Lütfen giriş yapın.',
-      goToLogin: 'Giriş Yapmaya Git',
+      emailExistsDescription: 'Girdiğiniz e-posta adresi zaten bir hesaba bağlı. Giriş sayfasına yönlendiriliyorsunuz.',
+      goToLogin: 'Giriş Yap',
     },
   },
 };

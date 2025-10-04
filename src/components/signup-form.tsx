@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -74,6 +74,10 @@ const lookingForOptions = [
     { id: 'whatever', icon: Hand },
 ];
 
+const interestIcons: { [key: string]: React.ElementType } = {
+  Tent,
+  Globe,
+};
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
     const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
@@ -226,7 +230,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const totalSteps = 10;
+  const totalSteps = 11;
   const progressValue = (step / totalSteps) * 100;
 
   const checkEmailExists = async () => {
@@ -246,8 +250,10 @@ export default function SignupForm() {
         }
     } catch (error: any) {
         if (error.code === 'auth/invalid-email') {
+             // This can happen for invalid formats, but for simplicity, we treat it as "not found"
             nextStep();
         } else {
+            console.error("Email check error:", error);
             toast({ title: "Hata", description: "E-posta kontrol edilirken bir sorun oluştu.", variant: "destructive" });
         }
     } finally {
@@ -265,9 +271,9 @@ export default function SignupForm() {
     if (step === 6) fieldsToValidate = ['location'];
     if (step === 7) fieldsToValidate = ['distancePreference'];
     if (step === 8) fieldsToValidate = ['school'];
-    if (step === 9) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
-    if (step === 10) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
-    if (step === 11) fieldsToValidate = ['interests'];
+    if (step === 9) { /* no validation, optional */ }
+    if (step === 10) { /* no validation, optional */ }
+    if (step === 11) { /* no validation, optional */ }
 
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -324,7 +330,7 @@ export default function SignupForm() {
     if (step === 11) {
         form.setValue('interests', []);
     }
-    handleNextStep();
+    nextStep();
   }
 
   return (
@@ -347,10 +353,12 @@ export default function SignupForm() {
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
               {step === 1 && (
-                <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
-                   <div className="space-y-4 pt-8">
+                <div className="flex-1 flex flex-col">
+                  <div className="shrink-0">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
+                    <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                  </div>
+                   <div className="space-y-4 pt-8 flex-1 overflow-y-auto -mr-6 pr-6">
                     <FormField
                       control={form.control}
                       name="email"
@@ -387,7 +395,7 @@ export default function SignupForm() {
                       )}
                     />
                   </div>
-                </>
+                </div>
               )}
               {step === 2 && (
                 <>
@@ -472,14 +480,17 @@ export default function SignupForm() {
                 </>
               )}
               {step === 5 && (
-                <>
-                  <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
-                  <p className="text-muted-foreground">{langTr.signup.step5.label}</p>
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="shrink-0">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                    <p className="text-muted-foreground">{langTr.signup.step5.label}</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
                   <FormField
                     control={form.control}
                     name="lookingFor"
                     render={({ field }) => (
-                      <FormItem className="space-y-3 pt-4">
+                      <FormItem className="space-y-3">
                         <FormControl>
                           <div className="grid grid-cols-2 gap-3">
                             {langTr.signup.step5.options.map((option, index) => {
@@ -490,7 +501,7 @@ export default function SignupForm() {
                                   key={option.id}
                                   type="button"
                                   onClick={() => field.onChange(option.id)}
-                                  className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors ${
+                                  className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors aspect-square ${
                                     isSelected
                                       ? "bg-primary text-primary-foreground border-primary"
                                       : "bg-background hover:bg-accent"
@@ -507,7 +518,8 @@ export default function SignupForm() {
                       </FormItem>
                     )}
                   />
-                </>
+                  </div>
+                </div>
               )}
               {step === 6 && (
                 <div className="flex flex-col items-center text-center h-full justify-center">
@@ -674,7 +686,7 @@ export default function SignupForm() {
                {step === 10 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{langTr.signup.step10.title}</h1>
+                      <h1 className="text-3xl font-bold">{langTr.signup.step10.title.replace('{name}', currentName)}</h1>
                       <p className="text-muted-foreground">{langTr.signup.step10.description}</p>
                   </div>
                   <ScrollArea className="flex-1 -mr-6 pr-5">
@@ -761,41 +773,44 @@ export default function SignupForm() {
                           name="interests"
                           control={form.control}
                           render={({ field }) => (
-                            <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
+                             <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
                                <div className="space-y-6">
-                                {langTr.signup.step11.categories.map(category => (
-                                    <div key={category.title}>
-                                        <h2 className="text-lg font-semibold flex items-center gap-2 mb-2">
-                                            <Tent className="w-5 h-5" /> {category.title}
-                                        </h2>
-                                        <div className="flex flex-wrap gap-2">
-                                            {category.options.map(option => {
-                                                const isSelected = field.value?.includes(option);
-                                                return (
-                                                    <Button
-                                                        key={option}
-                                                        type="button"
-                                                        variant={isSelected ? 'default' : 'outline'}
-                                                        onClick={() => {
-                                                            if (isSelected) {
-                                                                field.onChange(field.value?.filter(item => item !== option));
-                                                            } else if (field.value && field.value.length < 10) {
-                                                                field.onChange([...field.value, option]);
-                                                            } else if (!field.value) {
-                                                                field.onChange([option]);
-                                                            }
-                                                        }}
-                                                        className="rounded-full"
-                                                    >
-                                                        {option}
-                                                    </Button>
-                                                )
-                                            })}
+                                {langTr.signup.step11.categories.map(category => {
+                                    const Icon = interestIcons[category.icon] || Tent;
+                                    return (
+                                        <div key={category.title}>
+                                            <h2 className="text-lg font-semibold flex items-center gap-2 mb-2">
+                                                <Icon className="w-5 h-5" /> {category.title}
+                                            </h2>
+                                            <div className="flex flex-wrap gap-2">
+                                                {category.options.map(option => {
+                                                    const isSelected = field.value?.includes(option);
+                                                    return (
+                                                        <Button
+                                                            key={option}
+                                                            type="button"
+                                                            variant={isSelected ? 'default' : 'outline'}
+                                                            onClick={() => {
+                                                                if (isSelected) {
+                                                                    field.onChange(field.value?.filter(item => item !== option));
+                                                                } else if (field.value && field.value.length < 10) {
+                                                                    field.onChange([...field.value, option]);
+                                                                } else if (!field.value) {
+                                                                    field.onChange([option]);
+                                                                }
+                                                            }}
+                                                            className="rounded-full"
+                                                        >
+                                                            {option}
+                                                        </Button>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                                </div>
-                            </div>
+                            </ScrollArea>
                           )}
                         />
                   </div>
@@ -815,7 +830,7 @@ export default function SignupForm() {
             ) : step === 9 ? (
               <Button
                 type="button"
-                onClick={handleNextStep}
+                onClick={nextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading}
               >
@@ -824,7 +839,7 @@ export default function SignupForm() {
             ) : step === 10 ? (
                 <Button
                 type="button"
-                onClick={handleNextStep}
+                onClick={nextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledMoreInfoCount === 0}
               >
