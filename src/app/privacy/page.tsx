@@ -40,12 +40,12 @@ export default function PrivacyPage() {
                         <p dangerouslySetInnerHTML={{ __html: t.p4 }} />
 
                         <h4 className="font-semibold text-foreground">{t.h2}</h4>
-                        <p>
+                        <div>
                            {t.p5}
                            <ul className="list-disc pl-5 mt-2 space-y-1">
                                 {t.list1.map((item, index) => <li key={index}>{item}</li>)}
                            </ul>
-                        </p>
+                        </div>
 
                         <h4 className="font-semibold text-foreground">{t.h3}</h4>
                         <p dangerouslySetInnerHTML={{ __html: t.p6 }} />
@@ -63,5 +63,3 @@ export default function PrivacyPage() {
     </div>
   );
 }
-
-    
