@@ -1,30 +1,107 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ProfileCard from "@/components/profile-card";
 import { Button } from "@/components/ui/button";
 import type { UserProfile as UserProfileType } from "@/lib/types";
 import { Heart, X, Loader2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-
-// Geçici çözüm: Profil listesi boş başlatılacak.
-const FAKE_PROFILES_TO_PREVENT_ERROR: UserProfileType[] = [];
+import { useUser, useAuth } from "@/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AnasayfaPage() {
-  const [profiles, setProfiles] = useState<UserProfileType[]>(FAKE_PROFILES_TO_PREVENT_ERROR);
-  // Yükleme durumu başlangıçta false olarak ayarlandı, çünkü veri çekilmiyor.
-  const [isLoading, setIsLoading] = useState(false);
+  const { user: currentUser } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const [profiles, setProfiles] = useState<UserProfileType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // NOT: Tüm veri çekme mantığı (`useEffect` ve Firestore çağrıları)
-  // "Missing or insufficient permissions" hatasını çözmek için kaldırılmıştır.
-  // Eşleşme mantığının doğru bir şekilde çalışması için sunucu tarafı
-  // bir mekanizmaya (örn. Cloud Function) ihtiyaç vardır.
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (!currentUser || !auth) return;
+      setIsLoading(true);
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        if (!idToken) {
+          throw new Error("Could not get auth token");
+        }
+
+        const response = await fetch('/api/get-potential-matches', {
+            headers: {
+                'Authorization': `Bearer ${idToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to fetch profiles");
+        }
+
+        const data = await response.json();
+        setProfiles(data);
+      } catch (error) {
+        console.error("Error fetching profiles:", error);
+        toast({
+          title: "Profil Getirme Hatası",
+          description: "Potansiyel eşleşmeler getirilirken bir hata oluştu.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfiles();
+  }, [currentUser, auth, toast]);
 
   const handleSwipe = async (profileId: string, direction: 'left' | 'right') => {
-    // UI'yi iyimser bir şekilde güncelle
+    if (!currentUser) return;
+  
+    // Optimistically update the UI
     setProfiles(prev => prev.filter(p => p.id !== profileId));
-    // Firestore'a yazma mantığı geçici olarak devre dışı bırakıldı.
+  
+    const interactionRef = doc(firestore, `users/${currentUser.uid}/interactions`, profileId);
+    
+    try {
+      await setDoc(interactionRef, {
+        swipe: direction,
+        timestamp: serverTimestamp()
+      });
+  
+      if (direction === 'right') {
+        // This logic creates a match document in both users' subcollections.
+        const currentUserMatchRef = doc(firestore, `users/${currentUser.uid}/matches`, profileId);
+        const otherUserMatchRef = doc(firestore, `users/${profileId}/matches`, currentUser.uid);
+        
+        const matchData = {
+          matchDate: serverTimestamp(),
+          user1Id: currentUser.uid,
+          user2Id: profileId,
+        };
+
+        await setDoc(currentUserMatchRef, matchData);
+        await setDoc(otherUserMatchRef, matchData);
+
+        toast({
+          title: "Harika! Yeni bir eşleşme!",
+          description: "Mesajlar sekmesinden sohbet etmeye başlayabilirsin.",
+          className: "bg-gradient-to-r from-green-400 to-blue-500 text-white"
+        });
+      }
+    } catch (error) {
+      console.error("Error recording interaction:", error);
+      // Optionally revert UI update or show an error toast
+      toast({
+        title: "Hata",
+        description: "İşlem kaydedilemedi. Lütfen tekrar deneyin.",
+        variant: "destructive"
+      })
+    }
   };
 
   const triggerSwipe = (direction: 'left' | 'right') => {
