@@ -29,11 +29,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from "next/image";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -61,6 +62,7 @@ const formSchema = z.object({
     educationLevel: z.string().optional(),
     zodiacSign: z.string().optional(),
     interests: z.array(z.string()).max(10, { message: 'En fazla 10 ilgi alanı seçebilirsin.'}).optional(),
+    photos: z.array(z.string().url()).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -88,6 +90,13 @@ const interestIcons: { [key: string]: React.ElementType } = {
   Clapperboard,
   Paintbrush
 };
+
+type PhotoSlot = {
+    file: File | null;
+    preview: string | null;
+    label: string;
+};
+
 
 const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
     const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
@@ -183,12 +192,18 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(11);
+  const [step, setStep] = useState(12);
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
+    langTr.signup.step12.photoLabels.map(label => ({ file: null, preview: null, label }))
+  );
+  
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -208,6 +223,7 @@ export default function SignupForm() {
       educationLevel: undefined,
       zodiacSign: undefined,
       interests: [],
+      photos: [],
     },
     mode: "onChange",
   });
@@ -216,7 +232,7 @@ export default function SignupForm() {
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
-
+  const uploadedPhotoCount = photoSlots.filter(p => p.file).length;
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -240,7 +256,7 @@ export default function SignupForm() {
     nextStep(); 
   }
   
-  const totalSteps = 11;
+  const totalSteps = 12;
   const progressValue = (step / totalSteps) * 100;
 
   const checkEmailExists = async () => {
@@ -271,6 +287,23 @@ export default function SignupForm() {
     }
   }
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && activeSlot !== null) {
+      const file = e.target.files[0];
+      const preview = URL.createObjectURL(file);
+      const newSlots = [...photoSlots];
+      newSlots[activeSlot] = { ...newSlots[activeSlot], file, preview };
+      setPhotoSlots(newSlots);
+    }
+    setActiveSlot(null); // Reset active slot
+  };
+
+  const openFilePicker = (index: number) => {
+    setActiveSlot(index);
+    fileInputRef.current?.click();
+  };
+
+
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] = [];
     if (step === 1) fieldsToValidate = ['email', 'password'];
@@ -284,6 +317,7 @@ export default function SignupForm() {
     if (step === 9) { /* no validation, optional */ }
     if (step === 10) { /* no validation, optional */ }
     if (step === 11) { /* no validation, optional */ }
+    if (step === 12) { /* Photo validation is handled by button disabled state */ }
 
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -825,6 +859,51 @@ export default function SignupForm() {
                         />
                   </div>
               )}
+               {step === 12 && (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="shrink-0">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step12.title}</h1>
+                    <div className="flex items-center gap-4 mt-2">
+                       <div className="relative w-12 h-12">
+                          <Progress value={(uploadedPhotoCount / 6) * 100} className="w-12 h-12" indicatorClassName="text-primary" />
+                           <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">
+                             {uploadedPhotoCount}/6
+                           </span>
+                       </div>
+                        <p className="text-muted-foreground text-sm flex-1">{langTr.signup.step12.description}</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
+                     <div className="grid grid-cols-3 gap-3">
+                      {photoSlots.map((slot, index) => (
+                        <div key={index} className="aspect-square">
+                           <button
+                            type="button"
+                            onClick={() => openFilePicker(index)}
+                            className="w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center relative overflow-hidden"
+                          >
+                            {slot.preview ? (
+                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" />
+                            ) : (
+                                <span className="text-center text-xs text-muted-foreground p-2">{slot.label}</span>
+                            )}
+                            <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white">
+                               <Plus className="w-5 h-5" />
+                            </div>
+                           </button>
+                        </div>
+                      ))}
+                     </div>
+                  </div>
+                   <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        accept="image/*"
+                    />
+                </div>
+              )}
             </div>
 
           <div className="shrink-0 pt-6">
@@ -864,6 +943,15 @@ export default function SignupForm() {
                     >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
                  </Button>
+            ) : step === 12 ? (
+                <Button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="w-full h-14 rounded-full text-lg font-bold"
+                  disabled={isLoading || uploadedPhotoCount < 2}
+                >
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.step12.button}
+                </Button>
             ) : (
               <Button
                 type="button"
@@ -873,6 +961,12 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.signup.common.next}
               </Button>
+            )}
+
+            {step === 12 && (
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                  {langTr.signup.step12.requirementText}
+              </p>
             )}
           </div>
         </form>
@@ -895,5 +989,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    

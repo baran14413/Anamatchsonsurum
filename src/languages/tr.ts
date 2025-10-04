@@ -253,6 +253,20 @@ export const langTr = {
             }
         ]
     },
+    step12: {
+        title: 'Yeni fotoğraflarını ekle',
+        description: '6 fotoğrafı olan kişiler 2 kata kadar daha fazla Beğeni alır. Yüz fotoğrafı ekleyerek başla.',
+        photoLabels: [
+            'Yüz Fotoğrafı',
+            'Boy fotoğrafı',
+            'Gülümseyen',
+            'Sosyal',
+            'Yaşam Tarzı',
+            'Poz vermeden'
+        ],
+        requirementText: '2 fotoğraf gerekli',
+        button: 'İlerle'
+    },
     common: {
       next: 'İlerle',
       nextDynamic: 'Sonraki {count}/{total}',
@@ -266,5 +280,3 @@ export const langTr = {
     },
   },
 };
-
-    
