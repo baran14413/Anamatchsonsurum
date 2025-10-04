@@ -81,7 +81,6 @@ export default function SignupForm() {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  // Store the final Cloudinary URL separately
   const [finalProfilePictureUrl, setFinalProfilePictureUrl] = useState<string>('');
 
   const form = useForm<SignupFormValues>({
@@ -107,7 +106,6 @@ export default function SignupForm() {
   });
 
   const uploadFile = async (file: File) => {
-    // This function can still indicate loading for individual file uploads if needed
     setIsUploading(true); 
     try {
         const formData = new FormData();
@@ -141,18 +139,13 @@ export default function SignupForm() {
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        // 1. Show local preview immediately
         const localUrl = URL.createObjectURL(file);
         form.setValue("profilePicture", localUrl, { shouldValidate: true });
 
-        // 2. Start upload in the background
         setIsUploading(true);
         uploadFile(file).then(cloudinaryUrl => {
             if (cloudinaryUrl) {
-                // 3. Store the final URL when ready
                 setFinalProfilePictureUrl(cloudinaryUrl);
-                // Optional: Revoke the local URL to free up memory if the user navigates away
-                // URL.revokeObjectURL(localUrl); 
             }
             setIsUploading(false);
         });
@@ -179,36 +172,22 @@ export default function SignupForm() {
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
   
-  const handleNextStep = async () => {
-    const isValid = await form.trigger();
-    if (!isValid) return;
-
-    if (step === 2 && isUploading) {
-      toast({
-        title: "Lütfen Bekleyin",
-        description: "Profil fotoğrafınız hala yükleniyor.",
-      });
-      return;
-    }
-
-    if (step === 3) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          setLocationError(null);
-          nextStep();
-        },
-        (error) => {
-          setLocationError("Konum izni reddedildi. Kayıt için bu izin gereklidir.");
-        }
-      );
-    } else {
-      nextStep();
-    }
+  const handleLocationRequest = () => {
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLocationError(null);
+      },
+      (error) => {
+        setLocationError("Konum izni reddedildi. Kayıt için bu izin gereklidir.");
+      }
+    );
   };
+
 
   const onFinalSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
@@ -242,7 +221,7 @@ export default function SignupForm() {
             email: data.email,
             fullName: data.fullName,
             dateOfBirth: data.dateOfBirth,
-            profilePicture: finalProfilePictureUrl, // Use the final URL
+            profilePicture: finalProfilePictureUrl,
             gender: data.gender,
             images: data.matchPictures,
             location: location,
@@ -373,8 +352,18 @@ export default function SignupForm() {
                         </FormItem>
                     )} />
                      <div>
-                        <FormLabel>Konum İzni</FormLabel>
-                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor. İzin vermek için "Devam Et" butonuna tıkla.</p>
+                        <FormLabel>Konum</FormLabel>
+                        <p className="text-xs text-muted-foreground py-2">Çevrendeki kişileri gösterebilmemiz için konum izni vermen gerekiyor.</p>
+                        {!location ? (
+                            <Button type="button" variant="outline" onClick={handleLocationRequest} className="w-full">
+                                <MapPin className="mr-2 h-4 w-4"/> Konum İzni Ver
+                            </Button>
+                        ) : (
+                            <div className="flex items-center justify-center p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                                <Check className="h-5 w-5 mr-2"/>
+                                <span className="text-sm font-medium">Konum Başarıyla Alındı!</span>
+                            </div>
+                        )}
                         {locationError && (
                           <Alert variant="destructive" className="mt-2">
                             <Terminal className="h-4 w-4" />
@@ -452,24 +441,39 @@ export default function SignupForm() {
             )}
            
             <div className="pt-4">
-               <Button 
-                type={step === TOTAL_STEPS ? 'submit' : 'button'}
-                onClick={step !== TOTAL_STEPS ? handleNextStep : undefined}
-                className="w-full h-12 text-base font-bold rounded-full" 
-                disabled={isLoading || (step === 2 && isUploading)}
-               >
-                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                 {step === TOTAL_STEPS ? (
-                     <>
-                        <PartyPopper className="mr-2 h-5 w-5" />
-                        Kaydı Tamamla
-                     </>
-                 ) : (
-                    "Devam Et"
-                 )}
-               </Button>
+               {step !== TOTAL_STEPS ? (
+                 <Button 
+                    type="button"
+                    onClick={async () => {
+                        const isValid = await form.trigger();
+                        if (isValid) {
+                            if (step === 2 && isUploading) {
+                                toast({ title: "Lütfen Bekleyin", description: "Profil fotoğrafınız hala yükleniyor." });
+                                return;
+                            }
+                            nextStep();
+                        }
+                    }}
+                    className="w-full h-12 text-base font-bold rounded-full" 
+                    disabled={(step === 3 && !location)}
+                 >
+                    Devam Et
+                 </Button>
+               ) : (
+                <Button 
+                    type='submit'
+                    className="w-full h-12 text-base font-bold rounded-full" 
+                    disabled={isLoading || isUploading}
+                >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <PartyPopper className="mr-2 h-5 w-5" />
+                    Kaydı Tamamla
+                </Button>
+               )}
             </div>
         </form>
       </Form>
   );
 }
+
+    
