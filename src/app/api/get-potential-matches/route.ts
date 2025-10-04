@@ -27,18 +27,14 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // 1. Get real users from Firestore
+        // 1. Get all users from Firestore
         const usersSnapshot = await adminDb.collection('users').get();
         const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
         
-        // 2. Get users the current user has already interacted with
-        const interactionsSnapshot = await adminDb.collection('users').doc(currentUserId).collection('interactions').get();
-        const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
-
-        // 3. Filter out the current user and interacted users
-        let potentialMatches = allUsers.filter(user => user.id !== currentUserId && !interactedUserIds.has(user.id));
+        // 2. Filter out just the current user. Interaction filtering is disabled for testing.
+        let potentialMatches = allUsers.filter(user => user.id !== currentUserId);
         
-        // 4. Shuffle the results
+        // 3. Shuffle the results
         potentialMatches.sort(() => Math.random() - 0.5);
 
         return NextResponse.json(potentialMatches);
