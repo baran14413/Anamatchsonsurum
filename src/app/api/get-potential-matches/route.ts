@@ -27,7 +27,19 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Get all users from Firestore
+        // 1. Get IDs of users the current user has already interacted with
+        const interactionsSnapshot = await adminDb
+            .collection('users')
+            .doc(currentUserId)
+            .collection('interactions')
+            .get();
+            
+        const interactedUserIds = interactionsSnapshot.docs.map(doc => doc.id);
+
+        // 2. Create a set of users to exclude (current user + interacted users)
+        const excludedUserIds = new Set([currentUserId, ...interactedUserIds]);
+
+        // 3. Get all users from Firestore
         const usersSnapshot = await adminDb.collection('users').get();
         if (usersSnapshot.empty) {
             return NextResponse.json([]);
@@ -35,16 +47,17 @@ export async function GET(req: NextRequest) {
 
         const allUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
         
-        // Filter out only the current user
-        let potentialMatches = allUsers.filter(user => user.id !== currentUserId);
+        // 4. Filter out users that are in the excluded set
+        let potentialMatches = allUsers.filter(user => !excludedUserIds.has(user.id));
         
-        // Shuffle the results for randomness in the swipe stack
+        // 5. Shuffle the results for randomness in the swipe stack
         potentialMatches.sort(() => Math.random() - 0.5);
 
         return NextResponse.json(potentialMatches);
 
     } catch (error) {
         console.error("Error fetching potential matches:", error);
+        // Return a generic error to the client to avoid the HTML error page
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

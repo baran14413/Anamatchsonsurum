@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. Record the interaction for the current user
+        // This swipe is stored in a subcollection of the user who is doing the swiping.
         const interactionRef = adminDb
             .collection('users')
             .doc(currentUserId)
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
 
         // 2. If it was a 'right' swipe, check for a match
         if (direction === 'right') {
+            // Check if the other user has also swiped right on the current user.
             const otherUserInteractionRef = adminDb
                 .collection('users')
                 .doc(swipedUserId)
@@ -59,6 +61,14 @@ export async function POST(req: NextRequest) {
                 // It's a MATCH!
                 const matchId = [currentUserId, swipedUserId].sort().join('_');
                 const matchDate = FieldValue.serverTimestamp();
+                const matchData = {
+                    id: matchId,
+                    users: [currentUserId, swipedUserId],
+                    matchDate: matchDate,
+                };
+
+                // Use a batch write to ensure atomicity
+                const batch = adminDb.batch();
 
                 // Create match document for the current user
                 const currentUserMatchRef = adminDb
@@ -66,27 +76,18 @@ export async function POST(req: NextRequest) {
                     .doc(currentUserId)
                     .collection('matches')
                     .doc(matchId);
+                batch.set(currentUserMatchRef, matchData);
                 
-                await currentUserMatchRef.set({
-                    id: matchId,
-                    user1Id: currentUserId,
-                    user2Id: swipedUserId,
-                    matchDate: matchDate,
-                });
 
                 // Create match document for the other user
                 const otherUserMatchRef = adminDb
                     .collection('users')
-                    .doc(swipedUserId)
+                    doc(swipedUserId)
                     .collection('matches')
                     .doc(matchId);
+                batch.set(otherUserMatchRef, matchData);
 
-                await otherUserMatchRef.set({
-                    id: matchId,
-                    user1Id: currentUserId,
-                    user2Id: swipedUserId,
-                    matchDate: matchDate,
-                });
+                await batch.commit();
                 
                 // Return that a match was made
                 return NextResponse.json({ match: true });
