@@ -44,7 +44,7 @@ export default function AnasayfaPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted/20 dark:bg-black overflow-hidden">
-      <div className="relative flex-1 flex flex-col items-center justify-center pb-24">
+      <div className="relative flex-1 flex flex-col items-center justify-center pb-16">
         {/* Profile cards container */}
         <div className="relative w-full h-full max-w-md">
           <AnimatePresence>
@@ -79,11 +79,11 @@ export default function AnasayfaPage() {
 
       {/* Action buttons */}
       {activeProfile && (
-        <div className="absolute bottom-16 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-4 py-4 shrink-0">
-          <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-red-500 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
+        <div className="absolute bottom-6 left-0 right-0 z-20 flex w-full items-center justify-center gap-x-4 py-4 shrink-0">
+          <Button onClick={() => triggerSwipe('left')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-rose-500 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
             <X className="h-8 w-8" />
           </Button>
-          <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-green-400 shadow-lg hover:bg-gray-100 transform transition-transform hover:scale-110">
+          <Button onClick={() => triggerSwipe('right')} variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white text-teal-400 shadow-xl hover:bg-gray-100 transform transition-transform hover:scale-110">
             <Heart className="h-8 w-8 fill-current" />
           </Button>
         </div>
