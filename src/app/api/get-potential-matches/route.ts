@@ -24,17 +24,14 @@ export async function GET(req: NextRequest) {
       .get();
     const interactedUserIds = interactionsSnapshot.docs.map(doc => doc.id);
 
-    // Fetch all users from the 'users' collection
-    const usersSnapshot = await adminDb.collection('users').get();
+    // Fetch all user profiles from the 'profile' subcollections
+    const profilesSnapshot = await adminDb.collectionGroup('profile').get();
     
     const allUsers: UserProfile[] = [];
-    usersSnapshot.forEach(doc => {
-      // Ensure the document data matches the UserProfile type, at least partially.
-      const userData = doc.data() as Partial<UserProfile>;
-      // IMPORTANT: Only add users that have a UID to prevent issues.
-      if(userData.uid) {
-        allUsers.push({ id: doc.id, ...userData } as UserProfile);
-      }
+    profilesSnapshot.forEach(doc => {
+      const userData = doc.data() as Omit<UserProfile, 'id'>;
+      // IMPORTANT: Add the document ID as 'id' to the object
+      allUsers.push({ id: doc.id, ...userData });
     });
 
     // Filter out the current user and users they've already interacted with
