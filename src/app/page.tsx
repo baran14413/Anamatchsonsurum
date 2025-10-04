@@ -30,7 +30,7 @@ export default function WelcomePage() {
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
-                <Image src="https://www.citypng.com/public/uploads/preview/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png" alt="Google logo" width={24} height={24} className="mr-4" />
+                <Image src="https://www.citypng.com/public/uploads/preview/google-g-logo-icon-png-11658022894o24b1wxfon.png" alt="Google logo" width={24} height={24} className="mr-4" />
                 Google ile devam et
               </Button>
             </Link>
