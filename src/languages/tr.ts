@@ -208,6 +208,20 @@ export const langTr = {
                 options: [
                     'Çizgi roman fuarı', 'Harry Potter', "90'larda Çocuk Olmak", 'NBA', 'MLB', 'Dungeons & Dragons', 'Manga', 'Marvel', 'Disney'
                 ]
+            },
+            {
+                title: 'Oyun',
+                icon: 'Gamepad2',
+                options: [
+                    'PlayStation', 'E-Spor', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Atari', 'Roblox'
+                ]
+            },
+            {
+                title: 'Sağlık ve yaşam tarzı',
+                icon: 'Sprout',
+                options: [
+                    'Öz Sevgi', 'Yeni Şeyler Denemek', 'Tarot', 'Spa', 'Kişisel Bakım', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Makyaj', 'Astroloji', 'Mindfulness', 'Sauna', 'Aktif Yaşam', 'Yoga'
+                ]
             }
         ]
     },
