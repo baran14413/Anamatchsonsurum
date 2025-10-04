@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { Icons } from "./icons";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi girin." }),
