@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
         // Add current user to interacted set to filter them out
         interactedUserIds.add(currentUserId);
         
-        // 2. Get all user profiles using a collectionGroup query for scalability
-        const allUsersSnapshot = await adminDb.collectionGroup('profile').get();
+        // 2. Get all user profiles from the 'users' collection
+        const allUsersSnapshot = await adminDb.collection('users').get();
         
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
@@ -51,5 +51,3 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-    
