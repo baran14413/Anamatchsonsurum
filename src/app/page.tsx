@@ -22,14 +22,18 @@ export default function WelcomePage() {
           </div>
 
           <div className="space-y-3">
-            <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-              <Chrome className="mr-4 h-6 w-6" />
-              Google ile devam et
-            </Button>
-            <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
-              <Facebook className="mr-4 h-6 w-6" />
-              Facebook ile devam et
-            </Button>
+            <Link href="/kurallar" className='w-full block'>
+              <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
+                <Chrome className="mr-4 h-6 w-6" />
+                Google ile devam et
+              </Button>
+            </Link>
+            <Link href="/kurallar" className='w-full block'>
+              <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
+                <Facebook className="mr-4 h-6 w-6" />
+                Facebook ile devam et
+              </Button>
+            </Link>
             <Link href="/login" className='w-full block'>
               <Button variant="outline" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm">
                 <Mail className="mr-4 h-6 w-6" />
