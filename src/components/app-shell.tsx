@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import { langTr } from "@/languages/tr";
 
-const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies"];
+const publicPaths = ["/", "/login", "/kayit-ol", "/kurallar", "/tos", "/privacy", "/cookies", "/quit"];
 const appRoot = "/anasayfa";
 
 const Header = () => {
@@ -47,18 +47,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [inputBuffer, setInputBuffer] = useState('');
-
   const handleLogout = useCallback(async () => {
-    try {
-      if (auth) {
-        await signOut(auth);
-        router.push('/');
+    if (!auth) {
         toast({
-          title: langTr.ayarlar.toasts.logoutSuccessTitle,
-          description: langTr.ayarlar.toasts.logoutSuccessDesc,
+            title: langTr.ayarlar.toasts.logoutErrorTitle,
+            description: "Auth service not available.",
+            variant: 'destructive',
         });
-      }
+        return;
+    }
+    try {
+      await signOut(auth);
+      router.replace('/'); 
+      toast({
+        title: langTr.ayarlar.toasts.logoutSuccessTitle,
+        description: langTr.ayarlar.toasts.logoutSuccessDesc,
+      });
     } catch (error) {
       toast({
         title: langTr.ayarlar.toasts.logoutErrorTitle,
@@ -69,34 +73,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [auth, router, toast]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (typeof event.key !== 'string') {
-        return;
-      }
-      
-      let newBuffer;
-      if (event.key === 'Backspace') {
-        newBuffer = inputBuffer.slice(0, -1);
-      } else if (event.key.length === 1) {
-        newBuffer = inputBuffer + event.key;
-      } else {
-        newBuffer = inputBuffer;
-      }
-      
-      newBuffer = newBuffer.slice(-6);
-      setInputBuffer(newBuffer);
-
-      if (newBuffer.endsWith('/quit')) {
-        handleLogout();
-        setInputBuffer(''); 
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [inputBuffer, handleLogout]);
+    if (pathname === '/quit') {
+      handleLogout();
+    }
+  }, [pathname, handleLogout]);
 
   useEffect(() => {
     if (isUserLoading) {
@@ -116,7 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, pathname, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading || pathname === '/quit') {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-black">
         <Icons.logo className="h-24 w-24 animate-pulse" />
