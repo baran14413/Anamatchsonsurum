@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { Badge } from './ui/badge';
-import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
+import { MapPin, Heart, X } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 
@@ -26,7 +25,6 @@ const SWIPE_THRESHOLD = 80;
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
-  const [showDetails, setShowDetails] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
 
@@ -39,7 +37,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   useEffect(() => {
     // Reset internal state when the profile prop changes
     setImageIndex(0);
-    setShowDetails(false);
     x.set(0); 
     setIsVisible(true);
     setSwipeDirection(null);
@@ -60,16 +57,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     }
   };
   
-  const getProfileHighlights = (profile: UserProfile): string[] => {
-      const highlights: string[] = [];
-      if (profile.lookingFor) {
-          highlights.push(profile.lookingFor);
-      }
-      return highlights;
-  }
-
-  const highlights = getProfileHighlights(profile);
-
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!onSwipe || !isDraggable) return;
     const offset = info.offset.x;
@@ -112,7 +99,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
                 >
                     {totalImages > 1 && (
-                        <div className="absolute top-2 left-2 right-2 z-[2] flex gap-1 px-1">
+                        <div className="absolute top-2 left-2 right-2 z-20 flex gap-1 px-1">
                             {profile.images.map((_, index) => (
                             <div key={index} className="relative h-1 flex-1 bg-white/40 rounded-full overflow-hidden">
                                 <div
@@ -127,13 +114,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     {isDraggable && (
                         <>
                         <motion.div
-                            className="absolute top-8 left-8 text-green-400 z-[2]"
+                            className="absolute top-8 left-8 text-green-400 z-20"
                             style={{ opacity: opacityLike }}
                         >
                             <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
                         </motion.div>
                         <motion.div
-                            className="absolute top-8 right-8 text-red-500 z-[2]"
+                            className="absolute top-8 right-8 text-red-500 z-20"
                             style={{ opacity: opacityDislike }}
                         >
                             <X className="h-20 w-20" strokeWidth={3} />
@@ -142,11 +129,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     )}
 
                     <div
-                    className={`absolute left-0 top-0 h-full w-1/2 z-[1] ${isDraggable ? 'cursor-pointer' : ''}`}
+                    className={`absolute left-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'left')}
                     ></div>
                     <div
-                    className={`absolute right-0 top-0 h-full w-1/2 z-[1] ${isDraggable ? 'cursor-pointer' : ''}`}
+                    className={`absolute right-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'right')}
                     ></div>
 
@@ -161,63 +148,23 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     />
 
                     <div
-                        className={`absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-[2] ${isDraggable ? 'cursor-pointer' : ''}`}
-                        onClick={() => isDraggable && setShowDetails(prev => !prev)}
+                        className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                     >
-                        <div className='flex items-end justify-between'>
-                            <div className="max-w-[calc(100%-4rem)]">
-                                <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                        <MapPin className="w-4 h-4" />
-                                        {profile.distance !== undefined ? (
-                                            <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                        ) : profile.address?.city ? (
-                                            <span>{profile.address.city}, {profile.address.country}</span>
-                                        ) : null}
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                    {highlights.map((highlight, index) => (
-                                    <Badge key={index} variant="secondary" className='bg-white/20 backdrop-blur-sm border-none text-white text-xs capitalize'>
-                                        {highlight}
-                                    </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        {isDraggable && (
-                            <div className='self-end p-2 rounded-full border border-white/50 bg-black/20'>
-                                <ChevronUp className={`w-6 h-6 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
-                            </div>
-                        )}
+                        <div className="space-y-2">
+                           <div className='flex items-center gap-2'>
+                             <div className='h-1.5 bg-yellow-400 rounded-full w-1/4'></div>
+                             <div className='h-1.5 bg-red-500 rounded-full w-1/3'></div>
+                           </div>
+                           <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
+                           <div className="flex items-center gap-2 mt-2">
+                                <MapPin className="w-4 h-4" />
+                                {profile.distance !== undefined ? (
+                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                ) : profile.address?.city ? (
+                                    <span>{profile.address.city}, {profile.address.country}</span>
+                                ) : null}
+                           </div>
                         </div>
-
-                        <motion.div
-                            initial={false}
-                            animate={{ height: showDetails ? 'auto' : 0 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-4 space-y-4">
-                                {profile.bio && <p className="text-base">{profile.bio}</p>}
-                                
-                                <div className="space-y-2 text-sm">
-                                    {profile.school && (
-                                        <div className="flex items-center gap-2">
-                                            <GraduationCap className="w-4 h-4" />
-                                            <span>{profile.school}</span>
-                                        </div>
-                                    )}
-                                    {profile.lifestyle?.workout && (
-                                        <div className="flex items-center gap-2 capitalize">
-                                            <Dumbbell className="w-4 h-4" />
-                                            <span>{profile.lifestyle.workout}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                            </div>
-                        </motion.div>
                     </div>
                 </div>
             </motion.div>
