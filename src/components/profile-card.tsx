@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
-import { ChevronUp } from 'lucide-react';
+import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface ProfileCardProps {
@@ -16,8 +16,7 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
     const birthday = new Date(dateOfBirth);
     if (isNaN(birthday.getTime())) return null;
-    const ageDifMs = Date.now() - birthday.getTime();
-    const ageDate = new Date(ageDifMs);
+    const ageDate = new Date(Date.now() - birthday.getTime());
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
@@ -45,6 +44,20 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
       setImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
     }
   };
+  
+  // Create a helper to get a few key details to show as badges
+  const getProfileHighlights = (profile: UserProfile): string[] => {
+      const highlights: string[] = [];
+      if (profile.lookingFor) {
+          highlights.push(profile.lookingFor);
+      }
+      if (profile.interests) {
+          highlights.push(...profile.interests.slice(0, 3)); // Show first 3 interests
+      }
+      return highlights;
+  }
+
+  const highlights = getProfileHighlights(profile);
 
   return (
     <motion.div
@@ -95,10 +108,12 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
              <div className='flex items-end justify-between'>
                 <div className="max-w-[calc(100%-4rem)]">
                     <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary" className='bg-white/20 backdrop-blur-sm border-none text-white text-xs'>
-                           Yeni Üye
-                        </Badge>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {highlights.map((highlight, index) => (
+                           <Badge key={index} variant="secondary" className='bg-white/20 backdrop-blur-sm border-none text-white text-xs capitalize'>
+                             {highlight}
+                           </Badge>
+                        ))}
                     </div>
                 </div>
                 <div className='self-end p-2 rounded-full border border-white/50 bg-black/20'>
@@ -113,8 +128,24 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden"
             >
-                <div className="pt-4">
-                    {profile.bio && <p>{profile.bio}</p>}
+                <div className="pt-4 space-y-4">
+                    {profile.bio && <p className="text-base">{profile.bio}</p>}
+                    
+                    <div className="space-y-2 text-sm">
+                        {profile.school && (
+                            <div className="flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4" />
+                                <span>{profile.school}</span>
+                            </div>
+                        )}
+                         {profile.lifestyle?.workout && (
+                            <div className="flex items-center gap-2 capitalize">
+                                <Dumbbell className="w-4 h-4" />
+                                <span>{profile.lifestyle.workout}</span>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </motion.div>
         </div>
