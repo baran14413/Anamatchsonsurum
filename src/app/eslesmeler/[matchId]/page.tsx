@@ -695,6 +695,32 @@ export default function ChatPage() {
                             )
                         }
 
+                        if (message.isViewOnce && message.viewed) {
+                            return (
+                                <div key={message.id}>
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
+                                        {!isSender && (
+                                            <Avatar className="h-8 w-8 self-end mb-1">
+                                                <AvatarImage src={otherUser?.profilePicture} />
+                                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div
+                                            className={cn(
+                                                "max-w-[70%] rounded-2xl flex items-center gap-2 px-3 py-2 italic text-muted-foreground",
+                                                isSender ? "bg-primary text-primary-foreground/80 rounded-br-none" : "bg-muted rounded-bl-none",
+                                            )}
+                                        >
+                                            <EyeOff className="w-4 h-4" />
+                                            <span>Fotoğraf açıldı</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+
                         return (
                             <div key={message.id}>
                                 {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
@@ -715,14 +741,14 @@ export default function ChatPage() {
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            message.imageUrl && !message.isViewOnce ? 'p-1.5' : 'px-3 py-2',
+                                            (message.imageUrl && !message.isViewOnce) || (message.isViewOnce && !message.viewed) ? 'p-1.5' : 'px-3 py-2',
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
                                         {message.isViewOnce && !message.viewed ? (
                                              <button
                                                 className={cn(
-                                                    "flex items-center gap-3 px-4 py-3 rounded-2xl w-[180px]",
+                                                    "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
                                                     (isSender) && "opacity-80 cursor-not-allowed"
                                                 )}
@@ -736,19 +762,17 @@ export default function ChatPage() {
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && (
+                                        {message.text && !message.viewed && (
                                           <p className={cn('break-words text-left w-full', 
-                                            message.imageUrl && 'px-2 pb-1 pt-2', 
-                                            message.text === "📷 Fotoğraf açıldı" && "flex items-center gap-2 italic text-muted-foreground opacity-90"
+                                            message.imageUrl && 'px-2 pb-1 pt-2'
                                           )}>
-                                            {message.text === "📷 Fotoğraf açıldı" && <EyeOff className="w-4 h-4" />}
                                             {message.text}
                                           </p>
                                         )}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !message.isViewOnce && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !(message.isViewOnce && !message.viewed) && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
@@ -893,7 +917,7 @@ export default function ChatPage() {
 
             {/* View Once Image Dialog */}
              <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
-                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
+                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col screenshot-secure-backdrop">
                      <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
                      <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
                      <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
@@ -930,4 +954,6 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
+    
+
     

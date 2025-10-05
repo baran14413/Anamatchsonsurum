@@ -556,7 +556,7 @@ export default function ChatPage() {
         }
         return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
     }
-    
+
     const handleOpenViewOnce = (message: ChatMessage) => {
         if (!user || message.senderId === user.uid || message.viewed) return;
         setViewingOnceImage(message);
@@ -580,16 +580,47 @@ export default function ChatPage() {
         };
         animationFrameId = requestAnimationFrame(animateProgress);
 
-        return () => cancelAnimationFrame(animationFrameId);
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+        };
     };
 
     const handleCloseViewOnce = async (markAsViewed = false) => {
         if (markAsViewed && viewingOnceImage && firestore) {
             const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
-            await updateDoc(msgRef, { viewed: true });
+            const publicId = viewingOnceImage.imagePublicId;
+
+            // Update the document to remove image URL and mark as viewed
+            await updateDoc(msgRef, { 
+                viewed: true,
+                imageUrl: null, 
+                imagePublicId: null,
+                text: "📷 Fotoğraf açıldı"
+            });
+
+            // Update last message in denormalized match docs
+            const user1Id = matchId.split('_')[0];
+            const user2Id = matchId.split('_')[1];
+            const lastMessageUpdate = { lastMessage: "📷 Fotoğraf açıldı", timestamp: serverTimestamp() };
+            await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
+            await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
+
+            // Delete the image from Cloudinary
+            if (publicId) {
+                try {
+                    await fetch('/api/delete-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ public_id: publicId }),
+                    });
+                } catch (err) {
+                    console.error("Failed to delete 'view once' image from Cloudinary:", err);
+                }
+            }
         }
         setViewingOnceImage(null);
     };
+
     
     const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = matchData?.status === 'matched';
@@ -663,6 +694,32 @@ export default function ChatPage() {
                             )
                         }
 
+                        if (message.isViewOnce && message.viewed) {
+                            return (
+                                <div key={message.id}>
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
+                                        {!isSender && (
+                                            <Avatar className="h-8 w-8 self-end mb-1">
+                                                <AvatarImage src={otherUser?.profilePicture} />
+                                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div
+                                            className={cn(
+                                                "max-w-[70%] rounded-2xl flex items-center gap-2 px-3 py-2 italic text-muted-foreground",
+                                                isSender ? "bg-primary text-primary-foreground/80 rounded-br-none" : "bg-muted rounded-bl-none",
+                                            )}
+                                        >
+                                            <EyeOff className="w-4 h-4" />
+                                            <span>Fotoğraf açıldı</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+
                         return (
                             <div key={message.id}>
                                 {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
@@ -683,32 +740,38 @@ export default function ChatPage() {
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            message.imageUrl && !message.isViewOnce ? 'p-1.5' : 'px-3 py-2',
+                                            (message.imageUrl && !message.isViewOnce) || (message.isViewOnce && !message.viewed) ? 'p-1.5' : 'px-3 py-2',
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
-                                        {message.isViewOnce ? (
+                                        {message.isViewOnce && !message.viewed ? (
                                              <button
                                                 className={cn(
-                                                    "flex items-center gap-3 px-4 py-3 rounded-2xl w-[180px]",
+                                                    "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                    (message.viewed || isSender) && "opacity-80 cursor-not-allowed"
+                                                    (isSender) && "opacity-80 cursor-not-allowed"
                                                 )}
                                                 onClick={() => handleOpenViewOnce(message)}
-                                                disabled={message.viewed || isSender}
+                                                disabled={isSender}
                                             >
-                                                {message.viewed ? <EyeOff className="w-6 h-6" /> : <History className="w-6 h-6 text-green-400" />}
-                                                <span className="font-medium text-base">{message.viewed ? "Fotoğraf açıldı" : "Fotoğraf"}</span>
+                                                <History className="w-6 h-6 text-green-400" />
+                                                <span className="font-medium text-base">Fotoğraf</span>
                                             </button>
                                         ) : message.imageUrl ? (
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && <p className={cn('break-words text-left w-full', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
+                                        {message.text && !message.viewed && (
+                                          <p className={cn('break-words text-left w-full', 
+                                            message.imageUrl && 'px-2 pb-1 pt-2'
+                                          )}>
+                                            {message.text}
+                                          </p>
+                                        )}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !message.isViewOnce && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !(message.isViewOnce && !message.viewed) && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
@@ -893,5 +956,3 @@ export default function ChatPage() {
     
 
     
-
-
