@@ -258,7 +258,7 @@ export default function SignupForm() {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form]);
+  }, [form, router]);
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -484,22 +484,39 @@ export default function SignupForm() {
 
   const handleLocationRequest = async () => {
     setIsLoading(true);
+
     try {
+        if (navigator.permissions) {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+            if (permissionStatus.state === 'denied') {
+                 toast({
+                    title: t.signup.step6.errorTitle,
+                    description: t.signup.step6.errorMessage,
+                    variant: "destructive"
+                });
+                setIsLoading(false);
+                return;
+            }
+        }
+
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                timeout: 10000
+            });
         });
 
         form.setValue('location', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
         });
-        
+
         const response = await fetch(`/api/geocode?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
         if (!response.ok) {
-            throw new Error('Failed to fetch address');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch address');
         }
         const data = await response.json();
-        
+
         if (data.address) {
             form.setValue('address', {
                 city: data.address.city,
@@ -507,20 +524,25 @@ export default function SignupForm() {
                 country: data.address.country,
             });
         }
-        
+
         nextStep();
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Location error:", error);
+        let description = t.signup.step6.errorMessage;
+        if (error.code === 1) description = t.ayarlarKonum.errors.permissionDenied;
+        if (error.code === 2) description = t.ayarlarKonum.errors.positionUnavailable;
+        if (error.code === 3) description = t.ayarlarKonum.errors.timeout;
+        
         toast({
             title: t.signup.step6.errorTitle,
-            description: t.signup.step6.errorMessage,
+            description: description,
             variant: "destructive"
         });
     } finally {
         setIsLoading(false);
     }
-  };
+};
   
   const handleSkip = () => {
     if (step === 7) { 
@@ -1197,3 +1219,6 @@ export default function SignupForm() {
 
     
 
+
+
+    
