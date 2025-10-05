@@ -9,8 +9,28 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
+const cardVariants = {
+  enter: (direction: number) => {
+    return {
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0,
+    };
+  },
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => {
+    return {
+      zIndex: 0,
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0,
+    };
+  },
+};
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -20,6 +40,9 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [direction, setDirection] = useState(0);
+
+  const activeIndex = profiles.length - 1;
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
@@ -59,7 +82,8 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
+            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0)
+            .reverse(); // Reverse to treat the array like a stack
 
         setProfiles(fetchedProfiles);
 
@@ -81,18 +105,23 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
 
-  const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike', swipedProfile: UserProfile) => {
+  const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
+    if (activeIndex < 0) return;
+
+    const swipedProfile = profiles[activeIndex];
     if (!user || !firestore || !swipedProfile) return;
     
+    // Set swipe direction for animation
+    setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
+
     // --- Optimistic UI Update ---
-    // Remove the swiped profile from the local state immediately by taking it off the top of the array.
-    setProfiles(currentProfiles => currentProfiles.slice(1));
+    // Remove the swiped profile from the local state immediately.
+    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
 
     // --- Firestore Logic (runs in the background) ---
     const user1 = user.uid;
     const user2 = swipedProfile.uid;
     
-    // Create a consistent ID for the match document
     const matchId = [user1, user2].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
@@ -101,20 +130,16 @@ export default function AnasayfaPage() {
         const theirInteractionSnap = await getDoc(theirInteractionRef);
         const theirInteractionData = theirInteractionSnap.data();
 
-        // Check if the other user has an action recorded for us
         const theirAction = theirInteractionData?.[`user_${user2}_action`];
 
-        // If they liked us and we just liked them = MATCH
         if ((action === 'liked' || action === 'superlike') && (theirAction === 'liked' || theirAction === 'superlike')) {
             
-            // 1. Update the central match document to 'matched'
             await setDoc(matchDocRef, {
                 status: 'matched',
                 users: [user1, user2],
                 matchDate: serverTimestamp(),
             }, { merge: true });
 
-            // 2. Create denormalized match entries for both users for easy querying
             const user1MatchData = {
                 id: matchId,
                 matchedWith: user2,
@@ -135,14 +160,12 @@ export default function AnasayfaPage() {
             await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
             await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
 
-            // 3. Notify user of the new match
             toast({
                 title: t.anasayfa.matchToastTitle,
                 description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
             });
 
         } else {
-             // Just record the swipe, no match yet
              await setDoc(matchDocRef, {
                 users: [user1, user2],
                 [`user_${user1}_action`]: action,
@@ -157,7 +180,7 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast]);
+  }, [user, firestore, t, toast, profiles, activeIndex]);
 
 
   const handleReset = async () => {
@@ -175,7 +198,6 @@ export default function AnasayfaPage() {
             description: "Tüm filtreleriniz sıfırlandı, baştan başlıyoruz!",
         });
 
-        // Call fetchProfiles with the reset option
         await fetchProfiles({ resetInteractions: true });
 
     } catch (error) {
@@ -190,35 +212,51 @@ export default function AnasayfaPage() {
     }
   };
   
-  // Use the profile at the current index, which is always 0 because we remove swiped profiles
-  const activeProfile = !isLoading && profiles.length > 0 ? profiles[0] : null;
-
   return (
     <div className="relative h-full w-full flex flex-col p-4">
         {isLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
-        ) : activeProfile ? (
+        ) : profiles.length > 0 ? (
           <>
-            <div className="flex-1 flex items-center justify-center">
-                <ProfileCard
-                    key={activeProfile.uid}
-                    profile={activeProfile}
-                    onSwipe={(action) => handleSwipe(action, activeProfile)}
-                />
+            <div className="flex-1 flex items-center justify-center relative">
+                <AnimatePresence initial={false} custom={direction}>
+                    {profiles.map((profile, index) => (
+                         <motion.div
+                            key={profile.uid}
+                            custom={direction}
+                            variants={cardVariants}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            transition={{
+                                x: { type: "spring", stiffness: 300, damping: 30 },
+                                opacity: { duration: 0.2 },
+                            }}
+                            className="absolute w-full max-w-sm h-full max-h-[75vh]"
+                            style={{ zIndex: profiles.length - index }}
+                        >
+                            <ProfileCard
+                                profile={profile}
+                                onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked')}
+                                isTopCard={index === activeIndex}
+                            />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
             <div className="flex justify-center items-center gap-4 py-4">
                 <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
                     <Undo2 className="w-5 h-5 text-yellow-500" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked')} className="bg-white rounded-full p-4 shadow-lg">
                     <X className="w-7 h-7 text-red-500" />
                 </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike', activeProfile)} className="bg-white rounded-full p-3 shadow-lg">
+                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike')} className="bg-white rounded-full p-3 shadow-lg">
                     <Star className="w-5 h-5 text-blue-500" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked')} className="bg-white rounded-full p-4 shadow-lg">
                     <Heart className="w-7 h-7 text-green-400" />
                 </motion.button>
                  <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
