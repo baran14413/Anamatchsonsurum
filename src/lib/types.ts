@@ -12,6 +12,7 @@ export type UserProfile = {
   interests?: string[];
   gender: 'male' | 'female' | 'other';
   genderPreference?: 'male' | 'female' | 'both';
+  globalModeEnabled?: boolean;
   location?: {
     latitude: number | null;
     longitude: number | null;

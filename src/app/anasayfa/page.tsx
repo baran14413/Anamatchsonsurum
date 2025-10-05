@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -129,6 +130,7 @@ export default function AnasayfaPage() {
         
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
+        const isGlobalMode = userProfile?.globalModeEnabled;
 
         if (genderPref && genderPref !== 'both') {
           qConstraints.push(where('gender', '==', genderPref));
@@ -140,7 +142,7 @@ export default function AnasayfaPage() {
 
         const querySnapshot = await getDocs(usersQuery);
         
-        const fetchedProfiles = querySnapshot.docs
+        let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
@@ -154,15 +156,24 @@ export default function AnasayfaPage() {
                     p.location.longitude
                 );
                 
+                (p as ProfileWithDistance).distance = distance;
+
+                if (isGlobalMode) {
+                  return true;
+                }
+
                 const userDistancePref = userProfile.distancePreference || 50;
                 
                 if (distance > userDistancePref) {
                     return false;
                 }
                 
-                (p as ProfileWithDistance).distance = distance;
                 return true;
             });
+        
+        if (isGlobalMode) {
+          fetchedProfiles.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+        }
         
         setProfiles(fetchedProfiles);
 

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
 
@@ -39,6 +39,28 @@ export default function PreferencesPage() {
              toast({
                 title: "Hata",
                 description: "Cinsiyetiniz güncellenirken bir hata oluştu.",
+                variant: "destructive"
+            });
+        }
+    };
+    
+    const handleGlobalModeChange = async (checked: boolean) => {
+        if (!user || !firestore) return;
+
+        const userDocRef = doc(firestore, 'users', user.uid);
+        try {
+            await updateDoc(userDocRef, {
+                globalModeEnabled: checked
+            });
+            toast({
+                title: "Mod Güncellendi",
+                description: `Küresel mod ${checked ? 'aktif' : 'deaktif'} edildi.`,
+            });
+        } catch (error) {
+            console.error("Failed to update global mode: ", error);
+            toast({
+                title: "Hata",
+                description: "Küresel mod güncellenirken bir hata oluştu.",
                 variant: "destructive"
             });
         }
@@ -88,6 +110,26 @@ export default function PreferencesPage() {
                            <RadioGroupItem value="both" id="both" />
                         </Label>
                     </RadioGroup>
+                </div>
+                <Separator />
+                <div className='space-y-4'>
+                    <div>
+                        <h2 className="text-xl font-bold">Küresel</h2>
+                        <p className='text-muted-foreground'>Coğrafi sınırların dışına çık.</p>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+                        <Label htmlFor="global-mode" className="flex flex-col space-y-1">
+                            <span>Küresel Mod</span>
+                            <span className="font-normal leading-snug text-muted-foreground">
+                                Dünyanın her yerinden insanlarla eşleş.
+                            </span>
+                        </Label>
+                        <Switch
+                            id="global-mode"
+                            checked={userProfile?.globalModeEnabled || false}
+                            onCheckedChange={handleGlobalModeChange}
+                        />
+                    </div>
                 </div>
             </main>
         </div>
