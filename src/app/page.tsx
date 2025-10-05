@@ -10,12 +10,11 @@ import googleLogo from '@/img/googlelogin.png';
 import { langTr } from '@/languages/tr';
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useAuth, useFirestore } from '@/firebase';
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -55,12 +54,26 @@ export default function WelcomePage() {
                 profilePicture: user.photoURL,
                 uid: user.uid,
             };
+            
+            // If the document doesn't exist at all, we can pre-populate some basic info
+            if (!userDoc.exists()) {
+                const initialProfileData = {
+                    uid: user.uid,
+                    email: user.email || '',
+                    fullName: user.displayName || '',
+                    profilePicture: user.photoURL || '',
+                    images: user.photoURL ? [user.photoURL] : [],
+                };
+                await setDoc(userDocRef, initialProfileData, { merge: true });
+            }
+
             // Store data in session storage to pass to the signup page
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
             router.push("/kayit-ol");
         }
 
     } catch (error: any) {
+        console.error("Google Sign-In Error:", error);
         toast({
             title: t.login.errors.googleLoginFailedTitle,
             description: error.message || t.login.errors.googleLoginFailed,

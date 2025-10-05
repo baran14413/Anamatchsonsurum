@@ -1,8 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { UserProfile } from '@/lib/types';
 import Image from 'next/image';
+import { Badge } from './ui/badge';
+import { ChevronUp, Eye } from 'lucide-react';
 
 interface ProfileCardProps {
   profile: UserProfile;
@@ -23,12 +26,11 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
   // Reset image index when profile changes
   useEffect(() => {
     setImageIndex(0);
-  }, [profile.id]);
+  }, [profile.uid]);
   
   const age = calculateAge(profile.dateOfBirth);
   const totalImages = profile.images?.length || 0;
-  const currentImage = (profile.images && profile.images.length > 0) ? profile.images[imageIndex] : null;
-
+  const currentImage = (profile.images && profile.images.length > 0) ? profile.images[imageIndex] : 'https://picsum.photos/seed/placeholder/600/800';
 
   const handleAreaClick = (e: React.MouseEvent, side: 'left' | 'right') => {
     e.stopPropagation();
@@ -74,25 +76,32 @@ export default function ProfileCard({ profile }: ProfileCardProps) {
           </>
         )}
 
-        {currentImage ? (
-          <Image
+        <Image
             src={currentImage}
             alt={profile.fullName || 'Profile image'}
             fill
             style={{ objectFit: 'cover' }}
             className="pointer-events-none"
             priority
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-            <p className="text-gray-500">No image</p>
-          </div>
-        )}
+        />
 
         {/* Profile Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white z-10 pointer-events-none">
-          <h3 className="text-2xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
-          {profile.bio && <p className="text-sm mt-1">{profile.bio}</p>}
+        <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 to-transparent text-white z-10 pointer-events-none">
+            <div className='flex items-center justify-between'>
+                <div>
+                    <Badge variant="secondary" className='bg-green-500/80 text-white border-none mb-2'>Yeni üye</Badge>
+                    <h3 className="text-4xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
+                    {profile.lookingFor && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <Eye className="w-4 h-4" />
+                            <p className="text-sm">{profile.lookingFor}</p>
+                        </div>
+                    )}
+                </div>
+                <div className='self-end p-2 rounded-full border border-white/50 bg-black/20'>
+                    <ChevronUp className='w-6 h-6' />
+                </div>
+            </div>
         </div>
     </div>
   );
