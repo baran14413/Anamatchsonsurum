@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -108,6 +109,15 @@ export default function WelcomePage() {
                    <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
                 )}
                 {t.welcome.continueWithGoogle}
+              </Button>
+               <Button
+                disabled={true}
+                variant="outline"
+                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm relative"
+              >
+                <Icons.logo width={24} height={24} className="mr-4" />
+                {t.welcome.continueWithEmail}
+                 <Badge variant="secondary" className="absolute right-4">Yakında</Badge>
               </Button>
           </div>
         </div>

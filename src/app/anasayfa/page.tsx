@@ -25,54 +25,44 @@ export default function AnasayfaPage() {
 
       setIsLoading(true);
       try {
-        // 1. Get IDs of users the current user has already interacted with
-        const userInteractionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-        const userInteractionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+        // 1. Get IDs of users the current user has already interacted with from the `matches` collection
+        const interactionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const interactionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
 
         const [interactionsSnapshot1, interactionsSnapshot2] = await Promise.all([
-          getDocs(userInteractionsQuery1),
-          getDocs(userInteractionsQuery2),
+            getDocs(interactionsQuery1),
+            getDocs(interactionsQuery2)
         ]);
 
         const interactedUserIds = new Set<string>();
         interactionsSnapshot1.forEach(doc => {
-            const data = doc.data();
-            if (data.user2Id) interactedUserIds.add(data.user2Id);
+            interactedUserIds.add(doc.data().user2Id);
         });
         interactionsSnapshot2.forEach(doc => {
-            const data = doc.data();
-            if (data.user1Id) interactedUserIds.add(data.user1Id);
+            interactedUserIds.add(doc.data().user1Id);
         });
-
-        // Add current user to interacted set to filter them out
+        
+        // Add current user to the set to filter them out
         interactedUserIds.add(user.uid);
-        
-        const interactedIdsArray = Array.from(interactedUserIds);
 
-        // 2. Fetch users who are NOT in the interacted list.
-        // Firestore 'not-in' query requires a non-empty array.
-        let potentialMatchesQuery;
-        if (interactedIdsArray.length > 0) {
-            potentialMatchesQuery = query(collection(firestore, 'users'), where('uid', 'not-in', interactedIdsArray));
-        } else {
-            potentialMatchesQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
-        }
-        
-        const usersSnapshot = await getDocs(potentialMatchesQuery);
-        
+        // 2. Fetch all users from the 'users' collection
+        const allUsersQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
+        const usersSnapshot = await getDocs(allUsersQuery);
+
+        // 3. Filter out users who have been interacted with on the client side
         const potentialMatches: UserProfile[] = [];
         usersSnapshot.forEach(doc => {
-            const userData = doc.data() as UserProfile;
-             if (userData && userData.uid) {
+            const userData = doc.data();
+             if (userData && userData.uid && !interactedUserIds.has(userData.uid)) {
                 potentialMatches.push({
                     id: doc.id,
                     ...userData,
-                    images: userData.images || [], 
-                });
+                    images: userData.images || [], // Ensure images is always an array
+                } as UserProfile);
             }
         });
         
-        // 3. Shuffle for randomness
+        // 4. Shuffle for randomness
         const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
         setProfiles(shuffledMatches);
 
