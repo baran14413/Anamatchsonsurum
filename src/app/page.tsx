@@ -74,7 +74,7 @@ export default function WelcomePage() {
             }
 
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
-            router.push("/kurallar");
+            router.push("/kayit-ol");
         }
 
     } catch (error: any) {

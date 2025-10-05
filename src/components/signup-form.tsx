@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, CheckCircle, XCircle, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Trash2, Pencil } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, CheckCircle, XCircle, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -28,6 +28,7 @@ import Image from "next/image";
 import CircularProgress from "./circular-progress";
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "./ui/checkbox";
 
 
 const eighteenYearsAgo = new Date();
@@ -54,7 +55,7 @@ const formSchema = z.object({
     loveLanguage: z.string({ required_error: "Please choose one." }).min(1),
     educationLevel: z.string({ required_error: "Please choose one." }).min(1),
     zodiacSign: z.string({ required_error: "Please choose one." }).min(1),
-    interests: z.array(z.string()).min(1).max(10, { message: 'You can select up to 10 interests.'}),
+    interests: z.array(z.string()).min(1).max(5, { message: 'You can select up to 5 interests.'}),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
     uid: z.string(),
     email: z.string().email(),
@@ -72,20 +73,7 @@ const lookingForOptions = [
     { id: 'whatever', icon: Hand },
 ];
 
-const interestIcons: { [key: string]: React.ElementType } = {
-  Tent,
-  Globe,
-  DoorOpen,
-  Home,
-  Sparkles,
-  Music,
-  Gamepad2,
-  Sprout,
-  MessageCircle,
-  Dumbbell,
-  Clapperboard,
-  Paintbrush
-};
+const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
 
 type PhotoSlot = {
     file: File | null;
@@ -215,6 +203,8 @@ export default function SignupForm() {
   
   const [countries, setCountries] = useState<ICountry[]>([]);
   const [states, setStates] = useState<IState[]>([]);
+  const [cities, setCities] = useState<ICity[]>([]);
+
   
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedState, setSelectedState] = useState<string | undefined>();
@@ -225,6 +215,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(getInitialPhotoSlots);
+  const [interestSearch, setInterestSearch] = useState("");
   
   const [step, setStep] = useState(0); 
 
@@ -296,6 +287,9 @@ export default function SignupForm() {
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
   const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.preview).length, [photoSlots]);
+  const filteredInterests = useMemo(() => {
+    return allInterests.filter(interest => interest.toLowerCase().includes(interestSearch.toLowerCase()));
+  }, [interestSearch]);
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -314,7 +308,7 @@ export default function SignupForm() {
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
     if (step === 0) {
-      router.push('/kurallar'); 
+      router.push('/'); 
     } else {
       setStep((prev) => prev - 1)
     }
@@ -702,6 +696,7 @@ export default function SignupForm() {
                                 onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedState(value);
+                                    setCities(City.getCitiesOfState(selectedCountry!, value));
                                     form.setValue('address.city', '');
                                 }}
                                 value={field.value}
@@ -726,22 +721,22 @@ export default function SignupForm() {
                         </FormItem>
                         )}
                     />
-                     <FormField
+                    <FormField
                         control={form.control}
                         name="address.city"
                         render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>İlçe</FormLabel>
-                             <FormControl>
-                                <Input 
-                                    placeholder="İlçenizi yazın (isteğe bağlı)" 
-                                    {...field}
-                                    value={field.value || ''}
-                                    disabled={!selectedState}
-                                />
-                             </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                            <FormItem>
+                                <FormLabel>İlçe</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        placeholder="İlçenizi yazın" 
+                                        {...field}
+                                        value={field.value || ''}
+                                        disabled={!selectedState}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )}
                     />
                 </div>
@@ -772,54 +767,59 @@ export default function SignupForm() {
               )}
               {step === 6 && (
                   <div className="flex-1 flex flex-col min-h-0">
-                      <div className="shrink-0">
-                        <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
-                        <p className="text-muted-foreground">{t.signup.step11.description}</p>
-                      </div>
-                       <Controller
-                          name="interests"
-                          control={form.control}
-                          render={({ field }) => (
-                             <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
-                               <div className="space-y-6">
-                                {t.signup.step11.categories.map((category: {title: string, icon: string, options: string[]}) => {
-                                    const Icon = interestIcons[category.icon] || Tent;
-                                    return (
-                                        <div key={category.title}>
-                                            <h2 className="text-lg font-semibold flex items-center gap-2 mb-2">
-                                                <Icon className="w-5 h-5" /> {category.title}
-                                            </h2>
-                                            <div className="flex flex-wrap gap-2">
-                                                {category.options.map(option => {
-                                                    const isSelected = field.value?.includes(option);
-                                                    return (
-                                                        <Button
-                                                            key={option}
-                                                            type="button"
-                                                            variant={isSelected ? 'default' : 'outline'}
-                                                            onClick={() => {
-                                                                if (isSelected) {
-                                                                    field.onChange(field.value?.filter(item => item !== option));
-                                                                } else if (field.value && field.value.length < 10) {
-                                                                    field.onChange([...field.value, option]);
-                                                                } else if (!field.value) {
-                                                                    field.onChange([option]);
-                                                                }
-                                                            }}
-                                                            className="rounded-full"
-                                                        >
-                                                            {option}
-                                                        </Button>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                               </div>
-                            </ScrollArea>
-                          )}
+                    <div className="shrink-0">
+                      <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
+                      <p className="text-muted-foreground">{t.signup.step11.description.replace('{count}', '5')}</p>
+                      <div className="relative mt-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          placeholder="İlgi alanlarında ara..." 
+                          className="pl-10" 
+                          value={interestSearch}
+                          onChange={(e) => setInterestSearch(e.target.value)}
                         />
+                      </div>
+                       <FormMessage className="pt-2">
+                          {form.formState.errors.interests?.message}
+                      </FormMessage>
+                    </div>
+                    <Controller
+                      name="interests"
+                      control={form.control}
+                      render={({ field }) => (
+                        <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
+                          <div className="space-y-1">
+                            {filteredInterests.map(interest => {
+                              const isSelected = field.value?.includes(interest);
+                              return (
+                                <FormItem 
+                                  key={interest}
+                                  className="flex flex-row items-center space-x-3 space-y-0 p-3 rounded-md hover:bg-accent cursor-pointer"
+                                  onClick={() => {
+                                      if (isSelected) {
+                                          field.onChange(field.value?.filter(item => item !== interest));
+                                      } else if (field.value && field.value.length < 5) {
+                                          field.onChange([...field.value, interest]);
+                                      } else if (!field.value) {
+                                          field.onChange([interest]);
+                                      }
+                                  }}
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={isSelected}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal cursor-pointer w-full">
+                                    {interest}
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            })}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    />
                   </div>
               )}
               {step === 7 && (

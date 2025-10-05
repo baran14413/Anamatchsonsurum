@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
-const authFlowRoutes = ['/', '/login', '/kurallar', '/tos', '/privacy', '/cookies'];
+const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/kayit-ol';
 
 
