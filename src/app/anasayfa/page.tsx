@@ -171,8 +171,8 @@ export default function AnasayfaPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex-1 flex flex-col justify-end">
-          <div className="relative flex-grow flex items-center justify-center p-4">
+        <div className="flex-1 grid grid-rows-[1fr_auto]">
+          <div className="relative grid items-end justify-center p-4">
               {activeProfile ? (
                  <ProfileCard
                     key={activeProfile.uid}
@@ -180,7 +180,7 @@ export default function AnasayfaPage() {
                     onSwipe={handleSwipe}
                   />
               ) : (
-                <div className="text-center">
+                <div className="text-center self-center">
                   <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
                   <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
                    <button onClick={handleReset} className="mt-4 p-2 bg-blue-500 text-white rounded-full">Yeniden Başla</button>
