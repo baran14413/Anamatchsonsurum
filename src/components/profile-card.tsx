@@ -50,15 +50,16 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     const velocity = info.velocity.x;
 
     if (offset > SWIPE_THRESHOLD || velocity > 500) {
-      onSwipe('liked');
+      handleAction('liked');
     } else if (offset < -SWIPE_THRESHOLD || velocity < -500) {
-      onSwipe('disliked');
+      handleAction('disliked');
     }
   };
 
-  const handleSwipe = (action: 'liked' | 'disliked') => {
+  const handleAction = (action: 'liked' | 'disliked') => {
     if (!onSwipe || !isDraggable) return;
-    onSwipe(action);
+    setIsVisible(false); 
+    setTimeout(() => onSwipe(action), 300);
   };
   
 
@@ -177,10 +178,10 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                             )}
                                             
                                             <div className="py-10 flex justify-center gap-4">
-                                                 <Button onClick={() => handleSwipe('disliked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-red-500 text-red-500 hover:bg-red-500/10">
+                                                 <Button onClick={() => handleAction('disliked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-red-500 text-red-500 hover:bg-red-500/10">
                                                     <X className="h-10 w-10" />
                                                 </Button>
-                                                 <Button onClick={() => handleSwipe('liked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-green-400 text-green-400 hover:bg-green-400/10">
+                                                 <Button onClick={() => handleAction('liked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-green-400 text-green-400 hover:bg-green-400/10">
                                                     <Heart className="h-10 w-10" />
                                                 </Button>
                                             </div>
