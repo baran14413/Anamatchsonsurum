@@ -49,8 +49,31 @@ export default function ProfilePage() {
         const ageDate = new Date(ageDifMs);
         return Math.abs(ageDate.getUTCFullYear() - 1970);
     };
+    
+    const calculateProfileCompletion = (): number => {
+        if (!userProfile) return 0;
+        
+        let score = 0;
+        
+        // Basic profile info is worth 10 points
+        if (userProfile.fullName && userProfile.dateOfBirth && userProfile.gender && userProfile.location && userProfile.lookingFor) {
+            score += 10;
+        }
+        
+        // Each photo is worth 10 points, up to 6 photos
+        const photoCount = userProfile.images?.length || 0;
+        score += Math.min(photoCount, 6) * 10;
+
+        // The remaining 30 points logic will be added here later.
+        // For now, the max score is 70. We can represent this as a percentage of the current max.
+        
+        const maxCurrentScore = 70;
+        
+        return Math.round((score / maxCurrentScore) * 100);
+    }
 
     const age = calculateAge(userProfile?.dateOfBirth);
+    const profileCompletionPercentage = calculateProfileCompletion();
 
 
   return (
@@ -65,7 +88,7 @@ export default function ProfilePage() {
               <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
              <div className="absolute -bottom-1 -right-1">
-                 <CircularProgress progress={5} size={44} />
+                 <CircularProgress progress={profileCompletionPercentage} size={44} />
              </div>
           </div>
           

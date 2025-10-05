@@ -192,6 +192,10 @@ export default function ProfileCompletionForm() {
         form.setValue('location', { latitude, longitude }, { shouldValidate: true });
         setLocationStatus('success');
         setIsLocationLoading(false);
+        toast({
+            title: "Başarılı",
+            description: "Konumun başarıyla alındı!",
+        });
       },
       (error) => {
         let message = "Konum alınırken bir hata oluştu.";
@@ -330,13 +334,13 @@ export default function ProfileCompletionForm() {
     }
 
     const fieldsByStep: (keyof SignupFormValues)[] = [
-        ['name'], // 0
-        ['location'], // 1
-        ['photos'], // 2
-        ['dateOfBirth'], // 3
-        ['gender'], // 4
-        ['lookingFor'], // 5
-        ['distancePreference'], // 6
+        ['name'],
+        ['location'],
+        ['photos'],
+        ['dateOfBirth'],
+        ['gender'],
+        ['lookingFor'],
+        ['distancePreference'],
     ][step] as any;
     
     const isValid = await form.trigger(fieldsByStep);
@@ -422,9 +426,9 @@ export default function ProfileCompletionForm() {
                      <FormMessage className="pt-2">{form.formState.errors.photos?.message}</FormMessage>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       {photoSlots.map((slot, index) => (
-                        <div key={index} className={`relative aspect-[3/4] rounded-lg ${index === 0 ? "col-span-1 row-span-2" : ""}`}>
+                        <div key={index} className="relative aspect-square">
                           <div onClick={() => openFilePicker(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
                             {slot.preview ? (
                               <>
