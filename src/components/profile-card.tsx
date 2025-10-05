@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Info, Heart, X as XIcon } from 'lucide-react';
