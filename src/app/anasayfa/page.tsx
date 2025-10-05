@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Undo, X, Star, Heart, Zap } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -55,7 +55,7 @@ export default function AnasayfaPage() {
       // 3. Filter out the current user and users who have been interacted with.
       const potentialMatches: UserProfile[] = [];
       allUsersSnapshot.forEach(doc => {
-          const userData = doc.data();
+          const userData = doc.data() as Partial<UserProfile>;
           // Ensure the doc is a valid profile and not an interacted one
           if (userData.uid && !interactedUserIds.has(userData.uid) && userData.images && userData.images.length > 0) {
               potentialMatches.push({
@@ -171,8 +171,7 @@ export default function AnasayfaPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="flex-1 grid grid-rows-[1fr_auto]">
-          <div className="relative grid items-end justify-center p-4">
+        <div className="flex-1 flex items-center justify-center p-4">
               {activeProfile ? (
                  <ProfileCard
                     key={activeProfile.uid}
@@ -186,32 +185,6 @@ export default function AnasayfaPage() {
                    <button onClick={handleReset} className="mt-4 p-2 bg-blue-500 text-white rounded-full">Yeniden Başla</button>
                 </div>
               )}
-          </div>
-
-          {/* Action Buttons */}
-           {activeProfile && (
-            <div className="flex justify-center items-center gap-4 p-4 z-10">
-              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-transform transform hover:scale-110">
-                <Undo size={28} />
-              </button>
-              <button 
-                onClick={() => handleSwipe('left')}
-                className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-transform transform hover:scale-110">
-                <X size={40} strokeWidth={2.5} />
-              </button>
-              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-blue-400 hover:bg-blue-50 transition-transform transform hover:scale-110">
-                <Star size={28} className="fill-current" />
-              </button>
-              <button 
-                onClick={() => handleSwipe('right')}
-                className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-green-500 hover:bg-green-50 transition-transform transform hover:scale-110">
-                <Heart size={40} className="fill-current" />
-              </button>
-              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-purple-500 hover:bg-purple-50 transition-transform transform hover:scale-110">
-                <Zap size={28} className="fill-current" />
-              </button>
-            </div>
-           )}
         </div>
       )}
     </div>
