@@ -132,23 +132,9 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>();
         interactedUids.add(user.uid); 
         
-        if (!options?.reset) {
-            const interactionsQuery = query(
-              collection(firestore, 'matches'),
-              or(
-                where('user1Id', '==', user.uid),
-                where('user2Id', '==', user.uid)
-              )
-            );
-            const interactionsSnapshot = await getDocs(interactionsQuery);
+        // This is the key change. We are NOT filtering out users who have been interacted with.
+        // The main card stack is ephemeral. The "Likes" page is the source of truth for potential matches.
 
-            interactionsSnapshot.forEach(doc => {
-                const { user1Id, user2Id } = doc.data();
-                const otherUserId = user1Id === user.uid ? user2Id : user1Id;
-                interactedUids.add(otherUserId);
-            });
-        }
-        
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
         const isGlobalMode = userProfile?.globalModeEnabled;
@@ -167,7 +153,7 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (!p.uid || interactedUids.has(p.uid)) return false;
+                if (!p.uid || p.uid === user.uid) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 // Age filter
