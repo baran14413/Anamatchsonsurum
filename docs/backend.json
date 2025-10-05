@@ -13,7 +13,8 @@
         },
         "fullName": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "The user's full name, max 14 characters.",
+          "maxLength": 14
         },
         "dateOfBirth": {
           "type": "string",

@@ -30,7 +30,10 @@ const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-    name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
+    name: z.string()
+      .min(2, { message: "İsim en az 2 karakter olmalıdır." })
+      .max(14, { message: "İsim en fazla 14 karakter olabilir." })
+      .regex(/^[a-zA-Z\sçÇğĞıİöÖşŞüÜ]+$/, { message: "İsim sadece harf içerebilir." }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
         .refine(date => !isNaN(date.getTime()), { message: "Lütfen geçerli bir tarih girin." }),
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
