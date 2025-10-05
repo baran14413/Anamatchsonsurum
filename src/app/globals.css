@@ -15,6 +15,16 @@ input, textarea {
   user-select: text; /* Standard syntax */
 }
 
+/* Experimental feature to prevent screen capture on "view once" media */
+@layer utilities {
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        .screenshot-secure-backdrop::backdrop {
+            -webkit-backdrop-filter: blur(10px) !important;
+            backdrop-filter: blur(10px) !important;
+            background-color: rgba(0, 0, 0, 0.9) !important;
+        }
+    }
+}
 
 @layer base {
   :root {
