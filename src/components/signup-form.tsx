@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -19,13 +18,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, Search, MapPin } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
-import { Checkbox } from "./ui/checkbox";
+import { Slider } from "./ui/slider";
+import googleLogo from '@/img/googlelogin.png';
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -46,7 +46,7 @@ const formSchema = z.object({
         longitude: z.number(),
     }),
     school: z.string().optional(),
-    interests: z.array(z.string()).min(1).max(5, { message: 'En fazla 5 ilgi alanı seçebilirsin.'}),
+    distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
     photos: z.array(z.string().url()).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
 });
 
@@ -81,8 +81,6 @@ const lookingForOptions = [
     { id: 'not-sure', icon: Sparkles },
     { id: 'whatever', icon: Hand },
 ];
-
-const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
 
 type PhotoSlot = {
     file: File | null;
@@ -154,17 +152,17 @@ export default function ProfileCompletionForm() {
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [distanceValue, setDistanceValue] = useState(80);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots());
-  const [interestSearch, setInterestSearch] = useState("");
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       lookingFor: "",
-      interests: [],
       photos: photoSlots.map(s => s.preview).filter(p => p) as string[],
+      distancePreference: 80,
     },
     mode: "onChange",
   });
@@ -203,17 +201,17 @@ export default function ProfileCompletionForm() {
     }
 
     navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
             const { latitude, longitude } = position.coords;
             form.setValue('location', { latitude, longitude });
-            // We don't need to geocode anymore, just confirm success.
             setLocationStatus('success');
             setIsLocationLoading(false);
         },
         (error) => {
             let message = "Konum alınırken bir hata oluştu.";
-            if (error.code === error.PERMISSION_DENIED) message = t.ayarlarKonum.errors.permissionDenied;
-            
+            if (error.code === error.PERMISSION_DENIED) {
+                 message = "Konum izni reddedildi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
+            }
             setLocationError(message);
             setLocationStatus('error');
             setIsLocationLoading(false);
@@ -221,11 +219,7 @@ export default function ProfileCompletionForm() {
     );
   };
   
-  const selectedInterests = form.watch('interests') || [];
   const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.preview).length, [photoSlots]);
-  const filteredInterests = useMemo(() => {
-    return allInterests.filter(interest => interest.toLowerCase().includes(interestSearch.toLowerCase()));
-  }, [interestSearch]);
 
 
   const nextStep = () => setStep((prev) => prev + 1);
@@ -278,11 +272,11 @@ export default function ProfileCompletionForm() {
         gender: data.gender,
         lookingFor: data.lookingFor,
         school: data.school,
-        interests: data.interests,
+        distancePreference: data.distancePreference,
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
         location: data.location,
-        address: data.address, // Still here, but might be empty. That's OK.
+        address: data.address,
       };
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
@@ -337,6 +331,13 @@ export default function ProfileCompletionForm() {
       const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
+  
+  const handleDistanceChange = (value: number[]) => {
+      const newDistance = value[0];
+      setDistanceValue(newDistance);
+      form.setValue('distancePreference', newDistance, { shouldValidate: true });
+  };
+
 
   const handleNextStep = async () => {
     const fieldsByStep: (keyof SignupFormValues | `address.country` | `address.state` | 'location')[] = [
@@ -346,7 +347,7 @@ export default function ProfileCompletionForm() {
         ['gender'], // 3
         ['lookingFor'], // 4
         ['school'], // 5
-        ['interests'], // 6
+        ['distancePreference'], // 6
     ][step] as any;
     
     const isValid = await form.trigger(fieldsByStep);
@@ -356,6 +357,8 @@ export default function ProfileCompletionForm() {
       else nextStep();
     }
   };
+
+  const isGoogleUser = user?.providerData.some(p => p.providerId === 'google.com');
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -370,6 +373,23 @@ export default function ProfileCompletionForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
+               <div className="text-center mb-6">
+                 <h1 className="text-3xl font-bold">Profilini Tamamla</h1>
+                 {isGoogleUser && user && (
+                    <div className="mt-4 flex items-center justify-center gap-3 rounded-lg border bg-muted p-3">
+                         <Avatar className="h-8 w-8">
+                           <AvatarImage src={user.photoURL ?? ''} />
+                           <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                         </Avatar>
+                         <div className="text-left">
+                            <p className="text-sm font-semibold">{user.displayName}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                         </div>
+                         <Image src={googleLogo} alt="Google logo" width={20} height={20} className="ml-auto" />
+                    </div>
+                 )}
+               </div>
+
               {step === 0 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <MapPin className="w-20 h-20 text-primary" />
@@ -392,8 +412,7 @@ export default function ProfileCompletionForm() {
                     {locationStatus === 'error' && (
                          <div className="flex flex-col items-center gap-2 text-destructive">
                            <XCircle className="w-12 h-12" />
-                           <p className="font-semibold text-lg">{t.ayarlarKonum.errors.permissionDenied}</p>
-                           <p className="text-muted-foreground max-w-xs">{locationError}</p>
+                           <p className="font-semibold text-lg">{locationError}</p>
                            <Button onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
                         </div>
                     )}
@@ -517,37 +536,34 @@ export default function ProfileCompletionForm() {
                 </>
               )}
               {step === 6 && (
-                  <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex flex-col h-full">
                     <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
-                      <p className="text-muted-foreground">{t.signup.step11.description.replace('{count}', '5')}</p>
-                      <div className="relative mt-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="İlgi alanlarında ara..." className="pl-10" value={interestSearch} onChange={(e) => setInterestSearch(e.target.value)} />
-                      </div>
-                       <FormMessage className="pt-2">{form.formState.errors.interests?.message}</FormMessage>
+                        <h1 className="text-3xl font-bold">{t.signup.step7.title}</h1>
+                        <p className="text-muted-foreground">{t.signup.step7.description}</p>
                     </div>
-                    <Controller name="interests" control={form.control} render={({ field }) => (
-                        <ScrollArea className="flex-1 -mr-6 pr-5 pt-4">
-                          <div className="space-y-1">
-                            {filteredInterests.map(interest => {
-                              const isSelected = field.value?.includes(interest);
-                              return (
-                                <FormItem key={interest} className="flex flex-row items-center space-x-3 space-y-0 p-3 rounded-md hover:bg-accent cursor-pointer" onClick={() => {
-                                      if (isSelected) field.onChange(field.value?.filter(item => item !== interest));
-                                      else if (field.value && field.value.length < 5) field.onChange([...field.value, interest]);
-                                      else if (!field.value) field.onChange([interest]);
-                                  }}>
-                                  <FormControl><Checkbox checked={isSelected} /></FormControl>
-                                  <FormLabel className="font-normal cursor-pointer w-full">{interest}</FormLabel>
-                                </FormItem>
-                              )
-                            })}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    />
-                  </div>
+                    <div className="flex-1 flex flex-col justify-center gap-8">
+                        <div className="flex justify-between items-baseline">
+                            <FormLabel className="text-base">Mesafe Tercihi</FormLabel>
+                            <span className="text-xl font-bold text-foreground">{distanceValue} Km</span>
+                        </div>
+                        <Controller
+                            name="distancePreference"
+                            control={form.control}
+                            render={({ field }) => (
+                                <Slider
+                                    defaultValue={[field.value || 80]}
+                                    max={160}
+                                    min={1}
+                                    step={1}
+                                    onValueChange={handleDistanceChange}
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                         <p className="text-center text-sm text-muted-foreground">{t.signup.step7.info}</p>
+                    </div>
+                     <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
+                </div>
               )}
             </div>
 
@@ -560,8 +576,7 @@ export default function ProfileCompletionForm() {
                 isSubmitting ||
                 (step === 0 && locationStatus !== 'success') ||
                 (step === 1 && uploadedPhotoCount < 2) ||
-                (step === 2 && ageStatus !== 'valid') ||
-                (step === 6 && selectedInterests.length < 1)
+                (step === 2 && ageStatus !== 'valid')
               }
             >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === totalSteps ? "Profili Tamamla" : t.signup.common.next)}
@@ -572,5 +587,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
