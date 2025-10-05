@@ -156,7 +156,6 @@ export default function GalleryEditPage() {
 
         await updateDoc(doc(firestore, "users", user.uid), {
             images: finalOrderedImages,
-            profilePicture: finalOrderedImages[0]?.url || '',
         });
 
         toast({
