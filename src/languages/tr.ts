@@ -1,4 +1,5 @@
 
+
 export const langTr = {
   common: {
     back: 'Geri',
@@ -92,6 +93,8 @@ export const langTr = {
       dayPlaceholder: 'GG',
       monthPlaceholder: 'AA',
       yearPlaceholder: 'YYYY',
+      ageConfirm: 'Tebrikler! 18 yaşından büyüksünüz.',
+      ageError: "18 yaşından küçükler uygulamayı kullanamaz.",
       errors: {
         minAge: 'En az 18 yaşında olmalısın.',
         invalidDate: 'Geçerli bir tarih girin.'
@@ -609,5 +612,7 @@ export const langTr = {
     profile: 'Profil',
   }
 };
+
+    
 
     

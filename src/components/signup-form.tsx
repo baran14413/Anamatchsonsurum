@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -88,6 +88,8 @@ const interestIcons: { [key: string]: React.ElementType } = {
 type PhotoSlot = {
     file: File | null;
     preview: string | null;
+    progress: number;
+    isUploading: boolean;
 };
 
 
@@ -140,9 +142,11 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
             } else {
                 onChange(new Date('invalid'));
             }
+        } else {
+            onChange(new Date('invalid')); // Also trigger invalid for incomplete dates
         }
     };
-
+    
     return (
         <div className="flex items-center gap-2">
             <Input
@@ -189,6 +193,8 @@ export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(0); // Start at step 0 for email/password
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
+  const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
+
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -196,7 +202,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, progress: 0, isUploading: false }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -234,7 +240,7 @@ export default function SignupForm() {
             
             if (googleData.profilePicture) {
                 const initialSlots = [...photoSlots];
-                initialSlots[0] = { file: null, preview: googleData.profilePicture };
+                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
                 setPhotoSlots(initialSlots);
                 // Also update the form state so validation works correctly
                 form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
@@ -246,7 +252,24 @@ export default function SignupForm() {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form]); // Only run once on mount
+  }, []); // Only run once on mount
+
+  const handleDateOfBirthChange = (date: Date) => {
+    form.setValue('dateOfBirth', date, { shouldValidate: true });
+    if (isNaN(date.getTime())) {
+        setAgeStatus('unknown');
+        return;
+    }
+    const ageDifMs = Date.now() - date.getTime();
+    const ageDate = new Date(ageDifMs);
+    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+    if (age >= 18) {
+        setAgeStatus('valid');
+    } else {
+        setAgeStatus('invalid');
+    }
+  };
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
@@ -271,7 +294,7 @@ export default function SignupForm() {
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
     if (step === 0) {
-      router.push('/'); 
+      router.push('/kurallar'); 
     } else if (step === 1 && isGoogleSignup) {
        router.push('/'); // If it was a Google signup, go back to welcome screen from step 1
     } else {
@@ -301,32 +324,46 @@ export default function SignupForm() {
         if (!userId) {
             throw new Error("User ID could not be determined.");
         }
+        
+      const filesToUpload = photoSlots.filter(p => p.file);
 
-      const photoUrls: string[] = [];
-      const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
+      // Set isUploading for visual feedback
+      setPhotoSlots(prev => prev.map(slot => filesToUpload.some(f => f.file === slot.file) ? { ...slot, isUploading: true } : slot));
 
-      const existingUrls = photoSlots
-        .map(p => p.preview)
-        .filter((url): url is string => !!url && (url.startsWith('http') || url.startsWith('https://lh3.googleusercontent.com')));
+      const uploadPromises = filesToUpload.map(slot => {
+        const file = slot.file!;
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // This is a mock upload for demonstration.
+        // In a real app, you'd use XMLHttpRequest to get progress.
+        // Here we simulate it.
+        return new Promise<string>((resolve, reject) => {
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            }).then(response => {
+                 if (!response.ok) {
+                    return response.json().then(err => reject(new Error(err.error || t.signup.errors.uploadFailed.replace('{fileName}', file.name))));
+                 }
+                 return response.json();
+            }).then(result => {
+                setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, progress: 100, isUploading: false } : s));
+                resolve(result.url);
+            }).catch(error => {
+                 setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, progress: 0, isUploading: false } : s));
+                reject(error);
+            });
+        });
+      });
 
-      for (const file of filesToUpload) {
-        if (file) {
-          const formData = new FormData();
-          formData.append('file', file);
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          if (!response.ok) {
-            const errorResult = await response.json();
-            throw new Error(errorResult.error || t.signup.errors.uploadFailed.replace('{fileName}', file.name));
-          }
-          const result = await response.json();
-          photoUrls.push(result.url);
-        }
-      }
+      const uploadedUrls = await Promise.all(uploadPromises);
       
-      const allPhotoUrls = [...existingUrls, ...photoUrls];
+      const existingUrls = photoSlots
+        .filter(p => !p.file && p.preview)
+        .map(p => p.preview!);
+
+      const allPhotoUrls = [...existingUrls, ...uploadedUrls];
 
       const userProfile = {
         uid: userId,
@@ -357,7 +394,6 @@ export default function SignupForm() {
 
       await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
       
-      // Clear the session storage item after successful registration
       sessionStorage.removeItem('googleSignupData');
       
       router.push("/anasayfa");
@@ -373,8 +409,8 @@ export default function SignupForm() {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Only set loading to false on error, success leads to navigation
+      setPhotoSlots(prev => prev.map(s => ({ ...s, isUploading: false, progress: 0 })));
     }
   }
   
@@ -387,7 +423,7 @@ export default function SignupForm() {
       const file = e.target.files[0];
       const preview = URL.createObjectURL(file);
       const newSlots = [...photoSlots];
-      newSlots[activeSlot] = { ...newSlots[activeSlot], file, preview };
+      newSlots[activeSlot] = { file, preview, progress: 0, isUploading: false };
       setPhotoSlots(newSlots);
       
       const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
@@ -398,6 +434,7 @@ export default function SignupForm() {
   };
 
   const openFilePicker = (index: number) => {
+      if(isLoading) return;
       // Allow picking a file for any slot, but if it's an empty slot,
       // find the first actual empty one to fill.
       const targetIndex = photoSlots[index].preview ? index : uploadedPhotoCount;
@@ -407,6 +444,7 @@ export default function SignupForm() {
   
   const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
       e.stopPropagation(); 
+      if(isLoading) return;
       const newSlots = [...photoSlots];
       
       const deletedSlot = newSlots[index];
@@ -418,7 +456,7 @@ export default function SignupForm() {
       newSlots.splice(index, 1);
 
       // Add a new empty slot at the end
-      newSlots.push({ file: null, preview: null });
+      newSlots.push({ file: null, preview: null, progress: 0, isUploading: false });
       
       setPhotoSlots(newSlots);
       
@@ -568,7 +606,7 @@ export default function SignupForm() {
                         <FormControl>
                           <DateInput
                             value={field.value}
-                            onChange={field.onChange}
+                            onChange={handleDateOfBirthChange}
                             disabled={field.disabled}
                             t={t.signup.step3}
                           />
@@ -576,7 +614,19 @@ export default function SignupForm() {
                         <FormLabel className="text-muted-foreground pt-2 block">
                           {t.signup.step3.label}
                         </FormLabel>
-                        {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
+                         {ageStatus === 'valid' && (
+                            <div className="flex items-center text-green-600 mt-2">
+                                <CheckCircle className="mr-2 h-5 w-5" />
+                                <p>{t.signup.step3.ageConfirm}</p>
+                            </div>
+                        )}
+                        {ageStatus === 'invalid' && (
+                            <div className="flex items-center text-red-600 mt-2">
+                                <XCircle className="mr-2 h-5 w-5" />
+                                <p>{t.signup.step3.ageError}</p>
+                            </div>
+                        )}
+                        {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
                       </FormItem>
                     )}
                   />
@@ -994,27 +1044,34 @@ export default function SignupForm() {
                                   style={{ objectFit: "cover" }}
                                   className="rounded-lg"
                                 />
-                                <div className="absolute bottom-2 right-2 flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openFilePicker(index);
-                                    }}
-                                    className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </button>
-                                  {uploadedPhotoCount > 2 && (
+                                {slot.isUploading && (
+                                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                     <CircularProgress progress={slot.progress} size={60} />
+                                   </div>
+                                )}
+                                {!slot.isUploading && (
+                                  <div className="absolute bottom-2 right-2 flex gap-2">
                                     <button
                                       type="button"
-                                      onClick={(e) => handleDeletePhoto(e, index)}
-                                      className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openFilePicker(index);
+                                      }}
+                                      className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Pencil className="w-4 h-4" />
                                     </button>
-                                  )}
-                                </div>
+                                    {uploadedPhotoCount > 2 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleDeletePhoto(e, index)}
+                                        className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
@@ -1043,7 +1100,16 @@ export default function SignupForm() {
             </div>
 
           <div className="shrink-0 pt-6">
-            {step === 5 ? (
+            {step === 2 ? (
+                <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full h-14 rounded-full text-lg font-bold"
+                    disabled={isLoading || ageStatus !== 'valid'}
+                >
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
+                </Button>
+            ) : step === 5 ? (
               <Button
                 type="button"
                 onClick={handleLocationRequest}
@@ -1115,3 +1181,6 @@ export default function SignupForm() {
 
     
 
+
+
+    
