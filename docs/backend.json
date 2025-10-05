@@ -196,6 +196,14 @@
           "type": "string",
           "description": "Public ID of the image on Cloudinary for deletion."
         },
+        "isViewOnce": {
+          "type": "boolean",
+          "description": "If true, the image can only be viewed once."
+        },
+        "viewed": {
+            "type": "boolean",
+            "description": "If true, the 'view once' image has been viewed."
+        },
         "audioUrl": {
           "type": "string",
           "format": "uri",

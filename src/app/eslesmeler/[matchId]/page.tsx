@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
@@ -120,6 +121,12 @@ export default function ChatPage() {
 
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
     const [deletingMessage, setDeletingMessage] = useState<ChatMessage | null>(null);
+    
+    // --- State for Image Preview ---
+    const [imagePreview, setImagePreview] = useState<{file: File, url: string} | null>(null);
+    const [caption, setCaption] = useState('');
+    const [isViewOnce, setIsViewOnce] = useState(false);
+
 
     const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
@@ -187,7 +194,7 @@ export default function ChatPage() {
 
     const handleSendMessage = async (
         e?: React.FormEvent,
-        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number } = {}
+        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; isViewOnce?: boolean } = {}
     ) => {
         e?.preventDefault();
         if (!user || !firestore) return;
@@ -216,13 +223,16 @@ export default function ChatPage() {
             isRead: false,
         };
     
-        if (content.text?.trim()) {
+        if (content.imageUrl) {
             messageData.type = 'user';
-            messageData.text = content.text.trim();
-        } else if (content.imageUrl) {
-            messageData.type = 'user';
+            messageData.text = content.text; // Caption for image
             messageData.imageUrl = content.imageUrl;
             messageData.imagePublicId = content.imagePublicId;
+            messageData.isViewOnce = content.isViewOnce;
+            if(content.isViewOnce) messageData.viewed = false;
+        } else if (content.text?.trim()) {
+            messageData.type = 'user';
+            messageData.text = content.text.trim();
         } else if (content.audioUrl) {
             messageData.type = 'audio';
             messageData.audioUrl = content.audioUrl;
@@ -232,8 +242,9 @@ export default function ChatPage() {
         await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
     
         let lastMessageText = "Mesaj";
-        if (messageData.text) lastMessageText = messageData.text;
+        if (messageData.isViewOnce) lastMessageText = "📷 Tek seferlik fotoğraf";
         else if (messageData.imageUrl) lastMessageText = "📷 Fotoğraf";
+        else if (messageData.text) lastMessageText = messageData.text;
         else if (messageData.audioUrl) lastMessageText = "▶️ Sesli Mesaj";
     
         const lastMessageUpdate = {
@@ -249,14 +260,26 @@ export default function ChatPage() {
 
     const handleFileSelect = () => fileInputRef.current?.click();
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setImagePreview({ file, url: event.target?.result as string });
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset file input to allow selecting the same file again
+        if(fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleSendImage = async () => {
+        if (!imagePreview) return;
         setIsUploading(true);
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', imagePreview.file);
         
         try {
             const response = await fetch('/api/upload', {
@@ -270,7 +293,12 @@ export default function ChatPage() {
             }
 
             const { url, public_id } = await response.json();
-            await handleSendMessage(undefined, { imageUrl: url, imagePublicId: public_id });
+            await handleSendMessage(undefined, { 
+                text: caption, 
+                imageUrl: url, 
+                imagePublicId: public_id, 
+                isViewOnce 
+            });
 
         } catch (error: any) {
             toast({
@@ -280,7 +308,9 @@ export default function ChatPage() {
             });
         } finally {
             setIsUploading(false);
-            if(fileInputRef.current) fileInputRef.current.value = "";
+            setImagePreview(null);
+            setCaption('');
+            setIsViewOnce(false);
         }
     };
     
@@ -711,7 +741,7 @@ export default function ChatPage() {
                     </div>
                 )}
                  
-                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
             ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
@@ -731,6 +761,46 @@ export default function ChatPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+             <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
+                <DialogContent className="p-0 border-0 bg-black/90 text-white max-w-full h-full max-h-full sm:rounded-none flex flex-col">
+                    <DialogClose asChild>
+                        <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-20 rounded-full bg-black/50 hover:bg-black/70">
+                            <X className="h-6 w-6" />
+                        </Button>
+                    </DialogClose>
+                    <div className="flex-1 flex items-center justify-center relative p-8">
+                        {imagePreview && <Image src={imagePreview.url} alt="Önizleme" fill style={{objectFit: 'contain'}}/>}
+                    </div>
+                    <DialogFooter className="p-4 bg-black/50 border-t border-white/20 sm:justify-between">
+                        <div className='flex items-center gap-2 w-full'>
+                            <Input
+                                placeholder="Başlık ekle..."
+                                value={caption}
+                                onChange={(e) => setCaption(e.target.value)}
+                                className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-gray-400"
+                            />
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn(
+                                    "rounded-full border-2 w-8 h-8 font-bold", 
+                                    isViewOnce ? "bg-primary border-primary text-primary-foreground" : "border-white text-white"
+                                )}
+                                onClick={() => {
+                                    setIsViewOnce(!isViewOnce);
+                                    toast({ title: isViewOnce ? "Tek seferlik mod kapatıldı." : "Fotoğraf tek seferlik olarak ayarlandı."});
+                                }}
+                            >
+                                <History className='w-4 h-4'/>
+                            </Button>
+                            <Button type="button" size="icon" className="rounded-full h-12 w-12 shrink-0" onClick={handleSendImage} disabled={isUploading}>
+                                {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send />}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

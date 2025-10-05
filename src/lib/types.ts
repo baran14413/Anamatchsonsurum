@@ -89,6 +89,8 @@ export type ChatMessage = {
   text?: string;
   imageUrl?: string;
   imagePublicId?: string;
+  isViewOnce?: boolean;
+  viewed?: boolean;
   audioUrl?: string;
   audioDuration?: number;
   timestamp: any; 
