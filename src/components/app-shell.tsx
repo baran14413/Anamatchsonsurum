@@ -44,11 +44,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Show shell for logged-in users on protected routes
   if (isProtectedRoute && user) {
     return (
-      <div className="flex flex-col bg-background text-foreground h-screen">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-center border-b">
-            <Icons.logo width={100} height={32} />
+      <div className="flex h-screen flex-col bg-background text-foreground">
+        <header className="sticky top-0 z-10 flex h-12 items-center justify-center border-b">
+          <Icons.logo width={80} height={26} />
         </header>
-        <main className="flex-1">
+        <main className="relative flex-1 overflow-hidden">
            {children}
         </main>
         <FooterNav />

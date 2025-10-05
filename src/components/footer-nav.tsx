@@ -20,7 +20,7 @@ export default function FooterNav() {
 
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex h-14 items-center justify-around">
+      <nav className="flex h-12 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
