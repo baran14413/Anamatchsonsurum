@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -23,25 +22,27 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const fetchProfiles = useCallback(async () => {
+  const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
     setIsLoading(true);
     
     try {
         const interactedUsers = new Set<string>([user.uid]);
         
-        // Fetch all interactions the user is part of.
-        const interactionsQuery = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
-        const interactionsSnapshot = await getDocs(interactionsQuery);
+        if (!options?.resetInteractions) {
+            // Fetch all interactions the user is part of.
+            const interactionsQuery1 = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
+            const interactionsSnapshot = await getDocs(interactionsQuery1);
 
-        interactionsSnapshot.forEach(doc => {
-            const usersInMatch = doc.data().users as string[];
-            const otherUserId = usersInMatch.find(uid => uid !== user.uid);
-            if (otherUserId) {
-                interactedUsers.add(otherUserId);
-            }
-        });
-
+            interactionsSnapshot.forEach(doc => {
+                const usersInMatch = doc.data().users as string[];
+                const otherUserId = usersInMatch.find(uid => uid !== user.uid);
+                if (otherUserId) {
+                    interactedUsers.add(otherUserId);
+                }
+            });
+        }
+        
         let usersQuery;
         if (userProfile?.genderPreference && userProfile.genderPreference !== 'both') {
             usersQuery = query(
@@ -60,7 +61,7 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-            .filter(p => p.uid && p.uid !== user.uid && !interactedUsers.has(p.uid) && p.fullName && p.images && p.images.length > 0);
+            .filter(p => p.uid && !interactedUsers.has(p.uid) && p.fullName && p.images && p.images.length > 0);
 
         setProfiles(fetchedProfiles);
         setCurrentIndex(0);
@@ -174,11 +175,9 @@ export default function AnasayfaPage() {
     setIsLoading(true);
 
     try {
-        // Reset filters in Firestore
         const userDocRef = doc(firestore, 'users', user.uid);
         await updateDoc(userDocRef, {
-            genderPreference: 'both' // Reset to default
-            // Add other filters to reset here in the future
+            genderPreference: 'both'
         });
         
         toast({
@@ -186,12 +185,8 @@ export default function AnasayfaPage() {
             description: "Tüm filtreleriniz sıfırlandı, baştan başlıyoruz!",
         });
 
-        // Now, refetch profiles with cleared filters
         setCurrentIndex(0);
-        // The fetchProfiles function will automatically use the updated userProfile
-        // But we might need to manually trigger a re-render or refetch of userProfile.
-        // A simple way is to just call fetchProfiles(), which relies on the hook that will update.
-        await fetchProfiles();
+        await fetchProfiles({ resetInteractions: true });
 
     } catch (error) {
         console.error("Error resetting filters:", error);
