@@ -210,8 +210,7 @@ export default function SignupForm() {
   
   const [countries, setCountries] = useState<ICountry[]>([]);
   const [states, setStates] = useState<IState[]>([]);
-  const [cities, setCities] = useState<ICity[]>([]);
-
+  
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedState, setSelectedState] = useState<string | undefined>();
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
@@ -388,7 +387,7 @@ export default function SignupForm() {
       const finalAddress = {
           country: Country.getCountryByCode(data.address.country!)?.name,
           state: State.getStateByCodeAndCountry(data.address.state!, data.address.country!)?.name,
-          city: data.address.city ? City.getCity(parseInt(data.address.city, 10))?.name : null
+          city: data.address.city
       }
       
       const stateDetails = State.getStateByCodeAndCountry(data.address.state!, data.address.country!);
@@ -443,7 +442,7 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = isGoogleSignup ? 10 : 11;
+  const totalSteps = isGoogleSignup ? 9 : 10;
   const progressValue = (step / totalSteps) * 100;
 
 
@@ -497,13 +496,13 @@ export default function SignupForm() {
         ['dateOfBirth'], // 2
         ['gender'], // 3
         ['lookingFor'], // 4
-        ['address.country'], // 5
+        ['address.country', 'address.state'], // 5
         ['distancePreference'], // 6
         ['school'], // 7
         ['drinking', 'smoking', 'workout', 'pets'], // 8
         ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
         ['interests'], // 10
-        ['photos'] // 11 (final)
+        ['photos'] // 11
     ];
     
     const googleFlow = [
@@ -512,22 +511,23 @@ export default function SignupForm() {
         ['dateOfBirth'], // 2
         ['gender'], // 3
         ['lookingFor'], // 4
-        ['address.country'], // 5
+        ['address.country', 'address.state'], // 5
         ['distancePreference'], // 6
         ['school'], // 7
         ['drinking', 'smoking', 'workout', 'pets'], // 8
         ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
         ['interests'], // 10
-        ['photos'] // 11 (final)
+        ['photos'] // 11
     ];
 
     const currentFlow = isGoogleSignup ? googleFlow : normalFlow;
+    const finalStep = isGoogleSignup ? 11 : 11;
     
     if (step < currentFlow.length) {
         fieldsToValidate = currentFlow[step] as any;
     }
 
-    const isFinalStep = step === currentFlow.length - 1;
+    const isFinalStep = step === finalStep;
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
@@ -540,8 +540,8 @@ export default function SignupForm() {
     }
   };
 
-  const finalStep = isGoogleSignup ? 11 : 11;
-  const interestStep = isGoogleSignup ? 10 : 10;
+  const finalStep = isGoogleSignup ? 10 : 11;
+  const interestStep = isGoogleSignup ? 9 : 10;
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -745,7 +745,6 @@ export default function SignupForm() {
                                     field.onChange(value);
                                     setSelectedCountry(value);
                                     setStates(State.getStatesOfCountry(value));
-                                    setCities([]);
                                     form.setValue('address.state', undefined);
                                     form.setValue('address.city', undefined);
                                 }}
@@ -780,9 +779,6 @@ export default function SignupForm() {
                                 onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedState(value);
-                                    if(selectedCountry) {
-                                      setCities(City.getCitiesOfState(selectedCountry, value));
-                                    }
                                     form.setValue('address.city', undefined);
                                 }}
                                 value={field.value}
@@ -813,26 +809,14 @@ export default function SignupForm() {
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>İlçe</FormLabel>
-                             <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                disabled={!selectedState || cities.length === 0}
-                            >
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Bir ilçe seçin (isteğe bağlı)" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                     <ScrollArea className="h-72">
-                                        {cities.map((city) => (
-                                            <SelectItem key={city.name} value={city.name}>
-                                                {city.name}
-                                            </SelectItem>
-                                        ))}
-                                    </ScrollArea>
-                                </SelectContent>
-                            </Select>
+                             <FormControl>
+                                <Input 
+                                    placeholder="İlçenizi yazın (isteğe bağlı)" 
+                                    {...field}
+                                    value={field.value || ''}
+                                    disabled={!selectedState}
+                                />
+                             </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
