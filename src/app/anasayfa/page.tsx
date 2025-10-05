@@ -30,7 +30,7 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
     if (!user || !firestore) return;
     
-    // UI update happens immediately via AnimatePresence exit animation
+    // UI update happens immediately via AnimatePresence onExitComplete
     removeTopCard();
 
     try {
@@ -193,39 +193,28 @@ export default function AnasayfaPage() {
           <AnimatePresence>
             {profiles.map((profile, index) => {
               const isTopCard = index === 0;
-              const isNextCard = index === 1;
-
-              if (!isTopCard && !isNextCard) return null;
-
-              if (isTopCard) {
-                return (
-                  <motion.div
-                    key={profile.uid}
-                    className="absolute w-full h-full"
-                    exit={{
-                      y: 800,
-                      opacity: 0,
-                      transition: { duration: 0.4 }
-                    }}
-                  >
-                    <ProfileCard
-                      profile={profile}
-                      onSwipe={(action) => handleSwipe(profile, action)}
-                      isDraggable={true}
-                    />
-                  </motion.div>
-                );
-              }
+              
+              if(index > 1) return null; // Render only top two cards
 
               return (
-                  <motion.div
-                    key={profile.uid}
-                    className="absolute w-full h-full"
-                    initial={{ scale: 0.95, y: 10, opacity: 0.8 }}
-                    animate={{ scale: 1, y: 0, opacity: 1, transition: { duration: 0.4 } }}
-                  >
-                    <ProfileCard profile={profile} isDraggable={false} />
-                  </motion.div>
+                <motion.div
+                  key={profile.uid}
+                  className="absolute w-full h-full"
+                  initial={{ scale: isTopCard ? 1 : 0.95, y: isTopCard ? 0 : 10, opacity: isTopCard ? 1 : 0.8 }}
+                  animate={{ scale: 1, y: 0, opacity: 1, transition: { duration: 0.4 } }}
+                  exit={{
+                    x: 300,
+                    opacity: 0,
+                    scale: 0.5,
+                    transition: { duration: 0.3 }
+                  }}
+                >
+                  <ProfileCard
+                    profile={profile}
+                    onSwipe={(action) => handleSwipe(profile, action)}
+                    isDraggable={isTopCard}
+                  />
+                </motion.div>
               );
             }).reverse()}
           </AnimatePresence>

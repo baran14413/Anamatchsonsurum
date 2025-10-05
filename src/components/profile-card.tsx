@@ -28,7 +28,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
+  // Motion values for drag gesture
   const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-30, 30]); // Card rotates as it's dragged
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
@@ -44,7 +46,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const handleAreaClick = (e: React.MouseEvent, side: 'left' | 'right') => {
     e.stopPropagation();
-    if (totalImages <= 1) return;
+    if (totalImages <= 1 || !isDraggable) return;
 
     if (side === 'right') {
       setImageIndex((prev) => (prev + 1) % totalImages);
@@ -64,7 +66,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const highlights = getProfileHighlights(profile);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!onSwipe) return;
+    if (!onSwipe || !isDraggable) return;
     if (info.offset.x > SWIPE_THRESHOLD) {
       onSwipe('liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
@@ -75,13 +77,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   return (
      <motion.div 
-        className="w-full h-full cursor-grab active:cursor-grabbing"
+        className={`w-full h-full ${isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         drag={isDraggable ? "x" : false}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.5}
         onDragEnd={handleDragEnd}
-        style={{ x }}
-        whileTap={{ cursor: 'grabbing' }}
+        style={{ x, rotate }} // Bind style to motion values
+        whileTap={{ cursor: isDraggable ? 'grabbing' : 'default' }}
       >
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
@@ -117,12 +119,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             )}
 
             <div
-            className="absolute left-0 top-0 h-full w-1/2 z-[5] cursor-pointer"
-            onClick={(e) => handleAreaClick(e, 'left')}
+              className={`absolute left-0 top-0 h-full w-1/2 z-[5] ${isDraggable ? 'cursor-pointer' : ''}`}
+              onClick={(e) => handleAreaClick(e, 'left')}
             ></div>
             <div
-            className="absolute right-0 top-0 h-full w-1/2 z-[5] cursor-pointer"
-            onClick={(e) => handleAreaClick(e, 'right')}
+              className={`absolute right-0 top-0 h-full w-1/2 z-[5] ${isDraggable ? 'cursor-pointer' : ''}`}
+              onClick={(e) => handleAreaClick(e, 'right')}
             ></div>
 
             <Image
@@ -136,8 +138,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             />
 
             <div
-                className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-10 cursor-pointer"
-                onClick={() => setShowDetails(prev => !prev)}
+                className={`absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
+                onClick={() => isDraggable && setShowDetails(prev => !prev)}
             >
                 <div className='flex items-end justify-between'>
                     <div className="max-w-[calc(100%-4rem)]">
@@ -160,9 +162,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             ))}
                         </div>
                     </div>
-                    <div className='self-end p-2 rounded-full border border-white/50 bg-black/20'>
+                   {isDraggable && (
+                     <div className='self-end p-2 rounded-full border border-white/50 bg-black/20'>
                         <ChevronUp className={`w-6 h-6 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`} />
                     </div>
+                   )}
                 </div>
 
                 <motion.div
