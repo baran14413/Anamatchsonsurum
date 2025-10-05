@@ -243,7 +243,7 @@ export const langTr = {
     },
     step11: {
         title: 'İlgini çeken konular neler?',
-        description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline 10 ilgi alanı ekle.',
+        description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline {count} ilgi alanı ekle.',
         categories: [
             {
                 title: 'Müzik',
@@ -293,7 +293,7 @@ export const langTr = {
             {
                 title: 'Sağlık ve yaşam tarzı',
                 icon: 'Sprout',
-                options: [ 'Self Love', 'Trying New Things', 'Tarot', 'Spa', 'Personal Growth', 'Meditation', 'Skincare', 'Makeup', 'Astrology', 'Mindfulness', 'Sauna', 'Active Lifestyle', 'Yoga' ]
+                options: [ 'Self Love', 'Trying New Things', 'Tarot', 'Spa', 'Personal Growth', 'Meditation', 'Skincare', 'Astrology', 'Mindfulness', 'Sauna', 'Active Lifestyle', 'Yoga' ]
             },
              {
                 title: 'Sosyal medya içerikleri',
@@ -616,3 +616,4 @@ export const langTr = {
     
 
     
+
