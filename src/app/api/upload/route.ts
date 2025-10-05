@@ -31,10 +31,16 @@ export async function POST(req: NextRequest) {
     }
 
     const fileBuffer = await file.arrayBuffer();
-
+    const isAudio = file.type.startsWith('audio/');
+    
     const uploadPromise = new Promise((resolve, reject) => {
+      const uploadOptions: any = { folder: 'bematch_profiles' };
+      if (isAudio) {
+        uploadOptions.resource_type = 'video'; // Cloudinary treats audio as video
+      }
+      
       const stream = cloudinary.uploader.upload_stream(
-        { folder: 'bematch_profiles' },
+        uploadOptions,
         (error, result) => {
           if (error) {
             return reject(error);

@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
+import WaveSurfer from 'wavesurfer.js';
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
     if (!isSender || message.type === 'system_superlike_prompt') return null;
@@ -42,6 +43,52 @@ const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
         return <CheckCheck className="h-4 w-4 text-blue-500" />;
     }
     return <Check className="h-4 w-4 text-muted-foreground" />;
+};
+
+
+const AudioPlayer = ({ src }: { src: string }) => {
+    const waveformRef = useRef<HTMLDivElement>(null);
+    const wavesurferRef = useRef<WaveSurfer | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    
+    useEffect(() => {
+        if (!waveformRef.current) return;
+        
+        const wavesurfer = WaveSurfer.create({
+            container: waveformRef.current,
+            waveColor: '#A1A1AA', // zinc-400
+            progressColor: '#F43F5E', // rose-500
+            height: 40,
+            cursorWidth: 1,
+            cursorColor: 'transparent',
+            barWidth: 2,
+            barGap: 3,
+            url: src,
+        });
+
+        wavesurferRef.current = wavesurfer;
+
+        wavesurfer.on('play', () => setIsPlaying(true));
+        wavesurfer.on('pause', () => setIsPlaying(false));
+        wavesurfer.on('finish', () => setIsPlaying(false));
+
+        return () => {
+            wavesurfer.destroy();
+        };
+    }, [src]);
+
+    const handlePlayPause = () => {
+        wavesurferRef.current?.playPause();
+    };
+
+    return (
+        <div className="flex items-center gap-3 w-full">
+            <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full" onClick={handlePlayPause}>
+                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+            </Button>
+            <div ref={waveformRef} className="w-full h-[40px]" />
+        </div>
+    );
 };
 
 
@@ -63,6 +110,14 @@ export default function ChatPage() {
     const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
+    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
 
     const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
@@ -128,35 +183,49 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async (e?: React.FormEvent, imageUrl: string | null = null, imagePublicId: string | null = null) => {
+    const handleSendMessage = async (
+        e?: React.FormEvent,
+        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number } = {}
+    ) => {
         e?.preventDefault();
-        if ((!newMessage.trim() && !imageUrl) || !user || !firestore) return;
-
-        const textContent = newMessage.trim();
-        setNewMessage('');
-        
+        if (!user || !firestore || (!content.text?.trim() && !content.imageUrl && !content.audioUrl)) return;
+    
+        if (content.text) setNewMessage('');
+    
         const messageData: Partial<ChatMessage> = {
             matchId: matchId,
             senderId: user.uid,
             timestamp: serverTimestamp(),
             isRead: false,
-            type: 'user',
         };
-        
-        if (textContent) messageData.text = textContent;
-        if (imageUrl) messageData.imageUrl = imageUrl;
-        if (imagePublicId) messageData.imagePublicId = imagePublicId;
-        
+    
+        if (content.text?.trim()) {
+            messageData.type = 'user';
+            messageData.text = content.text.trim();
+        } else if (content.imageUrl) {
+            messageData.type = 'user';
+            messageData.imageUrl = content.imageUrl;
+            messageData.imagePublicId = content.imagePublicId;
+        } else if (content.audioUrl) {
+            messageData.type = 'audio';
+            messageData.audioUrl = content.audioUrl;
+            messageData.audioDuration = content.audioDuration;
+        }
+    
         await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
-
-        const lastMessageText = textContent ? textContent : '📷 Fotoğraf';
+    
+        let lastMessageText = "Mesaj";
+        if (messageData.text) lastMessageText = messageData.text;
+        else if (messageData.imageUrl) lastMessageText = "📷 Fotoğraf";
+        else if (messageData.audioUrl) lastMessageText = "▶️ Sesli Mesaj";
+    
         const lastMessageUpdate = {
             lastMessage: lastMessageText,
             timestamp: serverTimestamp(),
         };
         const user1Id = matchId.split('_')[0];
         const user2Id = matchId.split('_')[1];
-
+    
         await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
         await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
     };
@@ -184,7 +253,7 @@ export default function ChatPage() {
             }
 
             const { url, public_id } = await response.json();
-            await handleSendMessage(undefined, url, public_id);
+            await handleSendMessage(undefined, { imageUrl: url, imagePublicId: public_id });
 
         } catch (error: any) {
             toast({
@@ -195,6 +264,96 @@ export default function ChatPage() {
         } finally {
             setIsUploading(false);
             if(fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+    
+    // --- Audio Recording Logic ---
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = recorder;
+            const audioChunks: Blob[] = [];
+
+            recorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            recorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                setAudioBlob(audioBlob);
+                setAudioUrl(URL.createObjectURL(audioBlob));
+                setRecordingStatus('preview');
+                stream.getTracks().forEach(track => track.stop()); // Stop microphone access
+            };
+
+            recorder.start();
+            setRecordingStatus('recording');
+            setRecordingTime(0);
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error("Microphone access denied:", err);
+            toast({
+                title: "Mikrofon Erişimi Reddedildi",
+                description: "Sesli mesaj göndermek için lütfen tarayıcı ayarlarından mikrofon izni verin.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && recordingStatus === 'recording') {
+            mediaRecorderRef.current.stop();
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+            }
+        }
+    };
+
+    const cancelRecording = () => {
+        stopRecording();
+        setRecordingStatus('idle');
+        setAudioBlob(null);
+        setAudioUrl(null);
+    };
+    
+    const sendAudioMessage = async () => {
+        if (!audioBlob) return;
+        setIsUploading(true);
+        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
+        
+        const formData = new FormData();
+        formData.append('file', audioFile);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Sesli mesaj yüklenemedi.');
+            }
+
+            const { url } = await response.json();
+            await handleSendMessage(undefined, { audioUrl: url, audioDuration: recordingTime });
+            
+        } catch (error: any) {
+             toast({
+                title: 'Yükleme Başarısız',
+                description: error.message,
+                variant: 'destructive',
+            });
+        } finally {
+            setIsUploading(false);
+            setRecordingStatus('idle');
+            setAudioBlob(null);
+            setAudioUrl(null);
         }
     };
 
@@ -405,14 +564,18 @@ export default function ChatPage() {
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end gap-2",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                             message.imageUrl ? 'p-1.5' : 'px-4 py-2'
+                                            message.imageUrl ? 'p-1.5' : 'px-4 py-2',
+                                            message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
                                         {message.imageUrl && (
                                             <Image src={message.imageUrl} alt="Gönderilen fotoğraf" width={200} height={200} className="rounded-xl w-full h-auto" />
                                         )}
                                         {message.text && <p className={cn('break-words', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
-                                        <div className={cn("flex items-center gap-1 self-end", !message.imageUrl && '-mb-1')}>
+                                        {message.audioUrl && (
+                                            <AudioPlayer src={message.audioUrl} />
+                                        )}
+                                        <div className={cn("flex items-center gap-1 self-end", !message.imageUrl && !message.audioUrl && '-mb-1')}>
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
@@ -427,21 +590,59 @@ export default function ChatPage() {
             
             {canSendMessage ? (
               <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                  <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                       <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                          {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
-                      </Button>
-                      <Input
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Mesajını yaz..."
-                          className="flex-1 rounded-full bg-muted"
-                          disabled={isUploading}
-                      />
-                      <Button type={showSendButton ? "submit" : "button"} size="icon" className="rounded-full" disabled={isUploading}>
-                        {showSendButton ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                      </Button>
-                  </form>
+                 {recordingStatus === 'idle' && (
+                    <form onSubmit={(e) => handleSendMessage(e, { text: newMessage })} className="flex items-center gap-2">
+                        <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
+                            {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
+                        </Button>
+                        <Input
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Mesajını yaz..."
+                            className="flex-1 rounded-full bg-muted"
+                            disabled={isUploading}
+                        />
+                        {showSendButton ? (
+                             <Button type="submit" size="icon" className="rounded-full" disabled={isUploading}>
+                                <Send className="h-5 w-5" />
+                             </Button>
+                        ) : (
+                             <Button type="button" size="icon" className="rounded-full" onClick={startRecording} disabled={isUploading}>
+                                <Mic className="h-5 w-5" />
+                             </Button>
+                        )}
+                    </form>
+                 )}
+
+                 {recordingStatus === 'recording' && (
+                    <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full text-red-500" onClick={cancelRecording}>
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                        <div className='flex items-center gap-2 font-mono text-sm'>
+                            <div className='w-2 h-2 rounded-full bg-red-500 animate-pulse'></div>
+                            <span>{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
+                        </div>
+                        <Button size="icon" className="rounded-full" onClick={stopRecording}>
+                            <Square className="h-5 w-5 fill-white" />
+                        </Button>
+                    </div>
+                 )}
+
+                {recordingStatus === 'preview' && audioUrl && (
+                     <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full" onClick={cancelRecording}>
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                        </Button>
+                        <div className="flex-1">
+                            <AudioPlayer src={audioUrl} />
+                        </div>
+                        <Button size="icon" className="rounded-full" onClick={sendAudioMessage} disabled={isUploading}>
+                           {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send className="h-5 w-5" />}
+                        </Button>
+                    </div>
+                )}
+                 
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
               </footer>
             ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (

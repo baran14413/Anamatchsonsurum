@@ -196,6 +196,15 @@
           "type": "string",
           "description": "Public ID of the image on Cloudinary for deletion."
         },
+        "audioUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of an audio message."
+        },
+        "audioDuration": {
+            "type": "number",
+            "description": "Duration of the audio message in seconds."
+        },
         "timestamp": {
           "type": "string",
           "description": "The date and time when the message was sent.",
@@ -212,7 +221,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["user", "system_superlike_prompt"],
+          "enum": ["user", "system_superlike_prompt", "audio"],
           "description": "The type of message."
         },
         "action": {

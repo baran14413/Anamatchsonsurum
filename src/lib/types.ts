@@ -89,10 +89,12 @@ export type ChatMessage = {
   text?: string;
   imageUrl?: string;
   imagePublicId?: string;
+  audioUrl?: string;
+  audioDuration?: number;
   timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;
-  type?: 'user' | 'system_superlike_prompt';
+  type?: 'user' | 'system_superlike_prompt' | 'audio';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
 };
