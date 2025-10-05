@@ -2,17 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { signOut } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Crown, Star, Zap, ShieldCheckIcon } from 'lucide-react';
+import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
+import { Icons } from '@/components/icons';
+import CircularProgress from '@/components/circular-progress';
+
 
 export default function ProfilePage() {
   const t = langTr;
@@ -38,83 +39,83 @@ export default function ProfilePage() {
       setIsLoggingOut(false);
     }
   };
+  
+    const calculateAge = (dateOfBirth: string | undefined | null): number | null => {
+        if (!dateOfBirth) return null;
+        const birthday = new Date(dateOfBirth);
+        if (isNaN(birthday.getTime())) return null;
+        const ageDifMs = Date.now() - birthday.getTime();
+        const ageDate = new Date(ageDifMs);
+        return Math.abs(ageDate.getUTCFullYear() - 1970);
+    };
 
-  const features = [
-    { name: t.profil.featureSeeLikes, free: false, gold: true },
-    { name: t.profil.featureTopPicks, free: false, gold: true },
-    { name: 'Sınırsız Beğeni', free: true, gold: true },
-    { name: 'Sınırsız Geri Alma', free: false, gold: true },
-    { name: t.profil.featureFreeSuperLikes, free: false, gold: true },
-  ];
+    const age = calculateAge(user?.dateOfBirth);
+
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
       <div className="container mx-auto max-w-2xl p-4 space-y-6">
 
         {/* Profile Header */}
-        <div className="flex flex-col items-center space-y-4">
-          <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-            <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
-            <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="text-center">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              {user?.displayName || t.profil.user}
-              <ShieldCheckIcon className="h-6 w-6 text-blue-500" />
+        <div className="flex flex-col items-center space-y-4 py-4">
+          <div className="relative">
+            <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
+              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
+              <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
+            </Avatar>
+             <div className="absolute -bottom-1 -right-1">
+                 <CircularProgress progress={5} size={44} />
+             </div>
+          </div>
+          
+          <div className="text-center space-y-3">
+             <h1 className="text-2xl font-bold flex items-center gap-2">
+                {user?.displayName || t.profil.user}{age && `, ${age}`}
+                <ShieldCheckIcon className="h-6 w-6 text-blue-500" />
             </h1>
-            <p className="text-muted-foreground">{t.profil.verified}</p>
+            <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
+                <Pencil className="mr-2 h-5 w-5"/>
+                {t.common.editProfile}
+            </Button>
           </div>
         </div>
 
-        {/* Subscriptions & Boosts */}
-        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-           <Card className="p-3">
-              <Star className="h-6 w-6 text-yellow-400 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.superLikes.replace('{count}', '5')}</p>
-              <span className="text-xs text-muted-foreground">{t.profil.getMore}</span>
-          </Card>
-          <Card className="p-3">
-              <Zap className="h-6 w-6 text-purple-500 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.myBoosts}</p>
-              <span className="text-xs text-muted-foreground">{t.profil.getMore}</span>
-          </Card>
-           <Card className="p-3">
-              <Crown className="h-6 w-6 text-blue-500 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.subscriptions}</p>
-              <span className="text-xs text-muted-foreground">{t.profil.upgrade}</span>
-          </Card>
-        </div>
-        
-        {/* BeMatch Gold Card */}
-        <Card className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-black overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">{t.profil.goldTitle} <Crown/></CardTitle>
-            <CardDescription className="text-yellow-900">{t.profil.features}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {features.slice(0, 3).map((feature) => (
-                <div key={feature.name} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{feature.name}</span>
-                  <div className="flex items-center gap-6">
-                    <span className="w-8 text-center">{feature.free ? <ShieldCheckIcon className="h-5 w-5 text-gray-600 mx-auto" /> : '-'}</span>
-                    <span className="w-8 text-center">{feature.gold ? <ShieldCheckIcon className="h-5 w-5 text-black mx-auto" /> : '-'}</span>
-                  </div>
+        {/* Double Date Card */}
+        <Card className='shadow-md'>
+            <CardContent className='p-4 flex items-center gap-4'>
+                <Icons.tinderFlame className="h-8 w-8 text-pink-500" />
+                <div className='flex-1'>
+                    <h2 className='font-bold'>{t.profil.tryDoubleDate}</h2>
+                    <p className='text-sm text-muted-foreground'>{t.profil.tryDoubleDateDesc}</p>
                 </div>
-              ))}
-            </div>
-             <Separator className="my-4 bg-yellow-600/50" />
-             <Button variant="outline" className="w-full bg-transparent border-black text-black hover:bg-black hover:text-white">
-                {t.profil.viewAllFeatures}
-            </Button>
-          </CardContent>
+                <ChevronRight className='h-6 w-6 text-muted-foreground'/>
+            </CardContent>
         </Card>
 
+        {/* Subscriptions & Boosts */}
+        <div className="grid grid-cols-3 gap-3 text-center text-sm">
+           <Card className="p-3 shadow-md">
+              <Star className="h-6 w-6 text-blue-400 mx-auto mb-1" />
+              <p className="font-semibold">{t.profil.superLikes.replace('{count}', '0')}</p>
+              <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
+          </Card>
+          <Card className="p-3 shadow-md">
+              <Zap className="h-6 w-6 text-purple-500 mx-auto mb-1" />
+              <p className="font-semibold">{t.profil.myBoosts}</p>
+              <span className="text-xs text-purple-500 font-bold cursor-pointer">{t.profil.getMore}</span>
+          </Card>
+           <Card className="p-3 shadow-md">
+              <Flame className="h-6 w-6 text-red-500 mx-auto mb-1" />
+              <p className="font-semibold">{t.profil.subscriptions}</p>
+              <span className="text-xs text-yellow-500 font-bold cursor-pointer">{t.profil.upgrade}</span>
+          </Card>
+        </div>
+
         {/* Logout */}
-        <div className="pt-4">
+        <div className="pt-8">
            <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="ghost" className="w-full text-muted-foreground">
+                    <Button variant="ghost" className="w-full text-muted-foreground font-bold">
                         {t.profil.logout}
                     </Button>
                 </AlertDialogTrigger>

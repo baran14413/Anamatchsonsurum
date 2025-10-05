@@ -4,8 +4,9 @@ import { useUser } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import FooterNav from './footer-nav';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldCheck, Settings } from 'lucide-react';
 import { Icons } from './icons';
+import { Button } from './ui/button';
 
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil'];
 const authRoutes = ['/', '/login', '/kayit-ol', '/kurallar', '/tos', '/privacy', '/cookies'];
@@ -17,6 +18,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.includes(pathname);
+  const isProfilePage = pathname === '/profil';
 
   useEffect(() => {
     if (isUserLoading) {
@@ -45,10 +47,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isProtectedRoute && user) {
     return (
       <div className="flex h-screen flex-col bg-background text-foreground">
-        <header className="sticky top-0 z-10 flex h-12 items-center justify-center border-b">
-          <Icons.logo width={80} height={26} />
+        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b px-4">
+          {isProfilePage ? (
+            <>
+                <Icons.logo width={80} height={26} className="text-pink-500" />
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon">
+                        <ShieldCheck className="h-6 w-6 text-muted-foreground" />
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                        <Settings className="h-6 w-6 text-muted-foreground" />
+                    </Button>
+                </div>
+            </>
+          ) : (
+            <div className='flex-1 flex justify-center'>
+                 <Icons.logo width={80} height={26} />
+            </div>
+          )}
         </header>
-        <main className="relative flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
            {children}
         </main>
         <FooterNav />
