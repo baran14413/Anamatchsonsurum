@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
+import { Button } from '@/components/ui/button';
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -142,7 +143,6 @@ export default function AnasayfaPage() {
   
   const handleReset = () => {
     setCurrentIndex(0);
-    fetchProfiles();
     toast({
       title: t.anasayfa.resetToastTitle,
       description: t.anasayfa.resetToastDescription,
@@ -166,10 +166,13 @@ export default function AnasayfaPage() {
           />
         </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center text-center">
+        <div className="flex h-full flex-col items-center justify-center text-center p-4">
           <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
           <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
-          <button onClick={handleReset} className="mt-4 p-2 bg-blue-500 text-white rounded-full">Yeniden Başla</button>
+          <Button onClick={handleReset} className="mt-6 rounded-full" size="lg">
+            <RotateCcw className="mr-2 h-5 w-5" />
+            Yeniden Başla
+          </Button>
         </div>
       )}
     </div>
