@@ -8,6 +8,10 @@ import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from '
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from './ui/button';
+import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
+import { ScrollArea } from './ui/scroll-area';
+import { Badge } from './ui/badge';
+import { Card, CardContent } from './ui/card';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -26,7 +30,6 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 const SWIPE_THRESHOLD = 80;
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
-  const [imageIndex, setImageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   
   const x = useMotionValue(0);
@@ -35,25 +38,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
   useEffect(() => {
-    setImageIndex(0);
     x.set(0); 
     setIsVisible(true);
   }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
   const totalImages = profile.images?.length || 0;
-  const currentImage = (profile.images && profile.images.length > 0) ? profile.images[imageIndex] : 'https://picsum.photos/seed/placeholder/600/800';
-
-  const handleAreaClick = (e: React.MouseEvent, side: 'left' | 'right') => {
-    e.stopPropagation();
-    if (totalImages <= 1 || !isDraggable) return;
-
-    if (side === 'right') {
-      setImageIndex((prev) => (prev + 1) % totalImages);
-    } else {
-      setImageIndex((prev) => (prev - 1 + totalImages) % totalImages);
-    }
-  };
   
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!onSwipe || !isDraggable) return;
@@ -68,6 +58,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
       onSwipe('disliked');
     }
   };
+
+  const handleSwipe = (action: 'liked' | 'disliked') => {
+    if (!onSwipe || !isDraggable) return;
+    setIsVisible(false);
+    onSwipe(action);
+  };
+  
 
   const motionProps = isDraggable ? {
     drag: "x" as const,
@@ -95,19 +92,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 <div
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
                 >
-                    {totalImages > 1 && (
-                        <div className="absolute top-2 left-2 right-2 z-20 flex gap-1 px-1">
-                            {profile.images.map((_, index) => (
-                            <div key={index} className="relative h-1 flex-1 bg-white/40 rounded-full overflow-hidden">
-                                <div
-                                    className="absolute top-0 left-0 h-full bg-white"
-                                    style={{ width: index < imageIndex ? '100%' : (index === imageIndex ? '100%' : '0%'), transition: 'width 0.3s ease-in-out' }}
-                                />
-                            </div>
-                            ))}
-                        </div>
-                    )}
-
                     {isDraggable && (
                         <>
                         <motion.div
@@ -124,25 +108,27 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         </motion.div>
                         </>
                     )}
-
-                    <div
-                        className={`absolute left-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
-                        onClick={(e) => handleAreaClick(e, 'left')}
-                    ></div>
-                    <div
-                        className={`absolute right-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
-                        onClick={(e) => handleAreaClick(e, 'right')}
-                    ></div>
                     
-                    <Image
-                        src={currentImage}
-                        alt={profile.fullName || 'Profile image'}
-                        fill
-                        sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                        style={{ objectFit: 'cover' }}
-                        className="pointer-events-none"
-                        priority={isDraggable}
-                    />
+                   <Carousel className="w-full h-full">
+                        <CarouselContent>
+                            {profile.images.map((img, index) => (
+                            <CarouselItem key={index}>
+                                <div className="relative w-full h-full">
+                                <Image
+                                    src={img}
+                                    alt={`${profile.fullName} profile image ${index + 1}`}
+                                    fill
+                                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                                    style={{ objectFit: 'cover' }}
+                                    className="pointer-events-none"
+                                    priority={isDraggable && index === 0}
+                                />
+                                </div>
+                            </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                    </Carousel>
+
 
                     <div
                         className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
@@ -154,8 +140,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                     <MapPin className="w-4 h-4" />
                                     {profile.distance !== undefined ? (
                                         <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                    ) : profile.address?.city ? (
-                                        <span>{profile.address.city}, {profile.address.country}</span>
                                     ) : null}
                                 </div>
                             </div>
@@ -165,14 +149,62 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                         <ChevronUp className="h-6 w-6" />
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl'>
-                                    <div className="p-4">
-                                        <h2 className="text-xl font-bold">Profil Detayları</h2>
-                                    </div>
+                                <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
+                                     <ScrollArea className="h-full">
+                                        <Carousel className="w-full">
+                                            <CarouselContent>
+                                                {profile.images.map((img, index) => (
+                                                <CarouselItem key={index} className="basis-auto">
+                                                    <div className="relative aspect-[3/4] h-[60vh]">
+                                                        <Image src={img} alt={`Detail view ${index}`} fill style={{ objectFit: "cover" }} className="rounded-md" />
+                                                    </div>
+                                                </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                        </Carousel>
+                                        
+                                        <div className="p-6 space-y-6">
+                                            <div>
+                                                <h2 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h2>
+                                                 <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                                                    <MapPin className="w-4 h-4" />
+                                                    {profile.distance !== undefined ? (
+                                                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+
+                                            {profile.bio && (
+                                                <div>
+                                                    <h3 className="text-lg font-semibold mb-2">Hakkında</h3>
+                                                    <p className='text-muted-foreground'>{profile.bio}</p>
+                                                </div>
+                                            )}
+
+                                            {profile.interests && profile.interests.length > 0 && (
+                                                 <div>
+                                                    <h3 className="text-lg font-semibold mb-2">İlgi Alanları</h3>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {profile.interests.map(interest => (
+                                                            <Badge key={interest} variant="secondary" className="text-sm">{interest}</Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="py-10 flex justify-center gap-4">
+                                                 <Button onClick={() => handleSwipe('disliked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-red-500 text-red-500 hover:bg-red-500/10">
+                                                    <X className="h-10 w-10" />
+                                                </Button>
+                                                 <Button onClick={() => handleSwipe('liked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-green-400 text-green-400 hover:bg-green-400/10">
+                                                    <Heart className="h-10 w-10" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </ScrollArea>
                                 </SheetContent>
                             </Sheet>
                         </div>
-                    </div>
                 </div>
             </motion.div>
         )}
