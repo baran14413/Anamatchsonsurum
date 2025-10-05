@@ -1,14 +1,25 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { Undo, X, Star, Heart, Send, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
-import ProfileCard from '@/components/profile-card';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
+function calculateAge(dateOfBirth: string | undefined): number | null {
+    if (!dateOfBirth) return null;
+    const birthday = new Date(dateOfBirth);
+    if (isNaN(birthday.getTime())) return null;
+    const ageDifMs = Date.now() - birthday.getTime();
+    const ageDate = new Date(ageDifMs);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+}
+
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -16,7 +27,6 @@ export default function AnasayfaPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,9 +70,7 @@ export default function AnasayfaPage() {
             }
         });
         
-        // 4. Shuffle for randomness
-        const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
-        setProfiles(shuffledMatches);
+        setProfiles(potentialMatches);
 
       } catch (error) {
         console.error("Error fetching profiles:", error);
@@ -81,136 +89,44 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, toast, t.common.error]);
 
-  const recordSwipe = async (swipedProfile: UserProfile, direction: 'left' | 'right') => {
-    if (!user || !firestore || !swipedProfile.uid) return;
-
-    try {
-        const currentUserId = user.uid;
-        const swipedUserId = swipedProfile.uid;
-
-        // Use a consistent ID generation for the match document
-        const matchId = [currentUserId, swipedUserId].sort().join('_');
-        const matchRef = doc(firestore, 'matches', matchId);
-        
-        if (direction === 'right') {
-            // Check if the other user has already liked the current user.
-            const otherUserSwipeDoc = await getDoc(matchRef);
-
-            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.user2Id === swipedUserId && otherUserSwipeDoc.data()?.status === 'liked') {
-                // It's a match! The other user liked us, and we are liking them back.
-                 await setDoc(matchRef, { 
-                    ...otherUserSwipeDoc.data(),
-                    status: 'matched',
-                    matchDate: serverTimestamp() 
-                }, { merge: true });
-
-                const matchDataForSubcollection = {
-                    id: matchId,
-                    users: [currentUserId, swipedUserId].sort(),
-                    matchDate: serverTimestamp(),
-                    // You can add other relevant info here like names and pictures for the chat list
-                };
-                const currentUserMatchRef = doc(firestore, `users/${currentUserId}/matches/${matchId}`);
-                const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
-                
-                await setDoc(currentUserMatchRef, matchDataForSubcollection);
-                await setDoc(otherUserMatchRef, matchDataForSubcollection);
-                
-                toast({
-                    title: t.anasayfa.matchToastTitle,
-                    description: t.anasayfa.matchToastDescription
-                });
-
-            } else {
-                // First "like" in this pair.
-                await setDoc(matchRef, {
-                    id: matchId,
-                    user1Id: currentUserId,
-                    user2Id: swipedUserId,
-                    status: 'liked',
-                    timestamp: serverTimestamp(),
-                }, { merge: true });
-            }
-        } else { // 'left' swipe (dislike)
-             await setDoc(matchRef, {
-                id: matchId,
-                // To track who disliked whom, you can be more specific
-                user1Id: currentUserId, 
-                user2Id: swipedUserId,
-                status: 'disliked',
-                timestamp: serverTimestamp(),
-            }, { merge: true });
-        }
-
-    } catch (error) {
-        console.error('Error recording swipe:', error);
-         toast({
-            title: t.common.error,
-            description: "Kaydırma işlemi kaydedilemedi.",
-            variant: "destructive"
-        });
-    }
-  };
-  
-  const handleSwipe = (direction: 'left' | 'right') => {
-    if (currentIndex < profiles.length) {
-      const swipedProfile = profiles[currentIndex];
-      recordSwipe(swipedProfile, direction);
-      
-      setCurrentIndex(prevIndex => prevIndex + 1);
-    }
-  };
-
-  const currentProfile = !isLoading && currentIndex < profiles.length ? profiles[currentIndex] : null;
-
   return (
-    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden">
-        <div className="relative flex-1">
-            <AnimatePresence>
-                {isLoading ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    </div>
-                ) : currentProfile ? (
-                    <ProfileCard
-                        key={currentProfile.id}
-                        profile={currentProfile}
-                        onSwipe={handleSwipe}
-                    />
-                ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-                        <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
-                        <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
-                    </div>
-                )}
-            </AnimatePresence>
+    <div className="flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-y-auto">
+      {isLoading ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
-        
-        <div className="px-4 z-20 shrink-0">
-            <div className="flex justify-around items-center h-20 max-w-md mx-auto">
-                <button className="h-12 w-12 rounded-full bg-white shadow-lg flex items-center justify-center text-yellow-500 hover:bg-gray-100 transition-transform transform hover:scale-110">
-                    <Undo size={24} />
-                </button>
-                 <button 
-                    onClick={() => handleSwipe('left')}
-                    className="h-14 w-14 rounded-full bg-white shadow-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-transform transform hover:scale-110 disabled:opacity-50"
-                    disabled={!currentProfile}>
-                    <X size={36} />
-                </button>
-                <button className="h-12 w-12 rounded-full bg-white shadow-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition-transform transform hover:scale-110">
-                    <Star size={24} />
-                </button>
-                <button
-                    onClick={() => handleSwipe('right')}
-                    className="h-14 w-14 rounded-full bg-white shadow-lg flex items-center justify-center text-green-500 hover:bg-green-50 transition-transform transform hover:scale-110 disabled:opacity-50"
-                    disabled={!currentProfile}>
-                    <Heart size={32} />
-                </button>
-                 <button className="h-12 w-12 rounded-full bg-white shadow-lg flex items-center justify-center text-sky-500 hover:bg-sky-50 transition-transform transform hover:scale-110">
-                    <Send size={24} />
-                </button>
-            </div>
+      ) : profiles.length > 0 ? (
+        <div className="p-4 space-y-4">
+          <h1 className="text-2xl font-bold">Potansiyel Eşleşmeler ({profiles.length})</h1>
+          {profiles.map(profile => {
+            const age = calculateAge(profile.dateOfBirth);
+            return (
+              <Card key={profile.id}>
+                <CardHeader>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={profile.profilePicture || profile.images[0]} alt={profile.fullName} />
+                      <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle>{profile.fullName}{age ? `, ${age}` : ''}</CardTitle>
+                      <CardDescription>{profile.interests?.join(', ')}</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{profile.bio}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+          <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
+          <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
+        </div>
+      )}
     </div>
   );
 }
