@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, collectionGroup, updateDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -31,15 +32,18 @@ export default function AnasayfaPage() {
         const interactedUsers = new Set<string>();
         interactedUsers.add(user.uid); // Add self to avoid showing own profile
 
-        const matchesQuery = query(collectionGroup(firestore, 'matches'), where('users', 'array-contains', user.uid));
-        const matchesSnapshot = await getDocs(matchesQuery);
-        matchesSnapshot.forEach(matchDoc => {
-            const users = matchDoc.data().users;
+        const matchesCollectionRef = collection(firestore, 'matches');
+        const userInteractionsQuery1 = query(matchesCollectionRef, where('users', 'array-contains', user.uid));
+        
+        const interactionsSnapshot = await getDocs(userInteractionsQuery1);
+        interactionsSnapshot.forEach(doc => {
+            const users = doc.data().users;
             const otherUser = users.find((uid: string) => uid !== user.uid);
             if (otherUser) {
                 interactedUsers.add(otherUser);
             }
         });
+
 
         // 2. Fetch profiles, excluding the interacted ones
         // Note: Firestore's `not-in` query is limited to 10 elements.
@@ -171,10 +175,40 @@ export default function AnasayfaPage() {
   }, [user, firestore, t, toast, profiles]);
 
 
-  const handleReset = () => {
+  const handleReset = async () => {
+    if (!user || !firestore) return;
     setIsLoading(true);
-    setCurrentIndex(0);
-    fetchProfiles();
+
+    try {
+        // Reset filters in Firestore
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userDocRef, {
+            genderPreference: 'both' // Reset to default
+            // Add other filters to reset here in the future
+        });
+        
+        toast({
+            title: "Filtreler Sıfırlandı",
+            description: "Tüm filtreleriniz sıfırlandı, baştan başlıyoruz!",
+        });
+
+        // Now, refetch profiles with cleared filters
+        setCurrentIndex(0);
+        // The fetchProfiles function will automatically use the updated userProfile
+        // But we might need to manually trigger a re-render or refetch of userProfile.
+        // A simple way is to just call fetchProfiles(), which relies on the hook that will update.
+        await fetchProfiles();
+
+    } catch (error) {
+        console.error("Error resetting filters:", error);
+        toast({
+            title: "Hata",
+            description: "Filtreler sıfırlanırken bir hata oluştu.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
   
   const activeProfile = !isLoading && profiles.length > 0 && currentIndex < profiles.length 

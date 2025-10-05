@@ -59,7 +59,7 @@ export default function PreferencesPage() {
                     </div>
 
                     <RadioGroup 
-                        defaultValue={userProfile?.genderPreference || 'both'}
+                        value={userProfile?.genderPreference || 'both'}
                         onValueChange={handleGenderPreferenceChange}
                         className="space-y-1"
                     >
