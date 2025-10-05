@@ -18,18 +18,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, CheckCircle, XCircle, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Trash2, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
-import Link from "next/link";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
+import { Country, State, ICountry, IState } from 'country-state-city';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
@@ -68,7 +65,6 @@ const formSchema = z.object({
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
     uid: z.string().optional(),
     email: z.string().email(),
-    password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -205,7 +201,6 @@ export default function SignupForm() {
   const t = langTr;
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
   
   const [countries, setCountries] = useState<ICountry[]>([]);
@@ -213,7 +208,6 @@ export default function SignupForm() {
   
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedState, setSelectedState] = useState<string | undefined>();
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -231,7 +225,6 @@ export default function SignupForm() {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       gender: undefined,
       lookingFor: "",
       address: { country: undefined, state: undefined, city: undefined },
@@ -259,8 +252,6 @@ export default function SignupForm() {
     try {
         const googleDataString = sessionStorage.getItem('googleSignupData');
         if (googleDataString) {
-            setIsGoogleSignup(true);
-            setStep(1); // Start from name step
             const googleData = JSON.parse(googleDataString);
             form.setValue('email', googleData.email || '');
             form.setValue('name', googleData.name || '');
@@ -272,6 +263,9 @@ export default function SignupForm() {
                 setPhotoSlots(initialSlots);
                 form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
             }
+        } else {
+           // If no google data, they shouldn't be here.
+           router.push('/');
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
@@ -321,8 +315,6 @@ export default function SignupForm() {
   const prevStep = () => {
     if (step === 0) {
       router.push('/kurallar'); 
-    } else if (step === 1 && isGoogleSignup) {
-       router.push('/'); // If it was a Google signup, go back to welcome screen from step 1
     } else {
       setStep((prev) => prev - 1)
     }
@@ -336,17 +328,9 @@ export default function SignupForm() {
     
     setIsLoading(true);
     try {
-        let userId = user?.uid;
-
+        let userId = data.uid;
         if (!userId) {
-          if (!isGoogleSignup && data.email && data.password) {
-            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-            userId = userCredential.user.uid;
-          } else if (data.uid) {
-             userId = data.uid;
-          } else {
-            throw new Error("User ID could not be determined.");
-          }
+            throw new Error("User ID could not be determined from Google Sign-In.");
         }
         
       const filesToUpload = photoSlots.filter(p => p.file);
@@ -442,7 +426,7 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = isGoogleSignup ? 9 : 10;
+  const totalSteps = 10;
   const progressValue = (step / totalSteps) * 100;
 
 
@@ -489,42 +473,24 @@ export default function SignupForm() {
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}` | 'address.country')[] = [];
     
-    // Define steps for each flow
-    const normalFlow = [
-        ['email', 'password'], // 0
-        ['name'], // 1
-        ['dateOfBirth'], // 2
-        ['gender'], // 3
-        ['lookingFor'], // 4
-        ['address.country', 'address.state'], // 5
-        ['distancePreference'], // 6
-        ['school'], // 7
-        ['drinking', 'smoking', 'workout', 'pets'], // 8
-        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
-        ['interests'], // 10
-        ['photos'] // 11
-    ];
-    
-    const googleFlow = [
-        [], // 0 - dummy step for alignment
-        ['name'], // 1
-        ['dateOfBirth'], // 2
-        ['gender'], // 3
-        ['lookingFor'], // 4
-        ['address.country', 'address.state'], // 5
-        ['distancePreference'], // 6
-        ['school'], // 7
-        ['drinking', 'smoking', 'workout', 'pets'], // 8
-        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
-        ['interests'], // 10
-        ['photos'] // 11
+    const flow = [
+        ['name'], // 0
+        ['dateOfBirth'], // 1
+        ['gender'], // 2
+        ['lookingFor'], // 3
+        ['address.country', 'address.state'], // 4
+        ['distancePreference'], // 5
+        ['school'], // 6
+        ['drinking', 'smoking', 'workout', 'pets'], // 7
+        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 8
+        ['interests'], // 9
+        ['photos'] // 10
     ];
 
-    const currentFlow = isGoogleSignup ? googleFlow : normalFlow;
-    const finalStep = isGoogleSignup ? 11 : 11;
+    const finalStep = 10;
     
-    if (step < currentFlow.length) {
-        fieldsToValidate = currentFlow[step] as any;
+    if (step < flow.length) {
+        fieldsToValidate = flow[step] as any;
     }
 
     const isFinalStep = step === finalStep;
@@ -540,8 +506,8 @@ export default function SignupForm() {
     }
   };
 
-  const finalStep = isGoogleSignup ? 10 : 11;
-  const interestStep = isGoogleSignup ? 9 : 10;
+  const finalStep = 10;
+  const interestStep = 9;
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -551,7 +517,7 @@ export default function SignupForm() {
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
         {(step > 0 && step < finalStep) ? (
-            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 7 ? '' : 'invisible'}`}>
+            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 6 ? '' : 'invisible'}`}>
                 {t.signup.progressHeader.skip}
             </Button>
         ) : <div className="w-16"></div>}
@@ -560,41 +526,7 @@ export default function SignupForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
-               {step === 0 && !isGoogleSignup && (
-                <>
-                  <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
-                  <p className="text-muted-foreground mb-8">{t.signup.step1.description}</p>
-                   <div className="space-y-6">
-                     <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t.signup.step1.emailLabel}</FormLabel>
-                            <FormControl>
-                                <Input placeholder="ornek@mail.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{t.signup.step1.passwordLabel}</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                   </div>
-                </>
-              )}
-              {step === 1 && (
+              {step === 0 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step2.title}</h1>
                   <FormField
@@ -618,7 +550,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 2 && (
+              {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step3.title}</h1>
                   <Controller
@@ -655,7 +587,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 3 && (
+              {step === 2 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step4.title}</h1>
                   <FormField
@@ -689,7 +621,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 4 && (
+              {step === 3 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step5.title}</h1>
@@ -731,7 +663,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-              {step === 5 && (
+              {step === 4 && (
                  <div className="space-y-4">
                     <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
                     <FormField
@@ -823,7 +755,7 @@ export default function SignupForm() {
                     />
                 </div>
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step7.title}</h1>
                   <p className="text-muted-foreground">{t.signup.step7.description}</p>
@@ -854,7 +786,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step8.title}</h1>
                   <FormField
@@ -878,7 +810,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 8 && (
+              {step === 7 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step9.title.replace('{name}', currentName)}</h1>
@@ -974,7 +906,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-               {step === 9 && (
+               {step === 8 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step10.title.replace('{name}', currentName)}</h1>
@@ -1210,10 +1142,10 @@ export default function SignupForm() {
               className="w-full h-14 rounded-full text-lg font-bold"
               disabled={
                 isLoading ||
-                (step === 2 && ageStatus !== 'valid') ||
-                (step === 5 && (!currentAddress?.country || !currentAddress?.state)) ||
-                (step === 8 && filledLifestyleCount < 4) ||
-                (step === 9 && filledMoreInfoCount < 4) ||
+                (step === 1 && ageStatus !== 'valid') ||
+                (step === 4 && (!currentAddress?.country || !currentAddress?.state)) ||
+                (step === 7 && filledLifestyleCount < 4) ||
+                (step === 8 && filledMoreInfoCount < 4) ||
                 (step === interestStep && selectedInterests.length < 1) ||
                 (step === finalStep && uploadedPhotoCount < 2)
               }

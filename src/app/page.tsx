@@ -138,11 +138,6 @@ export default function WelcomePage() {
                 {t.welcome.continueWithGoogle}
               </Button>
           </div>
-           <div className="text-center text-sm">
-             <Link href="/login" className="text-white font-semibold hover:underline">
-               {t.loginIssues}
-             </Link>
-           </div>
         </div>
       </main>
     </div>
