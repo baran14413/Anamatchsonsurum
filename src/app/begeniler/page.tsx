@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,42 +33,39 @@ export default function BegenilerPage() {
     const fetchLikers = async () => {
       setIsLoading(true);
       try {
-        // Find documents in 'matches' where the current user is involved
-        // and the *other* user has liked them, but they haven't yet taken an action.
-        
-        // Case 1: Current user is user1Id in the match doc
-        const likesAsUser1Query = query(
-          collection(firestore, 'matches'),
-          where('user1Id', '==', user.uid),
-          where('user2_action', '==', 'liked'),
-          where('user1_action', '==', null) // Ensures we haven't acted yet
-        );
-
-        // Case 2: Current user is user2Id in the match doc
+        // Case 1: The current user is user2Id, and user1 has liked them,
+        // but user2 (current user) hasn't acted yet.
         const likesAsUser2Query = query(
           collection(firestore, 'matches'),
           where('user2Id', '==', user.uid),
           where('user1_action', '==', 'liked'),
-          where('user2_action', '==', null) // Ensures we haven't acted yet
+          where('user2_action', '==', null)
+        );
+
+        // Case 2: The current user is user1Id, and user2 has liked them,
+        // but user1 (current user) hasn't acted yet.
+        const likesAsUser1Query = query(
+          collection(firestore, 'matches'),
+          where('user1Id', '==', user.uid),
+          where('user2_action', '==', 'liked'),
+          where('user1_action', '==', null)
         );
         
-        const [asUser1Snapshot, asUser2Snapshot] = await Promise.all([
-            getDocs(likesAsUser1Query),
+        const [asUser2Snapshot, asUser1Snapshot] = await Promise.all([
             getDocs(likesAsUser2Query),
+            getDocs(likesAsUser1Query),
         ]);
 
         const likerIds = new Set<string>();
-        const matchIds: { [key: string]: string } = {};
-
-        asUser1Snapshot.forEach(doc => {
-            const data = doc.data();
-            likerIds.add(data.user2Id);
-            matchIds[data.user2Id] = doc.id;
-        });
+        
+        // From Case 1, the liker is user1Id
         asUser2Snapshot.forEach(doc => {
-            const data = doc.data();
-            likerIds.add(data.user1Id);
-            matchIds[data.user1Id] = doc.id;
+            likerIds.add(doc.data().user1Id);
+        });
+
+        // From Case 2, the liker is user2Id
+        asUser1Snapshot.forEach(doc => {
+            likerIds.add(doc.data().user2Id);
         });
 
         if (likerIds.size === 0) {
@@ -78,9 +74,9 @@ export default function BegenilerPage() {
             return;
         }
 
-        // Fetch profile info for all likers
+        // Fetch profile info for all unique likers
         const likerProfiles: LikerInfo[] = [];
-        for (const uid of Array.from(likerIds)) {
+        const profilePromises = Array.from(likerIds).map(async (uid) => {
             const userDocRef = doc(firestore, 'users', uid);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
@@ -88,12 +84,15 @@ export default function BegenilerPage() {
                 likerProfiles.push({
                     uid: uid,
                     fullName: profileData.fullName || 'BeMatch User',
-                    profilePicture: profileData.profilePicture || '',
+                    profilePicture: profileData.images[0] || '',
                     age: calculateAge(profileData.dateOfBirth),
-                    matchId: matchIds[uid]
+                    matchId: '' // MatchId is not directly needed for display here
                 });
             }
-        }
+        });
+
+        await Promise.all(profilePromises);
+
         setLikers(likerProfiles);
 
       } catch (error) {
