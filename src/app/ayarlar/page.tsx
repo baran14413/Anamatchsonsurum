@@ -4,7 +4,7 @@
 import { useUser } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin } from 'lucide-react';
+import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
@@ -70,6 +70,11 @@ export default function SettingsPage() {
                 <SectionTitle title="İlgi Alanları" />
                  <div className="bg-background border-y">
                    <SettingsItem icon={Heart} iconColor="#ef4444" text="İlgi Alanlarını Düzenle" href='/ayarlar/ilgi-alanlari' />
+                </div>
+
+                <SectionTitle title="Uygulama Ayarları" />
+                 <div className="bg-background border-y">
+                   <SettingsItem icon={Smartphone} iconColor="#f97316" text="Uygulama" href='/ayarlar/uygulama' />
                 </div>
 
                  <SectionTitle title="Oturum" />

@@ -81,7 +81,7 @@ export default function WelcomePage() {
 
   if (isUserLoading || (user && userProfile)) {
       return (
-           <div className="flex h-dvh items-center justify-center">
+           <div className="flex h-dvh items-center justify-center bg-background">
              <Icons.logo width={48} height={48} className="animate-pulse" />
            </div>
       );

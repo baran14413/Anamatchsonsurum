@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { Inter } from 'next/font/google';
 import AppShell from "@/components/app-shell";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,12 +21,18 @@ export default function RootLayout({
   return (
     <html lang="tr" className={inter.className} suppressHydrationWarning>
       <body>
-        <FirebaseClientProvider>
-          <AppShell>
-            {children}
-          </AppShell>
-        </FirebaseClientProvider>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          <FirebaseClientProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </FirebaseClientProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
