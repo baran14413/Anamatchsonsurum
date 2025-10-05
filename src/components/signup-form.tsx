@@ -241,13 +241,14 @@ export default function SignupForm() {
             }
             setIsGoogleSignup(true);
             setStep(1); // Skip email/password step for Google signup
-            sessionStorage.removeItem('googleSignupData');
+            // Do NOT remove the item from session storage here, as a page reload might lose the data.
+            // It will be implicitly cleared when the session ends.
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form]);
+  }, [form, t.signup.step12.photoSlotLabels]); // Added dependencies
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
@@ -357,6 +358,9 @@ export default function SignupForm() {
       };
 
       await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
+      
+      // Clear the session storage item after successful registration
+      sessionStorage.removeItem('googleSignupData');
       
       router.push("/anasayfa");
 

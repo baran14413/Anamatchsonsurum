@@ -26,11 +26,10 @@ export default function WelcomePage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
-    // If user is loaded and exists, they are already logged in.
-    // The logic to decide if they should be on this page or another
-    // is now handled here instead of AppShell for public routes.
+    // This effect now ONLY handles redirecting authenticated users from public routes.
+    // The AppShell handles protecting routes for unauthenticated users.
     if (!isUserLoading && user) {
-        // A logged-in user should not be on the welcome page.
+        // A logged-in user should not be on the welcome page, send them to the main app page.
         router.replace('/anasayfa');
     }
   }, [user, isUserLoading, router]);
@@ -54,12 +53,15 @@ export default function WelcomePage() {
         const userDocRef = doc(firestore, "users", signedInUser.uid);
         const userDoc = await getDoc(userDocRef);
 
+        // Check if the user document exists AND if it has the 'gender' field.
+        // The 'gender' field is a good indicator that the user has completed the signup process.
         if (userDoc.exists() && userDoc.data()?.gender) { 
             // User profile is complete, log them in by sending to main page
             router.push("/anasayfa");
         } else {
-            // New user or incomplete profile, redirect to signup
+            // New user or incomplete profile, redirect to signup.
             
+            // Store Google data to pre-fill the signup form.
             const googleData = {
                 email: signedInUser.email,
                 name: signedInUser.displayName,
@@ -67,6 +69,7 @@ export default function WelcomePage() {
                 uid: signedInUser.uid,
             };
             
+            // If the document doesn't exist at all, create a basic one.
             if (!userDoc.exists()) {
                 const initialProfileData = {
                     uid: signedInUser.uid,
@@ -78,7 +81,9 @@ export default function WelcomePage() {
                 await setDoc(userDocRef, initialProfileData, { merge: true });
             }
 
+            // Use sessionStorage to pass this info to the registration page.
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
+            // Force redirect to the registration page.
             router.push("/kayit-ol");
         }
 
@@ -94,7 +99,8 @@ export default function WelcomePage() {
     }
   };
 
-  // Do not render the page content if a logged-in user is about to be redirected.
+  // While checking user auth or if user is found, show a loader.
+  // This prevents the welcome page from flashing before a redirect.
   if (isUserLoading || user) {
       return (
            <div className="flex h-dvh items-center justify-center">
@@ -103,6 +109,7 @@ export default function WelcomePage() {
       );
   }
 
+  // Only render the welcome page if the user is not logged in.
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center p-8 text-center">
