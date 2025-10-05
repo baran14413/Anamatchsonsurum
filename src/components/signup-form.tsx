@@ -214,6 +214,7 @@ export default function SignupForm() {
 
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedState, setSelectedState] = useState<string | undefined>();
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -294,6 +295,66 @@ export default function SignupForm() {
     } else {
         setAgeStatus('invalid');
     }
+  };
+
+  const handleLocationRequest = async () => {
+    if (!navigator.geolocation) {
+        toast({ title: "Hata", description: "Tarayıcınız konum servisini desteklemiyor.", variant: "destructive" });
+        return;
+    }
+
+    const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+    if (permissionStatus.state === 'denied') {
+        setLocationPermissionDenied(true);
+        toast({
+            title: t.signup.step6.errorTitle,
+            description: t.signup.step6.errorMessage,
+            variant: "destructive",
+            duration: 5000,
+        });
+        return;
+    }
+
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+                const data = await response.json();
+                if (data.address) {
+                    const country = Country.getAllCountries().find(c => c.isoCode === data.address.country);
+                    
+                    if (country) {
+                        const allStates = State.getStatesOfCountry(country.isoCode);
+                        const state = allStates.find(s => s.name === data.address.city);
+                        
+                        form.setValue('address', {
+                            country: country?.isoCode,
+                            state: state?.isoCode,
+                            city: data.address.city
+                        }, { shouldValidate: true });
+                    }
+                     form.setValue('location', { latitude, longitude });
+                } else {
+                    toast({ title: "Hata", description: "Adres bulunamadı.", variant: "destructive" });
+                }
+            } catch (error) {
+                 toast({ title: "Hata", description: "Adres getirilirken bir sorun oluştu.", variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        (error) => {
+            let message = "Konum alınırken bir hata oluştu.";
+            if (error.code === error.PERMISSION_DENIED) {
+                 message = "Konum iznini reddettiniz. Lütfen tarayıcı ayarlarından izin verin.";
+                 setLocationPermissionDenied(true);
+            }
+            toast({ title: "Hata", description: message, variant: "destructive" });
+            setIsLoading(false);
+        }
+    );
   };
   
   const currentName = form.watch("name");
@@ -807,7 +868,7 @@ export default function SignupForm() {
                                 <SelectContent>
                                      <ScrollArea className="h-72">
                                         {cities.map((city) => (
-                                            <SelectItem key={city.name} value={String(city.id)}>
+                                            <SelectItem key={city.id} value={String(city.id)}>
                                                 {city.name}
                                             </SelectItem>
                                         ))}
@@ -1133,7 +1194,7 @@ export default function SignupForm() {
                           }`}
                         >
                           <div
-                            onClick={() => openFilePicker(index)}
+                            onClick={()={() => openFilePicker(index)}}
                             className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
@@ -1229,3 +1290,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
