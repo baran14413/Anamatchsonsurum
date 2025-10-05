@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -21,7 +22,6 @@ export default function AnasayfaPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const topCard = profiles[currentIndex];
-  const nextCard = profiles[currentIndex + 1];
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
@@ -183,21 +183,11 @@ export default function AnasayfaPage() {
         ) : topCard ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
-               {/* Next Card in the background */}
-                {nextCard && (
-                    <div className="absolute w-full max-w-sm h-full max-h-[75vh] transform scale-95 -translate-y-6">
-                        <ProfileCard
-                            profile={nextCard}
-                            onSwipe={() => {}} // No-op
-                            isDraggable={false}
-                        />
-                    </div>
-                )}
-                {/* Top Card */}
+                {/* Only render the top card */}
                 <div className="absolute w-full max-w-sm h-full max-h-[75vh]">
                     <ProfileCard
                         profile={topCard}
-                        onSwipe={() => {}} // No-op
+                        onSwipe={() => {}} // No-op, handled by buttons
                         isDraggable={false}
                     />
                 </div>
@@ -233,3 +223,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
