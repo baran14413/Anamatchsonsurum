@@ -150,7 +150,7 @@ export default function AnasayfaPage() {
                     lastMessage: t.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images?.[0]?.url || '',
+                    profilePicture: swipedProfile.images?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -187,11 +187,20 @@ export default function AnasayfaPage() {
     setIsLoading(true);
 
     try {
-        const interactedUids = new Set<string>();
-        interactedUids.add(user.uid); 
+        const interactedUids = new Set<string>([user.uid]);
         
-        // This is the key change. We are NOT filtering out users who have been interacted with.
-        // The main card stack is ephemeral. The "Likes" page is the source of truth for potential matches.
+        if (!options?.reset) {
+            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+            
+            const [query1Snapshot, query2Snapshot] = await Promise.all([
+                getDocs(matchesQuery1),
+                getDocs(matchesQuery2)
+            ]);
+
+            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+        }
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -201,10 +210,15 @@ export default function AnasayfaPage() {
         if (genderPref && genderPref !== 'both') {
           qConstraints.push(where('gender', '==', genderPref));
         }
+        
+        if (interactedUids.size > 0) {
+            qConstraints.push(where('uid', 'not-in', Array.from(interactedUids)));
+        }
 
         qConstraints.push(limit(100));
-
-        const usersQuery = query(collection(firestore, 'users'), ...qConstraints);
+        
+        const usersCollectionRef = collection(firestore, 'users');
+        const usersQuery = query(usersCollectionRef, ...qConstraints);
 
         const querySnapshot = await getDocs(usersQuery);
         
@@ -217,8 +231,21 @@ export default function AnasayfaPage() {
                 // Age filter
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
-                    if (age === null || age < ageRange.min || age > ageRange.max) {
-                        return false;
+                    if (age === null) return false;
+
+                    const minAge = userProfile.expandAgeRange ? ageRange.min - 5 : ageRange.min;
+                    const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
+                    
+                    if (age < minAge || age > maxAge) {
+                        // If expand is on, check if we should still include them
+                        if (userProfile.expandAgeRange && (age >= ageRange.min && age <= ageRange.max)) {
+                           // They are within original range, so it's fine.
+                        } else if (!userProfile.expandAgeRange) {
+                           return false;
+                        } else {
+                            // If they are outside the expanded range, filter them out
+                            if (age < ageRange.min || age > ageRange.max) return false;
+                        }
                     }
                 }
                 
@@ -329,7 +356,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
-
-    
