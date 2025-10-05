@@ -1,38 +1,47 @@
-
 'use client';
 
 import { useUser } from '@/firebase';
 import { langTr } from '@/languages/tr';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail, KeyRound } from 'lucide-react';
+import { ArrowLeft, ChevronRight, User, Bell, Lock, Shield, HelpCircle, FileText, Star, Users, LogOut, MessageCircle, Settings, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import googleLogo from '@/img/googlelogin.png';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Icons } from '@/components/icons';
+import Link from 'next/link';
 
+interface SettingsItemProps {
+  icon: React.ElementType;
+  iconColor: string;
+  text: string;
+  value?: string;
+  href?: string;
+}
 
-const ProviderIcon = ({ providerId }: { providerId: string }) => {
-    switch (providerId) {
-        case 'google.com':
-            return <Image src={googleLogo} alt="Google" width={24} height={24} />;
-        case 'password':
-            return <KeyRound className="h-6 w-6 text-muted-foreground" />;
-        default:
-            return <Mail className="h-6 w-6 text-muted-foreground" />;
-    }
+const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, iconColor, text, value, href }) => {
+  const content = (
+      <div className="flex items-center justify-between w-full p-4 cursor-pointer hover:bg-muted/50">
+          <div className="flex items-center gap-4">
+              <div className={`p-2 rounded-full`} style={{ backgroundColor: `${iconColor}20`, color: iconColor }}>
+                  <Icon className="h-5 w-5" />
+              </div>
+              <span className="font-medium">{text}</span>
+          </div>
+          <div className="flex items-center gap-2">
+              {value && <span className="text-sm text-muted-foreground">{value}</span>}
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </div>
+      </div>
+  );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>
+  }
+  return content;
 };
 
-const getProviderName = (providerId: string) => {
-    switch (providerId) {
-        case 'google.com':
-            return 'Google';
-        case 'password':
-            return 'E-posta & Şifre';
-        default:
-            return providerId;
-    }
-}
+
+const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
+  <h2 className="px-4 pt-6 pb-2 text-sm font-semibold text-muted-foreground">{title}</h2>
+);
 
 
 export default function SettingsPage() {
@@ -42,54 +51,49 @@ export default function SettingsPage() {
 
     return (
         <div className="flex h-dvh flex-col bg-gray-50 dark:bg-black">
-             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
+             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <h1 className="text-lg font-semibold">Ayarlar</h1>
+                <h1 className="text-lg font-semibold">Ayarlar ve hareketler</h1>
+                <div className='w-9'></div>
             </header>
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-                <div className="max-w-2xl mx-auto space-y-8">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Hesap</CardTitle>
-                            <CardDescription>Hesap bilgilerinizi ve bağlı hesapları yönetin.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-4 p-4 border rounded-lg">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarImage src={user?.photoURL || undefined} />
-                                    <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className='flex-1'>
-                                    <p className="font-semibold">{user?.displayName}</p>
-                                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Bağlı Hesaplar</CardTitle>
-                            <CardDescription>Giriş yapmak için kullandığınız servisler.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {user?.providerData.map((provider) => (
-                                <div key={provider.providerId} className="flex items-center justify-between p-3 border rounded-lg">
-                                    <div className="flex items-center gap-4">
-                                        <ProviderIcon providerId={provider.providerId} />
-                                        <div>
-                                            <p className="font-medium">{getProviderName(provider.providerId)}</p>
-                                            {provider.email && <p className="text-sm text-muted-foreground">{provider.email}</p>}
-                                        </div>
-                                    </div>
-                                    <Button variant="outline" size="sm" disabled>Bağlı</Button>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
+            <main className="flex-1 overflow-y-auto">
+                <SectionTitle title="Hesabın" />
+                <div className="bg-background border-y">
+                   <SettingsItem icon={User} iconColor="#3b82f6" text="Hesap" href='/ayarlar/hesap' />
+                   <SettingsItem icon={Settings} iconColor="#8b5cf6" text="Bağlı Hesaplar" href='/ayarlar/bagli-hesaplar' />
                 </div>
+                
+                <SectionTitle title="İçeriklerini kimler görebilir?" />
+                 <div className="bg-background border-y">
+                   <SettingsItem icon={Lock} iconColor="#ef4444" text="Hesap gizliliği" value="Herkese açık" />
+                   <SettingsItem icon={Star} iconColor="#f97316" text="Yakın Arkadaşlar" value="0" />
+                   <SettingsItem icon={Users} iconColor="#10b981" text="Engellenenler" value="0"/>
+                </div>
+
+                <SectionTitle title="Başkalarının seninle etkileşimleri" />
+                 <div className="bg-background border-y">
+                   <SettingsItem icon={MessageCircle} iconColor="#0ea5e9" text="Mesajlar ve hikaye yanıtları" />
+                   <SettingsItem icon={UserPlus} iconColor="#6366f1" text="Takip etme ve davet etme" />
+                </div>
+
+                <SectionTitle title="Daha fazla bilgi ve destek" />
+                 <div className="bg-background border-y">
+                    <SettingsItem icon={HelpCircle} iconColor="#84cc16" text="Yardım" />
+                    <SettingsItem icon={FileText} iconColor="#a855f7" text="Hakkında" />
+                </div>
+
+                 <SectionTitle title="Oturum" />
+                 <div className="bg-background border-y">
+                    <SettingsItem icon={LogOut} iconColor="#78716c" text="Çıkış Yap" />
+                </div>
+
+                 <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <Icons.logo width={100} height={35} />
+                    <p className="text-xs text-muted-foreground mt-2">Tüm hakları gizlidir © BeMatch</p>
+                </div>
+                
             </main>
         </div>
     )
