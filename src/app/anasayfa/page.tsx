@@ -25,33 +25,25 @@ export default function AnasayfaPage() {
 
       setIsLoading(true);
       try {
-        // 1. Get IDs of users the current user has already interacted with (liked, disliked, or matched)
-        const currentUserSwipesSnapshot = await getDocs(collection(firestore, `matches`));
-        const interactedUserIds = new Set<string>();
-        currentUserSwipesSnapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.user1Id === user.uid) {
-            interactedUserIds.add(data.user2Id);
-          } else if (data.user2Id === user.uid) {
-            interactedUserIds.add(data.user1Id);
-          }
-        });
-        interactedUserIds.add(user.uid); // Filter out the current user
+        // 1. Get all users except the current one
+        const allUsersQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
+        const allUsersSnapshot = await getDocs(allUsersQuery);
+        const allUsers = allUsersSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as UserProfile))
+            .filter(profile => profile.uid); // Ensure it's a valid profile
 
-        // 2. Get all user profiles
-        const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
+        // 2. Get all interactions (likes, dislikes, matches) involving the current user
+        const interactionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const interactionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
         
-        const allUsers: UserProfile[] = [];
-        allUsersSnapshot.forEach(doc => {
-            const userData = doc.data();
-            if (userData && userData.uid) { // Ensure it's a valid user profile
-                allUsers.push({
-                    id: doc.id,
-                    ...userData,
-                    images: userData.images || [], 
-                } as UserProfile);
-            }
-        });
+        const [interactions1Snapshot, interactions2Snapshot] = await Promise.all([
+            getDocs(interactionsQuery1),
+            getDocs(interactionsQuery2)
+        ]);
+
+        const interactedUserIds = new Set<string>();
+        interactions1Snapshot.forEach(doc => interactedUserIds.add(doc.data().user2Id));
+        interactions2Snapshot.forEach(doc => interactedUserIds.add(doc.data().user1Id));
 
         // 3. Filter out users the current user has already interacted with
         const potentialMatches = allUsers.filter(profile => !interactedUserIds.has(profile.uid));
