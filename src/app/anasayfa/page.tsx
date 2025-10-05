@@ -265,7 +265,7 @@ export default function AnasayfaPage() {
         ) : activeIndex > -1 ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
-                <AnimatePresence initial={false}>
+                <AnimatePresence initial={false} onExitComplete={() => setDirection(0)}>
                     {nextCardIndex > -1 && (
                         <motion.div
                            key={profiles[nextCardIndex].uid}
@@ -289,7 +289,6 @@ export default function AnasayfaPage() {
                         initial="animate"
                         exit="exit"
                         className="absolute w-full max-w-sm h-full max-h-[75vh]"
-                        onExitComplete={() => setDirection(0)}
                     >
                         <ProfileCard
                             profile={profiles[activeIndex]}
