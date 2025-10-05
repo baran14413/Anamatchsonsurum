@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -25,6 +24,8 @@ import { langTr } from "@/languages/tr";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
 import { Slider } from "./ui/slider";
+import googleLogo from '@/img/googlelogin.png';
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -355,6 +356,8 @@ export default function ProfileCompletionForm() {
       else nextStep();
     }
   };
+
+  const isGoogleUser = user?.providerData.some(p => p.providerId === 'google.com');
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -369,6 +372,23 @@ export default function ProfileCompletionForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
+               <div className="text-center mb-6">
+                 <h1 className="text-3xl font-bold">Profilini Tamamla</h1>
+                 {isGoogleUser && user && (
+                    <div className="mt-4 flex items-center justify-center gap-3 rounded-lg border bg-muted p-3">
+                         <Avatar className="h-8 w-8">
+                           <AvatarImage src={user.photoURL ?? ''} />
+                           <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                         </Avatar>
+                         <div className="text-left">
+                            <p className="text-sm font-semibold">{user.displayName}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                         </div>
+                         <Image src={googleLogo} alt="Google logo" width={20} height={20} className="ml-auto" />
+                    </div>
+                 )}
+               </div>
+
               {step === 0 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <MapPin className="w-20 h-20 text-primary" />
@@ -567,3 +587,4 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+ 
