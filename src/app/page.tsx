@@ -43,11 +43,13 @@ export default function WelcomePage() {
         const userDocRef = doc(firestore, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists() && userDoc.data()?.gender) { // Check for a field from later in signup
+        if (userDoc.exists() && userDoc.data()?.gender) { 
             // User profile is complete, log them in
             router.push("/anasayfa");
         } else {
             // New user or incomplete profile, redirect to signup
+            
+            // Prepare data to pass to the signup page
             const googleData = {
                 email: user.email,
                 name: user.displayName,
@@ -55,14 +57,15 @@ export default function WelcomePage() {
                 uid: user.uid,
             };
             
-            // If the document doesn't exist at all, we can pre-populate some basic info
+            // If the document doesn't exist, create it with initial info
+            // This ensures the UID is in our system before proceeding to signup
             if (!userDoc.exists()) {
                 const initialProfileData = {
                     uid: user.uid,
                     email: user.email || '',
                     fullName: user.displayName || '',
-                    profilePicture: user.photoURL || '',
                     images: user.photoURL ? [user.photoURL] : [],
+                    profilePicture: user.photoURL || '',
                 };
                 await setDoc(userDocRef, initialProfileData, { merge: true });
             }

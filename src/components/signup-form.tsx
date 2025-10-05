@@ -27,6 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
 import Link from "next/link";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -53,8 +54,9 @@ const formSchema = z.object({
     zodiacSign: z.string().optional(),
     interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
-    uid: z.string(),
+    uid: z.string().optional(),
     email: z.string().email(),
+    password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -186,7 +188,9 @@ export default function SignupForm() {
   const t = langTr;
   
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // Start at step 0 for email/password
+  const [isGoogleSignup, setIsGoogleSignup] = useState(false);
+
   const auth = useAuth();
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -200,6 +204,8 @@ export default function SignupForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      email: "",
+      password: "",
       gender: undefined,
       lookingFor: "",
       distancePreference: 50,
@@ -233,17 +239,15 @@ export default function SignupForm() {
                 setPhotoSlots(initialSlots);
                 form.setValue('photos', [googleData.profilePicture]);
             }
+            setIsGoogleSignup(true);
+            setStep(1); // Skip email/password step for Google signup
             sessionStorage.removeItem('googleSignupData');
-        } else {
-            // If no google data, and we are on this page, it's an error. Redirect to welcome.
-            router.push('/');
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form]);
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
@@ -253,7 +257,7 @@ export default function SignupForm() {
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
-        if (index === 3) { // This is the 'pets' array
+        if (index === 3) {
             return Array.isArray(value) && value.length > 0;
         }
         return !!value;
@@ -267,8 +271,10 @@ export default function SignupForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (step === 1) {
-      router.push('/'); // Go back to welcome screen
+    if (step === 0) {
+      router.push('/'); 
+    } else if (step === 1 && isGoogleSignup) {
+       router.push('/'); // If it was a Google signup, go back to welcome screen from step 1
     } else {
       setStep((prev) => prev - 1)
     }
@@ -280,23 +286,26 @@ export default function SignupForm() {
       return;
     }
     
-    // Ensure the current user from auth matches the UID in the form
-    const currentUser = auth.currentUser;
-    if (!currentUser || currentUser.uid !== data.uid) {
-        toast({ title: t.common.error, description: "Authentication error. Please try signing in again.", variant: "destructive" });
-        router.push('/');
-        return;
-    }
-
     setIsLoading(true);
     try {
-      const userId = data.uid;
-      
-      // Upload photos to a service (e.g., Cloudinary via your API)
+        let userId = data.uid;
+
+        // If it's not a Google signup, we need to create the user with email/password first
+        if (!isGoogleSignup) {
+            if (!data.password || !data.email) {
+                throw new Error("Email and password are required.");
+            }
+            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+            userId = userCredential.user.uid;
+        }
+
+        if (!userId) {
+            throw new Error("User ID could not be determined.");
+        }
+
       const photoUrls: string[] = [];
       const filesToUpload = photoSlots.filter(p => p.file).map(p => p.file);
 
-      // Collect existing preview URLs (for Google profile pic or already uploaded pics)
       const existingUrls = photoSlots
         .map(p => p.preview)
         .filter((url): url is string => !!url && (url.startsWith('http') || url.startsWith('https://lh3.googleusercontent.com')));
@@ -320,7 +329,6 @@ export default function SignupForm() {
       
       const allPhotoUrls = [...existingUrls, ...photoUrls];
 
-      // Create user profile object to save in Firestore
       const userProfile = {
         uid: userId,
         fullName: data.name,
@@ -344,21 +352,23 @@ export default function SignupForm() {
         },
         interests: data.interests,
         images: allPhotoUrls,
-        profilePicture: allPhotoUrls[0] || '', // Set first image as profile picture
+        profilePicture: allPhotoUrls[0] || '',
         location: data.location || null,
       };
 
-      // Save user profile to Firestore
-      await setDoc(doc(firestore, "users", userId), userProfile);
+      await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
       
-      // Redirect to the app
       router.push("/anasayfa");
 
     } catch (error: any) {
       console.error("Signup error:", error);
+       let errorMessage = error.message || t.signup.errors.signupFailed;
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = "This email is already in use by another account.";
+        }
       toast({
         title: "Signup Failed",
-        description: error.message || t.signup.errors.signupFailed,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -366,8 +376,8 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = 11; // Now 11 steps as email/password is removed
-  const progressValue = (step / totalSteps) * 100;
+  const totalSteps = 11; 
+  const progressValue = ((step - (isGoogleSignup ? 1 : 0)) / (totalSteps - (isGoogleSignup ? 1 : 0))) * 100;
 
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -378,12 +388,11 @@ export default function SignupForm() {
       newSlots[activeSlot] = { ...newSlots[activeSlot], file, preview };
       setPhotoSlots(newSlots);
       
-      // Update form value
       const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
       form.setValue('photos', newPhotos, { shouldValidate: true });
     }
     setActiveSlot(null);
-    e.target.value = ''; // Reset file input
+    e.target.value = ''; 
   };
 
   const openFilePicker = (index: number) => {
@@ -394,21 +403,18 @@ export default function SignupForm() {
   };
   
   const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
-      e.stopPropagation(); // Prevent opening file picker
+      e.stopPropagation(); 
       const newSlots = [...photoSlots];
       
       const deletedSlot = newSlots[index];
-      // Revoke object URL to prevent memory leaks for client-side files
       if (deletedSlot.file && deletedSlot.preview) {
         URL.revokeObjectURL(deletedSlot.preview);
       }
 
       newSlots.splice(index, 1);
 
-      // Add a new empty slot at the end
       newSlots.push({ file: null, preview: null, label: '' });
 
-      // Re-label
       const reorderedSlots = newSlots.map((slot, i) => ({
           ...slot,
           label: t.signup.step12.photoSlotLabels[i] || ''
@@ -423,6 +429,7 @@ export default function SignupForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
+    if (step === 0) fieldsToValidate = ['email', 'password'];
     if (step === 1) fieldsToValidate = ['name'];
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
@@ -468,22 +475,22 @@ export default function SignupForm() {
   };
   
   const handleSkip = () => {
-    if (step === 7) { // School
+    if (step === 7) { 
         form.setValue('school', '');
     }
-    if (step === 8) { // Lifestyle
+    if (step === 8) { 
         form.setValue('drinking', undefined);
         form.setValue('smoking', undefined);
         form.setValue('workout', undefined);
         form.setValue('pets', []);
     }
-    if (step === 9) { // More Info
+    if (step === 9) { 
         form.setValue('communicationStyle', undefined);
         form.setValue('loveLanguage', undefined);
         form.setValue('educationLevel', undefined);
         form.setValue('zodiacSign', undefined);
     }
-    if (step === 10) { // Interests
+    if (step === 10) { 
         form.setValue('interests', []);
     }
     nextStep();
@@ -495,7 +502,7 @@ export default function SignupForm() {
         <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
         </Button>
-        <Progress value={progressValue} className="h-2 flex-1" />
+        {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
         {(step === 7 || step === 8 || step === 9 || step === 10) ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
             {t.signup.progressHeader.skip}
@@ -506,6 +513,40 @@ export default function SignupForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
+               {step === 0 && (
+                <>
+                  <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
+                  <p className="text-muted-foreground mb-8">{t.signup.step1.description}</p>
+                   <div className="space-y-6">
+                     <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>{t.signup.step1.emailLabel}</FormLabel>
+                            <FormControl>
+                                <Input placeholder="ornek@mail.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>{t.signup.step1.passwordLabel}</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                   </div>
+                </>
+              )}
               {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step2.title}</h1>
