@@ -52,21 +52,11 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-const getInitialPhotoSlots = (): PhotoSlot[] => {
+const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
   const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
 
-  try {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      const googleUserStr = sessionStorage.getItem('google_signup_user');
-      if (googleUserStr) {
-        const googleUser = JSON.parse(googleUserStr);
-        if (googleUser.photoURL) {
-          initialSlots[0] = { file: null, preview: googleUser.photoURL, progress: 100, isUploading: false };
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Failed to read from sessionStorage:", e);
+  if (user?.photoURL) {
+    initialSlots[0] = { file: null, preview: user.photoURL, progress: 100, isUploading: false };
   }
 
   return initialSlots;
@@ -154,7 +144,7 @@ export default function ProfileCompletionForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [distanceValue, setDistanceValue] = useState(80);
 
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots());
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots(user));
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -170,6 +160,9 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
+        const initialPhotos = getInitialPhotoSlots(user).map(slot => slot.preview).filter((p): p is string => p !== null);
+        form.setValue('photos', initialPhotos, { shouldValidate: true });
+        setPhotoSlots(getInitialPhotoSlots(user));
     }
   }, [user, form]);
   
@@ -204,6 +197,8 @@ export default function ProfileCompletionForm() {
         (position) => {
             const { latitude, longitude } = position.coords;
             form.setValue('location', { latitude, longitude });
+            // Adres çözümleme API çağrısını kaldırdık
+            // Sadece koordinatları alıp başarı durumuna geçiyoruz.
             setLocationStatus('success');
             setIsLocationLoading(false);
         },
@@ -373,21 +368,13 @@ export default function ProfileCompletionForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
-               <div className="text-center mb-6">
+               <div className="relative text-center mb-6">
+                {isGoogleUser && (
+                  <div className="absolute top-1/2 left-0 -translate-y-1/2">
+                      <Image src={googleLogo} alt="Google logo" width={24} height={24} />
+                  </div>
+                )}
                  <h1 className="text-3xl font-bold">Profilini Tamamla</h1>
-                 {isGoogleUser && user && (
-                    <div className="mt-4 flex items-center justify-center gap-3 rounded-lg border bg-muted p-3">
-                         <Avatar className="h-8 w-8">
-                           <AvatarImage src={user.photoURL ?? ''} />
-                           <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                         </Avatar>
-                         <div className="text-left">
-                            <p className="text-sm font-semibold">{user.displayName}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                         </div>
-                         <Image src={googleLogo} alt="Google logo" width={20} height={20} className="ml-auto" />
-                    </div>
-                 )}
                </div>
 
               {step === 0 && (
