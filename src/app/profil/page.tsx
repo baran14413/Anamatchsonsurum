@@ -9,11 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight, GalleryHorizontal } from 'lucide-react';
+import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight, GalleryHorizontal, Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import CircularProgress from '@/components/circular-progress';
 
 
 export default function ProfilePage() {
@@ -85,7 +84,12 @@ export default function ProfilePage() {
               <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
              <div className="absolute -bottom-1 -right-1">
-                 <CircularProgress progress={profileCompletionPercentage} size={44} />
+                 <div
+                    className="relative flex items-center justify-center bg-white rounded-full shadow-md"
+                    style={{ width: 44, height: 44 }}
+                    >
+                    <Icons.logo width={24} height={24} className="animate-spin" />
+                </div>
              </div>
           </div>
           
@@ -106,7 +110,7 @@ export default function ProfilePage() {
         {/* Double Date Card */}
         <Card className='shadow-md'>
             <CardContent className='p-4 flex items-center gap-4'>
-                <Icons.tinderFlame className="h-8 w-8 text-pink-500" />
+                <Icons.logo className="h-8 w-8 text-pink-500" width={32} height={32}/>
                 <div className='flex-1'>
                     <h2 className='font-bold'>{t.profil.tryDoubleDate}</h2>
                     <p className='text-sm text-muted-foreground'>{t.profil.tryDoubleDateDesc}</p>
@@ -152,7 +156,7 @@ export default function ProfilePage() {
                     <AlertDialogFooter>
                     <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
-                        {isLoggingOut ? t.common.loading : t.common.logout}
+                        {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : t.common.logout}
                     </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

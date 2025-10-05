@@ -13,6 +13,7 @@ import { tr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Icons } from '@/components/icons';
 
 interface MatchData {
   id: string;
@@ -109,7 +110,7 @@ export default function EslesmelerPage() {
   if (isLoading) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <Icons.logo width={48} height={48} className="animate-spin text-primary" />
         </div>
       )
   }
@@ -185,7 +186,7 @@ export default function EslesmelerPage() {
                 <AlertDialogFooter>
                     <AlertDialogCancel>İptal</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                         {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
+                         {isDeleting ? <><Icons.logo width={16} height={16} className="mr-2 animate-spin" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

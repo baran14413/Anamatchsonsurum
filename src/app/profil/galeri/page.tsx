@@ -6,10 +6,10 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Plus, Trash2, Pencil, GalleryHorizontal } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil, GalleryHorizontal } from "lucide-react";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
-import CircularProgress from "@/components/circular-progress";
+import { Icons } from "@/components/icons";
 import type { UserImage } from "@/lib/types";
 
 type PhotoSlot = {
@@ -183,7 +183,7 @@ export default function GalleryEditPage() {
         </Button>
         <h1 className="text-lg font-semibold">{t.title}</h1>
         <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedPhotoCount < 1}>
-          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : langTr.common.save}
+          {isSubmitting ? <Icons.logo width={24} height={24} className="animate-spin" /> : langTr.common.save}
         </Button>
       </header>
       
@@ -202,7 +202,7 @@ export default function GalleryEditPage() {
                             {slot.preview ? (
                                 <>
                                     <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                    {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><CircularProgress progress={100} size={60} /></div>}
+                                    {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-spin" /></div>}
                                     {!isSubmitting && (
                                         <div className="absolute bottom-2 right-2 flex gap-2">
                                             <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>

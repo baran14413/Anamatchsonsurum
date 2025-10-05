@@ -5,7 +5,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import FooterNav from './footer-nav';
-import { Loader2, ShieldCheck, Settings } from 'lucide-react';
+import { ShieldCheck, Settings } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -132,7 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isUserLoading && (isProtectedRoute || isRegistrationRoute)) {
     return (
       <div className="flex h-dvh items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Icons.logo width={48} height={48} className="animate-spin" />
       </div>
     );
   }

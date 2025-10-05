@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
+import { Icons } from '@/components/icons';
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
     if (!isSender) return null;
@@ -360,7 +361,7 @@ export default function ChatPage() {
             <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                      <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                        {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                        {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
                     </Button>
                     <Input
                         value={newMessage}

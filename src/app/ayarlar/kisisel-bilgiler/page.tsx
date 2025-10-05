@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useUser, useFirestore } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import googleLogo from '@/img/googlelogin.png';
+import { Icons } from "@/components/icons";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -181,7 +182,7 @@ export default function PersonalInfoPage() {
                 </Button>
                 <h1 className="text-lg font-semibold">Kişisel Bilgiler</h1>
                 <Button form="personal-info-form" type="submit" disabled={isSubmitting || !form.formState.isDirty}>
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : langTr.common.save}
+                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-spin" /> : langTr.common.save}
                 </Button>
             </header>
             <main className="flex-1 overflow-y-auto p-6 flex flex-col justify-center items-center">

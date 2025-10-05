@@ -14,7 +14,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -83,7 +82,7 @@ export default function WelcomePage() {
   if (isUserLoading || (user && userProfile)) {
       return (
            <div className="flex h-dvh items-center justify-center">
-             <Loader2 className="h-8 w-8 animate-spin" />
+             <Icons.logo width={48} height={48} className="animate-spin" />
            </div>
       );
   }
@@ -122,7 +121,7 @@ export default function WelcomePage() {
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 {isGoogleLoading ? (
-                   <Loader2 className="mr-4 h-5 w-5 animate-spin" />
+                   <Icons.logo width={24} height={24} className="animate-spin mr-4" />
                 ) : (
                    <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
                 )}

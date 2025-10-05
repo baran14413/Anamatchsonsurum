@@ -20,11 +20,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
-import CircularProgress from "./circular-progress";
+import { Icons } from "./icons";
 import { Slider } from "./ui/slider";
 import googleLogo from '@/img/googlelogin.png';
 import type { UserImage } from "@/lib/types";
@@ -445,7 +445,7 @@ export default function ProfileCompletionForm() {
                     </div>
                     {locationStatus === 'idle' && (
                         <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full">
-                            {isLocationLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                            {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-spin" />}
                             {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
                         </Button>
                     )}
@@ -469,7 +469,13 @@ export default function ProfileCompletionForm() {
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step12.title}</h1>
                     <div className="flex items-center gap-4 mt-2">
-                      <CircularProgress progress={Math.round((uploadedPhotoCount / 6) * 100)} size={40} />
+                      <div
+                        className="relative flex items-center justify-center"
+                        style={{ width: 40, height: 40 }}
+                      >
+                        <Icons.logo width={40} height={40} className="animate-spin" style={{ animationDuration: '3s' }} />
+                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedPhotoCount / 6) * 100)}%</span>
+                      </div>
                       <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedPhotoCount))}</p>
                     </div>
                      <FormMessage className="pt-2">{form.formState.errors.photos?.message}</FormMessage>
@@ -482,7 +488,7 @@ export default function ProfileCompletionForm() {
                             {slot.preview ? (
                               <>
                                 <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><CircularProgress progress={100} size={60} /></div>}
+                                {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-spin" /></div>}
                                 {!isSubmitting && (
                                   <div className="absolute bottom-2 right-2 flex gap-2">
                                     <button type="button" onClick={(e) => {e.stopPropagation(); openFilePicker(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
@@ -613,7 +619,7 @@ export default function ProfileCompletionForm() {
                 (step === 3 && ageStatus !== 'valid')
               }
             >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === totalSteps ? "Profili Tamamla" : t.common.next)}
+              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-spin" /> : (step === totalSteps ? "Profili Tamamla" : t.common.next)}
             </Button>
           </div>
         </form>

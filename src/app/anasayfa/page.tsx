@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, UserImage } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -12,6 +12,7 @@ import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Icons } from '@/components/icons';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
@@ -220,7 +221,7 @@ export default function AnasayfaPage() {
   return (
     <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
       {isLoading ? (
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Icons.logo width={48} height={48} className="animate-spin text-primary" />
       ) : profiles.length > 0 ? (
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
           <AnimatePresence>

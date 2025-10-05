@@ -4,7 +4,7 @@
 import { useUser, useFirestore } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MapPin, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { Icons } from '@/components/icons';
 
 export default function LocationSettingsPage() {
     const { user, userProfile } = useUser();
@@ -103,7 +104,7 @@ export default function LocationSettingsPage() {
                         <Button onClick={handleLocationRequest} disabled={isLocationLoading}>
                             {isLocationLoading ? (
                                 <>
-                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                 <Icons.logo width={24} height={24} className="mr-2 animate-spin" />
                                  {tc.updatingButton}
                                 </>
                             ) : (

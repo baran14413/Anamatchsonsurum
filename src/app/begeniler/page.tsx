@@ -8,6 +8,7 @@ import type { UserProfile, LikerInfo } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
+import { Icons } from '@/components/icons';
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
@@ -92,7 +93,7 @@ export default function BegenilerPage() {
     if (isLoading) {
         return (
             <div className="flex h-dvh w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Icons.logo width={48} height={48} className="animate-spin text-primary" />
             </div>
         );
     }
