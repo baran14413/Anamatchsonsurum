@@ -319,7 +319,7 @@ export default function ChatPage() {
         return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
     }
     
-    const isSuperLikePending = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
+    const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = matchData?.status === 'matched';
 
     return (
@@ -379,7 +379,7 @@ export default function ChatPage() {
                         const isSender = message.senderId === user?.uid;
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
-                        if (message.type === 'system_superlike_prompt' && !message.actionTaken) {
+                        if (message.type === 'system_superlike_prompt' && !message.actionTaken && isSuperLikePendingAndIsRecipient) {
                             return (
                                 <div key={message.id} className="text-center my-6 p-4 border rounded-lg bg-muted/50 space-y-4">
                                     <p className="text-sm">{message.text}</p>
@@ -451,3 +451,5 @@ export default function ChatPage() {
         </div>
     );
 }
+
+    

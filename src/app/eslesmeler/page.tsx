@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Trash2, Check, Star } from 'lucide-react';
@@ -183,38 +183,50 @@ export default function EslesmelerPage() {
                                 const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
 
+                                const MatchItemContent = () => (
+                                    <div className="flex items-center p-4 hover:bg-muted/50">
+                                        <Avatar className="h-12 w-12">
+                                            <AvatarImage src={match.profilePicture} />
+                                            <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="ml-4 flex-1">
+                                            <div className="flex justify-between items-center">
+                                                <h3 className="font-semibold flex items-center gap-1.5">
+                                                  {match.fullName}
+                                                  {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+                                                </h3>
+                                                {match.timestamp && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <p className={cn("text-sm truncate", isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium" : "text-muted-foreground")}>{match.lastMessage}</p>
+                                        </div>
+                                        {showAcceptButton && (
+                                            <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
+                                                <Check className="h-6 w-6" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                );
+                                
+                                const isClickable = !(isSuperLikePending && isSuperLikeInitiator);
+
                                 return (
                                     <motion.div
                                         key={match.id}
                                         onContextMenu={(e) => { e.preventDefault(); setChatToDelete(match); }}
                                     >
-                                        <Link href={`/eslesmeler/${match.id}`}>
-                                            <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
-                                                <Avatar className="h-12 w-12">
-                                                    <AvatarImage src={match.profilePicture} />
-                                                    <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="ml-4 flex-1">
-                                                    <div className="flex justify-between items-center">
-                                                        <h3 className="font-semibold flex items-center gap-1.5">
-                                                          {match.fullName}
-                                                          {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
-                                                        </h3>
-                                                        {match.timestamp && (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <p className={cn("text-sm truncate", isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium" : "text-muted-foreground")}>{match.lastMessage}</p>
-                                                </div>
-                                                {showAcceptButton && (
-                                                    <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
-                                                        <Check className="h-6 w-6" />
-                                                    </Button>
-                                                )}
+                                        {isClickable ? (
+                                            <Link href={`/eslesmeler/${match.id}`}>
+                                                <MatchItemContent />
+                                            </Link>
+                                        ) : (
+                                            <div className="cursor-not-allowed opacity-70">
+                                                <MatchItemContent />
                                             </div>
-                                        </Link>
+                                        )}
                                     </motion.div>
                                 );
                             })}
@@ -247,3 +259,5 @@ export default function EslesmelerPage() {
     </div>
   );
 }
+
+    
