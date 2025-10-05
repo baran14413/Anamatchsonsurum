@@ -211,10 +211,6 @@ export default function AnasayfaPage() {
           qConstraints.push(where('gender', '==', genderPref));
         }
         
-        if (interactedUids.size > 0) {
-            qConstraints.push(where('uid', 'not-in', Array.from(interactedUids)));
-        }
-
         qConstraints.push(limit(100));
         
         const usersCollectionRef = collection(firestore, 'users');
@@ -225,7 +221,7 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (!p.uid || p.uid === user.uid) return false;
+                if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 // Age filter
