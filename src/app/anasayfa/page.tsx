@@ -55,6 +55,16 @@ export default function AnasayfaPage() {
 
     try {
         if (action === 'superliked') {
+            const matchSnap = await getDoc(matchDocRef);
+            if (matchSnap.exists()) {
+                toast({
+                    title: "Tekrarlanan Eylem",
+                    description: "Bu kişiyle zaten bir etkileşiminiz var.",
+                    variant: "default"
+                });
+                return; 
+            }
+
             // Create denormalized match data for both users with superlike status
             const currentUserMatchData = {
                 id: matchId,
@@ -140,7 +150,7 @@ export default function AnasayfaPage() {
                     lastMessage: t.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images[0]?.url || '',
+                    profilePicture: swipedProfile.images?.[0]?.url || '',
                     status: 'matched',
                 };
 
@@ -319,3 +329,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
