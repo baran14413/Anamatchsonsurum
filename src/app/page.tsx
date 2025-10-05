@@ -84,7 +84,7 @@ export default function WelcomePage() {
             // Use sessionStorage to pass this info to the registration page.
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
             // Force redirect to the registration page.
-            router.push("/kayit-ol");
+            router.push("/kurallar");
         }
 
     } catch (error: any) {
@@ -150,10 +150,13 @@ export default function WelcomePage() {
                 )}
                 {t.welcome.continueWithGoogle}
               </Button>
-               <Link href="/kurallar" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm inline-flex items-center">
-                    <Icons.logo width={24} height={24} className="mr-4" />
-                    {t.welcome.continueWithEmail}
-              </Link>
+               <Button
+                variant="outline"
+                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+              >
+                <Icons.facebook className="mr-4 h-6 w-6" />
+                Facebook ile devam et
+              </Button>
           </div>
         </div>
       </main>
