@@ -44,6 +44,8 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [direction, setDirection] = useState(0);
+
 
   const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
@@ -74,20 +76,16 @@ export default function AnasayfaPage() {
             });
         }
         
-        let usersQuery;
+        const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
+
         if (genderPref && genderPref !== 'both') {
-            usersQuery = query(
-                collection(firestore, 'users'),
-                where('gender', '==', genderPref),
-                limit(100) // Fetch more to allow for client-side filtering
-            );
-        } else {
-            usersQuery = query(
-                collection(firestore, 'users'),
-                limit(100)
-            );
+          qConstraints.push(where('gender', '==', genderPref));
         }
+
+        qConstraints.push(limit(100));
+
+        const usersQuery = query(collection(firestore, 'users'), ...qConstraints);
 
         const querySnapshot = await getDocs(usersQuery);
         
@@ -138,9 +136,9 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked') => {
     if (!user || !firestore) return;
 
-    // Optimistically remove the card from the UI
-    setProfiles((prev) => prev.filter((p) => p.uid !== swipedProfile.uid));
-    
+    // Set direction for animation
+    setDirection(action === 'liked' ? 1 : -1);
+
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     
@@ -212,8 +210,6 @@ export default function AnasayfaPage() {
 
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
-        // If something fails, add the card back to the top of the deck
-        setProfiles((prev) => [swipedProfile, ...prev]);
         toast({
             title: t.common.error,
             description: "Etkileşim kaydedilemedi.",
@@ -222,6 +218,15 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, t, toast, userProfile]);
 
+  const removeTopCard = () => {
+    setProfiles((prev) => prev.slice(0, -1));
+  };
+
+  const handleDragEnd = (profile: UserProfile, swipeDirection: 'liked') => {
+      // Optimistically remove the card from the UI by starting the exit animation
+      setDirection(1);
+      handleSwipe(profile, swipeDirection);
+  };
   
   return (
     <div className="relative h-full w-full flex flex-col p-4 overflow-hidden">
@@ -234,29 +239,32 @@ export default function AnasayfaPage() {
           {profiles.length > 1 && (
             <div className="absolute w-full max-w-sm h-full max-h-[75vh] scale-95 blur-sm">
               <ProfileCard
-                profile={profiles[1]}
+                profile={profiles[profiles.length - 2]}
                 onSwipe={() => {}} // This card is not interactive
                 isDraggable={false}
               />
             </div>
           )}
-          <AnimatePresence>
+          <AnimatePresence onExitComplete={() => {
+              removeTopCard();
+              setDirection(0);
+          }}>
             <motion.div
-              key={profiles[0].uid}
+              key={profiles[profiles.length - 1].uid}
               className="absolute w-full max-w-sm h-full max-h-[75vh]"
               variants={cardVariants}
-              initial="enter"
+              initial="center"
               animate="center"
               exit="exit"
-              custom={1} // Assuming direction is always right for now
+              custom={direction}
               transition={{
                 x: { type: 'spring', stiffness: 300, damping: 30 },
                 opacity: { duration: 0.2 },
               }}
             >
               <ProfileCard
-                profile={profiles[0]}
-                onSwipe={(action) => handleSwipe(profiles[0], action)}
+                profile={profiles[profiles.length - 1]}
+                onSwipe={(swipeDirection) => handleDragEnd(profiles[profiles.length - 1], swipeDirection)}
                 isDraggable={true}
               />
             </motion.div>
