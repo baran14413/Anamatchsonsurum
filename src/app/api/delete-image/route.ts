@@ -16,6 +16,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Public ID is required.' }, { status: 400 });
     }
     
+    // Do not attempt to delete images from google user content
+    if (public_id.startsWith('google_')) {
+        return NextResponse.json({ message: 'Skipping deletion for Google content.' });
+    }
+    
     const result = await cloudinary.uploader.destroy(public_id);
     
     if (result.result !== 'ok' && result.result !== 'not found') {

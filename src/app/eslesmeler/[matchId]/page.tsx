@@ -581,8 +581,6 @@ export default function ChatPage() {
         };
         animationFrameId = requestAnimationFrame(animateProgress);
 
-        // This is a cleanup function that will be called if the component unmounts
-        // or if the effect re-runs.
         return () => {
             cancelAnimationFrame(animationFrameId);
         };
@@ -591,7 +589,35 @@ export default function ChatPage() {
     const handleCloseViewOnce = async (markAsViewed = false) => {
         if (markAsViewed && viewingOnceImage && firestore) {
             const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
-            await updateDoc(msgRef, { viewed: true });
+            const publicId = viewingOnceImage.imagePublicId;
+
+            // Update the document to remove image URL and mark as viewed
+            await updateDoc(msgRef, { 
+                viewed: true,
+                imageUrl: null, 
+                imagePublicId: null,
+                text: "📷 Fotoğraf açıldı"
+            });
+
+            // Update last message in denormalized match docs
+            const user1Id = matchId.split('_')[0];
+            const user2Id = matchId.split('_')[1];
+            const lastMessageUpdate = { lastMessage: "📷 Fotoğraf açıldı", timestamp: serverTimestamp() };
+            await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
+            await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
+
+            // Delete the image from Cloudinary
+            if (publicId) {
+                try {
+                    await fetch('/api/delete-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ public_id: publicId }),
+                    });
+                } catch (err) {
+                    console.error("Failed to delete 'view once' image from Cloudinary:", err);
+                }
+            }
         }
         setViewingOnceImage(null);
     };
@@ -693,24 +719,32 @@ export default function ChatPage() {
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
-                                        {message.isViewOnce ? (
+                                        {message.isViewOnce && !message.viewed ? (
                                              <button
                                                 className={cn(
                                                     "flex items-center gap-3 px-4 py-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                    (message.viewed || isSender) && "opacity-80 cursor-not-allowed"
+                                                    (isSender) && "opacity-80 cursor-not-allowed"
                                                 )}
                                                 onClick={() => handleOpenViewOnce(message)}
-                                                disabled={message.viewed || isSender}
+                                                disabled={isSender}
                                             >
-                                                {message.viewed ? <EyeOff className="w-6 h-6" /> : <History className="w-6 h-6 text-green-400" />}
-                                                <span className="font-medium text-base">{message.viewed ? "Fotoğraf açıldı" : "Fotoğraf"}</span>
+                                                <History className="w-6 h-6 text-green-400" />
+                                                <span className="font-medium text-base">Fotoğraf</span>
                                             </button>
                                         ) : message.imageUrl ? (
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && <p className={cn('break-words text-left w-full', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
+                                        {message.text && (
+                                          <p className={cn('break-words text-left w-full', 
+                                            message.imageUrl && 'px-2 pb-1 pt-2', 
+                                            message.text === "📷 Fotoğraf açıldı" && "flex items-center gap-2 italic text-muted-foreground opacity-90"
+                                          )}>
+                                            {message.text === "📷 Fotoğraf açıldı" && <EyeOff className="w-4 h-4" />}
+                                            {message.text}
+                                          </p>
+                                        )}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
@@ -859,7 +893,7 @@ export default function ChatPage() {
 
             {/* View Once Image Dialog */}
              <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
-                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col screenshot-secure-backdrop">
+                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
                      <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
                      <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
                      <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
@@ -897,7 +931,3 @@ export default function ChatPage() {
     }
 }
     
-
-    
-
-
