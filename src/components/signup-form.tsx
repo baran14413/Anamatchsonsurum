@@ -18,8 +18,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, Eye, EyeOff, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Camera, Trash2, Pencil, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
@@ -193,7 +194,6 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
 export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const t = langTr;
   const { user } = useUser();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -472,7 +472,6 @@ export default function SignupForm() {
     if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
     if (step === 10) fieldsToValidate = ['interests'];
     
-    // Corrected the final step validation logic
     const finalStep = isGoogleSignup ? 10 : 11;
     if (step === finalStep) {
         fieldsToValidate = ['photos'];
@@ -491,6 +490,7 @@ export default function SignupForm() {
 
 const handleLocationRequest = async () => {
     setIsLoading(true);
+    setLocationPermissionDenied(false);
 
     try {
         if (!navigator.geolocation) {
@@ -501,11 +501,6 @@ const handleLocationRequest = async () => {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
             if (permissionStatus.state === 'denied') {
                 setLocationPermissionDenied(true);
-                toast({
-                    title: t.signup.step6.errorTitle,
-                    description: t.ayarlarKonum.errors.permissionDenied,
-                    variant: "destructive"
-                });
                 setIsLoading(false);
                 return;
             }
@@ -543,15 +538,20 @@ const handleLocationRequest = async () => {
     } catch (error: any) {
         console.error("Location error:", error);
         let description = t.signup.step6.errorMessage;
-        if (error.code === 1) description = t.ayarlarKonum.errors.permissionDenied;
+        if (error.code === 1) { // User denied the request
+           setLocationPermissionDenied(true);
+           description = t.ayarlarKonum.errors.permissionDenied;
+        }
         if (error.code === 2) description = t.ayarlarKonum.errors.positionUnavailable;
         if (error.code === 3) description = t.ayarlarKonum.errors.timeout;
         
-        toast({
-            title: t.signup.step6.errorTitle,
-            description: description,
-            variant: "destructive"
-        });
+        if (!locationPermissionDenied) {
+          toast({
+              title: t.signup.step6.errorTitle,
+              description: description,
+              variant: "destructive"
+          });
+        }
     } finally {
         setIsLoading(false);
     }
@@ -757,43 +757,55 @@ const handleLocationRequest = async () => {
                 </div>
               )}
               {step === 5 && (
-                 <div className="flex flex-col items-center text-center h-full justify-center space-y-6">
-                  {!currentAddress ? (
-                    <>
-                      <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-                        <MapPin className="w-12 h-12 text-primary" />
-                      </div>
-                      <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
-                      <p className="text-muted-foreground max-w-sm">
-                        {t.signup.step6.description}
-                      </p>
-                       <Button
-                        type="button"
-                        onClick={handleLocationRequest}
-                        className="h-14 rounded-full text-lg font-bold px-8"
-                        disabled={isLoading || locationPermissionDenied}
-                      >
-                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t.signup.step6.button}
-                      </Button>
+                 <div className="flex flex-col flex-1 text-center justify-between">
+                    <div className="pt-8">
                        {locationPermissionDenied && (
-                         <p className="text-sm text-red-500 max-w-sm">{t.ayarlarKonum.errors.permissionDenied}</p>
+                          <Alert variant="destructive" className="mb-6">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>{t.signup.step6.errorTitle}</AlertTitle>
+                            <AlertDescription>{t.ayarlarKonum.errors.permissionDenied}</AlertDescription>
+                          </Alert>
                        )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center">
-                        <CheckCircle className="w-12 h-12 text-green-500" />
-                      </div>
-                      <h1 className="text-2xl font-bold">Konumun Alındı!</h1>
-                      <div className="flex items-center gap-2 text-lg text-muted-foreground p-3 border rounded-lg bg-secondary">
-                        <MapPin className="w-6 h-6 text-primary" />
-                        <span>{currentAddress.city}, {currentAddress.district}</span>
-                      </div>
-                       <FormMessage>
-                          {form.formState.errors.address?.message}
-                      </FormMessage>
-                    </>
-                  )}
+                       {!currentAddress ? (
+                        <>
+                           <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                              <MapPin className="w-12 h-12 text-primary" />
+                           </div>
+                           <h1 className="text-3xl font-bold mt-6">{t.signup.step6.title}</h1>
+                           <p className="text-muted-foreground max-w-sm mx-auto mt-2">
+                              {t.signup.step6.description}
+                           </p>
+                        </>
+                       ) : (
+                         <>
+                            <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+                              <CheckCircle className="w-12 h-12 text-green-500" />
+                            </div>
+                            <h1 className="text-2xl font-bold mt-6">Konumun Alındı!</h1>
+                         </>
+                       )}
+                    </div>
+
+                    <div>
+                        {!currentAddress ? (
+                           <Button
+                              type="button"
+                              onClick={handleLocationRequest}
+                              className="h-14 rounded-full text-lg font-bold px-8 w-full max-w-sm"
+                              disabled={isLoading || locationPermissionDenied}
+                            >
+                              {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t.signup.step6.button}
+                            </Button>
+                        ) : (
+                           <div className="flex items-center justify-center gap-2 text-lg text-muted-foreground p-3 border rounded-lg bg-secondary max-w-sm mx-auto">
+                              <MapPin className="w-6 h-6 text-primary" />
+                              <span>{currentAddress.city}, {currentAddress.district}</span>
+                           </div>
+                        )}
+                    </div>
+                     <FormMessage>
+                        {form.formState.errors.address?.message}
+                    </FormMessage>
                 </div>
               )}
               {step === 6 && (
@@ -1205,5 +1217,3 @@ const handleLocationRequest = async () => {
     </div>
   );
 }
-
-    
