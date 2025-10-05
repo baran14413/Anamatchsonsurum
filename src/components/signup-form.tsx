@@ -199,6 +199,7 @@ export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
 
   const auth = useAuth();
@@ -470,12 +471,17 @@ export default function SignupForm() {
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
     if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
     if (step === 10) fieldsToValidate = ['interests'];
-    if (step === (isGoogleSignup ? 10 : 11)) fieldsToValidate = ['photos'];
+    
+    // Corrected the final step validation logic
+    const finalStep = isGoogleSignup ? 10 : 11;
+    if (step === finalStep) {
+        fieldsToValidate = ['photos'];
+    }
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
     if (isValid) {
-      if (step === (isGoogleSignup ? 10 : 11)) {
+      if (step === finalStep) {
          form.handleSubmit(onSubmit)();
       } else {
         nextStep();
@@ -483,14 +489,19 @@ export default function SignupForm() {
     }
   };
 
-  const handleLocationRequest = async () => {
+const handleLocationRequest = async () => {
     setIsLoading(true);
 
     try {
+        if (!navigator.geolocation) {
+            throw new Error("Geolocation is not supported by your browser.");
+        }
+
         if (navigator.permissions) {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
             if (permissionStatus.state === 'denied') {
-                 toast({
+                setLocationPermissionDenied(true);
+                toast({
                     title: t.signup.step6.errorTitle,
                     description: t.ayarlarKonum.errors.permissionDenied,
                     variant: "destructive"
@@ -502,7 +513,8 @@ export default function SignupForm() {
 
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
-                timeout: 10000
+                timeout: 10000,
+                enableHighAccuracy: true,
             });
         });
 
@@ -524,6 +536,8 @@ export default function SignupForm() {
                 district: data.address.district,
                 country: data.address.country,
             }, { shouldValidate: true });
+        } else {
+            throw new Error('Address not found from geocode API.');
         }
 
     } catch (error: any) {
@@ -542,6 +556,7 @@ export default function SignupForm() {
         setIsLoading(false);
     }
 };
+
   
   const handleSkip = () => {
     if (step === 7) { 
@@ -742,7 +757,7 @@ export default function SignupForm() {
                 </div>
               )}
               {step === 5 && (
-                <div className="flex flex-col items-center text-center h-full justify-center space-y-6">
+                 <div className="flex flex-col items-center text-center h-full justify-center space-y-6">
                   {!currentAddress ? (
                     <>
                       <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
@@ -756,10 +771,13 @@ export default function SignupForm() {
                         type="button"
                         onClick={handleLocationRequest}
                         className="h-14 rounded-full text-lg font-bold px-8"
-                        disabled={isLoading}
+                        disabled={isLoading || locationPermissionDenied}
                       >
                         {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t.signup.step6.button}
                       </Button>
+                       {locationPermissionDenied && (
+                         <p className="text-sm text-red-500 max-w-sm">{t.ayarlarKonum.errors.permissionDenied}</p>
+                       )}
                     </>
                   ) : (
                     <>
@@ -1187,3 +1205,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
