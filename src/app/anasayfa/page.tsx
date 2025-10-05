@@ -45,7 +45,7 @@ export default function AnasayfaPage() {
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfiles = useCallback(async () => {
+  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
@@ -55,21 +55,24 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>();
         interactedUids.add(user.uid);
+        
+        // For development: if reset is true, don't fetch interactions.
+        if (!options?.reset) {
+            const interactionsQuery = query(
+              collection(firestore, 'matches'),
+              or(
+                where('user1Id', '==', user.uid),
+                where('user2Id', '==', user.uid)
+              )
+            );
+            const interactionsSnapshot = await getDocs(interactionsQuery);
 
-        const interactionsQuery = query(
-          collection(firestore, 'matches'),
-          or(
-            where('user1Id', '==', user.uid),
-            where('user2Id', '==', user.uid)
-          )
-        );
-        const interactionsSnapshot = await getDocs(interactionsQuery);
-
-        interactionsSnapshot.forEach(doc => {
-            const { user1Id, user2Id } = doc.data();
-            const otherUserId = user1Id === user.uid ? user2Id : user1Id;
-            interactedUids.add(otherUserId);
-        });
+            interactionsSnapshot.forEach(doc => {
+                const { user1Id, user2Id } = doc.data();
+                const otherUserId = user1Id === user.uid ? user2Id : user1Id;
+                interactedUids.add(otherUserId);
+            });
+        }
         
         let usersQuery;
         const genderPref = userProfile?.genderPreference;
@@ -263,7 +266,7 @@ export default function AnasayfaPage() {
         <div className="flex h-full items-center justify-center text-center">
             <div className='space-y-4'>
                 <p>{t.anasayfa.outOfProfilesDescription}</p>
-                <Button onClick={() => fetchProfiles()}>
+                <Button onClick={() => fetchProfiles({ reset: true })}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Tekrar Dene
                 </Button>
