@@ -25,14 +25,14 @@ export default function AnasayfaPage() {
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
     setIsLoading(true);
+    setCurrentIndex(0);
     
     try {
         const interactedUsers = new Set<string>([user.uid]);
         
         if (!options?.resetInteractions) {
-            // Fetch all interactions the user is part of.
-            const interactionsQuery1 = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
-            const interactionsSnapshot = await getDocs(interactionsQuery1);
+            const interactionsQuery = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
+            const interactionsSnapshot = await getDocs(interactionsQuery);
 
             interactionsSnapshot.forEach(doc => {
                 const usersInMatch = doc.data().users as string[];
@@ -64,7 +64,6 @@ export default function AnasayfaPage() {
             .filter(p => p.uid && !interactedUsers.has(p.uid) && p.fullName && p.images && p.images.length > 0);
 
         setProfiles(fetchedProfiles);
-        setCurrentIndex(0);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -79,25 +78,19 @@ export default function AnasayfaPage() {
   }, [user, firestore, toast, t.common.error, userProfile]);
 
   useEffect(() => {
-    if (user && firestore) {
+    if (user && firestore && userProfile) { // Ensure userProfile is also loaded
       fetchProfiles();
     }
-  }, [user, firestore, fetchProfiles]);
+  }, [user, firestore, userProfile, fetchProfiles]);
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike', swipedProfile: UserProfile) => {
     if (!user || !firestore || !swipedProfile) return;
     
-    // Move to next card immediately for smooth UI
-    setCurrentIndex(prev => {
-        const nextIndex = prev + 1;
-        if (nextIndex >= profiles.length) {
-            // Reached the end, maybe show 'out of profiles' message or refetch
-            // For now, we'll just stop
-        }
-        return nextIndex;
-    });
+    // --- Optimistic UI Update ---
+    // Remove the swiped profile from the local state immediately.
+    setProfiles(currentProfiles => currentProfiles.filter(p => p.uid !== swipedProfile.uid));
 
-    // --- Firestore Logic ---
+    // --- Firestore Logic (runs in the background) ---
     const user1 = user.uid;
     const user2 = swipedProfile.uid;
     
@@ -108,48 +101,47 @@ export default function AnasayfaPage() {
     try {
         const theirInteractionRef = doc(firestore, 'matches', [user2, user1].sort().join('_'));
         const theirInteractionSnap = await getDoc(theirInteractionRef);
+        const theirInteractionData = theirInteractionSnap.data();
+
+        // Check if the other user has an action recorded for us
+        const theirAction = theirInteractionData?.[`user_${user2}_action`];
 
         // If they liked us and we just liked them = MATCH
-        if ((action === 'liked' || action === 'superlike') && theirInteractionSnap.exists()) {
-             const theirAction = theirInteractionSnap.data()?.[`user_${user2}_action`];
-             if (theirAction === 'liked' || theirAction === 'superlike') {
+        if ((action === 'liked' || action === 'superlike') && (theirAction === 'liked' || theirAction === 'superlike')) {
             
-                // 1. Update the central match document
-                await setDoc(matchDocRef, {
-                    status: 'matched',
-                    users: [user1, user2],
-                    matchDate: serverTimestamp(),
-                }, { merge: true });
+            // 1. Update the central match document to 'matched'
+            await setDoc(matchDocRef, {
+                status: 'matched',
+                users: [user1, user2],
+                matchDate: serverTimestamp(),
+            }, { merge: true });
 
-                // 2. Create denormalized match entries for both users for easy querying
-                const user1MatchData = {
-                    id: matchId,
-                    matchedWith: user2,
-                    lastMessage: t.eslesmeler.defaultMessage,
-                    timestamp: serverTimestamp(),
-                    // Include other user's info for chat list
-                    fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images[0]
-                };
-                 const currentUserData = {
-                    id: matchId,
-                    matchedWith: user1,
-                    lastMessage: t.eslesmeler.defaultMessage,
-                    timestamp: serverTimestamp(),
-                    fullName: user.displayName,
-                    profilePicture: user.photoURL
-                };
+            // 2. Create denormalized match entries for both users for easy querying
+            const user1MatchData = {
+                id: matchId,
+                matchedWith: user2,
+                lastMessage: t.eslesmeler.defaultMessage,
+                timestamp: serverTimestamp(),
+                fullName: swipedProfile.fullName,
+                profilePicture: swipedProfile.images[0]
+            };
+            const currentUserData = {
+                id: matchId,
+                matchedWith: user1,
+                lastMessage: t.eslesmeler.defaultMessage,
+                timestamp: serverTimestamp(),
+                fullName: user.displayName,
+                profilePicture: user.photoURL
+            };
 
-                await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
-                await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
+            await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
+            await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
 
-
-                // 3. Notify user of the new match
-                toast({
-                    title: t.anasayfa.matchToastTitle,
-                    description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
-                });
-             }
+            // 3. Notify user of the new match
+            toast({
+                title: t.anasayfa.matchToastTitle,
+                description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
+            });
 
         } else {
              // Just record the swipe, no match yet
@@ -167,7 +159,7 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast, profiles]);
+  }, [user, firestore, t, toast]);
 
 
   const handleReset = async () => {
@@ -185,7 +177,7 @@ export default function AnasayfaPage() {
             description: "Tüm filtreleriniz sıfırlandı, baştan başlıyoruz!",
         });
 
-        setCurrentIndex(0);
+        // Call fetchProfiles with the reset option
         await fetchProfiles({ resetInteractions: true });
 
     } catch (error) {
@@ -200,9 +192,8 @@ export default function AnasayfaPage() {
     }
   };
   
-  const activeProfile = !isLoading && profiles.length > 0 && currentIndex < profiles.length 
-    ? profiles[currentIndex] 
-    : null;
+  // Use the profile at the current index, which is always 0 because we remove swiped profiles
+  const activeProfile = !isLoading && profiles.length > 0 ? profiles[0] : null;
 
   return (
     <div className="relative h-full w-full flex flex-col p-4">
