@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Undo, X, Star, Heart, Send } from 'lucide-react';
+import { Undo, X, Star, Heart, Send, Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import ProfileCard from '@/components/profile-card';
 import type { UserProfile } from '@/lib/types';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { collection, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function AnasayfaPage() {
   const t = langTr;
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -20,25 +21,41 @@ export default function AnasayfaPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      if (!user) return;
+      if (!user || !firestore) return;
 
       setIsLoading(true);
       try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/api/get-potential-matches', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
+        // 1. Get IDs of users the current user has already interacted with
+        const interactionsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/interactions`));
+        const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+        interactedUserIds.add(user.uid); // Filter out the current user
+
+        // 2. Get all user profiles
+        const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
+        
+        const allUsers: UserProfile[] = [];
+        allUsersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            // Ensure it's a valid user profile document
+            if (userData && userData.uid) {
+                allUsers.push({
+                    id: doc.id,
+                    ...userData,
+                    images: userData.images || [], 
+                } as UserProfile);
+            }
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch profiles');
-        }
+        // 3. Filter out users the current user has already interacted with
+        const potentialMatches = allUsers.filter(profile => !interactedUserIds.has(profile.uid));
+        
+        // 4. Shuffle for randomness
+        const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
+        
+        setProfiles(shuffledMatches);
 
-        const data = await response.json();
-        setProfiles(data);
       } catch (error) {
-        console.error("Error fetching profiles:", error);
+        console.error("Error fetching profiles from Firestore:", error);
         toast({
             title: t.common.error,
             description: "Potansiyel eşleşmeler getirilemedi.",
@@ -50,44 +67,68 @@ export default function AnasayfaPage() {
     }
 
     fetchProfiles();
-  }, [user, toast, t.common.error]);
+  }, [user, firestore, toast, t.common.error]);
 
-  const recordSwipe = async (swipedUserId: string, direction: 'left' | 'right') => {
-    if (!user) return;
+  const recordSwipe = async (swipedProfile: UserProfile, direction: 'left' | 'right') => {
+    if (!user || !firestore) return;
+
     try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/api/record-swipe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ swipedUserId, direction }),
+        // Record the swipe in the current user's interactions subcollection
+        const currentUserInteractionRef = doc(firestore, `users/${user.uid}/interactions/${swipedProfile.uid}`);
+        await setDoc(currentUserInteractionRef, {
+            swipe: direction,
+            timestamp: serverTimestamp(),
         });
-        const result = await response.json();
-        if (result.match) {
-            toast({
-                title: t.anasayfa.matchToastTitle,
-                description: t.anasayfa.matchToastDescription
-            });
+
+        if (direction === 'right') {
+            // Check if the other user has swiped right on the current user
+            const otherUserInteractionRef = doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`);
+            const otherUserSwipeDoc = await getDoc(otherUserInteractionRef);
+
+            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.swipe === 'right') {
+                // It's a match!
+                const matchId = [user.uid, swipedProfile.uid].sort().join('_');
+                const matchDate = serverTimestamp();
+                const [user1Id, user2Id] = [user.uid, swipedProfile.uid].sort();
+
+                const matchData = {
+                    id: matchId,
+                    user1Id,
+                    user2Id,
+                    matchDate: matchDate,
+                    users: [user.uid, swipedProfile.uid],
+                };
+
+                // Create the match document for both users
+                await setDoc(doc(firestore, `users/${user.uid}/matches/${matchId}`), matchData);
+                await setDoc(doc(firestore, `users/${swipedProfile.uid}/matches/${matchId}`), matchData);
+
+                // Update interaction records to 'match' to prevent them from seeing each other again
+                 await setDoc(doc(firestore, `users/${user.uid}/interactions/${swipedProfile.uid}`), { swipe: 'match', timestamp: matchDate });
+                 await setDoc(doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`), { swipe: 'match', timestamp: matchDate });
+
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: t.anasayfa.matchToastDescription
+                });
+            }
         }
     } catch (error) {
         console.error('Error recording swipe:', error);
+         toast({
+            title: t.common.error,
+            description: "Kaydırma işlemi kaydedilemedi.",
+            variant: "destructive"
+        });
     }
   };
   
   const handleSwipe = (direction: 'left' | 'right') => {
     if (currentIndex < profiles.length) {
-      const swipedUser = profiles[currentIndex];
-      recordSwipe(swipedUser.uid, direction);
+      const swipedProfile = profiles[currentIndex];
+      recordSwipe(swipedProfile, direction);
       
-      setCurrentIndex(prevIndex => {
-          const nextIndex = prevIndex + 1;
-          if (nextIndex >= profiles.length) {
-              // Optionally fetch more profiles here or show a message
-          }
-          return nextIndex;
-      });
+      setCurrentIndex(prevIndex => prevIndex + 1);
     }
   };
 
