@@ -19,8 +19,16 @@ export async function GET(req: NextRequest) {
       const res = await geocoder.reverse({ lat: parseFloat(lat), lon: parseFloat(lon) });
       if (res && res.length > 0) {
         const address = res[0];
+        // OpenStreetMap can return city in different fields, try to find one that exists.
+        const city = address.city || address.district || (address.administrativeLevels as any)?.level2long || address.county || (address.administrativeLevels as any)?.level1long;
+
+        if (!city) {
+            console.warn("Could not determine city from geocoder response:", address);
+            return NextResponse.json({ error: 'City could not be determined from coordinates.' }, { status: 404 });
+        }
+
         const responseData = {
-            city: address.city || address.district,
+            city: city,
             country: address.countryCode,
         };
         return NextResponse.json({ address: responseData });

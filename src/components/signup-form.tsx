@@ -52,21 +52,24 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
-    const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
-    if (user?.profilePicture || user?.photoURL) {
-      const photoUrl = user.profilePicture || user.photoURL;
-      initialSlots[0] = { file: null, preview: photoUrl, progress: 100, isUploading: false };
+const getInitialPhotoSlots = (): PhotoSlot[] => {
+  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
+
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const googleUserStr = sessionStorage.getItem('google_signup_user');
+      if (googleUserStr) {
+        const googleUser = JSON.parse(googleUserStr);
+        if (googleUser.photoURL) {
+          initialSlots[0] = { file: null, preview: googleUser.photoURL, progress: 100, isUploading: false };
+        }
+      }
     }
-    // If the user already has images, fill the slots
-    if (user?.images?.length > 0) {
-        user.images.slice(0, 6).forEach((imgUrl: string, index: number) => {
-            if (!initialSlots[index].preview) { // Avoid overwriting the main profile pic if it's the same
-                 initialSlots[index] = { file: null, preview: imgUrl, progress: 100, isUploading: false };
-            }
-        });
-    }
-    return initialSlots;
+  } catch (e) {
+    console.error("Failed to read from sessionStorage:", e);
+  }
+
+  return initialSlots;
 };
 
 
@@ -138,7 +141,7 @@ export default function ProfileCompletionForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr;
-  const { user, userProfile } = useUser();
+  const { user } = useUser();
   const [step, setStep] = useState(0);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,36 +149,32 @@ export default function ProfileCompletionForm() {
   
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [address, setAddress] = useState<string | null>(null);
 
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots(userProfile || user));
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots());
   const [interestSearch, setInterestSearch] = useState("");
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: userProfile?.fullName || user?.displayName || "",
+      name: "",
       lookingFor: "",
       interests: [],
-      photos: getInitialPhotoSlots(userProfile || user).map(s => s.preview).filter(p => p) as string[],
+      photos: photoSlots.map(s => s.preview).filter(p => p) as string[],
     },
     mode: "onChange",
   });
 
   useEffect(() => {
     if (user) {
-        form.setValue('name', userProfile?.fullName || user.displayName || '');
+        form.setValue('name', user.displayName || '');
     }
-     if (userProfile) {
-        const initialPhotos = getInitialPhotoSlots(userProfile);
-        setPhotoSlots(initialPhotos);
-        form.setValue('photos', initialPhotos.map(p => p.preview).filter(Boolean) as string[]);
-    }
-  }, [user, userProfile, form]);
+  }, [user, form]);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -193,12 +192,14 @@ export default function ProfileCompletionForm() {
   const handleLocationRequest = () => {
     setIsLocationLoading(true);
     setLocationStatus('idle');
+    setLocationError(null);
     setAddress(null);
 
     if (!navigator.geolocation) {
         toast({ title: "Hata", description: "Tarayıcınız konum servisini desteklemiyor.", variant: "destructive" });
         setIsLocationLoading(false);
         setLocationStatus('error');
+        setLocationError("Tarayıcınız konum servisini desteklemiyor.");
         return;
     }
 
@@ -209,23 +210,24 @@ export default function ProfileCompletionForm() {
 
             try {
                 const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
-                if (!response.ok) throw new Error("Adres bulunamadı.");
-
                 const data = await response.json();
-                if (data.error) throw new Error(data.error);
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || "Adres bulunamadı.");
+                }
 
                 const fetchedAddress = data.address;
                 form.setValue('address', {
                     country: fetchedAddress.country || '',
                     state: fetchedAddress.city || '',
-                    city: '', // This can be filled later if needed
+                    city: '',
                 });
 
                 setAddress(`${fetchedAddress.city}, ${fetchedAddress.country}`);
                 setLocationStatus('success');
 
             } catch (error: any) {
-                toast({ title: "Adres Çözümleme Hatası", description: error.message, variant: "destructive" });
+                setLocationError(error.message);
                 setLocationStatus('error');
             } finally {
                 setIsLocationLoading(false);
@@ -233,10 +235,11 @@ export default function ProfileCompletionForm() {
         },
         (error) => {
             let message = "Konum alınırken bir hata oluştu.";
-            if (error.code === error.PERMISSION_DENIED) message = "Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.";
-            toast({ title: "Konum Hatası", description: message, variant: "destructive" });
-            setIsLocationLoading(false);
+            if (error.code === error.PERMISSION_DENIED) message = t.ayarlarKonum.errors.permissionDenied;
+            
+            setLocationError(message);
             setLocationStatus('error');
+            setIsLocationLoading(false);
         }
     );
   };
@@ -413,8 +416,8 @@ export default function ProfileCompletionForm() {
                     {locationStatus === 'error' && (
                          <div className="flex flex-col items-center gap-2 text-destructive">
                            <XCircle className="w-12 h-12" />
-                           <p className="font-semibold text-lg">Konum Alınamadı</p>
-                           <p className="text-muted-foreground max-w-xs">{t.ayarlarKonum.errors.permissionDenied}</p>
+                           <p className="font-semibold text-lg">{t.ayarlarKonum.errors.refNotFoundError}</p>
+                           <p className="text-muted-foreground max-w-xs">{locationError}</p>
                            <Button onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
                         </div>
                     )}
