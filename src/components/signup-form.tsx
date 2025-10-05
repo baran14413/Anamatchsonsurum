@@ -195,6 +195,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
+  const t = langTr;
   
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
