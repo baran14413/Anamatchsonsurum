@@ -6,7 +6,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, updateDoc, or } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,8 +71,8 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [direction, setDirection] = useState(0);
 
-  const activeIndex = profiles.length > 0 ? profiles.length - 1 : 0;
-  const nextCardIndex = profiles.length > 1 ? profiles.length - 2 : 0;
+  const activeIndex = profiles.length > 0 ? profiles.length - 1 : -1;
+  const nextCardIndex = profiles.length > 1 ? profiles.length - 2 : -1;
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
@@ -82,15 +82,19 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         
         if (!options?.resetInteractions) {
-            const interactionsQuery = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
+            const interactionsQuery = query(
+              collection(firestore, 'matches'),
+              or(
+                where('user1Id', '==', user.uid),
+                where('user2Id', '==', user.uid)
+              )
+            );
             const interactionsSnapshot = await getDocs(interactionsQuery);
 
             interactionsSnapshot.forEach(doc => {
-                const usersInMatch = doc.data().users as string[];
-                const otherUserId = usersInMatch.find(uid => uid !== user.uid);
-                if (otherUserId) {
-                    interactedUids.add(otherUserId);
-                }
+                const { user1Id, user2Id } = doc.data();
+                const otherUserId = user1Id === user.uid ? user2Id : user1Id;
+                interactedUids.add(otherUserId);
             });
         }
         
@@ -141,71 +145,77 @@ export default function AnasayfaPage() {
 
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
-    if (profiles.length === 0) return;
-
+    if (activeIndex < 0) return;
+    
     const swipedProfile = profiles[activeIndex];
     if (!user || !firestore || !swipedProfile) return;
     
-    // Set swipe direction for animation
     setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
 
-    // --- Optimistic UI Update ---
     removeTopCard();
 
-    // --- Firestore Logic (runs in the background) ---
-    const user1 = user.uid;
-    const user2 = swipedProfile.uid;
+    const user1Id = user.uid;
+    const user2Id = swipedProfile.uid;
     
-    const matchId = [user1, user2].sort().join('_');
+    const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
     try {
-        const theirInteractionRef = doc(firestore, 'matches', [user2, user1].sort().join('_'));
+        const theirInteractionRef = doc(firestore, 'matches', matchId);
         const theirInteractionSnap = await getDoc(theirInteractionRef);
-        const theirInteractionData = theirInteractionSnap.data();
 
-        const theirAction = theirInteractionData?.[`user_${user2}_action`];
+        if ((action === 'liked' || action === 'superlike') && theirInteractionSnap.exists()) {
+             const data = theirInteractionSnap.data();
+             const theirAction = data.user1Id === user2Id ? data.user1_action : data.user2_action;
 
-        if ((action === 'liked' || action === 'superlike') && (theirAction === 'liked' || theirAction === 'superlike')) {
-            
-            await setDoc(matchDocRef, {
-                status: 'matched',
-                users: [user1, user2],
-                matchDate: serverTimestamp(),
-            }, { merge: true });
+             if(theirAction === 'liked' || theirAction === 'superlike') {
+                 // It's a match!
+                await updateDoc(matchDocRef, {
+                    status: 'matched',
+                    matchDate: serverTimestamp(),
+                });
 
-            const user1MatchData = {
-                id: matchId,
-                matchedWith: user2,
-                lastMessage: t.eslesmeler.defaultMessage,
-                timestamp: serverTimestamp(),
-                fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images[0]
-            };
-            const currentUserData = {
-                id: matchId,
-                matchedWith: user1,
-                lastMessage: t.eslesmeler.defaultMessage,
-                timestamp: serverTimestamp(),
-                fullName: user.displayName,
-                profilePicture: user.photoURL
-            };
+                const user1MatchData = {
+                    id: matchId,
+                    matchedWith: user2Id,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: swipedProfile.fullName,
+                    profilePicture: swipedProfile.images[0]
+                };
+                const currentUserData = {
+                    id: matchId,
+                    matchedWith: user1Id,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: user.displayName,
+                    profilePicture: user.photoURL
+                };
 
-            await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
-            await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
+                await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), user1MatchData);
+                await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), currentUserData);
 
-            toast({
-                title: t.anasayfa.matchToastTitle,
-                description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
-            });
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
+                });
 
-        } else {
-             await setDoc(matchDocRef, {
-                users: [user1, user2],
-                [`user_${user1}_action`]: action,
-                [`user_${user1}_timestamp`]: serverTimestamp()
-            }, { merge: true });
+                return; // Exit after match logic
+             }
         }
+        
+        // No match or no prior interaction, just record the swipe
+        const updateData = {
+            [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_action`]: action,
+            [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_timestamp`]: serverTimestamp()
+        };
+
+        await setDoc(matchDocRef, {
+            user1Id: [user1Id, user2Id].sort()[0],
+            user2Id: [user1Id, user2Id].sort()[1],
+            ...updateData
+        }, { merge: true });
+
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
         toast({
@@ -252,11 +262,11 @@ export default function AnasayfaPage() {
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
-        ) : profiles.length > 0 ? (
+        ) : activeIndex > -1 ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
                 <AnimatePresence initial={false}>
-                    {profiles.length > 1 && (
+                    {nextCardIndex > -1 && (
                         <motion.div
                            key={profiles[nextCardIndex].uid}
                            variants={secondCardVariants}
@@ -279,10 +289,11 @@ export default function AnasayfaPage() {
                         initial="animate"
                         exit="exit"
                         className="absolute w-full max-w-sm h-full max-h-[75vh]"
+                        onExitComplete={() => setDirection(0)}
                     >
                         <ProfileCard
                             profile={profiles[activeIndex]}
-                            onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked')}
+                            onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked' | 'superlike')}
                             isTopCard={true}
                         />
                     </motion.div>
