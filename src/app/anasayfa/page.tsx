@@ -20,15 +20,13 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
     setIsLoading(true);
-    setCurrentIndex(0);
-    
+
     try {
-        const interactedUsers = new Set<string>([user.uid]);
+        const interactedUids = new Set<string>([user.uid]);
         
         if (!options?.resetInteractions) {
             const interactionsQuery = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
@@ -38,7 +36,7 @@ export default function AnasayfaPage() {
                 const usersInMatch = doc.data().users as string[];
                 const otherUserId = usersInMatch.find(uid => uid !== user.uid);
                 if (otherUserId) {
-                    interactedUsers.add(otherUserId);
+                    interactedUids.add(otherUserId);
                 }
             });
         }
@@ -61,7 +59,7 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-            .filter(p => p.uid && !interactedUsers.has(p.uid) && p.fullName && p.images && p.images.length > 0);
+            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
 
         setProfiles(fetchedProfiles);
 
@@ -87,8 +85,8 @@ export default function AnasayfaPage() {
     if (!user || !firestore || !swipedProfile) return;
     
     // --- Optimistic UI Update ---
-    // Remove the swiped profile from the local state immediately.
-    setProfiles(currentProfiles => currentProfiles.filter(p => p.uid !== swipedProfile.uid));
+    // Remove the swiped profile from the local state immediately by taking it off the top of the array.
+    setProfiles(currentProfiles => currentProfiles.slice(1));
 
     // --- Firestore Logic (runs in the background) ---
     const user1 = user.uid;
