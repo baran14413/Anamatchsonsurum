@@ -26,7 +26,7 @@ import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
-import { Country, State, ICountry, IState } from 'country-state-city';
+import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
@@ -39,17 +39,10 @@ const formSchema = z.object({
         .refine(date => !isNaN(date.getTime()), { message: "Please enter a valid date." }),
     gender: z.enum(['male', 'female'], { required_error: "Please select your gender." }),
     lookingFor: z.string({ required_error: "Please choose one." }).min(1, { message: "Please choose one." }),
-    location: z.object({
-        latitude: z.number().nullable(),
-        longitude: z.number().nullable(),
-    }).optional(),
     address: z.object({
-        country: z.string().optional(),
-        state: z.string().optional(),
+        country: z.string().min(1, { message: "Country is required." }),
+        state: z.string().min(1, { message: "State is required." }),
         city: z.string().optional(),
-    }).refine(data => data.country && data.state, {
-        message: "Country and state are required.",
-        path: ["country"], // you can decide where to show the error
     }),
     distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
@@ -63,7 +56,7 @@ const formSchema = z.object({
     zodiacSign: z.string({ required_error: "Please choose one." }).min(1),
     interests: z.array(z.string()).min(1).max(10, { message: 'You can select up to 10 interests.'}),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
-    uid: z.string().optional(),
+    uid: z.string(),
     email: z.string().email(),
 });
 
@@ -197,7 +190,6 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
 export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useUser();
   const t = langTr;
   
   const [isLoading, setIsLoading] = useState(false);
@@ -264,14 +256,14 @@ export default function SignupForm() {
                 form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
             }
         } else {
-           // If no google data, they shouldn't be here.
            router.push('/');
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -329,9 +321,6 @@ export default function SignupForm() {
     setIsLoading(true);
     try {
         let userId = data.uid;
-        if (!userId) {
-            throw new Error("User ID could not be determined from Google Sign-In.");
-        }
         
       const filesToUpload = photoSlots.filter(p => p.file);
       setPhotoSlots(prev => prev.map(slot => filesToUpload.some(f => f.file === slot.file) ? { ...slot, isUploading: true } : slot));
@@ -401,8 +390,8 @@ export default function SignupForm() {
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
         location: {
-            latitude: stateDetails?.latitude || null,
-            longitude: stateDetails?.longitude || null,
+            latitude: stateDetails?.latitude ? parseFloat(stateDetails.latitude) : null,
+            longitude: stateDetails?.longitude ? parseFloat(stateDetails.longitude) : null,
         },
         address: finalAddress,
       };
@@ -413,9 +402,6 @@ export default function SignupForm() {
     } catch (error: any) {
       console.error("Signup error:", error);
        let errorMessage = error.message || t.signup.errors.signupFailed;
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = "This email is already in use by another account.";
-        }
       toast({
         title: "Signup Failed",
         description: errorMessage,
@@ -426,9 +412,8 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = 10;
+  const totalSteps = 9;
   const progressValue = (step / totalSteps) * 100;
-
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && activeSlot !== null) {
@@ -471,7 +456,7 @@ export default function SignupForm() {
   }
 
   const handleNextStep = async () => {
-    let fieldsToValidate: (keyof SignupFormValues | `photos.${number}` | 'address.country')[] = [];
+    let fieldsToValidate: (keyof SignupFormValues | `address.country` | `address.state`)[] = [];
     
     const flow = [
         ['name'], // 0
@@ -517,7 +502,7 @@ export default function SignupForm() {
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
         {(step > 0 && step < finalStep) ? (
-            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 6 ? '' : 'invisible'}`}>
+            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 5 ? '' : 'invisible'}`}>
                 {t.signup.progressHeader.skip}
             </Button>
         ) : <div className="w-16"></div>}
@@ -677,8 +662,8 @@ export default function SignupForm() {
                                     field.onChange(value);
                                     setSelectedCountry(value);
                                     setStates(State.getStatesOfCountry(value));
-                                    form.setValue('address.state', undefined);
-                                    form.setValue('address.city', undefined);
+                                    form.setValue('address.state', '');
+                                    form.setValue('address.city', '');
                                 }}
                                 value={field.value}
                             >
@@ -711,7 +696,7 @@ export default function SignupForm() {
                                 onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedState(value);
-                                    form.setValue('address.city', undefined);
+                                    form.setValue('address.city', '');
                                 }}
                                 value={field.value}
                                 disabled={!selectedCountry || states.length === 0}
@@ -757,37 +742,6 @@ export default function SignupForm() {
               )}
               {step === 5 && (
                 <>
-                  <h1 className="text-3xl font-bold">{t.signup.step7.title}</h1>
-                  <p className="text-muted-foreground">{t.signup.step7.description}</p>
-                  <FormField
-                    control={form.control}
-                    name="distancePreference"
-                    render={({ field }) => (
-                      <FormItem className="pt-12">
-                        <div className="flex justify-between items-center mb-4">
-                          <FormLabel className="text-base">{t.signup.step7.label}</FormLabel>
-                          <span className="font-bold text-base">{field.value} {t.signup.step7.unit}</span>
-                        </div>
-                        <FormControl>
-                          <Slider
-                            value={[field.value]}
-                            onValueChange={(value) => field.onChange(value[0])}
-                            max={100}
-                            min={1}
-                            step={1}
-                          />
-                        </FormControl>
-                        <p className="text-center text-muted-foreground pt-8">
-                          {t.signup.step7.info}
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-              {step === 6 && (
-                <>
                   <h1 className="text-3xl font-bold">{t.signup.step8.title}</h1>
                   <FormField
                     control={form.control}
@@ -810,7 +764,7 @@ export default function SignupForm() {
                   />
                 </>
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step9.title.replace('{name}', currentName)}</h1>
@@ -906,7 +860,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-               {step === 8 && (
+               {step === 7 && (
                  <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                       <h1 className="text-3xl font-bold">{t.signup.step10.title.replace('{name}', currentName)}</h1>
@@ -986,7 +940,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-              {step === interestStep && (
+              {step === 8 && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
@@ -1038,7 +992,7 @@ export default function SignupForm() {
                         />
                   </div>
               )}
-              {step === finalStep && (
+              {step === 9 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
@@ -1144,16 +1098,16 @@ export default function SignupForm() {
                 isLoading ||
                 (step === 1 && ageStatus !== 'valid') ||
                 (step === 4 && (!currentAddress?.country || !currentAddress?.state)) ||
-                (step === 7 && filledLifestyleCount < 4) ||
-                (step === 8 && filledMoreInfoCount < 4) ||
-                (step === interestStep && selectedInterests.length < 1) ||
-                (step === finalStep && uploadedPhotoCount < 2)
+                (step === 6 && filledLifestyleCount < 4) ||
+                (step === 7 && filledMoreInfoCount < 4) ||
+                (step === 8 && selectedInterests.length < 1) ||
+                (step === 9 && uploadedPhotoCount < 2)
               }
             >
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === finalStep ? t.common.done : t.signup.common.next)}
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === 9 ? t.common.done : t.signup.common.next)}
             </Button>
 
-            {step === finalStep && (
+            {step === 9 && (
               <p className="text-center text-sm text-muted-foreground mt-4">
                   {t.signup.step12.requirementText}
               </p>
