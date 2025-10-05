@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RotateCcw } from 'lucide-react';
+import { Loader2, RotateCcw, X, Heart, Star, Zap, Undo2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -10,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -20,7 +21,6 @@ export default function AnasayfaPage() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [seenUserIds, setSeenUserIds] = useState<Set<string>>(new Set());
 
   const fetchProfiles = useCallback(async () => {
     if (!user || !firestore) return;
@@ -35,14 +35,12 @@ export default function AnasayfaPage() {
 
         const querySnapshot = await getDocs(usersQuery);
         
-        let fetchedProfiles = querySnapshot.docs
-          .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-          .filter(p => p.images && p.images.length > 0);
+        const fetchedProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
 
-        // Filter out profiles that have already been swiped in this session
-        fetchedProfiles = fetchedProfiles.filter(p => !seenUserIds.has(p.uid));
+        // Filter out profiles that don't have required data to prevent crashes
+        const validProfiles = fetchedProfiles.filter(p => p.uid && p.fullName && p.images && p.images.length > 0);
 
-        setProfiles(fetchedProfiles);
+        setProfiles(validProfiles);
         setCurrentIndex(0);
 
     } catch (error) {
@@ -55,20 +53,24 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, firestore, toast, t.common.error, seenUserIds]);
+  }, [user, firestore, toast, t.common.error]);
 
   useEffect(() => {
     fetchProfiles();
-  }, [user]); // Only fetch on user change initially
+  }, [fetchProfiles]);
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike', swipedProfile: UserProfile) => {
-    if (!user || !firestore) return;
-
-    // Add to seen list for this session
-    setSeenUserIds(prev => new Set(prev).add(swipedProfile.uid));
-
+    if (!user || !firestore || !swipedProfile) return;
+    
     // Move to next card immediately for smooth UI
-    setCurrentIndex(prev => prev + 1);
+    setCurrentIndex(prev => {
+        const nextIndex = prev + 1;
+        if (nextIndex >= profiles.length) {
+            // Reached the end, maybe show 'out of profiles' message or refetch
+            // For now, we'll just stop
+        }
+        return nextIndex;
+    });
 
     // --- Firestore Logic ---
     const user1 = user.uid;
@@ -100,7 +102,7 @@ export default function AnasayfaPage() {
                 timestamp: serverTimestamp(),
                 // Include other user's info for chat list
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.profilePicture
+                profilePicture: swipedProfile.images[0]
             };
              const currentUserData = {
                 id: matchId,
@@ -125,8 +127,8 @@ export default function AnasayfaPage() {
              // Just record the swipe, no match yet
              await setDoc(matchDocRef, {
                 status: action,
-                [user1]: action, // Records who did what
                 users: [user1, user2],
+                [`user_${user1}_action`]: action,
                 timestamp: serverTimestamp()
             }, { merge: true });
         }
@@ -138,15 +140,12 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast]);
+  }, [user, firestore, t, toast, profiles]);
 
 
   const handleReset = () => {
     setIsLoading(true);
-    setSeenUserIds(new Set()); // Clear the seen list
-    // Refetch all profiles by calling the memoized function again
-    // To do this, we need to make `fetchProfiles` depend on a value that we can change.
-    // A simple way is to just call it directly.
+    setCurrentIndex(0);
     fetchProfiles();
   };
   
@@ -161,13 +160,32 @@ export default function AnasayfaPage() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         ) : activeProfile ? (
-          <div className="relative w-full h-full flex items-center justify-center">
-              <ProfileCard
-                  key={activeProfile.uid}
-                  profile={activeProfile}
-                  onSwipe={handleSwipe}
-              />
-          </div>
+          <>
+            <div className="flex-1 flex items-center justify-center">
+                <ProfileCard
+                    key={activeProfile.uid}
+                    profile={activeProfile}
+                    onSwipe={(action) => handleSwipe(action, activeProfile)}
+                />
+            </div>
+            <div className="flex justify-center items-center gap-4 py-4">
+                <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                    <Undo2 className="w-5 h-5 text-yellow-500" />
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
+                    <X className="w-7 h-7 text-red-500" />
+                </motion.button>
+                 <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                    <Star className="w-5 h-5 text-blue-500" />
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
+                    <Heart className="w-7 h-7 text-green-400" />
+                </motion.button>
+                 <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                    <Zap className="w-5 h-5 text-purple-500" />
+                </motion.button>
+            </div>
+          </>
         ) : (
             <div className="flex h-full flex-col items-center justify-center text-center p-4">
               <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
@@ -181,5 +199,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
