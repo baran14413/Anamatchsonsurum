@@ -66,6 +66,21 @@ const formSchema = z.object({
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
+type GeocodeResult = {
+    latitude: number;
+    longitude: number;
+    country: string;
+    city: string | null;
+    state: string;
+    district?: string;
+    streetName: string | null;
+    streetNumber: string | null;
+    countryCode: string;
+    zipcode: string;
+    provider: string;
+    formattedAddress: string;
+};
+
 
 const lookingForOptions = [
     { id: 'long-term', icon: Heart },
@@ -200,7 +215,10 @@ export default function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  
+  const [locationSearch, setLocationSearch] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState<GeocodeResult[]>([]);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
 
   const auth = useAuth();
@@ -261,6 +279,41 @@ export default function SignupForm() {
         router.push('/');
     }
   }, [form, router]);
+  
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+    }
+    if (locationSearch.length > 2) {
+        setIsFetchingLocation(true);
+        debounceTimeoutRef.current = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/geocode?address=${locationSearch}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setLocationSuggestions(data.addresses || []);
+                } else {
+                    setLocationSuggestions([]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch location suggestions", error);
+                setLocationSuggestions([]);
+            } finally {
+                setIsFetchingLocation(false);
+            }
+        }, 500);
+    } else {
+        setLocationSuggestions([]);
+    }
+
+    return () => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+    };
+  }, [locationSearch]);
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -458,6 +511,20 @@ export default function SignupForm() {
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
 
+  const handleLocationSelect = (loc: GeocodeResult) => {
+    form.setValue('location', {
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+    });
+    form.setValue('address', {
+        city: loc.state,
+        district: loc.city || loc.district,
+        country: loc.countryCode,
+    }, { shouldValidate: true });
+    setLocationSearch(`${loc.state || ''}, ${loc.city || loc.district || ''}`);
+    setLocationSuggestions([]);
+  };
+
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
@@ -488,76 +555,6 @@ export default function SignupForm() {
       }
     }
   };
-
-const handleLocationRequest = async () => {
-    setIsLoading(true);
-    setLocationPermissionDenied(false);
-
-    try {
-        if (!navigator.geolocation) {
-            throw new Error("Geolocation is not supported by your browser.");
-        }
-
-        if (navigator.permissions) {
-            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-            if (permissionStatus.state === 'denied') {
-                setLocationPermissionDenied(true);
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-                timeout: 10000,
-                enableHighAccuracy: true,
-            });
-        });
-
-        form.setValue('location', {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-        });
-
-        const response = await fetch(`/api/geocode?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to fetch address');
-        }
-        const data = await response.json();
-
-        if (data.address) {
-            form.setValue('address', {
-                city: data.address.city,
-                district: data.address.district,
-                country: data.address.country,
-            }, { shouldValidate: true });
-        } else {
-            throw new Error('Address not found from geocode API.');
-        }
-
-    } catch (error: any) {
-        console.error("Location error:", error);
-        let description = t.signup.step6.errorMessage;
-        if (error.code === 1) { // User denied the request
-           setLocationPermissionDenied(true);
-           description = t.ayarlarKonum.errors.permissionDenied;
-        }
-        if (error.code === 2) description = t.ayarlarKonum.errors.positionUnavailable;
-        if (error.code === 3) description = t.ayarlarKonum.errors.timeout;
-        
-        if (!locationPermissionDenied) {
-          toast({
-              title: t.signup.step6.errorTitle,
-              description: description,
-              variant: "destructive"
-          });
-        }
-    } finally {
-        setIsLoading(false);
-    }
-};
-
   
   const handleSkip = () => {
     if (step === 7) { 
@@ -758,55 +755,37 @@ const handleLocationRequest = async () => {
                 </div>
               )}
               {step === 5 && (
-                 <div className="flex flex-col flex-1 text-center justify-between">
-                    <div className="pt-8">
-                       {locationPermissionDenied && (
-                          <Alert variant="destructive" className="mb-6">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>{t.signup.step6.errorTitle}</AlertTitle>
-                            <AlertDescription>{t.ayarlarKonum.errors.permissionDenied}</AlertDescription>
-                          </Alert>
-                       )}
-                       {!currentAddress ? (
-                        <>
-                           <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                              <MapPin className="w-12 h-12 text-primary" />
-                           </div>
-                           <h1 className="text-3xl font-bold mt-6">{t.signup.step6.title}</h1>
-                           <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                              {t.signup.step6.description}
-                           </p>
-                        </>
-                       ) : (
-                         <>
-                            <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-                              <CheckCircle className="w-12 h-12 text-green-500" />
-                            </div>
-                            <h1 className="text-2xl font-bold mt-6">Konumun Alındı!</h1>
-                         </>
-                       )}
+                <div>
+                    <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
+                    <p className="text-muted-foreground">{t.signup.step6.manualDescription}</p>
+                    <div className="relative mt-4">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input 
+                            placeholder="İl, İlçe"
+                            className="pl-10 h-12 text-base"
+                            value={locationSearch}
+                            onChange={(e) => setLocationSearch(e.target.value)}
+                        />
+                        {isFetchingLocation && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />}
                     </div>
+                     <FormMessage>{form.formState.errors.address?.message}</FormMessage>
 
-                    <div>
-                        {!currentAddress ? (
-                           <Button
-                              type="button"
-                              onClick={handleLocationRequest}
-                              className="h-14 rounded-full text-lg font-bold px-8 w-full max-w-sm"
-                              disabled={isLoading || locationPermissionDenied}
-                            >
-                              {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t.signup.step6.button}
-                            </Button>
-                        ) : (
-                           <div className="flex items-center justify-center gap-2 text-lg text-muted-foreground p-3 border rounded-lg bg-secondary max-w-sm mx-auto">
-                              <MapPin className="w-6 h-6 text-primary" />
-                              <span>{currentAddress.city}, {currentAddress.district}</span>
-                           </div>
-                        )}
-                    </div>
-                     <FormMessage>
-                        {form.formState.errors.address?.message}
-                    </FormMessage>
+                    {locationSuggestions.length > 0 && (
+                        <ScrollArea className="mt-2 border rounded-md h-48">
+                            <div className="p-2">
+                                {locationSuggestions.map((loc, index) => (
+                                    <div 
+                                        key={index}
+                                        onClick={() => handleLocationSelect(loc)}
+                                        className="p-2 hover:bg-accent rounded-md cursor-pointer"
+                                    >
+                                        <p className="font-semibold">{loc.state}, {loc.city || loc.district}</p>
+                                        <p className="text-sm text-muted-foreground">{loc.formattedAddress}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    )}
                 </div>
               )}
               {step === 6 && (
