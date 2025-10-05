@@ -6,29 +6,13 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, getDoc, or } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or, updateDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
-
-const nextCardVariants = {
-  hidden: {
-    scale: 0.9,
-    y: 20,
-    opacity: 0,
-  },
-  visible: {
-    scale: 0.95,
-    y: 10,
-    opacity: 1,
-    filter: 'blur(4px)',
-    transition: { duration: 0.3 }
-  },
-};
-
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -38,6 +22,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
 
   const removeTopCard = useCallback(() => {
     setProfiles(prev => prev.slice(1));
@@ -45,19 +30,15 @@ export default function AnasayfaPage() {
   
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
     if (!user || !firestore) return;
-
-    // Immediately remove card from UI for responsiveness.
-    // The actual DB logic happens in the background.
-    removeTopCard();
+    
+    setDirection(action === 'liked' ? 'right' : 'left');
 
     try {
         const user1Id = user.uid;
         const user2Id = swipedProfile.uid;
-        // Sort UIDs to create a consistent document ID for the match
         const matchId = [user1Id, user2Id].sort().join('_');
         const matchDocRef = doc(firestore, 'matches', matchId);
 
-        // Record the current user's action
         const updateData: any = {
             user1Id: [user1Id, user2Id].sort()[0],
             user2Id: [user1Id, user2Id].sort()[1],
@@ -72,10 +53,8 @@ export default function AnasayfaPage() {
             const theirInteractionSnap = await getDoc(matchDocRef);
             if (theirInteractionSnap.exists()) {
                 const theirData = theirInteractionSnap.data();
-                // Determine which user key belongs to the other user
                 const otherUserIndex = userIndex === 1 ? 2 : 1;
                 if (theirData[`user${otherUserIndex}_action`] === 'liked') {
-                    // It's a match!
                     updateData.status = 'matched';
                     updateData.matchDate = serverTimestamp();
                     
@@ -84,7 +63,6 @@ export default function AnasayfaPage() {
                         description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
                     });
 
-                    // Denormalize match data for easy access in chat lists
                     const user1MatchData = {
                       id: matchId,
                       matchedWith: user2Id,
@@ -119,7 +97,7 @@ export default function AnasayfaPage() {
             variant: "destructive",
         });
     }
-  }, [user, firestore, t, toast, userProfile, removeTopCard]);
+  }, [user, firestore, t, toast, userProfile]);
 
  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
@@ -127,10 +105,11 @@ export default function AnasayfaPage() {
         return;
     }
     setIsLoading(true);
+    setDirection(null); // Reset direction on fetch
 
     try {
         const interactedUids = new Set<string>();
-        interactedUids.add(user.uid); // Ensure user doesn't see themselves
+        interactedUids.add(user.uid); 
         
         if (!options?.reset) {
             const interactionsQuery = query(
@@ -206,59 +185,53 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
 
+  const onExitComplete = () => {
+    removeTopCard();
+    setDirection(null);
+  }
+
   return (
     <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
       {isLoading ? (
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       ) : profiles.length > 0 ? (
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[70vh]">
-          <AnimatePresence>
+          <AnimatePresence onExitComplete={onExitComplete}>
             {profiles.map((profile, index) => {
-              if (index > 1) return null; // Render only top two cards
+              if (index > 1) return null;
 
               const isTopCard = index === 0;
 
-              if (isTopCard) {
-                return (
-                  <motion.div
-                    key={profile.uid}
-                    className="absolute w-full h-full"
-                    style={{ zIndex: 2 }}
-                    initial={{ scale: 1, y: 0 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{
-                      y: 300,
-                      opacity: 0,
-                      scale: 0.5,
-                      transition: { duration: 0.4 }
-                    }}
-                  >
-                    <ProfileCard
-                      profile={profile}
-                      onSwipe={(action) => handleSwipe(profile, action)}
-                      isDraggable={true}
-                    />
-                  </motion.div>
-                );
-              }
-
-              // The card underneath
               return (
-                 <motion.div
-                    key={profile.uid}
-                    className="absolute w-full h-full"
-                    style={{ zIndex: 1 }}
-                    variants={nextCardVariants}
-                    initial="hidden"
-                    animate="visible"
+                <motion.div
+                  key={profile.uid}
+                  className="absolute w-full h-full"
+                  style={{
+                    zIndex: isTopCard ? 2 : 1,
+                    scale: isTopCard ? 1 : 0.95,
+                    y: isTopCard ? 0 : 10,
+                  }}
+                  initial={false}
+                  animate={{
+                     scale: 1,
+                     y: 0,
+                     filter: isTopCard ? 'blur(0px)' : 'blur(4px)',
+                     transition: { duration: 0.3 }
+                  }}
+                  exit={{
+                    x: direction === 'right' ? 300 : -300,
+                    opacity: 0,
+                    scale: 0.8,
+                    transition: { duration: 0.3 }
+                  }}
                 >
-                    <ProfileCard
-                        profile={profile}
-                        onSwipe={() => {}}
-                        isDraggable={false}
-                    />
+                  <ProfileCard
+                    profile={profile}
+                    onSwipe={(action) => handleSwipe(profile, action)}
+                    isDraggable={isTopCard}
+                  />
                 </motion.div>
-              )
+              );
             }).reverse()}
           </AnimatePresence>
         </div>

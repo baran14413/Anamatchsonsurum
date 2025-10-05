@@ -28,13 +28,10 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
-  // Animation values are now self-contained within the component
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
-  // Reset internal state when the profile prop changes
   useEffect(() => {
     setImageIndex(0);
     setShowDetails(false);
@@ -82,7 +79,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.5}
         onDragEnd={handleDragEnd}
-        style={{ x, rotate }}
+        style={{ x }}
         whileTap={{ cursor: 'grabbing' }}
       >
         <div
