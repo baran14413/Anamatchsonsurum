@@ -20,8 +20,7 @@ export async function GET(req: NextRequest) {
       if (res && res.length > 0) {
         const address = res[0];
         const responseData = {
-            city: address.state, // In many countries, state is the main city/province
-            district: address.city || address.district,
+            city: address.city || address.district,
             country: address.countryCode,
         };
         return NextResponse.json({ address: responseData });
@@ -37,7 +36,6 @@ export async function GET(req: NextRequest) {
     try {
       const res = await geocoder.geocode({
         address: addressQuery,
-        country: 'TR', // Bias results towards Turkey
         limit: 5,
       });
       return NextResponse.json({ addresses: res });

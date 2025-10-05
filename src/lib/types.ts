@@ -13,13 +13,13 @@ export type UserProfile = {
   gender: 'male' | 'female' | 'other';
   genderPreference?: 'male' | 'female' | 'both';
   location?: {
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
   };
   address?: {
-    city?: string | null;
-    district?: string | null;
     country?: string | null;
+    state?: string | null;
+    city?: string | null;
   }
   school?: string;
   lookingFor?: string;

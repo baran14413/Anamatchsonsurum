@@ -29,6 +29,9 @@ import Image from "next/image";
 import CircularProgress from "./circular-progress";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -40,14 +43,17 @@ const formSchema = z.object({
     gender: z.enum(['male', 'female'], { required_error: "Please select your gender." }),
     lookingFor: z.string({ required_error: "Please choose one." }).min(1, { message: "Please choose one." }),
     location: z.object({
-        latitude: z.number(),
-        longitude: z.number(),
+        latitude: z.number().nullable(),
+        longitude: z.number().nullable(),
     }).optional(),
     address: z.object({
-        city: z.string().optional().nullable(),
-        district: z.string().optional().nullable(),
-        country: z.string().optional().nullable(),
-    }).optional(),
+        country: z.string().optional(),
+        state: z.string().optional(),
+        city: z.string().optional(),
+    }).refine(data => data.country && data.state, {
+        message: "Country and state are required.",
+        path: ["country"], // you can decide where to show the error
+    }),
     distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
     drinking: z.string({ required_error: "Please choose one." }).min(1),
@@ -66,20 +72,6 @@ const formSchema = z.object({
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
-type GeocodeResult = {
-    latitude: number;
-    longitude: number;
-    country: string;
-    city: string | null;
-    state: string;
-    district?: string;
-    streetName: string | null;
-    streetNumber: string | null;
-    countryCode: string;
-    zipcode: string;
-    provider: string;
-    formattedAddress: string;
-};
 
 
 const lookingForOptions = [
@@ -216,10 +208,12 @@ export default function SignupForm() {
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
   
-  const [locationSearch, setLocationSearch] = useState("");
-  const [locationSuggestions, setLocationSuggestions] = useState<GeocodeResult[]>([]);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [countries, setCountries] = useState<ICountry[]>([]);
+  const [states, setStates] = useState<IState[]>([]);
+  const [cities, setCities] = useState<ICity[]>([]);
 
+  const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
+  const [selectedState, setSelectedState] = useState<string | undefined>();
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -240,6 +234,7 @@ export default function SignupForm() {
       password: "",
       gender: undefined,
       lookingFor: "",
+      address: { country: undefined, state: undefined, city: undefined },
       distancePreference: 50,
       school: "",
       drinking: "",
@@ -255,6 +250,10 @@ export default function SignupForm() {
     },
     mode: "onChange",
   });
+
+  useEffect(() => {
+      setCountries(Country.getAllCountries());
+  }, []);
 
   useEffect(() => {
     try {
@@ -280,41 +279,6 @@ export default function SignupForm() {
     }
   }, [form, router]);
   
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-    }
-    if (locationSearch.length > 2) {
-        setIsFetchingLocation(true);
-        debounceTimeoutRef.current = setTimeout(async () => {
-            try {
-                const response = await fetch(`/api/geocode?address=${locationSearch}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setLocationSuggestions(data.addresses || []);
-                } else {
-                    setLocationSuggestions([]);
-                }
-            } catch (error) {
-                console.error("Failed to fetch location suggestions", error);
-                setLocationSuggestions([]);
-            } finally {
-                setIsFetchingLocation(false);
-            }
-        }, 500);
-    } else {
-        setLocationSuggestions([]);
-    }
-
-    return () => {
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-    };
-  }, [locationSearch]);
-
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
     if (isNaN(date.getTime())) {
@@ -420,6 +384,14 @@ export default function SignupForm() {
 
       const allPhotoUrls = [...existingUrls, ...uploadedUrls];
 
+      const finalAddress = {
+          country: Country.getCountryByCode(data.address.country!)?.name,
+          state: State.getStateByCodeAndCountry(data.address.state!, data.address.country!)?.name,
+          city: data.address.city ? City.getCity(parseInt(data.address.city, 10))?.name : null
+      }
+      
+      const stateDetails = State.getStateByCodeAndCountry(data.address.state!, data.address.country!);
+
       const userProfile = {
         uid: userId,
         fullName: data.name,
@@ -444,8 +416,11 @@ export default function SignupForm() {
         interests: data.interests,
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
-        location: data.location || null,
-        address: data.address || null,
+        location: {
+            latitude: stateDetails?.latitude || null,
+            longitude: stateDetails?.longitude || null,
+        },
+        address: finalAddress,
       };
 
       await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
@@ -511,29 +486,14 @@ export default function SignupForm() {
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
 
-  const handleLocationSelect = (loc: GeocodeResult) => {
-    form.setValue('location', {
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-    });
-    form.setValue('address', {
-        city: loc.state,
-        district: loc.city || loc.district,
-        country: loc.countryCode,
-    }, { shouldValidate: true });
-    setLocationSearch(`${loc.state || ''}, ${loc.city || loc.district || ''}`);
-    setLocationSuggestions([]);
-  };
-
-
   const handleNextStep = async () => {
-    let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
+    let fieldsToValidate: (keyof SignupFormValues | `photos.${number}` | 'address.country')[] = [];
     if (step === 0 && !isGoogleSignup) fieldsToValidate = ['email', 'password'];
     if (step === 1) fieldsToValidate = ['name'];
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
     if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['address'];
+    if (step === 5) fieldsToValidate = ['address.country'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
@@ -755,37 +715,109 @@ export default function SignupForm() {
                 </div>
               )}
               {step === 5 && (
-                <div>
+                 <div className="space-y-4">
                     <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
-                    <p className="text-muted-foreground">{t.signup.step6.manualDescription}</p>
-                    <div className="relative mt-4">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input 
-                            placeholder="İl, İlçe"
-                            className="pl-10 h-12 text-base"
-                            value={locationSearch}
-                            onChange={(e) => setLocationSearch(e.target.value)}
-                        />
-                        {isFetchingLocation && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />}
-                    </div>
-                     <FormMessage>{form.formState.errors.address?.message}</FormMessage>
-
-                    {locationSuggestions.length > 0 && (
-                        <ScrollArea className="mt-2 border rounded-md h-48">
-                            <div className="p-2">
-                                {locationSuggestions.map((loc, index) => (
-                                    <div 
-                                        key={index}
-                                        onClick={() => handleLocationSelect(loc)}
-                                        className="p-2 hover:bg-accent rounded-md cursor-pointer"
-                                    >
-                                        <p className="font-semibold">{loc.state}, {loc.city || loc.district}</p>
-                                        <p className="text-sm text-muted-foreground">{loc.formattedAddress}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    )}
+                    <FormField
+                        control={form.control}
+                        name="address.country"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Ülke</FormLabel>
+                            <Select
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    setSelectedCountry(value);
+                                    setStates(State.getStatesOfCountry(value));
+                                    setCities([]);
+                                    form.setValue('address.state', undefined);
+                                    form.setValue('address.city', undefined);
+                                }}
+                                value={field.value}
+                            >
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Bir ülke seçin" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <ScrollArea className="h-72">
+                                        {countries.map((country) => (
+                                            <SelectItem key={country.isoCode} value={country.isoCode}>
+                                                {country.name}
+                                            </SelectItem>
+                                        ))}
+                                    </ScrollArea>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="address.state"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Şehir</FormLabel>
+                            <Select
+                                onValueChange={(value) => {
+                                    field.onChange(value);
+                                    setSelectedState(value);
+                                    setCities(City.getCitiesOfState(selectedCountry!, value));
+                                    form.setValue('address.city', undefined);
+                                }}
+                                value={field.value}
+                                disabled={!selectedCountry || states.length === 0}
+                            >
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Bir şehir seçin" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <ScrollArea className="h-72">
+                                        {states.map((state) => (
+                                            <SelectItem key={state.isoCode} value={state.isoCode}>
+                                                {state.name}
+                                            </SelectItem>
+                                        ))}
+                                    </ScrollArea>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="address.city"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>İlçe</FormLabel>
+                             <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                disabled={!selectedState || cities.length === 0}
+                            >
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Bir ilçe seçin (isteğe bağlı)" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                     <ScrollArea className="h-72">
+                                        {cities.map((city) => (
+                                            <SelectItem key={city.name} value={String(city.id)}>
+                                                {city.name}
+                                            </SelectItem>
+                                        ))}
+                                    </ScrollArea>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                 </div>
               )}
               {step === 6 && (
@@ -1176,7 +1208,7 @@ export default function SignupForm() {
               disabled={
                 isLoading ||
                 (step === 2 && ageStatus !== 'valid') ||
-                (step === 5 && !currentAddress) ||
+                (step === 5 && (!currentAddress?.country || !currentAddress?.state)) ||
                 (step === 8 && filledLifestyleCount < 4) ||
                 (step === 9 && filledMoreInfoCount < 4) ||
                 (step === 10 && selectedInterests.length < 1) ||

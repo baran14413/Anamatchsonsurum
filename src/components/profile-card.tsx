@@ -108,10 +108,10 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
              <div className='flex items-end justify-between'>
                 <div className="max-w-[calc(100%-4rem)]">
                     <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                    {profile.address?.city && (
+                    {profile.address?.state && (
                         <div className="flex items-center gap-2 mt-2">
                             <MapPin className="w-4 h-4" />
-                            <span>{profile.address.city}, {profile.address.district}</span>
+                            <span>{profile.address.state}, {profile.address.country}</span>
                         </div>
                     )}
                     <div className="flex flex-wrap items-center gap-2 mt-2">
