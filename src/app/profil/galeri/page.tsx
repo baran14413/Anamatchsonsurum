@@ -12,6 +12,7 @@ import { langTr } from "@/languages/tr";
 import Image from "next/image";
 import { Icons } from "@/components/icons";
 import type { UserImage } from "@/lib/types";
+import { Progress } from "@/components/ui/progress";
 
 type PhotoSlot = {
     file: File | null;
@@ -65,7 +66,7 @@ export default function GalleryEditPage() {
       const file = e.target.files[0];
       const preview = URL.createObjectURL(file);
       const newSlots = [...photoSlots];
-      newSlots[activeSlot] = { file, preview, isUploading: false, isNew: true };
+      newSlots[activeSlot] = { file, preview, isUploading: false, isNew: true, public_id: null };
       setPhotoSlots(newSlots);
     }
     setActiveSlot(null);
@@ -90,21 +91,12 @@ export default function GalleryEditPage() {
 
       // If it's a previously saved image, delete from Cloudinary
       if (deletedSlot.public_id && !deletedSlot.public_id.startsWith('google_')) {
-          try {
-              await fetch('/api/delete-image', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ public_id: deletedSlot.public_id }),
-              });
-          } catch (error) {
-              console.error("Failed to delete from cloudinary", error);
-              // We can still proceed with removing it from the UI
-          }
+          // Cloudinary deletion logic is removed as per user request.
       }
       
       if (deletedSlot.file && deletedSlot.preview) URL.revokeObjectURL(deletedSlot.preview);
       newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, isUploading: false, isNew: false });
+      newSlots.push({ file: null, preview: null, isUploading: false, isNew: false, public_id: null });
       
       setPhotoSlots(newSlots);
   };
@@ -134,14 +126,6 @@ export default function GalleryEditPage() {
 
         const uploadResults = await Promise.all(uploadPromises);
 
-        let finalImages: UserImage[] = photoSlots
-          .filter(p => p.preview && !p.isNew && p.public_id)
-          .map(p => ({ url: p.preview!, public_id: p.public_id! }));
-
-        uploadResults.forEach(result => {
-           finalImages.push({ url: result.url, public_id: result.public_id });
-        });
-
         // Reorder based on final slot positions
         const finalOrderedImages: UserImage[] = [];
         for (const slot of photoSlots) {
@@ -152,7 +136,6 @@ export default function GalleryEditPage() {
                  finalOrderedImages.push({ url: slot.preview, public_id: slot.public_id });
             }
         }
-
 
         await updateDoc(doc(firestore, "users", user.uid), {
             images: finalOrderedImages,
@@ -189,13 +172,17 @@ export default function GalleryEditPage() {
       </header>
       
       <main className="flex-1 flex flex-col p-6 overflow-hidden">
-        <div className="shrink-0">
-            <div className="flex items-center gap-4">
-                <GalleryHorizontal className="w-8 h-8 text-primary" />
-                <p className="text-muted-foreground flex-1">{t.description.replace('{count}', String(uploadedPhotoCount))}</p>
+        <div className="shrink-0 space-y-4">
+            <div className="flex items-center gap-3">
+                <GalleryHorizontal className="w-8 h-8 text-primary shrink-0" />
+                <p className="text-muted-foreground text-sm">Profilinde gösterilecek fotoğraflarını buradan yönetebilirsin.</p>
+            </div>
+             <div className="space-y-2">
+                <Progress value={(uploadedPhotoCount / 6) * 100} className="h-2" />
+                <p className="text-sm font-medium text-muted-foreground text-right">{uploadedPhotoCount} / 6</p>
             </div>
         </div>
-        <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
+        <div className="flex-1 overflow-y-auto pt-6 -mx-6 px-6">
             <div className="grid grid-cols-3 gap-4">
                 {photoSlots.map((slot, index) => (
                     <div key={index} className="relative aspect-square">
@@ -213,8 +200,7 @@ export default function GalleryEditPage() {
                                 </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                    <span className="text-xs font-medium block">{t.upload}</span>
-                                    <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
+                                    <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center"><Plus className="w-6 h-6" /></div>
                                 </div>
                             )}
                         </div>
