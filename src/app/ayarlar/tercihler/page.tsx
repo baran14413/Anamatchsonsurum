@@ -21,7 +21,6 @@ export default function PreferencesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const t = langTr;
-    const [distanceValue, setDistanceValue] = useState(userProfile?.distancePreference || 80);
 
     const handleGenderPreferenceChange = async (value: 'male' | 'female' | 'both') => {
         if (!user || !firestore) return;
@@ -40,32 +39,6 @@ export default function PreferencesPage() {
              toast({
                 title: "Hata",
                 description: "Cinsiyetiniz güncellenirken bir hata oluştu.",
-                variant: "destructive"
-            });
-        }
-    };
-    
-    const handleDistanceChange = (value: number[]) => {
-      setDistanceValue(value[0]);
-    };
-
-    const handleDistanceCommit = async (value: number[]) => {
-        if (!user || !firestore) return;
-        
-        const userDocRef = doc(firestore, 'users', user.uid);
-        try {
-            await updateDoc(userDocRef, {
-                distancePreference: value[0]
-            });
-            toast({
-                title: "Mesafe Güncellendi",
-                description: "Mesafe tercihiniz başarıyla kaydedildi.",
-            });
-        } catch (error) {
-            console.error("Failed to update distance preference: ", error);
-             toast({
-                title: "Hata",
-                description: "Mesafe tercihiniz güncellenirken bir hata oluştu.",
                 variant: "destructive"
             });
         }
@@ -116,32 +89,6 @@ export default function PreferencesPage() {
                         </Label>
                     </RadioGroup>
                 </div>
-                
-                <Separator />
-
-                <div className='space-y-6'>
-                    <div>
-                        <h2 className="text-xl font-bold">Mesafe Tercihi</h2>
-                        <p className='text-muted-foreground'>Potansiyel eşleşmeler için maksimum mesafeyi ayarla.</p>
-                    </div>
-
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-baseline">
-                            <Label className="text-base">Mesafe</Label>
-                            <span className="text-xl font-bold text-foreground">{distanceValue} Km</span>
-                        </div>
-                        <Slider
-                            value={[distanceValue]}
-                            max={160}
-                            min={1}
-                            step={1}
-                            onValueChange={handleDistanceChange}
-                            onValueCommit={handleDistanceCommit}
-                            className="w-full"
-                        />
-                    </div>
-                </div>
-
             </main>
         </div>
     )
