@@ -28,6 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
@@ -55,7 +56,6 @@ export default function ChatPage() {
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -310,7 +310,7 @@ export default function ChatPage() {
             return <span className="text-xs text-green-500">Çevrimiçi</span>
         }
         if (otherUser.lastSeen) {
-            const lastSeenDate = otherUser.lastSeen.toDate();
+            const lastSeenDate = new Date(otherUser.lastSeen.seconds * 1000);
             if (!isNaN(lastSeenDate.getTime())) {
                 return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}</span>
             }
