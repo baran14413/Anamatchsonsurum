@@ -30,7 +30,7 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
     if (!user || !firestore) return;
     
-    // UI update happens immediately via AnimatePresence onExitComplete
+    // Optimistic UI update
     removeTopCard();
 
     try {
@@ -193,8 +193,9 @@ export default function AnasayfaPage() {
           <AnimatePresence>
             {profiles.map((profile, index) => {
               const isTopCard = index === 0;
-              
-              if(index > 1) return null; // Render only top two cards
+              const isNextCard = index === 1;
+
+              if (index > 1) return null; // Render only top two cards
 
               return (
                 <motion.div
@@ -212,12 +213,6 @@ export default function AnasayfaPage() {
                     y: 0, 
                     opacity: 1, 
                     transition: { duration: 0.3, ease: 'easeOut' }
-                  }}
-                   exit={{
-                    x: (isTopCard && (Math.abs(100) > SWIPE_THRESHOLD)) ? (100 > 0 ? 300 : -300) : 0,
-                    opacity: 0,
-                    scale: 0.8,
-                    transition: { duration: 0.3, ease: 'easeIn' }
                   }}
                 >
                   <ProfileCard
@@ -244,5 +239,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-const SWIPE_THRESHOLD = 80;
