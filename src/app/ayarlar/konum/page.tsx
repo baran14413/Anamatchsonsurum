@@ -4,20 +4,17 @@
 import { useUser, useFirestore } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MapPin, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Loader2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-
-type Address = {
-    city: string | null;
-    country: string | null;
-};
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 export default function LocationSettingsPage() {
     const { user, userProfile } = useUser();
@@ -27,38 +24,15 @@ export default function LocationSettingsPage() {
     const t = langTr;
     const tc = t.ayarlarKonum;
 
-    const [distanceValue, setDistanceValue] = useState(userProfile?.distancePreference || 80);
+    const [distanceValue, setDistanceValue] = useState(80);
     const [isLocationLoading, setIsLocationLoading] = useState(false);
-    const [currentAddress, setCurrentAddress] = useState<Address | null>(null);
-    const [isAddressLoading, setIsAddressLoading] = useState(true);
     const [locationError, setLocationError] = useState<string | null>(null);
 
-    const getAddressFromCoordinates = useCallback(async (lat: number, lon: number) => {
-        setIsAddressLoading(true);
-        try {
-            const response = await fetch(`/api/geocode?lat=${lat}&lon=${lon}`);
-            const data = await response.json();
-            if (response.ok && data.address) {
-                setCurrentAddress(data.address);
-            } else {
-                setCurrentAddress(null);
-                console.error("Geocoding failed:", data.error);
-            }
-        } catch (error) {
-            console.error("Error fetching address:", error);
-            setCurrentAddress(null);
-        } finally {
-            setIsAddressLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        if (userProfile?.location?.latitude && userProfile?.location?.longitude) {
-            getAddressFromCoordinates(userProfile.location.latitude, userProfile.location.longitude);
-        } else {
-            setIsAddressLoading(false);
+        if (userProfile?.distancePreference) {
+            setDistanceValue(userProfile.distancePreference);
         }
-    }, [userProfile, getAddressFromCoordinates]);
+    }, [userProfile]);
     
     const handleDistanceChange = (value: number[]) => {
       setDistanceValue(value[0]);
@@ -105,18 +79,11 @@ export default function LocationSettingsPage() {
                 const userDocRef = doc(firestore, 'users', user.uid);
 
                 try {
-                     const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
-                     const data = await response.json();
-
-                     if(!response.ok) throw new Error(data.error || 'Adres bilgisi alınamadı.');
-
                     await updateDoc(userDocRef, {
                         location: { latitude, longitude },
-                        address: data.address || null
+                        locationLastUpdated: serverTimestamp(),
                     });
                     
-                    setCurrentAddress(data.address || null);
-
                     toast({
                         title: tc.toasts.successTitle,
                         description: tc.toasts.successDesc,
@@ -137,9 +104,11 @@ export default function LocationSettingsPage() {
                 setLocationError(message);
                 setIsLocationLoading(false);
             },
-            { timeout: 10000 }
+            { timeout: 10000, enableHighAccuracy: true }
         );
     };
+
+    const lastUpdatedDate = userProfile?.locationLastUpdated?.toDate();
 
     return (
         <div className="flex h-dvh flex-col bg-gray-50 dark:bg-black">
@@ -161,15 +130,10 @@ export default function LocationSettingsPage() {
                         <CardDescription>{tc.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {isAddressLoading ? (
-                             <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>{tc.gettingAddress}</span>
-                            </div>
-                        ) : currentAddress?.city ? (
-                            <p className="text-lg font-semibold">{currentAddress.city}, {currentAddress.country}</p>
-                        ) : (
-                            <p className="text-muted-foreground">{tc.addressNotFound}</p>
+                        {lastUpdatedDate && (
+                            <p className="text-sm text-muted-foreground">
+                                Son Güncelleme: {format(lastUpdatedDate, "d MMMM yyyy, HH:mm", { locale: tr })}
+                            </p>
                         )}
                        
                         <Button onClick={handleLocationRequest} disabled={isLocationLoading}>
@@ -178,7 +142,12 @@ export default function LocationSettingsPage() {
                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                  {tc.updatingButton}
                                 </>
-                            ) : tc.updateButton}
+                            ) : (
+                                <>
+                                    <RefreshCw className='mr-2 h-4 w-4' />
+                                    {tc.updateButton}
+                                </>
+                            )}
                         </Button>
                          {locationError && <p className="text-sm text-destructive mt-2">{locationError}</p>}
                     </CardContent>

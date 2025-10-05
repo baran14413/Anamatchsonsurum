@@ -16,6 +16,7 @@ export type UserProfile = {
     latitude: number | null;
     longitude: number | null;
   };
+  locationLastUpdated?: any; // Using any for Firestore ServerTimestamp flexibility
   address?: {
     country?: string | null;
     state?: string | null;
