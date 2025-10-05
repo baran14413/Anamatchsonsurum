@@ -13,7 +13,7 @@ import Link from 'next/link';
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
 const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
-const registrationRoute = '/kayit-ol';
+const registrationRoute = '/profilini-tamamla';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -33,7 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // SCENARIO 1: User is logged in
     if (user) {
       // 1a: But profile is INCOMPLETE (we use 'gender' as the marker for a complete profile)
-      if (!userProfile) {
+      if (!userProfile?.gender) {
         // If they are not on the registration page, FORCE them to it.
         if (!isRegistrationRoute) {
           router.replace(registrationRoute);
@@ -51,7 +51,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // SCENARIO 2: User is NOT logged in
     else {
       // If they are trying to access a protected route, redirect to welcome page.
-      if (isProtectedRoute) {
+      if (isProtectedRoute || isRegistrationRoute) {
         router.replace('/');
       }
       // If they are on a public or auth-flow page, do nothing.
@@ -70,7 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   // Determine if the header and footer should be shown
-  const showHeaderAndFooter = userProfile && isProtectedRoute && pathname !== '/ayarlar' && !pathname.startsWith('/ayarlar/');
+  const showHeaderAndFooter = userProfile?.gender && isProtectedRoute && pathname !== '/ayarlar' && !pathname.startsWith('/ayarlar/');
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';

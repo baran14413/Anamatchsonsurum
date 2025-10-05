@@ -1,8 +1,8 @@
 
 'use client';
 
-import SignupForm from "@/components/signup-form";
+import ProfileCompletionForm from "@/components/profile-completion-form";
 
-export default function SignupPage() {
-  return <SignupForm />;
+export default function ProfileCompletionPage() {
+  return <ProfileCompletionForm />;
 }
