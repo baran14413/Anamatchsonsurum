@@ -87,24 +87,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 <div
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
                 >
-                    {isDraggable && (
-                        <>
-                        <motion.div
-                            className="absolute top-8 left-8 text-green-400 z-10"
-                            style={{ opacity: opacityLike }}
-                        >
-                            <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
-                        </motion.div>
-                        <motion.div
-                            className="absolute top-8 right-8 text-red-500 z-10"
-                            style={{ opacity: opacityDislike }}
-                        >
-                            <X className="h-20 w-20" strokeWidth={3} />
-                        </motion.div>
-                        </>
-                    )}
-                    
-                   <Carousel className="w-full h-full">
+                    <Carousel className="w-full h-full">
                         <CarouselContent>
                             {profile.images.map((img, index) => (
                             <CarouselItem key={index}>
@@ -124,7 +107,23 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         </CarouselContent>
                     </Carousel>
 
-
+                    {isDraggable && (
+                        <>
+                        <motion.div
+                            className="absolute top-8 left-8 text-green-400 z-10"
+                            style={{ opacity: opacityLike }}
+                        >
+                            <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
+                        </motion.div>
+                        <motion.div
+                            className="absolute top-8 right-8 text-red-500 z-10"
+                            style={{ opacity: opacityDislike }}
+                        >
+                            <X className="h-20 w-20" strokeWidth={3} />
+                        </motion.div>
+                        </>
+                    )}
+                    
                     <div
                         className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                     >
@@ -145,7 +144,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
-                                     {/* Content is intentionally left blank for now */}
+                                    {/* Content is intentionally left blank for now */}
                                 </SheetContent>
                             </Sheet>
                         </div>
@@ -156,4 +155,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
      </AnimatePresence>
   );
 }
-
