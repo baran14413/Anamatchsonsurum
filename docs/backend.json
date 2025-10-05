@@ -56,8 +56,8 @@
         },
         "bio": {
           "type": "string",
-          "description": "A short biography or description of the user, limited to 10 words.",
-          "maxLength": 150
+          "description": "A short biography or description of the user, limited to 100 characters.",
+          "maxLength": 100
         },
         "location": {
             "type": "object",
