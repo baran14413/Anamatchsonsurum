@@ -44,15 +44,15 @@ const formSchema = z.object({
     }).optional(),
     distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
-    drinking: z.string().optional(),
-    smoking: z.string().optional(),
-    workout: z.string().optional(),
-    pets: z.array(z.string()).optional(),
-    communicationStyle: z.string().optional(),
-    loveLanguage: z.string().optional(),
-    educationLevel: z.string().optional(),
-    zodiacSign: z.string().optional(),
-    interests: z.array(z.string()).max(10, { message: 'You can select up to 10 interests.'}).optional(),
+    drinking: z.string({ required_error: "Please choose one." }).min(1),
+    smoking: z.string({ required_error: "Please choose one." }).min(1),
+    workout: z.string({ required_error: "Please choose one." }).min(1),
+    pets: z.array(z.string()).min(1, { message: 'Please choose one.'}),
+    communicationStyle: z.string({ required_error: "Please choose one." }).min(1),
+    loveLanguage: z.string({ required_error: "Please choose one." }).min(1),
+    educationLevel: z.string({ required_error: "Please choose one." }).min(1),
+    zodiacSign: z.string({ required_error: "Please choose one." }).min(1),
+    interests: z.array(z.string()).min(1).max(10, { message: 'You can select up to 10 interests.'}),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
     uid: z.string().optional(),
     email: z.string().email(),
@@ -210,14 +210,14 @@ export default function SignupForm() {
       lookingFor: "",
       distancePreference: 50,
       school: "",
-      drinking: undefined,
-      smoking: undefined,
-      workout: undefined,
+      drinking: "",
+      smoking: "",
+      workout: "",
       pets: [],
-      communicationStyle: undefined,
-      loveLanguage: undefined,
-      educationLevel: undefined,
-      zodiacSign: undefined,
+      communicationStyle: "",
+      loveLanguage: "",
+      educationLevel: "",
+      zodiacSign: "",
       interests: [],
       photos: [],
     },
@@ -444,6 +444,8 @@ export default function SignupForm() {
     if (step === 5) fieldsToValidate = ['location'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
+    if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
+    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
     if (step === 10) fieldsToValidate = ['interests'];
     if (step === 11) fieldsToValidate = ['photos'];
 
@@ -485,21 +487,7 @@ export default function SignupForm() {
     if (step === 7) { 
         form.setValue('school', '');
     }
-    if (step === 8) { 
-        form.setValue('drinking', undefined);
-        form.setValue('smoking', undefined);
-        form.setValue('workout', undefined);
-        form.setValue('pets', []);
-    }
-    if (step === 9) { 
-        form.setValue('communicationStyle', undefined);
-        form.setValue('loveLanguage', undefined);
-        form.setValue('educationLevel', undefined);
-        form.setValue('zodiacSign', undefined);
-    }
-    if (step === 10) { 
-        form.setValue('interests', []);
-    }
+    // No longer skipping other steps
     nextStep();
   }
 
@@ -510,7 +498,7 @@ export default function SignupForm() {
             <ArrowLeft className="h-6 w-6" />
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
-        {(step === 7 || step === 8 || step === 9 || step === 10) ? (
+        {step === 7 ? (
           <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
             {t.signup.progressHeader.skip}
           </Button>
@@ -1074,18 +1062,18 @@ export default function SignupForm() {
             ) : step === 8 ? (
               <Button
                 type="button"
-                onClick={nextStep}
+                onClick={handleNextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading}
+                disabled={isLoading || filledLifestyleCount < 4}
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
               </Button>
             ) : step === 9 ? (
                 <Button
                 type="button"
-                onClick={nextStep}
+                onClick={handleNextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading || filledMoreInfoCount === 0}
+                disabled={isLoading || filledMoreInfoCount < 4}
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
               </Button>
@@ -1129,5 +1117,7 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
 
     
