@@ -4,13 +4,12 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, MoreHorizontal } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from './ui/button';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-
+import { cn } from '@/lib/utils';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -29,17 +28,17 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 const SWIPE_THRESHOLD = 80;
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Reset index when profile changes
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [profile.uid]);
   
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
-
-  useEffect(() => {
-    x.set(0); 
-    setIsVisible(true);
-  }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
   
@@ -57,8 +56,17 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const handleAction = (action: 'liked' | 'disliked') => {
     if (!onSwipe || !isDraggable) return;
-    setIsVisible(false);
     onSwipe(action);
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
+  };
+  
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
   
   const motionProps = isDraggable ? {
@@ -84,26 +92,35 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
-            <Carousel className="w-full h-full">
-                <CarouselContent>
-                    {profile.images?.map((img, index) => (
-                        <CarouselItem key={index}>
-                            <div className="relative w-full h-full">
-                                <Image
-                                    src={img}
-                                    alt={`${profile.fullName} profile image ${index + 1}`}
-                                    fill
-                                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                                    style={{ objectFit: 'cover' }}
-                                    className="pointer-events-none"
-                                    priority={isDraggable && index === 0}
-                                />
-                            </div>
-                        </CarouselItem>
-                    ))}
-                </CarouselContent>
-            </Carousel>
+            {/* Image Background */}
+            <div className='absolute inset-0'>
+                <Image
+                    src={profile.images[activeImageIndex]}
+                    alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                    style={{ objectFit: 'cover' }}
+                    className="pointer-events-none"
+                    priority={isDraggable}
+                />
+            </div>
             
+             {/* Progress Bars and Navigation */}
+            <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
+                {profile.images.map((_, index) => (
+                    <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                        <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                    </div>
+                ))}
+            </div>
+
+            {profile.images.length > 1 && (
+                <div className='absolute inset-0 flex z-20'>
+                    <div className='flex-1 h-full' onClick={handlePrevImage} />
+                    <div className='flex-1 h-full' onClick={handleNextImage} />
+                </div>
+            )}
+
 
             {isDraggable && (
                 <>
@@ -142,8 +159,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
-                            <SheetTitle className="sr-only">Profil Detayları</SheetTitle>
-                            <SheetDescription className="sr-only">{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                            <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
+                            <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                         </SheetContent>
                     </Sheet>
                 </div>
