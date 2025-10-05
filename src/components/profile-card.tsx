@@ -1,17 +1,12 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, PanInfo } from 'framer-motion';
 import { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 
 interface ProfileCardProps {
   profile: UserProfile;
-  onSwipe: (direction: 'left' | 'right') => void;
 }
-
-const SWIPE_THRESHOLD = 80;
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
@@ -22,21 +17,13 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
-export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
+export default function ProfileCard({ profile }: ProfileCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
 
   // Reset image index when profile changes
   useEffect(() => {
     setImageIndex(0);
   }, [profile.id]);
-
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.x > SWIPE_THRESHOLD) {
-      onSwipe('right');
-    } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      onSwipe('left');
-    }
-  };
   
   const age = calculateAge(profile.dateOfBirth);
   const totalImages = profile.images?.length || 0;
@@ -55,15 +42,7 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
   };
 
   return (
-     <motion.div
-      className="absolute w-full h-full"
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={handleDragEnd}
-    >
-      <div
-        className="w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 cursor-grab active:cursor-grabbing relative"
-      >
+    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
         {/* Image Progress Bars */}
         {totalImages > 1 && (
             <div className="absolute top-2 left-2 right-2 z-10 flex gap-1 px-1">
@@ -115,7 +94,6 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
           <h3 className="text-2xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
           {profile.bio && <p className="text-sm mt-1">{profile.bio}</p>}
         </div>
-      </div>
-    </motion.div>
+    </div>
   );
 }
