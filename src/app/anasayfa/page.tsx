@@ -171,8 +171,8 @@ export default function AnasayfaPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : (
-        <>
-          <div className="flex-1 relative flex items-center justify-center p-4">
+        <div className="flex-1 flex flex-col justify-end">
+          <div className="relative flex-grow flex items-center justify-center p-4">
               {activeProfile ? (
                  <ProfileCard
                     key={activeProfile.uid}
@@ -212,10 +212,8 @@ export default function AnasayfaPage() {
               </button>
             </div>
            )}
-        </>
+        </div>
       )}
     </div>
   );
 }
-
-    
