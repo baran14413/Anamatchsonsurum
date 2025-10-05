@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { doc, setDoc } from "firebase/firestore";
-import { useAuth, useFirestore } from "@/firebase";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -189,6 +189,7 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr;
+  const { user } = useUser();
   
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(0); // Start at step 0 for email/password
@@ -310,7 +311,7 @@ export default function SignupForm() {
     
     setIsLoading(true);
     try {
-        let userId = data.uid;
+        let userId = user?.uid; // Prioritize already authenticated user (Google signup case)
 
         // If it's not a Google signup, we need to create the user with email/password first
         if (!isGoogleSignup) {
@@ -396,7 +397,7 @@ export default function SignupForm() {
       
       sessionStorage.removeItem('googleSignupData');
       
-      router.push("/anasayfa");
+      // router.push("/anasayfa"); // AppShell will handle this redirection now
 
     } catch (error: any) {
       console.error("Signup error:", error);
