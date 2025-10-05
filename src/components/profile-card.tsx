@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, MoreHorizontal } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -70,12 +70,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     onDragEnd: handleDragEnd,
     style: { x, rotate },
     whileTap: { cursor: 'grabbing' as const },
-    exit: { 
-      x: x.get() > 0 ? 300 : -300,
-      opacity: 0,
-      scale: 0.8,
-      transition: { duration: 0.3, ease: 'easeIn' }
-    }
   } : {};
   
 
@@ -85,6 +79,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             <motion.div 
                 className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
                 {...motionProps}
+                exit={{ 
+                    x: x.get() > 0 ? 300 : -300,
+                    opacity: 0,
+                    scale: 0.8,
+                    transition: { duration: 0.3, ease: 'easeIn' }
+                }}
             >
                 <div
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
@@ -92,13 +92,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     {isDraggable && (
                         <>
                         <motion.div
-                            className="absolute top-8 left-8 text-green-400 z-20"
+                            className="absolute top-8 left-8 text-green-400 z-10"
                             style={{ opacity: opacityLike }}
                         >
                             <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
                         </motion.div>
                         <motion.div
-                            className="absolute top-8 right-8 text-red-500 z-20"
+                            className="absolute top-8 right-8 text-red-500 z-10"
                             style={{ opacity: opacityDislike }}
                         >
                             <X className="h-20 w-20" strokeWidth={3} />
