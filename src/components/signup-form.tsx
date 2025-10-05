@@ -212,30 +212,6 @@ export default function SignupForm() {
   
   const [step, setStep] = useState(0); 
 
-  useEffect(() => {
-    try {
-        const googleDataString = sessionStorage.getItem('googleSignupData');
-        if (googleDataString) {
-            setIsGoogleSignup(true);
-            setStep(1); // Start from name step
-            const googleData = JSON.parse(googleDataString);
-            form.setValue('email', googleData.email || '');
-            form.setValue('name', googleData.name || '');
-            form.setValue('uid', googleData.uid);
-            
-            if (googleData.profilePicture) {
-                const initialSlots = [...photoSlots];
-                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
-                setPhotoSlots(initialSlots);
-                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
-            }
-        }
-    } catch (error) {
-        console.error("Failed to parse Google signup data", error);
-        router.push('/');
-    }
-  }, []);
-
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -259,6 +235,30 @@ export default function SignupForm() {
     },
     mode: "onChange",
   });
+
+  useEffect(() => {
+    try {
+        const googleDataString = sessionStorage.getItem('googleSignupData');
+        if (googleDataString) {
+            setIsGoogleSignup(true);
+            setStep(1); // Start from name step
+            const googleData = JSON.parse(googleDataString);
+            form.setValue('email', googleData.email || '');
+            form.setValue('name', googleData.name || '');
+            form.setValue('uid', googleData.uid);
+            
+            if (googleData.profilePicture) {
+                const initialSlots = [...photoSlots];
+                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
+                setPhotoSlots(initialSlots);
+                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
+            }
+        }
+    } catch (error) {
+        console.error("Failed to parse Google signup data", error);
+        router.push('/');
+    }
+  }, [form]);
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -411,8 +411,8 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = 11; 
-  const progressValue = ((step - (isGoogleSignup ? 1 : 0)) / (totalSteps - (isGoogleSignup ? 1 : 0))) * 100;
+  const totalSteps = isGoogleSignup ? 10 : 11;
+  const progressValue = (step / totalSteps) * 100;
 
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -458,7 +458,7 @@ export default function SignupForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}`)[] = [];
-    if (step === 0) fieldsToValidate = ['email', 'password'];
+    if (step === 0 && !isGoogleSignup) fieldsToValidate = ['email', 'password'];
     if (step === 1) fieldsToValidate = ['name'];
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
@@ -474,7 +474,7 @@ export default function SignupForm() {
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
     if (isValid) {
-      if (step === totalSteps) {
+      if (step === (isGoogleSignup ? 10 : 11)) {
          form.handleSubmit(onSubmit)();
       } else {
         nextStep();
@@ -502,8 +502,8 @@ export default function SignupForm() {
         
         if (data.address) {
             form.setValue('address', {
-                city: data.address.state,
-                district: data.address.city || data.address.district,
+                city: data.address.city,
+                district: data.address.district,
                 country: data.address.country,
             });
         }
@@ -528,6 +528,9 @@ export default function SignupForm() {
         nextStep();
     }
   }
+  
+  const finalStep = isGoogleSignup ? 10 : 11;
+
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -536,7 +539,7 @@ export default function SignupForm() {
             <ArrowLeft className="h-6 w-6" />
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
-        {(step > 0 && step < totalSteps) ? (
+        {(step > 0 && step < finalStep) ? (
             <Button variant="ghost" onClick={handleSkip} className={`shrink-0 w-16 ${step === 7 ? '' : 'invisible'}`}>
                 {t.signup.progressHeader.skip}
             </Button>
@@ -546,7 +549,7 @@ export default function SignupForm() {
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0">
-               {step === 0 && (
+               {step === 0 && !isGoogleSignup && (
                 <>
                   <h1 className="text-3xl font-bold">{t.signup.step1.title}</h1>
                   <p className="text-muted-foreground mb-8">{t.signup.step1.description}</p>
@@ -1011,7 +1014,7 @@ export default function SignupForm() {
                         />
                   </div>
               )}
-              {step === 11 && (
+              {step === finalStep && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
@@ -1154,7 +1157,7 @@ export default function SignupForm() {
                     >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
                  </Button>
-            ) : step === 11 ? (
+            ) : step === finalStep ? (
                 <Button
                   type="button"
                   onClick={handleNextStep}
@@ -1174,7 +1177,7 @@ export default function SignupForm() {
               </Button>
             )}
 
-            {step === 11 && (
+            {step === finalStep && (
               <p className="text-center text-sm text-muted-foreground mt-4">
                   {t.signup.step12.requirementText}
               </p>
@@ -1193,3 +1196,4 @@ export default function SignupForm() {
 
 
     
+

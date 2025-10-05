@@ -19,9 +19,14 @@ export async function GET(req: NextRequest) {
     const res = await geocoder.reverse({ lat: parseFloat(lat), lon: parseFloat(lon) });
     
     if (res && res.length > 0) {
-      // The first result is usually the most accurate.
-      // The client can decide how to format this.
-      return NextResponse.json({ address: res[0] });
+      const address = res[0];
+      // Standardize the response to always have city and district
+      const responseData = {
+          city: address.state, // The city is often in the 'state' field for Turkish addresses
+          district: address.city || address.district, // District can be in 'city' or 'district'
+          country: address.country,
+      };
+      return NextResponse.json({ address: responseData });
     } else {
       return NextResponse.json({ error: 'Address not found for the given coordinates' }, { status: 404 });
     }
