@@ -56,6 +56,7 @@ export default function ChatPage() {
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
