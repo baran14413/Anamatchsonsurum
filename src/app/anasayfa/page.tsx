@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, or, getDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
+import { getDistance } from '@/lib/utils';
 
 const cardVariants = {
   enter: (direction: number) => {
@@ -33,23 +34,26 @@ const cardVariants = {
   },
 };
 
+type ProfileWithDistance = UserProfile & { distance?: number };
+
 export default function AnasayfaPage() {
   const t = langTr;
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true);
 
     try {
         const interactedUids = new Set<string>();
-        
-        // Always add the current user's UID to prevent them from seeing themselves
         interactedUids.add(user.uid);
 
         if (!options?.resetInteractions) {
@@ -75,12 +79,12 @@ export default function AnasayfaPage() {
             usersQuery = query(
                 collection(firestore, 'users'),
                 where('gender', '==', genderPref),
-                limit(50)
+                limit(100) // Fetch more to allow for client-side filtering
             );
         } else {
             usersQuery = query(
                 collection(firestore, 'users'),
-                limit(50)
+                limit(100)
             );
         }
 
@@ -88,7 +92,27 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
+            .filter(p => {
+                if (!p.uid || interactedUids.has(p.uid)) return false;
+                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.location?.latitude || !p.location?.longitude) return false;
+
+                const distance = getDistance(
+                    userProfile.location!.latitude!,
+                    userProfile.location!.longitude!,
+                    p.location.latitude,
+                    p.location.longitude
+                );
+                
+                const userDistancePref = userProfile.distancePreference || 50;
+                
+                if (distance > userDistancePref) {
+                    return false;
+                }
+                
+                (p as ProfileWithDistance).distance = distance;
+                return true;
+            });
 
         setProfiles(fetchedProfiles);
 
@@ -113,7 +137,6 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked') => {
     if (!user || !firestore) return;
 
-    // Remove the card from the UI optimistically
     setProfiles((prev) => prev.filter((p) => p.uid !== swipedProfile.uid));
     
     const user1Id = user.uid;
@@ -126,13 +149,11 @@ export default function AnasayfaPage() {
         const theirInteractionSnap = await getDoc(matchDocRef);
         const theirInteraction = theirInteractionSnap.data();
 
-        // Check if it's a match
         if (action === 'liked' && theirInteractionSnap.exists()) {
              const theirActionKey = `user${[user2Id, user1Id].sort().indexOf(user2Id) + 1}_action`;
              const theirAction = theirInteraction?.[theirActionKey];
 
              if (theirAction === 'liked' || theirAction === 'superlike') {
-                 // It's a match!
                 await updateDoc(matchDocRef, {
                     status: 'matched',
                     matchDate: serverTimestamp(),
@@ -183,7 +204,6 @@ export default function AnasayfaPage() {
 
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
-        // Optional: Revert optimistic update if something fails
         setProfiles((prev) => [swipedProfile, ...prev]);
         toast({
             title: t.common.error,
@@ -206,7 +226,6 @@ export default function AnasayfaPage() {
         </div>
       ) : profiles.length > 0 ? (
         <div className="flex-1 flex items-center justify-center relative">
-          {/* Next card with blur and scale */}
           {profiles.length > 1 && (
             <div className="absolute w-full max-w-sm h-full max-h-[75vh] scale-95 blur-sm">
               <ProfileCard
@@ -216,7 +235,6 @@ export default function AnasayfaPage() {
               />
             </div>
           )}
-          {/* Top card */}
           <AnimatePresence>
             <motion.div
               key={profiles[0].uid}
@@ -225,7 +243,7 @@ export default function AnasayfaPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              custom={1} // Assuming right swipe
+              custom={1}
               transition={{
                 x: { type: 'spring', stiffness: 300, damping: 30 },
                 opacity: { duration: 0.2 },

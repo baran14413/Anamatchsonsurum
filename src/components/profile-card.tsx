@@ -6,9 +6,10 @@ import Image from 'next/image';
 import { Badge } from './ui/badge';
 import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
 import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
+import { langTr } from '@/languages/tr';
 
 interface ProfileCardProps {
-  profile: UserProfile;
+  profile: UserProfile & { distance?: number };
   onSwipe: (action: 'liked') => void;
   isDraggable: boolean;
 }
@@ -31,13 +32,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
-  // For Tinder-like drag rotation and exit animation
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
   const heartOpacity = useTransform(x, [0, 100], [0, 1]);
   const xOpacity = useTransform(x, [-100, 0], [1, 0]);
 
-  // Reset image index when profile changes
   useEffect(() => {
     setImageIndex(0);
     setShowDetails(false);
@@ -73,7 +72,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
     const swipe = swipePower(offset.x, velocity.x);
 
-    // Only handle right swipe for now
     if (swipe > swipeConfidenceThreshold) {
       onSwipe('liked');
     }
@@ -81,7 +79,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   return (
      <motion.div
-        style={{ x, rotate }} // Apply dynamic rotation and position
+        style={{ x, rotate }}
         drag={isDraggable ? "x" : false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={1}
@@ -91,7 +89,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
-            {/* Swipe action indicators */}
             <motion.div
               style={{ opacity: heartOpacity }}
               className="absolute top-8 right-8 z-20"
@@ -105,7 +102,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
               <X className="h-16 w-16 text-red-500" strokeWidth={4} />
             </motion.div>
             
-            {/* Image Progress Bars */}
             {totalImages > 1 && (
                 <div className="absolute top-2 left-2 right-2 z-10 flex gap-1 px-1">
                     {profile.images.map((_, index) => (
@@ -121,7 +117,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </div>
             )}
 
-            {/* Clickable Areas for Navigation */}
             <div
             className="absolute left-0 top-0 h-full w-1/2 z-[5]"
             onClick={(e) => handleAreaClick(e, 'left')}
@@ -141,7 +136,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 priority={isDraggable}
             />
 
-            {/* Profile Info Overlay */}
             <div
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-10 cursor-pointer"
                 onClick={() => setShowDetails(prev => !prev)}
@@ -149,12 +143,16 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 <div className='flex items-end justify-between'>
                     <div className="max-w-[calc(100%-4rem)]">
                         <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                        {profile.address?.state && (
-                            <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4" />
-                                <span>{profile.address.state}, {profile.address.country}</span>
+                                {profile.distance !== undefined ? (
+                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                ) : profile.address?.city ? (
+                                    <span>{profile.address.city}, {profile.address.country}</span>
+                                ) : null}
                             </div>
-                        )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                             {highlights.map((highlight, index) => (
                             <Badge key={index} variant="secondary" className='bg-white/20 backdrop-blur-sm border-none text-white text-xs capitalize'>
@@ -168,7 +166,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     </div>
                 </div>
 
-                {/* Detailed Info (Collapsible) */}
                 <motion.div
                     initial={false}
                     animate={{ height: showDetails ? 'auto' : 0 }}
