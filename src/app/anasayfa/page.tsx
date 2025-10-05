@@ -29,9 +29,17 @@ export default function AnasayfaPage() {
     
     try {
         const interactedUsers = new Set<string>([user.uid]);
-        const matchesSnapshot = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-        matchesSnapshot.forEach(doc => {
-            interactedUsers.add(doc.data().matchedWith);
+        
+        // Fetch all interactions the user is part of.
+        const interactionsQuery = query(collection(firestore, 'matches'), where('users', 'array-contains', user.uid));
+        const interactionsSnapshot = await getDocs(interactionsQuery);
+
+        interactionsSnapshot.forEach(doc => {
+            const usersInMatch = doc.data().users as string[];
+            const otherUserId = usersInMatch.find(uid => uid !== user.uid);
+            if (otherUserId) {
+                interactedUsers.add(otherUserId);
+            }
         });
 
         let usersQuery;
@@ -52,7 +60,7 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-            .filter(p => !interactedUsers.has(p.uid) && p.uid && p.fullName && p.images && p.images.length > 0);
+            .filter(p => p.uid && p.uid !== user.uid && !interactedUsers.has(p.uid) && p.fullName && p.images && p.images.length > 0);
 
         setProfiles(fetchedProfiles);
         setCurrentIndex(0);
@@ -70,8 +78,10 @@ export default function AnasayfaPage() {
   }, [user, firestore, toast, t.common.error, userProfile]);
 
   useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+    if (user && firestore) {
+      fetchProfiles();
+    }
+  }, [user, firestore, fetchProfiles]);
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike', swipedProfile: UserProfile) => {
     if (!user || !firestore || !swipedProfile) return;
@@ -99,51 +109,53 @@ export default function AnasayfaPage() {
         const theirInteractionSnap = await getDoc(theirInteractionRef);
 
         // If they liked us and we just liked them = MATCH
-        if (action === 'liked' && theirInteractionSnap.exists() && theirInteractionSnap.data()?.status === 'liked') {
+        if ((action === 'liked' || action === 'superlike') && theirInteractionSnap.exists()) {
+             const theirAction = theirInteractionSnap.data()?.[`user_${user2}_action`];
+             if (theirAction === 'liked' || theirAction === 'superlike') {
             
-            // 1. Update the central match document
-            await setDoc(matchDocRef, {
-                status: 'matched',
-                users: [user1, user2],
-                matchDate: serverTimestamp(),
-            }, { merge: true });
+                // 1. Update the central match document
+                await setDoc(matchDocRef, {
+                    status: 'matched',
+                    users: [user1, user2],
+                    matchDate: serverTimestamp(),
+                }, { merge: true });
 
-            // 2. Create denormalized match entries for both users for easy querying
-            const user1MatchData = {
-                id: matchId,
-                matchedWith: user2,
-                lastMessage: t.eslesmeler.defaultMessage,
-                timestamp: serverTimestamp(),
-                // Include other user's info for chat list
-                fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images[0]
-            };
-             const currentUserData = {
-                id: matchId,
-                matchedWith: user1,
-                lastMessage: t.eslesmeler.defaultMessage,
-                timestamp: serverTimestamp(),
-                fullName: user.displayName,
-                profilePicture: user.photoURL
-            };
+                // 2. Create denormalized match entries for both users for easy querying
+                const user1MatchData = {
+                    id: matchId,
+                    matchedWith: user2,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    // Include other user's info for chat list
+                    fullName: swipedProfile.fullName,
+                    profilePicture: swipedProfile.images[0]
+                };
+                 const currentUserData = {
+                    id: matchId,
+                    matchedWith: user1,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: user.displayName,
+                    profilePicture: user.photoURL
+                };
 
-            await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
-            await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
+                await setDoc(doc(firestore, `users/${user1}/matches`, matchId), user1MatchData);
+                await setDoc(doc(firestore, `users/${user2}/matches`, matchId), currentUserData);
 
 
-            // 3. Notify user of the new match
-            toast({
-                title: t.anasayfa.matchToastTitle,
-                description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
-            });
+                // 3. Notify user of the new match
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
+                });
+             }
 
         } else {
              // Just record the swipe, no match yet
              await setDoc(matchDocRef, {
-                status: action,
                 users: [user1, user2],
                 [`user_${user1}_action`]: action,
-                timestamp: serverTimestamp()
+                [`user_${user1}_timestamp`]: serverTimestamp()
             }, { merge: true });
         }
     } catch (error) {
@@ -219,7 +231,7 @@ export default function AnasayfaPage() {
                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
                     <X className="w-7 h-7 text-red-500" />
                 </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike', activeProfile)} className="bg-white rounded-full p-3 shadow-lg">
                     <Star className="w-5 h-5 text-blue-500" />
                 </motion.button>
                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked', activeProfile)} className="bg-white rounded-full p-4 shadow-lg">
