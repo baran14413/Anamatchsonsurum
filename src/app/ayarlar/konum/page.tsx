@@ -9,10 +9,7 @@ import { useRouter } from 'next/navigation';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import { Slider } from '@/components/ui/slider';
-import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -24,42 +21,9 @@ export default function LocationSettingsPage() {
     const t = langTr;
     const tc = t.ayarlarKonum;
 
-    const [distanceValue, setDistanceValue] = useState(80);
     const [isLocationLoading, setIsLocationLoading] = useState(false);
     const [locationError, setLocationError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (userProfile?.distancePreference) {
-            setDistanceValue(userProfile.distancePreference);
-        }
-    }, [userProfile]);
-    
-    const handleDistanceChange = (value: number[]) => {
-      setDistanceValue(value[0]);
-    };
-
-    const handleDistanceCommit = async (value: number[]) => {
-        if (!user || !firestore) return;
-        
-        const userDocRef = doc(firestore, 'users', user.uid);
-        try {
-            await updateDoc(userDocRef, {
-                distancePreference: value[0]
-            });
-            toast({
-                title: "Mesafe Güncellendi",
-                description: "Mesafe tercihiniz başarıyla kaydedildi.",
-            });
-        } catch (error) {
-            console.error("Failed to update distance preference: ", error);
-             toast({
-                title: "Hata",
-                description: "Mesafe tercihiniz güncellenirken bir hata oluştu.",
-                variant: "destructive"
-            });
-        }
-    };
-    
     const handleLocationRequest = () => {
         setIsLocationLoading(true);
         setLocationError(null);
@@ -152,31 +116,6 @@ export default function LocationSettingsPage() {
                          {locationError && <p className="text-sm text-destructive mt-2">{locationError}</p>}
                     </CardContent>
                 </Card>
-                
-                <Separator />
-
-                <div className='space-y-6'>
-                    <div>
-                        <h2 className="text-xl font-bold">Mesafe Tercihi</h2>
-                        <p className='text-muted-foreground'>Potansiyel eşleşmeler için maksimum mesafeyi ayarla.</p>
-                    </div>
-
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-baseline">
-                            <Label className="text-base">Mesafe</Label>
-                            <span className="text-xl font-bold text-foreground">{distanceValue} Km</span>
-                        </div>
-                        <Slider
-                            value={[distanceValue]}
-                            max={160}
-                            min={1}
-                            step={1}
-                            onValueChange={handleDistanceChange}
-                            onValueCommit={handleDistanceCommit}
-                            className="w-full"
-                        />
-                    </div>
-                </div>
             </main>
         </div>
     )

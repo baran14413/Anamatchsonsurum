@@ -24,12 +24,16 @@ export default function PreferencesPage() {
     const t = langTr;
 
     const [ageRange, setAgeRange] = useState([userProfile?.ageRange?.min || 18, userProfile?.ageRange?.max || 35]);
+    const [distanceValue, setDistanceValue] = useState(userProfile?.distancePreference || 80);
 
     useEffect(() => {
         if (userProfile?.ageRange) {
             setAgeRange([userProfile.ageRange.min, userProfile.ageRange.max]);
         }
-    }, [userProfile?.ageRange]);
+        if (userProfile?.distancePreference) {
+            setDistanceValue(userProfile.distancePreference);
+        }
+    }, [userProfile?.ageRange, userProfile?.distancePreference]);
 
     const handleGenderPreferenceChange = async (value: 'male' | 'female' | 'both') => {
         if (!user || !firestore) return;
@@ -107,6 +111,32 @@ export default function PreferencesPage() {
             await updateDoc(userDocRef, { expandAgeRange: checked });
         } catch (error) {
             console.error("Failed to update expand age range toggle: ", error);
+        }
+    };
+
+    const handleDistanceChange = (value: number[]) => {
+      setDistanceValue(value[0]);
+    };
+
+    const handleDistanceCommit = async (value: number[]) => {
+        if (!user || !firestore) return;
+        
+        const userDocRef = doc(firestore, 'users', user.uid);
+        try {
+            await updateDoc(userDocRef, {
+                distancePreference: value[0]
+            });
+            toast({
+                title: "Mesafe Güncellendi",
+                description: "Mesafe tercihiniz başarıyla kaydedildi.",
+            });
+        } catch (error) {
+            console.error("Failed to update distance preference: ", error);
+             toast({
+                title: "Hata",
+                description: "Mesafe tercihiniz güncellenirken bir hata oluştu.",
+                variant: "destructive"
+            });
         }
     };
 
@@ -189,16 +219,33 @@ export default function PreferencesPage() {
                     </div>
                 </div>
                 <Separator />
-                <div className='space-y-4'>
+                <div className='space-y-6'>
                     <div>
-                        <h2 className="text-xl font-bold">Küresel</h2>
-                        <p className='text-muted-foreground'>Coğrafi sınırların dışına çık.</p>
+                        <h2 className="text-xl font-bold">Konum Tercihleri</h2>
+                        <p className='text-muted-foreground'>Eşleşme havuzunu coğrafi olarak yönet.</p>
+                    </div>
+
+                     <div className="space-y-4">
+                        <div className="flex justify-between items-baseline">
+                            <Label className="text-base">Maksimum Mesafe</Label>
+                            <span className="text-xl font-bold text-foreground">{distanceValue} Km</span>
+                        </div>
+                        <Slider
+                            value={[distanceValue]}
+                            max={160}
+                            min={1}
+                            step={1}
+                            onValueChange={handleDistanceChange}
+                            onValueCommit={handleDistanceCommit}
+                            className="w-full"
+                            disabled={userProfile?.globalModeEnabled}
+                        />
                     </div>
                     <div className="flex items-center justify-between rounded-lg border bg-background p-4">
                         <Label htmlFor="global-mode" className="flex flex-col space-y-1">
                             <span>Küresel Mod</span>
                             <span className="font-normal leading-snug text-muted-foreground">
-                                Dünyanın her yerinden insanlarla eşleş.
+                                Dünyanın her yerinden insanlarla eşleş. Bu mod açıkken mesafe filtresi uygulanmaz.
                             </span>
                         </Label>
                         <Switch
