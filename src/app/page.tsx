@@ -20,19 +20,18 @@ export default function WelcomePage() {
   const t = langTr;
   const auth = useAuth();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // This effect now ONLY handles redirecting authenticated and *profile-complete* users.
+  // The AppShell handles all other routing logic.
   useEffect(() => {
-    // This effect now ONLY handles redirecting authenticated users from public routes.
-    // The AppShell handles protecting routes for unauthenticated users.
-    if (!isUserLoading && user) {
-        // A logged-in user should not be on the welcome page, send them to the main app page.
+    if (!isUserLoading && user && userProfile) {
         router.replace('/anasayfa');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, userProfile, isUserLoading, router]);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -53,15 +52,9 @@ export default function WelcomePage() {
         const userDocRef = doc(firestore, "users", signedInUser.uid);
         const userDoc = await getDoc(userDocRef);
 
-        // Check if the user document exists AND if it has the 'gender' field.
-        // The 'gender' field is a good indicator that the user has completed the signup process.
         if (userDoc.exists() && userDoc.data()?.gender) { 
-            // User profile is complete, log them in by sending to main page
             router.push("/anasayfa");
         } else {
-            // New user or incomplete profile, redirect to signup.
-            
-            // Store Google data to pre-fill the signup form.
             const googleData = {
                 email: signedInUser.email,
                 name: signedInUser.displayName,
@@ -69,7 +62,6 @@ export default function WelcomePage() {
                 uid: signedInUser.uid,
             };
             
-            // If the document doesn't exist at all, create a basic one.
             if (!userDoc.exists()) {
                 const initialProfileData = {
                     uid: signedInUser.uid,
@@ -81,9 +73,7 @@ export default function WelcomePage() {
                 await setDoc(userDocRef, initialProfileData, { merge: true });
             }
 
-            // Use sessionStorage to pass this info to the registration page.
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
-            // Force redirect to the registration page.
             router.push("/kurallar");
         }
 
@@ -99,9 +89,7 @@ export default function WelcomePage() {
     }
   };
 
-  // While checking user auth or if user is found, show a loader.
-  // This prevents the welcome page from flashing before a redirect.
-  if (isUserLoading || user) {
+  if (isUserLoading || (user && userProfile)) {
       return (
            <div className="flex h-dvh items-center justify-center">
              <Loader2 className="h-8 w-8 animate-spin" />
@@ -109,7 +97,6 @@ export default function WelcomePage() {
       );
   }
 
-  // Only render the welcome page if the user is not logged in.
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center p-8 text-center">
@@ -158,6 +145,11 @@ export default function WelcomePage() {
                 Facebook ile devam et
               </Button>
           </div>
+           <div className="text-center text-sm">
+             <Link href="/login" className="text-white font-semibold hover:underline">
+               {t.loginIssues}
+             </Link>
+           </div>
         </div>
       </main>
     </div>

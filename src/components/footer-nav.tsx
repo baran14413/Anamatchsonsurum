@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -20,7 +21,7 @@ export default function FooterNav() {
 
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex h-14 items-center justify-around">
+      <nav className="flex h-12 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -29,11 +30,11 @@ export default function FooterNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center gap-1 p-2 text-xs transition-colors',
+                'flex flex-col items-center gap-1 p-2 text-[10px] transition-colors',
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className={cn("h-6 w-6", isActive && item.href === '/anasayfa' ? 'fill-primary' : '', isActive && item.href === '/profil' ? 'text-primary fill-primary' : '')} />
+              <Icon className={cn("h-5 w-5", isActive && item.href === '/anasayfa' ? 'fill-primary' : '', isActive && item.href === '/profil' ? 'text-primary fill-primary' : '')} />
             </Link>
           );
         })}

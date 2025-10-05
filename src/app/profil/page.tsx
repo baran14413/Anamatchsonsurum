@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -17,7 +18,7 @@ import CircularProgress from '@/components/circular-progress';
 
 export default function ProfilePage() {
   const t = langTr;
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -49,7 +50,7 @@ export default function ProfilePage() {
         return Math.abs(ageDate.getUTCFullYear() - 1970);
     };
 
-    const age = calculateAge(user?.dateOfBirth);
+    const age = calculateAge(userProfile?.dateOfBirth);
 
 
   return (
@@ -60,8 +61,8 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center space-y-4 py-4">
           <div className="relative">
             <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
-              <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
+              <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
+              <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
              <div className="absolute -bottom-1 -right-1">
                  <CircularProgress progress={5} size={44} />
@@ -70,7 +71,7 @@ export default function ProfilePage() {
           
           <div className="text-center space-y-3">
              <h1 className="text-2xl font-bold flex items-center gap-2">
-                {user?.displayName || t.profil.user}{age && `, ${age}`}
+                {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
                 <ShieldCheckIcon className="h-6 w-6 text-blue-500" />
             </h1>
             <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
