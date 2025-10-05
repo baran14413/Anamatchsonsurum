@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -70,11 +71,7 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
         style={{ x, rotate, opacity }}
         className="w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 cursor-grab active:cursor-grabbing"
       >
-        <div className="relative w-full h-full">
-            {/* Image Navigation Tappable Areas */}
-            <div className="absolute top-0 left-0 w-1/2 h-full z-10" onClick={() => setImageIndex(prev => Math.max(0, prev - 1))} />
-            <div className="absolute top-0 right-0 w-1/2 h-full z-10" onClick={() => setImageIndex(prev => Math.min(images.length - 1, prev + 1))} />
-            
+        <div className="relative w-full h-full" onClick={handleImageNavigation}>
             {/* Image Progress Bars */}
             {images.length > 1 && (
                 <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">

@@ -4,6 +4,7 @@ export type UserProfile = {
   id: string;
   uid: string;
   fullName?: string;
+  email?: string;
   dateOfBirth?: string;
   profilePicture?: string;
   images: string[];
@@ -15,14 +16,20 @@ export type UserProfile = {
     longitude: number;
   };
   school?: string;
-  drinking?: string;
-  smoking?: string;
-  workout?: string;
-  pets?: string[];
-  communicationStyle?: string;
-  loveLanguage?: string;
-  educationLevel?: string;
-  zodiacSign?: string;
+  lookingFor?: string;
+  distancePreference?: number;
+  lifestyle?: {
+    drinking?: string;
+    smoking?: string;
+    workout?: string;
+    pets?: string[];
+  };
+  moreInfo?: {
+    communicationStyle?: string;
+    loveLanguage?: string;
+    educationLevel?: string;
+    zodiacSign?: string;
+  }
 };
 
 export type Match = {
@@ -43,7 +50,3 @@ export type Post = {
   comments: number;
   timestamp: Date;
 };
-
-    
-
-    
