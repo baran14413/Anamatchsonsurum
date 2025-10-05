@@ -30,11 +30,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   // Motion values for drag gesture
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]); // Card rotates as it's dragged
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
   useEffect(() => {
+    // Reset internal state when the profile prop changes
     setImageIndex(0);
     setShowDetails(false);
     x.set(0); 
@@ -74,16 +75,25 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     }
   };
 
+  const motionProps = isDraggable ? {
+    drag: "x" as const,
+    dragConstraints: { left: 0, right: 0, top: 0, bottom: 0 },
+    dragElastic: 0.5,
+    onDragEnd: handleDragEnd,
+    style: { x, rotate },
+    whileTap: { cursor: 'grabbing' as const },
+    exit: { 
+      x: x.get() > 0 ? 300 : -300, 
+      opacity: 0,
+      scale: 0.8,
+      transition: { duration: 0.3, ease: 'easeIn' }
+    }
+  } : {};
 
   return (
      <motion.div 
-        className={`w-full h-full ${isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
-        drag={isDraggable ? "x" : false}
-        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-        dragElastic={0.5}
-        onDragEnd={handleDragEnd}
-        style={{ x, rotate }} // Bind style to motion values
-        whileTap={{ cursor: isDraggable ? 'grabbing' : 'default' }}
+        className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
+        {...motionProps}
       >
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"

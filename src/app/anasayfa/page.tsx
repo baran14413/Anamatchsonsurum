@@ -189,7 +189,7 @@ export default function AnasayfaPage() {
       {isLoading ? (
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       ) : profiles.length > 0 ? (
-        <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[70vh]">
+        <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
           <AnimatePresence>
             {profiles.map((profile, index) => {
               const isTopCard = index === 0;
@@ -200,13 +200,23 @@ export default function AnasayfaPage() {
                 <motion.div
                   key={profile.uid}
                   className="absolute w-full h-full"
-                  initial={{ scale: isTopCard ? 1 : 0.95, y: isTopCard ? 0 : 10, opacity: isTopCard ? 1 : 0.8 }}
-                  animate={{ scale: 1, y: 0, opacity: 1, transition: { duration: 0.4 } }}
+                  style={{
+                    zIndex: profiles.length - index,
+                  }}
+                  initial={{ 
+                    scale: isTopCard ? 1 : 0.95, 
+                    y: isTopCard ? 0 : 10,
+                  }}
+                  animate={{ 
+                    scale: 1, 
+                    y: 0, 
+                    opacity: 1, 
+                    transition: { duration: 0.3, ease: 'easeOut' }
+                  }}
                   exit={{
-                    x: 300,
                     opacity: 0,
-                    scale: 0.5,
-                    transition: { duration: 0.3 }
+                    scale: 0.8,
+                    transition: { duration: 0.3, ease: 'easeIn' }
                   }}
                 >
                   <ProfileCard
