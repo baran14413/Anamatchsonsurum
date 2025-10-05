@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, getDoc, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Loader2 } from 'lucide-react';
@@ -95,10 +95,9 @@ export default function EslesmelerPage() {
     
     setIsLoading(true);
 
-    // Listener for people who liked the current user (but are not matched yet)
-    const likesQuery1 = query(collection(firestore, 'matches'));
-
-    const unsubLikes = onSnapshot(likesQuery1, async (snapshot) => {
+    const q = query(collection(firestore, 'matches'));
+    
+    const unsubLikes = onSnapshot(q, async (snapshot) => {
         const potentialLikerTasks: Promise<LikerData | null>[] = [];
         const seenLikerIds = new Set<string>();
 
@@ -106,9 +105,11 @@ export default function EslesmelerPage() {
             const data = docSnap.data();
             let likerId: string | null = null;
             
+            // Scenario 1: I am user2, user1 liked me, and I haven't acted yet.
             if (data.user2Id === user.uid && data.user1_action === 'liked' && !data.user2_action) {
                 likerId = data.user1Id;
             }
+            // Scenario 2: I am user1, user2 liked me, and I haven't acted yet.
             else if (data.user1Id === user.uid && data.user2_action === 'liked' && !data.user1_action) {
                 likerId = data.user2Id;
             }
@@ -135,6 +136,7 @@ export default function EslesmelerPage() {
         const likerProfiles = (await Promise.all(potentialLikerTasks)).filter((p): p is LikerData => p !== null && !!p.profilePicture);
         setLikers(likerProfiles);
     });
+    
 
     const matchesQuery = query(
       collection(firestore, `users/${user.uid}/matches`),

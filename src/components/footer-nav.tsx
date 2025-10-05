@@ -11,7 +11,7 @@ import { Icons } from './icons';
 const navItems = [
   { href: '/anasayfa', icon: Icons.tinderFlame, label: langTr.footerNav.home },
   { href: '/kesfet', icon: Search, label: langTr.footerNav.discover },
-  { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes },
+  { href: '/eslesmeler', icon: Heart, label: langTr.footerNav.likes },
   { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats },
   { href: '/profil', icon: User, label: langTr.footerNav.profile },
 ];
@@ -22,12 +22,13 @@ export default function FooterNav() {
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
       <nav className="flex h-12 items-center justify-around">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
+          // Special handling because both likes and chats point to the same page
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${index}`}
               href={item.href}
               className={cn(
                 'flex flex-col items-center gap-1 p-2 text-[10px] transition-colors',
