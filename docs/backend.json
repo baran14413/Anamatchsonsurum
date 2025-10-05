@@ -7,11 +7,7 @@
       "type": "object",
       "description": "Represents a user's profile within the BeMatch application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
-        },
-        "firebaseUid": {
+        "uid": {
           "type": "string",
           "description": "The Firebase Authentication UID associated with this user."
         },
@@ -28,15 +24,28 @@
           "type": "string",
           "description": "The user's gender."
         },
+        "genderPreference": {
+          "type": "string",
+          "enum": ["male", "female", "both"],
+          "description": "The gender the user is interested in matching with."
+        },
         "email": {
           "type": "string",
           "description": "The user's email address.",
           "format": "email"
         },
-        "profilePictureUrl": {
+        "profilePicture": {
           "type": "string",
-          "description": "URL of the user's profile picture.",
+          "description": "URL of the user's main profile picture.",
           "format": "uri"
+        },
+        "images": {
+          "type": "array",
+          "description": "A list of URLs for the user's profile photos.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
         },
         "interests": {
           "type": "array",
@@ -48,11 +57,21 @@
         "bio": {
           "type": "string",
           "description": "A short biography or description of the user."
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "latitude": {"type": "number"},
+                "longitude": {"type": "number"}
+            }
+        },
+        "distancePreference": {
+            "type": "number",
+            "description": "Maximum distance in kilometers for potential matches."
         }
       },
       "required": [
-        "id",
-        "firebaseUid",
+        "uid",
         "fullName",
         "dateOfBirth",
         "gender",
@@ -63,29 +82,38 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Match",
       "type": "object",
-      "description": "Represents a potential or confirmed match between two users.",
+      "description": "Represents an interaction or match between two users.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Composite key for the match, typically 'user1Id_user2Id' sorted."
-        },
         "user1Id": {
           "type": "string",
-          "description": "The UID of the user who initiated the swipe."
+          "description": "The UID of the first user (lexicographically smaller)."
         },
         "user2Id": {
           "type": "string",
-          "description": "The UID of the user who was swiped."
+          "description": "The UID of the second user (lexicographically larger)."
+        },
+        "user1_action": {
+          "type": "string",
+          "enum": ["liked", "disliked"],
+          "description": "The action taken by user1."
+        },
+        "user1_timestamp": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "user2_action": {
+          "type": "string",
+          "enum": ["liked", "disliked"],
+          "description": "The action taken by user2."
+        },
+        "user2_timestamp": {
+            "type": "string",
+            "format": "date-time"
         },
         "status": {
             "type": "string",
-            "enum": ["liked", "disliked", "matched"],
-            "description": "The status of the interaction."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "The date and time when the interaction occurred.",
-          "format": "date-time"
+            "enum": ["pending", "matched"],
+            "description": "The current status of the interaction."
         },
         "matchDate": {
           "type": "string",
@@ -94,11 +122,9 @@
         }
       },
       "required": [
-        "id",
         "user1Id",
         "user2Id",
-        "status",
-        "timestamp"
+        "status"
       ]
     },
     "ChatMessage": {
@@ -150,15 +176,9 @@
         "definition": {
           "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/backend/entities/UserProfile"
+            "$ref": "#/entities/UserProfile"
           },
-          "description": "Stores public user profile data.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase UID of the user."
-            }
-          ]
+          "description": "Stores public user profile data."
         }
       },
       {
@@ -166,15 +186,9 @@
         "definition": {
           "entityName": "Match",
           "schema": {
-            "$ref": "#/backend/entities/Match"
+            "$ref": "#/entities/Match"
           },
-          "description": "Stores interaction data (likes, dislikes, matches) between two users. The document ID is a composite key of the two user UIDs.",
-          "params": [
-            {
-              "name": "matchId",
-              "description": "Composite ID, e.g., 'uid1_uid2'."
-            }
-          ]
+          "description": "Stores interaction data (likes, dislikes, matches) between two users. The document ID is a composite key of the two user UIDs, sorted lexicographically."
         }
       },
       {
@@ -182,19 +196,9 @@
         "definition": {
           "entityName": "Match",
           "schema": {
-            "$ref": "#/backend/entities/Match"
+            "$ref": "#/entities/Match"
           },
-          "description": "Stores denormalized data for confirmed matches for a specific user, allowing for easy querying of a user's match list.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase UID of the user."
-            },
-            {
-              "name": "matchId",
-              "description": "The unique ID of the match."
-            }
-          ]
+          "description": "Stores denormalized data for confirmed matches for a specific user, allowing for easy querying of a user's match list."
         }
       },
       {
@@ -202,22 +206,11 @@
         "definition": {
           "entityName": "ChatMessage",
           "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
+            "$ref": "#/entities/ChatMessage"
           },
-          "description": "Stores chat messages for a specific confirmed match. Access is controlled by match membership.",
-          "params": [
-            {
-              "name": "matchId",
-              "description": "The unique ID of the match."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique ID of the chat message."
-            }
-          ]
+          "description": "Stores chat messages for a specific confirmed match. Access is controlled by match membership."
         }
       }
-    ],
-    "reasoning": "The Firestore structure is simplified to improve query performance and reliability for the core matching feature. Interactions (likes/dislikes) are now stored in a root `matches` collection, which prevents issues with subcollection queries. When a confirmed match occurs, denormalized data is written to a subcollection under each user (`/users/{userId}/matches`) to easily populate their chat list. This separation of concerns—a root collection for all interactions and a user-specific subcollection for confirmed matches—optimizes for both write operations during swiping and read operations for displaying a user's personal match list."
+    ]
   }
 }

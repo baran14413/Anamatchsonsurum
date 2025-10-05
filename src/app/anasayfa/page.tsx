@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RotateCcw } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
@@ -10,7 +9,6 @@ import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, or, getDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
-import { Button } from '@/components/ui/button';
 import { getDistance } from '@/lib/utils';
 
 const cardVariants = {
@@ -45,7 +43,7 @@ export default function AnasayfaPage() {
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
+  const fetchProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
@@ -56,22 +54,20 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>();
         interactedUids.add(user.uid);
 
-        if (!options?.resetInteractions) {
-            const interactionsQuery = query(
-              collection(firestore, 'matches'),
-              or(
-                where('user1Id', '==', user.uid),
-                where('user2Id', '==', user.uid)
-              )
-            );
-            const interactionsSnapshot = await getDocs(interactionsQuery);
+        const interactionsQuery = query(
+          collection(firestore, 'matches'),
+          or(
+            where('user1Id', '==', user.uid),
+            where('user2Id', '==', user.uid)
+          )
+        );
+        const interactionsSnapshot = await getDocs(interactionsQuery);
 
-            interactionsSnapshot.forEach(doc => {
-                const { user1Id, user2Id } = doc.data();
-                const otherUserId = user1Id === user.uid ? user2Id : user1Id;
-                interactedUids.add(otherUserId);
-            });
-        }
+        interactionsSnapshot.forEach(doc => {
+            const { user1Id, user2Id } = doc.data();
+            const otherUserId = user1Id === user.uid ? user2Id : user1Id;
+            interactedUids.add(otherUserId);
+        });
         
         let usersQuery;
         const genderPref = userProfile?.genderPreference;
@@ -137,11 +133,13 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked') => {
     if (!user || !firestore) return;
 
+    // Optimistically remove the card from the UI
     setProfiles((prev) => prev.filter((p) => p.uid !== swipedProfile.uid));
     
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     
+    // Sort UIDs to create a consistent match ID
     const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
@@ -149,16 +147,20 @@ export default function AnasayfaPage() {
         const theirInteractionSnap = await getDoc(matchDocRef);
         const theirInteraction = theirInteractionSnap.data();
 
+        // Check if it's a match
         if (action === 'liked' && theirInteractionSnap.exists()) {
+             // Determine which user's action we're looking for
              const theirActionKey = `user${[user2Id, user1Id].sort().indexOf(user2Id) + 1}_action`;
              const theirAction = theirInteraction?.[theirActionKey];
 
-             if (theirAction === 'liked' || theirAction === 'superlike') {
+             if (theirAction === 'liked') {
+                // It's a match!
                 await updateDoc(matchDocRef, {
                     status: 'matched',
                     matchDate: serverTimestamp(),
                 });
 
+                // Create denormalized match data for both users' subcollections
                 const user1MatchData = {
                     id: matchId,
                     matchedWith: user2Id,
@@ -190,6 +192,7 @@ export default function AnasayfaPage() {
              }
         }
         
+        // Record the current user's action
         const updateData = {
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_action`]: action,
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_timestamp`]: serverTimestamp()
@@ -204,6 +207,7 @@ export default function AnasayfaPage() {
 
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
+        // If something fails, add the card back to the top of the deck
         setProfiles((prev) => [swipedProfile, ...prev]);
         toast({
             title: t.common.error,
@@ -213,10 +217,6 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, t, toast, userProfile]);
 
-
-  const handleReset = () => {
-    fetchProfiles({ resetInteractions: true });
-  };
   
   return (
     <div className="relative h-full w-full flex flex-col p-4 overflow-hidden">
@@ -230,7 +230,7 @@ export default function AnasayfaPage() {
             <div className="absolute w-full max-w-sm h-full max-h-[75vh] scale-95 blur-sm">
               <ProfileCard
                 profile={profiles[1]}
-                onSwipe={() => {}}
+                onSwipe={() => {}} // This card is not interactive
                 isDraggable={false}
               />
             </div>
@@ -243,7 +243,7 @@ export default function AnasayfaPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              custom={1}
+              custom={1} // Assuming direction is always right for now
               transition={{
                 x: { type: 'spring', stiffness: 300, damping: 30 },
                 opacity: { duration: 0.2 },
@@ -258,13 +258,8 @@ export default function AnasayfaPage() {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center text-center p-4">
-          <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
-          <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
-          <Button onClick={handleReset} className="mt-6 rounded-full" size="lg">
-            <RotateCcw className="mr-2 h-5 w-5" />
-            Yeniden Başla
-          </Button>
+        <div className="flex h-full items-center justify-center text-center">
+          <p>{t.anasayfa.outOfProfilesDescription}</p>
         </div>
       )}
     </div>
