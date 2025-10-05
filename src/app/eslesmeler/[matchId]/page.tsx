@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -321,6 +321,7 @@ export default function ChatPage() {
     
     const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = matchData?.status === 'matched';
+    const showSendButton = newMessage.trim() !== '';
 
     return (
         <div className="flex h-dvh flex-col bg-background">
@@ -437,8 +438,8 @@ export default function ChatPage() {
                           className="flex-1 rounded-full bg-muted"
                           disabled={isUploading}
                       />
-                      <Button type="submit" size="icon" className="rounded-full" disabled={!newMessage.trim() || isUploading}>
-                          <Send className="h-5 w-5" />
+                      <Button type={showSendButton ? "submit" : "button"} size="icon" className="rounded-full" disabled={isUploading}>
+                        {showSendButton ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                       </Button>
                   </form>
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
@@ -451,5 +452,3 @@ export default function ChatPage() {
         </div>
     );
 }
-
-    
