@@ -167,7 +167,7 @@ export default function PreferencesPage() {
                         </div>
                         <Slider
                             value={ageRange}
-                            max={100}
+                            max={80}
                             min={18}
                             step={1}
                             onValueChange={handleAgeRangeChange}
@@ -183,7 +183,7 @@ export default function PreferencesPage() {
                         </Label>
                         <Switch
                             id="expand-age"
-                            checked={userProfile?.expandAgeRange || false}
+                            checked={userProfile?.expandAgeRange ?? true}
                             onCheckedChange={handleExpandAgeRangeChange}
                         />
                     </div>
@@ -203,7 +203,7 @@ export default function PreferencesPage() {
                         </Label>
                         <Switch
                             id="global-mode"
-                            checked={userProfile?.globalModeEnabled || false}
+                            checked={userProfile?.globalModeEnabled ?? false}
                             onCheckedChange={handleGlobalModeChange}
                         />
                     </div>

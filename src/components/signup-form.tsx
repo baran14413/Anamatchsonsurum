@@ -121,6 +121,19 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
     )
 }
 
+function calculateAge(dateString: string | Date): number | null {
+    if (!dateString) return null;
+    const birthDate = new Date(dateString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+}
+
 export default function ProfileCompletionForm() {
   const router = useRouter();
   const { toast } = useToast();
@@ -164,16 +177,27 @@ export default function ProfileCompletionForm() {
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
+    
     if (isNaN(date.getTime())) {
         setAgeStatus('unknown');
         return;
     }
-    const ageDifMs = Date.now() - date.getTime();
-    const ageDate = new Date(ageDifMs);
-    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
 
-    setAgeStatus(age >= 18 ? 'valid' : 'invalid');
-  };
+    const age = calculateAge(date);
+    if(age === null) {
+        setAgeStatus('unknown');
+        return;
+    }
+
+    if (age >= 18) {
+        setAgeStatus('valid');
+        // Set default age range
+        const maxAge = age < 34 ? 34 : 80;
+        form.setValue('ageRange', { min: age, max: maxAge });
+    } else {
+        setAgeStatus('invalid');
+    }
+};
 
  const handleLocationRequest = () => {
     setIsLocationLoading(true);
@@ -260,14 +284,13 @@ export default function ProfileCompletionForm() {
       const allPhotoUrls = [...existingUrls, ...uploadedUrls];
       
       const userProfileData = {
+        ...data,
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
-        gender: data.gender,
-        lookingFor: data.lookingFor,
-        distancePreference: data.distancePreference,
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
-        location: data.location,
+        globalModeEnabled: false, 
+        expandAgeRange: true,
       };
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
