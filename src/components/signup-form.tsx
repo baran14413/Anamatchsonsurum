@@ -868,7 +868,7 @@ export default function SignupForm() {
                                 <SelectContent>
                                      <ScrollArea className="h-72">
                                         {cities.map((city) => (
-                                            <SelectItem key={city.id} value={String(city.id)}>
+                                            <SelectItem key={city.name} value={String(city.id)}>
                                                 {city.name}
                                             </SelectItem>
                                         ))}
@@ -1290,5 +1290,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
