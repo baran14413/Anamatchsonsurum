@@ -36,7 +36,8 @@ export default function AnasayfaPage() {
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure it's a valid user profile document
+            // IMPORTANT FIX: Ensure it's a valid user profile document with a `uid`.
+            // This filters out documents that are just containers for subcollections.
             if (userData && userData.uid) {
                 allUsers.push({
                     id: doc.id,
@@ -104,8 +105,10 @@ export default function AnasayfaPage() {
                 await setDoc(doc(firestore, `users/${swipedProfile.uid}/matches/${matchId}`), matchData);
 
                 // Update interaction records to 'match' to prevent them from seeing each other again
-                 await setDoc(doc(firestore, `users/${user.uid}/interactions/${swipedProfile.uid}`), { swipe: 'match', timestamp: matchDate });
-                 await setDoc(doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`), { swipe: 'match', timestamp: matchDate });
+                 await setDoc(currentUserInteractionRef, { swipe: 'match', timestamp: matchDate });
+                 const otherUserMatchInteractionRef = doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`);
+                 await setDoc(otherUserMatchInteractionRef, { swipe: 'match', timestamp: matchDate });
+
 
                 toast({
                     title: t.anasayfa.matchToastTitle,
