@@ -154,9 +154,6 @@ export default function AnasayfaPage() {
     const swipedProfile = topCard;
     if (!user || !firestore || !swipedProfile) return;
     
-    // The card is removed from view by the exit animation of AnimatePresence.
-    // The state update will happen in onExitComplete.
-
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     
@@ -205,7 +202,6 @@ export default function AnasayfaPage() {
              }
         }
         
-        // No match or no prior interaction, just record the swipe
         const updateData = {
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_action`]: action,
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_timestamp`]: serverTimestamp()
