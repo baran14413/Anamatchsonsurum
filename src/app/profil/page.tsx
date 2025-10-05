@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Crown, Star, Zap, CheckBadgeIcon, ShieldCheckIcon } from 'lucide-react';
+import { Crown, Star, Zap, ShieldCheckIcon } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 
@@ -97,8 +97,8 @@ export default function ProfilePage() {
                 <div key={feature.name} className="flex items-center justify-between text-sm">
                   <span className="font-medium">{feature.name}</span>
                   <div className="flex items-center gap-6">
-                    <span className="w-8 text-center">{feature.free ? <CheckBadgeIcon className="h-5 w-5 text-gray-600 mx-auto" /> : '-'}</span>
-                    <span className="w-8 text-center">{feature.gold ? <CheckBadgeIcon className="h-5 w-5 text-black mx-auto" /> : '-'}</span>
+                    <span className="w-8 text-center">{feature.free ? <ShieldCheckIcon className="h-5 w-5 text-gray-600 mx-auto" /> : '-'}</span>
+                    <span className="w-8 text-center">{feature.gold ? <ShieldCheckIcon className="h-5 w-5 text-black mx-auto" /> : '-'}</span>
                   </div>
                 </div>
               ))}
