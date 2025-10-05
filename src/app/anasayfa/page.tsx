@@ -7,11 +7,10 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, or, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, getDoc, or } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
 
 const cardVariants = {
   enter: (direction: number) => {
@@ -46,6 +45,10 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [direction, setDirection] = useState(0);
 
+  const removeTopCard = () => {
+    setProfiles((prev) => prev.slice(1));
+    setDirection(0);
+  };
 
   const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
@@ -58,7 +61,6 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>();
         interactedUids.add(user.uid);
         
-        // For development: if reset is true, don't fetch interactions.
         if (!options?.reset) {
             const interactionsQuery = query(
               collection(firestore, 'matches'),
@@ -113,7 +115,7 @@ export default function AnasayfaPage() {
                 return true;
             });
 
-        setProfiles(fetchedProfiles);
+        setProfiles(fetchedProfiles.reverse()); // Reverse to swipe from the end
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -136,13 +138,11 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked') => {
     if (!user || !firestore) return;
 
-    // Set direction for animation
     setDirection(action === 'liked' ? 1 : -1);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     
-    // Sort UIDs to create a consistent match ID
     const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
@@ -150,20 +150,16 @@ export default function AnasayfaPage() {
         const theirInteractionSnap = await getDoc(matchDocRef);
         const theirInteraction = theirInteractionSnap.data();
 
-        // Check if it's a match
         if (action === 'liked' && theirInteractionSnap.exists()) {
-             // Determine which user's action we're looking for
              const theirActionKey = `user${[user2Id, user1Id].sort().indexOf(user2Id) + 1}_action`;
              const theirAction = theirInteraction?.[theirActionKey];
 
              if (theirAction === 'liked') {
-                // It's a match!
                 await updateDoc(matchDocRef, {
                     status: 'matched',
                     matchDate: serverTimestamp(),
                 });
 
-                // Create denormalized match data for both users' subcollections
                 const user1MatchData = {
                     id: matchId,
                     matchedWith: user2Id,
@@ -173,9 +169,6 @@ export default function AnasayfaPage() {
                     profilePicture: swipedProfile.images[0]
                 };
                 
-                const theirProfileDoc = await getDoc(doc(firestore, `users/${user2Id}`));
-                const theirProfileData = theirProfileDoc.data();
-
                 const currentUserData = {
                     id: matchId,
                     matchedWith: user1Id,
@@ -195,7 +188,6 @@ export default function AnasayfaPage() {
              }
         }
         
-        // Record the current user's action
         const updateData = {
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_action`]: action,
             [`user${[user1Id, user2Id].sort().indexOf(user1Id) + 1}_timestamp`]: serverTimestamp()
@@ -207,6 +199,14 @@ export default function AnasayfaPage() {
             status: 'pending',
             ...updateData
         }, { merge: true });
+        
+        // After DB operation, trigger card removal for UI
+        if(profiles.length > 1) {
+          // Normal swipe with animation
+        } else {
+          // Last card, remove instantly after swipe logic
+          removeTopCard();
+        }
 
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
@@ -216,18 +216,11 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast, userProfile]);
+  }, [user, firestore, t, toast, userProfile, profiles]);
 
-  const removeTopCard = () => {
-    setProfiles((prev) => prev.slice(0, -1));
-  };
+  const topCard = profiles[0];
+  const nextCard = profiles[1];
 
-  const handleDragEnd = (profile: UserProfile, swipeDirection: 'liked') => {
-      // Optimistically remove the card from the UI by starting the exit animation
-      setDirection(1);
-      handleSwipe(profile, swipeDirection);
-  };
-  
   return (
     <div className="relative h-full w-full flex flex-col p-4 overflow-hidden">
       {isLoading ? (
@@ -236,39 +229,64 @@ export default function AnasayfaPage() {
         </div>
       ) : profiles.length > 0 ? (
         <div className="flex-1 flex items-center justify-center relative">
-          {profiles.length > 1 && (
+          {profiles.length > 1 && nextCard && (
             <div className="absolute w-full max-w-sm h-full max-h-[75vh] scale-95 blur-sm">
               <ProfileCard
-                profile={profiles[profiles.length - 2]}
-                onSwipe={() => {}} // This card is not interactive
+                profile={nextCard}
+                onSwipe={() => {}} 
                 isDraggable={false}
               />
             </div>
           )}
-          <AnimatePresence onExitComplete={() => {
-              removeTopCard();
-              setDirection(0);
-          }}>
-            <motion.div
-              key={profiles[profiles.length - 1].uid}
-              className="absolute w-full max-w-sm h-full max-h-[75vh]"
-              variants={cardVariants}
-              initial="center"
-              animate="center"
-              exit="exit"
-              custom={direction}
-              transition={{
-                x: { type: 'spring', stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 },
-              }}
-            >
-              <ProfileCard
-                profile={profiles[profiles.length - 1]}
-                onSwipe={(swipeDirection) => handleDragEnd(profiles[profiles.length - 1], swipeDirection)}
-                isDraggable={true}
-              />
-            </motion.div>
-          </AnimatePresence>
+          {profiles.length > 1 ? (
+             <AnimatePresence onExitComplete={removeTopCard}>
+               <motion.div
+                 key={topCard.uid}
+                 className="absolute w-full max-w-sm h-full max-h-[75vh]"
+                 variants={cardVariants}
+                 initial="center"
+                 animate="center"
+                 exit="exit"
+                 custom={direction}
+                 transition={{
+                   x: { type: 'spring', stiffness: 300, damping: 30 },
+                   opacity: { duration: 0.2 },
+                 }}
+               >
+                 <ProfileCard
+                   profile={topCard}
+                   onSwipe={(swipeDirection) => {
+                     setDirection(1); // Set direction for exit animation
+                     handleSwipe(topCard, swipeDirection);
+                   }}
+                   isDraggable={true}
+                 />
+               </motion.div>
+            </AnimatePresence>
+          ) : topCard ? (
+              <motion.div
+                 key={topCard.uid}
+                 className="absolute w-full max-w-sm h-full max-h-[75vh]"
+                 variants={cardVariants}
+                 initial="center"
+                 animate="center"
+                 exit="exit"
+                 custom={direction}
+                 transition={{
+                   x: { type: 'spring', stiffness: 300, damping: 30 },
+                   opacity: { duration: 0.2 },
+                 }}
+               >
+                 <ProfileCard
+                   profile={topCard}
+                   onSwipe={(swipeDirection) => {
+                     setDirection(1);
+                     handleSwipe(topCard, swipeDirection);
+                   }}
+                   isDraggable={true}
+                 />
+               </motion.div>
+          ) : null}
         </div>
       ) : (
         <div className="flex h-full items-center justify-center text-center">
