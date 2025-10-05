@@ -97,6 +97,8 @@ export type ChatMessage = {
   type?: 'user' | 'system_superlike_prompt' | 'audio';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
+  isEdited?: boolean;
+  editedAt?: any;
 };
 
 export interface DenormalizedMatch {

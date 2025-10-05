@@ -4,11 +4,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -118,6 +118,8 @@ export default function ChatPage() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+    const [deletingMessage, setDeletingMessage] = useState<ChatMessage | null>(null);
 
     const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
@@ -188,7 +190,22 @@ export default function ChatPage() {
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number } = {}
     ) => {
         e?.preventDefault();
-        if (!user || !firestore || (!content.text?.trim() && !content.imageUrl && !content.audioUrl)) return;
+        if (!user || !firestore) return;
+        
+        if (editingMessage) {
+            if (!newMessage.trim()) return;
+            const messageRef = doc(firestore, `matches/${matchId}/messages`, editingMessage.id);
+            await updateDoc(messageRef, {
+                text: newMessage.trim(),
+                isEdited: true,
+                editedAt: serverTimestamp()
+            });
+            setEditingMessage(null);
+            setNewMessage('');
+            return;
+        }
+
+        if (!content.text?.trim() && !content.imageUrl && !content.audioUrl) return;
     
         if (content.text) setNewMessage('');
     
@@ -439,6 +456,39 @@ export default function ChatPage() {
         }
     }
     
+    const handleStartEditMessage = (message: ChatMessage) => {
+        if (message.text) {
+            setEditingMessage(message);
+            setNewMessage(message.text);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingMessage(null);
+        setNewMessage('');
+    };
+
+    const handleDeleteMessage = async () => {
+        if (!deletingMessage || !firestore) return;
+        
+        try {
+            const messageRef = doc(firestore, `matches/${matchId}/messages`, deletingMessage.id);
+            await deleteDoc(messageRef);
+            setDeletingMessage(null);
+             toast({
+                title: 'Mesaj Silindi',
+                description: 'Mesaj başarıyla silindi.',
+            });
+        } catch (error) {
+            console.error("Error deleting message:", error);
+            toast({
+                title: t.common.error,
+                description: 'Mesaj silinirken bir hata oluştu.',
+                variant: 'destructive',
+            });
+        }
+    };
+    
     const renderTimestampLabel = (timestamp: any, prevTimestamp: any) => {
         if (!timestamp) return null;
 
@@ -480,8 +530,8 @@ export default function ChatPage() {
     
     const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = matchData?.status === 'matched';
-    const showSendButton = newMessage.trim() !== '';
-
+    const showSendButton = newMessage.trim() !== '' && !editingMessage;
+    
     return (
         <div className="flex h-dvh flex-col bg-background">
              <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-2">
@@ -560,22 +610,29 @@ export default function ChatPage() {
                                             <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                     )}
+                                    {isSender && (
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(message)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                                            {message.text && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
+                                        </div>
+                                    )}
                                     <div
                                         className={cn(
-                                            "max-w-[70%] rounded-2xl flex flex-col items-end gap-2",
+                                            "max-w-[70%] rounded-2xl flex flex-col items-end gap-1",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            message.imageUrl ? 'p-1.5' : 'px-4 py-2',
+                                            message.imageUrl ? 'p-1.5' : 'px-3 py-2',
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
                                         {message.imageUrl && (
                                             <Image src={message.imageUrl} alt="Gönderilen fotoğraf" width={200} height={200} className="rounded-xl w-full h-auto" />
                                         )}
-                                        {message.text && <p className={cn('break-words', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
+                                        {message.text && <p className={cn('break-words text-left w-full', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1 self-end", !message.imageUrl && !message.audioUrl && '-mb-1')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && '-mb-1')}>
+                                            {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
@@ -592,17 +649,28 @@ export default function ChatPage() {
               <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                  {recordingStatus === 'idle' && (
                     <form onSubmit={(e) => handleSendMessage(e, { text: newMessage })} className="flex items-center gap-2">
-                        <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                            {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
-                        </Button>
+                        {editingMessage && (
+                             <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
+                                <X className="h-5 w-5" />
+                            </Button>
+                        )}
+                        {!editingMessage && (
+                            <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
+                                {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
+                            </Button>
+                        )}
                         <Input
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Mesajını yaz..."
+                            placeholder={editingMessage ? "Mesajı düzenle..." : "Mesajını yaz..."}
                             className="flex-1 rounded-full bg-muted"
                             disabled={isUploading}
                         />
-                        {showSendButton ? (
+                        {editingMessage ? (
+                             <Button type="submit" size="icon" className="rounded-full bg-green-500 hover:bg-green-600" disabled={isUploading}>
+                                <Check className="h-5 w-5" />
+                             </Button>
+                        ) : showSendButton ? (
                              <Button type="submit" size="icon" className="rounded-full" disabled={isUploading}>
                                 <Send className="h-5 w-5" />
                              </Button>
@@ -650,6 +718,19 @@ export default function ChatPage() {
                     Yanıt bekleniyor...
                 </div>
             )}
+            
+            <AlertDialog open={!!deletingMessage} onOpenChange={(open) => !open && setDeletingMessage(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Mesajı Sil</AlertDialogTitle>
+                        <AlertDialogDescription>Bu mesajı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteMessage} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>Sil</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

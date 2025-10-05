@@ -232,6 +232,15 @@
         "actionTaken": {
           "type": "boolean",
           "description": "Indicates if an action has been taken on the system message."
+        },
+        "isEdited": {
+          "type": "boolean",
+          "description": "Indicates if the message has been edited."
+        },
+        "editedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the message was last edited."
         }
       },
       "required": [
