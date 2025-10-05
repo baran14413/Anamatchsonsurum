@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
-import { ChevronUp, GraduationCap, Dumbbell, MapPin } from 'lucide-react';
+import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
 import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
@@ -34,6 +34,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   // For Tinder-like drag rotation and exit animation
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
+  const heartOpacity = useTransform(x, [0, 100], [0, 1]);
+  const xOpacity = useTransform(x, [-100, 0], [1, 0]);
 
   // Reset image index when profile changes
   useEffect(() => {
@@ -89,6 +91,20 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
+            {/* Swipe action indicators */}
+            <motion.div
+              style={{ opacity: heartOpacity }}
+              className="absolute top-8 right-8 z-20"
+            >
+              <Heart className="h-16 w-16 text-green-500 fill-current" />
+            </motion.div>
+             <motion.div
+              style={{ opacity: xOpacity }}
+              className="absolute top-8 left-8 z-20"
+            >
+              <X className="h-16 w-16 text-red-500" strokeWidth={4} />
+            </motion.div>
+            
             {/* Image Progress Bars */}
             {totalImages > 1 && (
                 <div className="absolute top-2 left-2 right-2 z-10 flex gap-1 px-1">
