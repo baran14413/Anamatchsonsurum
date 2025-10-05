@@ -14,10 +14,25 @@ export async function GET(req: NextRequest) {
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const currentUserId = decodedToken.uid;
 
-        // 1. Get IDs of users the current user has already swiped
-        const interactionsSnapshot = await adminDb.collection(`users/${currentUserId}/interactions`).get();
-        const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+        // 1. Get IDs of users the current user has already swiped from the root `matches` collection
+        const userInteractionsQuery1 = adminDb.collection('matches').where('user1Id', '==', currentUserId);
+        const userInteractionsQuery2 = adminDb.collection('matches').where('user2Id', '==', currentUserId);
         
+        const [interactionsSnapshot1, interactionsSnapshot2] = await Promise.all([
+            userInteractionsQuery1.get(),
+            userInteractionsQuery2.get()
+        ]);
+
+        const interactedUserIds = new Set<string>();
+        interactionsSnapshot1.forEach(doc => {
+            const data = doc.data();
+            if (data.user2Id) interactedUserIds.add(data.user2Id);
+        });
+        interactionsSnapshot2.forEach(doc => {
+            const data = doc.data();
+            if (data.user1Id) interactedUserIds.add(data.user1Id);
+        });
+
         // Add current user to interacted set to filter them out
         interactedUserIds.add(currentUserId);
         
@@ -27,13 +42,12 @@ export async function GET(req: NextRequest) {
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // Ensure basic data integrity, especially the uid field. This filters out documents
-            // that are just containers for subcollections (like 'interactions' or 'matches').
+            // Ensure basic data integrity, especially the uid field.
             if (userData && userData.uid) {
                 allUsers.push({
-                    id: doc.id, // The document ID is the user's UID
+                    id: doc.id,
                     ...userData,
-                    // CRITICAL FIX: Ensure images array exists to prevent crashes on map/filter
+                    // CRITICAL FIX: Ensure images array exists to prevent crashes
                     images: userData.images || [], 
                 } as UserProfile);
             }

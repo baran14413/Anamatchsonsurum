@@ -12,52 +12,73 @@ export async function POST(req: NextRequest) {
 
         const { swipedUserId, direction } = await req.json();
 
-        if (!swipedUserId || !direction) {
-            return NextResponse.json({ error: 'Missing swipedUserId or direction' }, { status: 400 });
+        if (!swipedUserId || !direction || (direction !== 'left' && direction !== 'right')) {
+            return NextResponse.json({ error: 'Missing or invalid parameters' }, { status: 400 });
         }
 
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const currentUserId = decodedToken.uid;
-
+        
+        // The document ID is a composite key of the two user IDs, sorted alphabetically.
+        const matchId = [currentUserId, swipedUserId].sort().join('_');
+        const matchRef = adminDb.doc(`matches/${matchId}`);
+        
         const batch = adminDb.batch();
-
-        // Record the swipe in the current user's interactions subcollection
-        const currentUserInteractionRef = adminDb.doc(`users/${currentUserId}/interactions/${swipedUserId}`);
-        batch.set(currentUserInteractionRef, {
-            swipe: direction,
-            timestamp: FieldValue.serverTimestamp(),
-        });
-
         let isMatch = false;
 
-        if (direction === 'right') {
-            // Check if the other user has swiped right on the current user
-            const otherUserInteractionRef = adminDb.doc(`users/${swipedUserId}/interactions/${currentUserId}`);
-            const otherUserSwipeDoc = await otherUserInteractionRef.get();
+        const doc = await matchRef.get();
 
-            if (otherUserSwipeDoc.exists && otherUserSwipeDoc.data()?.swipe === 'right') {
-                isMatch = true;
-                const matchId = [currentUserId, swipedUserId].sort().join('_');
-                const matchDate = FieldValue.serverTimestamp();
-                const [user1Id, user2Id] = [currentUserId, swipedUserId].sort();
-                
-                const matchData = {
+        if (direction === 'right') {
+            if (doc.exists) {
+                const docData = doc.data();
+                // Check if the other user liked us
+                if (docData?.status === 'liked' && docData.user1Id === swipedUserId) {
+                    isMatch = true;
+                    // It's a match! Update status and add to both users' match subcollections.
+                    batch.update(matchRef, { status: 'matched', matchDate: FieldValue.serverTimestamp() });
+
+                    const matchDataForSubcollection = {
+                        id: matchId,
+                        users: [currentUserId, swipedUserId],
+                        matchDate: FieldValue.serverTimestamp(),
+                    };
+
+                    const currentUserMatchRef = adminDb.doc(`users/${currentUserId}/matches/${matchId}`);
+                    const otherUserMatchRef = adminDb.doc(`users/${swipedUserId}/matches/${matchId}`);
+                    
+                    batch.set(currentUserMatchRef, matchDataForSubcollection);
+                    batch.set(otherUserMatchRef, matchDataForSubcollection);
+                } else {
+                    // Document exists, but it's not a pending like from the other user.
+                    // This could be our own previous 'disliked' or their 'disliked'.
+                    // We'll just overwrite/set our 'liked' status.
+                     batch.set(matchRef, {
+                        id: matchId,
+                        user1Id: currentUserId,
+                        user2Id: swipedUserId,
+                        status: 'liked',
+                        timestamp: FieldValue.serverTimestamp(),
+                    });
+                }
+            } else {
+                // No previous interaction, create a new 'liked' record
+                batch.set(matchRef, {
                     id: matchId,
-                    user1Id,
-                    user2Id,
-                    matchDate: matchDate,
-                    // You might want to include denormalized user info here
-                    users: [currentUserId, swipedUserId],
-                };
-                
-                // Create the match document for the current user
-                const currentUserMatchRef = adminDb.doc(`users/${currentUserId}/matches/${matchId}`);
-                batch.set(currentUserMatchRef, matchData);
-                
-                // Create the match document for the other user
-                const otherUserMatchRef = adminDb.doc(`users/${swipedUserId}/matches/${matchId}`);
-                batch.set(otherUserMatchRef, matchData);
+                    user1Id: currentUserId,
+                    user2Id: swipedUserId,
+                    status: 'liked',
+                    timestamp: FieldValue.serverTimestamp(),
+                });
             }
+        } else { // direction === 'left'
+            // For a dislike, we just record it.
+             batch.set(matchRef, {
+                id: matchId,
+                user1Id: currentUserId,
+                user2Id: swipedUserId,
+                status: 'disliked',
+                timestamp: FieldValue.serverTimestamp(),
+            }, { merge: true }); // Merge to not overwrite a potential 'liked' from the other user
         }
         
         await batch.commit();
