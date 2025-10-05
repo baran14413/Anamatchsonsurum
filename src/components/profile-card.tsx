@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X } from 'lucide-react';
+import { MapPin, Heart, X, MoreHorizontal } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { langTr } from '@/languages/tr';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from './ui/button';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -98,6 +100,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 <div
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
                 >
+                    {/* Image progress bars */}
                     {totalImages > 1 && (
                         <div className="absolute top-2 left-2 right-2 z-20 flex gap-1 px-1">
                             {profile.images.map((_, index) => (
@@ -111,6 +114,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         </div>
                     )}
 
+                    {/* Swipe direction indicators (Like/Dislike) */}
                     {isDraggable && (
                         <>
                         <motion.div
@@ -128,6 +132,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         </>
                     )}
 
+                    {/* Invisible click areas for image navigation */}
                     <div
                     className={`absolute left-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'left')}
@@ -136,7 +141,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     className={`absolute right-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'right')}
                     ></div>
-
+                    
+                    {/* Main profile image */}
                     <Image
                         src={currentImage}
                         alt={profile.fullName || 'Profile image'}
@@ -147,14 +153,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         priority={isDraggable}
                     />
 
+                    {/* Profile details at the bottom */}
                     <div
                         className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                     >
                         <div className="space-y-2">
-                           <div className='flex items-center gap-2'>
-                             <div className='h-1.5 bg-yellow-400 rounded-full w-1/4'></div>
-                             <div className='h-1.5 bg-red-500 rounded-full w-1/3'></div>
-                           </div>
                            <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                            <div className="flex items-center gap-2 mt-2">
                                 <MapPin className="w-4 h-4" />
@@ -166,6 +169,24 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                            </div>
                         </div>
                     </div>
+                    
+                    {/* More Info button (opens sheet) */}
+                    <div className="absolute top-0 right-0 z-20 p-2">
+                      <Sheet>
+                        <SheetTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-10 w-10 text-white bg-black/20 rounded-full hover:bg-black/40 hover:text-white">
+                             <MoreHorizontal className="h-6 w-6" />
+                           </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl'>
+                          {/* Content for the profile details sheet will go here */}
+                           <div className="p-4">
+                              <h2 className="text-xl font-bold">Profil Detayları</h2>
+                           </div>
+                        </SheetContent>
+                      </Sheet>
+                    </div>
+
                 </div>
             </motion.div>
         )}
