@@ -8,7 +8,6 @@ import { Heart } from 'lucide-react';
 import type { UserProfile, LikerInfo } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import Link from 'next/link';
 import { Icons } from '@/components/icons';
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -109,18 +108,15 @@ export default function BegenilerPage() {
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {likers.map(liker => (
-                            <Link href={`/profil/${liker.uid}`} key={liker.uid}>
-                                <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
-                                    <Avatar className="h-full w-full rounded-lg">
-                                        <AvatarImage src={liker.profilePicture} className="object-cover"/>
-                                        <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                                    <div className="absolute bottom-0 left-0 p-2 text-white">
-                                        <p className="font-bold text-sm truncate">{liker.fullName}{liker.age ? `, ${liker.age}` : ''}</p>
-                                    </div>
+                             <div key={liker.uid} className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group">
+                                <Avatar className="h-full w-full rounded-lg">
+                                    <AvatarImage src={liker.profilePicture} className="object-cover blur-md"/>
+                                    <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                    <span className="text-4xl" role="img" aria-label="lock">🔒</span>
                                 </div>
-                            </Link>
+                            </div>
                         ))}
                     </div>
                 </div>
