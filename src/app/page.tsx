@@ -150,7 +150,7 @@ export default function WelcomePage() {
                 )}
                 {t.welcome.continueWithGoogle}
               </Button>
-               <Link href="/login" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm inline-flex items-center">
+               <Link href="/kurallar" className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm inline-flex items-center">
                     <Icons.logo width={24} height={24} className="mr-4" />
                     {t.welcome.continueWithEmail}
               </Link>

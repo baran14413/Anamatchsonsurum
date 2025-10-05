@@ -88,7 +88,6 @@ const interestIcons: { [key: string]: React.ElementType } = {
 type PhotoSlot = {
     file: File | null;
     preview: string | null;
-    label: string;
 };
 
 
@@ -197,7 +196,7 @@ export default function SignupForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, label: t.signup.step12.photoSlotLabels[i] || '' }))
+    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null }))
   );
   
   const form = useForm<SignupFormValues>({
@@ -235,7 +234,7 @@ export default function SignupForm() {
             
             if (googleData.profilePicture) {
                 const initialSlots = [...photoSlots];
-                initialSlots[0] = { file: null, preview: googleData.profilePicture, label: t.signup.step12.photoSlotLabels[0] };
+                initialSlots[0] = { file: null, preview: googleData.profilePicture };
                 setPhotoSlots(initialSlots);
                 form.setValue('photos', [googleData.profilePicture]);
             }
@@ -248,7 +247,7 @@ export default function SignupForm() {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form, t.signup.step12.photoSlotLabels]); // Added dependencies
+  }, [form]); // Removed dependencies
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
@@ -420,16 +419,11 @@ export default function SignupForm() {
       newSlots.splice(index, 1);
 
       // Add a new empty slot at the end
-      newSlots.push({ file: null, preview: null, label: '' });
-
-      const reorderedSlots = newSlots.map((slot, i) => ({
-          ...slot,
-          label: t.signup.step12.photoSlotLabels[i] || ''
-      }));
+      newSlots.push({ file: null, preview: null });
       
-      setPhotoSlots(reorderedSlots);
+      setPhotoSlots(newSlots);
       
-      const newPhotos = reorderedSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
+      const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
 
@@ -486,9 +480,8 @@ export default function SignupForm() {
   const handleSkip = () => {
     if (step === 7) { 
         form.setValue('school', '');
+        nextStep();
     }
-    // No longer skipping other steps
-    nextStep();
   }
 
   return (
@@ -1024,7 +1017,7 @@ export default function SignupForm() {
                               </>
                             ) : (
                               <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center">
-                                <span className="text-sm font-medium mb-2 block">{slot.label}</span>
+                                <span className="text-xs font-medium mb-1 block">{t.signup.step12.photoSlotLabels[index]}</span>
                                 <button
                                   type="button"
                                   className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
@@ -1082,7 +1075,7 @@ export default function SignupForm() {
                     type="button"
                     onClick={handleNextStep}
                     className="w-full h-14 rounded-full text-lg font-bold"
-                    disabled={isLoading || selectedInterests.length === 0}
+                    disabled={isLoading || selectedInterests.length < 1}
                     >
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
                  </Button>
