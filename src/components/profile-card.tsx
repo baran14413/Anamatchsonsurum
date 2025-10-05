@@ -14,9 +14,10 @@ interface ProfileCardProps {
 
 const SWIPE_THRESHOLD = 80;
 
-function calculateAge(dateOfBirth: string | undefined) {
-    if (!dateOfBirth) return '';
+function calculateAge(dateOfBirth: string | undefined): number | null {
+    if (!dateOfBirth) return null;
     const birthday = new Date(dateOfBirth);
+    if (isNaN(birthday.getTime())) return null;
     const ageDifMs = Date.now() - birthday.getTime();
     const ageDate = new Date(ageDifMs);
     return Math.abs(ageDate.getUTCFullYear() - 1970);
@@ -41,69 +42,83 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
   };
   
   const [imageIndex, setImageIndex] = useState(0);
+  const images = profile.images && profile.images.length > 0 ? profile.images : [];
 
   const handleImageNavigation = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation(); // Prevent card drag
     const cardWidth = e.currentTarget.offsetWidth;
     const clickX = e.nativeEvent.offsetX;
     
-    // Define a dead zone in the middle to prevent accidental navigation
-    const deadZone = cardWidth * 0.2; // 20% of the width
-    const leftBoundary = (cardWidth - deadZone) / 2;
-    const rightBoundary = leftBoundary + deadZone;
-
-    if (clickX < leftBoundary) {
+    if (clickX < cardWidth / 2) {
       // Clicked on the left side
       setImageIndex(prev => Math.max(0, prev - 1));
-    } else if (clickX > rightBoundary) {
+    } else {
       // Clicked on the right side
-      setImageIndex(prev => Math.min((profile.images || []).length - 1, prev + 1));
+      setImageIndex(prev => Math.min(images.length - 1, prev + 1));
     }
   };
 
   const age = calculateAge(profile.dateOfBirth);
-  const images = profile.images || [];
 
   return (
      <motion.div
-      className="absolute inset-0 flex items-center justify-center p-4 pt-4 pb-28" 
-      style={{ touchAction: 'pan-y' }}
+      className="absolute inset-0 flex items-center justify-center p-4 pt-4 pb-28"
     >
       <motion.div
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, rotate, opacity }}
-        className="w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 cursor-grab active:cursor-grabbing relative"
+        className="w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 cursor-grab active:cursor-grabbing"
       >
-        <div className="relative w-full h-full" onClick={handleImageNavigation}>
+        <div className="relative w-full h-full">
+            {/* Image Navigation Tappable Areas */}
+            <div className="absolute top-0 left-0 w-1/2 h-full z-10" onClick={() => setImageIndex(prev => Math.max(0, prev - 1))} />
+            <div className="absolute top-0 right-0 w-1/2 h-full z-10" onClick={() => setImageIndex(prev => Math.min(images.length - 1, prev + 1))} />
+            
+            {/* Image Progress Bars */}
             {images.length > 1 && (
-                <div className="absolute top-2 left-2 right-2 z-10 flex gap-1">
+                <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">
                     {images.map((_, index) => (
-                    <div key={index} className="flex-1 h-1 rounded-full bg-white/50 transition-colors duration-300">
-                        <div 
-                          className={`h-1 rounded-full ${index === imageIndex ? 'bg-white' : index < imageIndex ? 'bg-white' : ''}`}
-                          style={{width: index === imageIndex ? '100%' : '100%'}}
+                    <div key={index} className="flex-1 h-1 rounded-full bg-white/50">
+                        <motion.div
+                         className="h-1 rounded-full bg-white"
+                         initial={{ width: '0%' }}
+                         animate={{ width: index === imageIndex ? '100%' : (index < imageIndex ? '100%' : '0%') }}
+                         transition={{ duration: 0.3, ease: 'easeOut' }}
                         />
                     </div>
                     ))}
                 </div>
             )}
+            
+            {/* Main Image */}
             {images.length > 0 ? (
-                <Image
-                    src={images[imageIndex]}
-                    alt={profile.fullName || 'Profile image'}
-                    fill
-                    objectFit="cover"
-                    className="pointer-events-none"
-                    priority
-                />
+                 <AnimatePresence initial={false}>
+                    <motion.div
+                        key={imageIndex}
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <Image
+                            src={images[imageIndex]}
+                            alt={profile.fullName || 'Profile image'}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            className="pointer-events-none"
+                            priority
+                        />
+                    </motion.div>
+                </AnimatePresence>
             ) : (
                 <div className="w-full h-full bg-gray-300 flex items-center justify-center">
                     <p className="text-gray-500">No image</p>
                 </div>
             )}
 
+            {/* Like/Nope Indicators */}
             <motion.div
               style={{ opacity: likeOpacity }}
               className="absolute top-8 left-8 text-green-400 font-bold text-4xl border-4 border-green-400 p-2 rounded-lg transform -rotate-20"
@@ -116,21 +131,24 @@ export default function ProfileCard({ profile, onSwipe }: ProfileCardProps) {
             >
               <XIcon className="h-16 w-16" />
             </motion.div>
-        </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white z-10">
-          <div className="flex items-center justify-between">
-            <div>
-                <h3 className="text-2xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
-                <div className="flex items-center gap-2 text-base">
-                  <MapPin size={16} />
-                  <span>{t.anasayfa.distance.replace('{distance}', '154')}</span>
+            {/* Profile Info Overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white z-20">
+              <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-2xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
+                    {profile.location && (
+                        <div className="flex items-center gap-2 text-base">
+                          <MapPin size={16} />
+                          <span>{t.anasayfa.distance.replace('{distance}', '154')}</span>
+                        </div>
+                    )}
                 </div>
+                <button className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                     <Info size={24} />
+                </button>
+              </div>
             </div>
-            <button className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
-                 <Info size={24} />
-            </button>
-          </div>
         </div>
       </motion.div>
     </motion.div>

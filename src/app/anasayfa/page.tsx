@@ -69,7 +69,7 @@ export default function AnasayfaPage() {
   }, [user, firestore, toast, t.common.error]);
 
   const recordSwipe = async (swipedProfile: UserProfile, direction: 'left' | 'right') => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !swipedProfile.uid) return;
 
     try {
         const swipeId = [user.uid, swipedProfile.uid].sort().join('_');
@@ -95,10 +95,10 @@ export default function AnasayfaPage() {
                     status: 'matched',
                 };
                 
-                // Update the match document
-                batch.set(swipeDocRef, matchData);
+                // Update the match document in the root collection
+                batch.set(swipeDocRef, matchData, { merge: true });
 
-                // Create match documents in both users' subcollections
+                // Create/update match documents in both users' subcollections
                 const user1MatchRef = doc(firestore, `users/${user1Id}/matches/${swipeId}`);
                 const user2MatchRef = doc(firestore, `users/${user2Id}/matches/${swipeId}`);
                 batch.set(user1MatchRef, matchData);
@@ -154,7 +154,7 @@ export default function AnasayfaPage() {
         <div className="relative flex-1">
             <AnimatePresence>
                 {isLoading ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     </div>
                 ) : currentProfile ? (
@@ -164,7 +164,7 @@ export default function AnasayfaPage() {
                         onSwipe={handleSwipe}
                     />
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
                         <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
                         <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
                     </div>
