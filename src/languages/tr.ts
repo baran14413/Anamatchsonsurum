@@ -373,6 +373,7 @@ export const langTr = {
     title: 'Profil',
     user: 'BeMatch Kullanıcısı',
     verified: 'Doğrulanmış',
+    editGallery: 'Galerini Düzenle',
     tryDoubleDate: 'Çifte Randevu\'yu dene',
     tryDoubleDateDesc: 'Arkadaşlarını davet et ve diğer çiftleri bul.',
     superLikes: '{count} Super Like',
@@ -437,13 +438,13 @@ export const langTr = {
   },
   ayarlarGaleri: {
     title: 'Galeri Yönetimi',
-    description: 'Eşleşme ekranında gösterilecek fotoğraflarını buradan yönetebilirsin. En az 1, en fazla 9 fotoğraf ekleyebilirsin. ({count}/9)',
-    upload: 'Fotoğraf Yükle',
+    description: 'Profilinde gösterilecek fotoğraflarını buradan yönetebilirsin. En fazla 6 fotoğraf ekleyebilirsin. ({count}/6)',
+    upload: 'Fotoğraf Ekle',
     deleteConfirmTitle: 'Fotoğrafı Silmek İstiyor musun?',
     deleteConfirmDescription: 'Bu işlem geri alınamaz. Bu fotoğraf galerinizden kalıcı olarak silinecektir.',
     toasts: {
       limitExceededTitle: 'Limit Aşıldı',
-      limitExceededDesc: 'Galerinizde {count} fotoğraf var. En fazla {maxUploadCount} fotoğraf daha ekleyebilirsiniz.',
+      limitExceededDesc: 'Galerinizde {count} fotoğraf var. En fazla {maxUploadCount} daha ekleyebilirsiniz.',
       uploading: 'Yükleniyor...',
       uploadSuccessTitle: 'Fotoğraflar Eklendi',
       uploadSuccessDesc: '{count} yeni fotoğraf galerinize eklendi.',
@@ -455,6 +456,10 @@ export const langTr = {
       deleteSuccessDesc: 'Fotoğraf galerinizden kaldırıldı.',
       deleteErrorTitle: 'Silme Başarısız',
       deleteErrorDesc: 'Fotoğraf silinirken bir hata oluştu.',
+      saveSuccessTitle: 'Galeri Güncellendi',
+      saveSuccessDesc: 'Fotoğraf değişiklikleriniz başarıyla kaydedildi.',
+      saveErrorTitle: 'Kaydetme Başarısız',
+      saveErrorDesc: 'Değişiklikler kaydedilirken bir hata oluştu.',
     }
   },
   ayarlarKonum: {
@@ -616,4 +621,5 @@ export const langTr = {
     
 
     
+
 

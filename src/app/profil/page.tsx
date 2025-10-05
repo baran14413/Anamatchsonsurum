@@ -1,15 +1,15 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { signOut } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight } from 'lucide-react';
+import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight, GalleryHorizontal } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -74,10 +74,12 @@ export default function ProfilePage() {
                 {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
                 <ShieldCheckIcon className="h-6 w-6 text-blue-500" />
             </h1>
-            <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
-                <Pencil className="mr-2 h-5 w-5"/>
-                {t.common.editProfile}
-            </Button>
+            <Link href="/profil/galeri">
+                <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
+                    <GalleryHorizontal className="mr-2 h-5 w-5"/>
+                    {t.profil.editGallery}
+                </Button>
+            </Link>
           </div>
         </div>
 
