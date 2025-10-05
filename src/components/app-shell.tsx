@@ -24,6 +24,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthFlowRoute = authFlowRoutes.includes(pathname);
   const isRegistrationRoute = pathname.startsWith(registrationRoute);
+  
+  // Specific check for the dynamic chat page
+  const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
 
   useEffect(() => {
     if (isUserLoading) {
@@ -70,7 +73,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   // Determine if the header and footer should be shown
-  const showHeaderAndFooter = userProfile?.gender && isProtectedRoute && pathname !== '/ayarlar' && !pathname.startsWith('/ayarlar/');
+  const showHeaderAndFooter = userProfile?.gender && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
+
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';
@@ -105,6 +109,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For all other cases (public routes, login, registration, settings without footer), just render the children.
+  // For all other cases (public routes, login, registration, settings, chat), just render the children.
   return <>{children}</>;
 }

@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
@@ -57,49 +57,84 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     }
 
     let profileUnsubscribe: (() => void) | undefined;
+    let visibilityChangeHandler: (() => void) | undefined;
+    let beforeUnloadHandler: ((e: BeforeUnloadEvent) => void) | undefined;
+
+
+    const updateUserPresence = async (uid: string, isOnline: boolean) => {
+        try {
+            const userDocRef = doc(firestore, 'users', uid);
+            const presenceData = {
+                isOnline: isOnline,
+                lastSeen: serverTimestamp()
+            };
+            await setDoc(userDocRef, presenceData, { merge: true });
+        } catch (error) {
+            console.error("Failed to update user presence:", error);
+        }
+    };
+
 
     const authUnsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
-        // If user logs out, clean up everything
-        if (!firebaseUser) {
-          profileUnsubscribe?.();
-          setUser(null);
-          setUserProfile(null);
-          setIsUserLoading(false);
-          return;
-        }
+        // Clean up previous listeners
+        profileUnsubscribe?.();
+        if (visibilityChangeHandler) document.removeEventListener("visibilitychange", visibilityChangeHandler);
+        if (beforeUnloadHandler) window.removeEventListener("beforeunload", beforeUnloadHandler);
 
-        // If user is logged in, set the auth user and start listening to their profile
-        setUser(firebaseUser);
 
-        // Kill previous profile listener if it exists
-        profileUnsubscribe?.(); 
-        
-        const profileDocRef = doc(firestore, 'users', firebaseUser.uid);
-        
-        profileUnsubscribe = onSnapshot(
-          profileDocRef,
-          (docSnap) => {
-            if (docSnap.exists() && docSnap.data()?.gender) {
-              setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
-            } else {
-              // User exists in auth, but no complete profile in DB
-              setUserProfile(null);
+        if (firebaseUser) {
+            setUser(firebaseUser);
+            updateUserPresence(firebaseUser.uid, true);
+
+            // Listen for profile changes
+            const profileDocRef = doc(firestore, 'users', firebaseUser.uid);
+            profileUnsubscribe = onSnapshot(profileDocRef, 
+                (docSnap) => {
+                    if (docSnap.exists() && docSnap.data()?.gender) {
+                        setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
+                    } else {
+                        setUserProfile(null);
+                    }
+                    setIsUserLoading(false);
+                },
+                (error) => {
+                    console.error("FirebaseProvider: Profile onSnapshot error:", error);
+                    setUserError(error);
+                    setUserProfile(null);
+                    setIsUserLoading(false);
+                }
+            );
+
+             // Handle browser tab visibility and closing for presence
+            visibilityChangeHandler = () => {
+                if (document.visibilityState === 'hidden') {
+                    updateUserPresence(firebaseUser.uid, false);
+                } else {
+                    updateUserPresence(firebaseUser.uid, true);
+                }
+            };
+
+            beforeUnloadHandler = (e) => {
+                 updateUserPresence(firebaseUser.uid, false);
+            };
+
+            document.addEventListener("visibilitychange", visibilityChangeHandler);
+            window.addEventListener("beforeunload", beforeUnloadHandler);
+
+        } else {
+            // User logs out
+            if (user) { // Check if there was a previously logged-in user
+                updateUserPresence(user.uid, false);
             }
-            setIsUserLoading(false);
-          },
-          (error) => {
-            console.error("FirebaseProvider: Profile onSnapshot error:", error);
-            setUserError(error);
+            setUser(null);
             setUserProfile(null);
             setIsUserLoading(false);
-          }
-        );
+        }
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
-        profileUnsubscribe?.();
         setUserError(error);
         setUser(null);
         setUserProfile(null);
@@ -110,8 +145,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => {
       authUnsubscribe();
       profileUnsubscribe?.();
+       if (visibilityChangeHandler) document.removeEventListener("visibilitychange", visibilityChangeHandler);
+       if (beforeUnloadHandler) window.removeEventListener("beforeunload", beforeUnloadHandler);
+       if (user) { // When component unmounts, set user offline
+          updateUserPresence(user.uid, false);
+       }
     };
-  }, [auth, firestore]);
+  }, [auth, firestore, user]); // Added user to dependency array to get its latest value in cleanup
 
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);

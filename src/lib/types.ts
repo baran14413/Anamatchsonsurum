@@ -17,7 +17,7 @@ export type UserProfile = {
     latitude: number | null;
     longitude: number | null;
   };
-  locationLastUpdated?: any; // Using any for Firestore ServerTimestamp flexibility
+  locationLastUpdated?: any; 
   address?: {
     country?: string | null;
     state?: string | null;
@@ -43,13 +43,15 @@ export type UserProfile = {
     educationLevel?: string;
     zodiacSign?: string;
   }
+  isOnline?: boolean;
+  lastSeen?: any;
 };
 
 export type Match = {
   id: string;
   user1Id: string;
   user2Id:string;
-  matchDate: any; // Using 'any' for serverTimestamp flexibility
+  matchDate: any; 
 };
 
 export type LikerInfo = {
@@ -65,9 +67,9 @@ export type Post = {
   id: string;
   username: string;
   userAvatar: string;
-  imageUrl?: string; // Image is now optional
+  imageUrl?: string; 
   caption: string;
-  language: string; // Language of the caption
+  language: string; 
   likes: number;
   comments: number;
   timestamp: Date;
@@ -78,5 +80,7 @@ export type ChatMessage = {
   matchId: string;
   senderId: string;
   text: string;
-  timestamp: any; // Firestore ServerTimestamp
+  timestamp: any; 
+  isRead: boolean;
+  readTimestamp?: any;
 };

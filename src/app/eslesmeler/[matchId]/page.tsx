@@ -4,15 +4,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, UserProfile } from '@/lib/types';
+
+const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
+    if (!isSender) return null;
+
+    if (message.isRead) {
+        return <CheckCheck className="h-4 w-4 text-blue-500" />;
+    }
+    // For simplicity, we'll assume if it's sent, it's delivered.
+    // A more complex system could track delivery status separately.
+    return <Check className="h-4 w-4 text-muted-foreground" />;
+};
+
 
 export default function ChatPage() {
     const { matchId } = useParams() as { matchId: string };
@@ -26,10 +38,10 @@ export default function ChatPage() {
     const [isLoading, setIsLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (!user || !firestore || !matchId) return;
+    const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
-        const otherUserId = matchId.replace(user.uid, '').replace('_', '');
+    useEffect(() => {
+        if (!user || !firestore || !otherUserId) return;
 
         const unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
             if (doc.exists()) {
@@ -55,7 +67,29 @@ export default function ChatPage() {
             unsubOtherUser();
             unsubMessages();
         };
-    }, [matchId, user, firestore]);
+    }, [matchId, user, firestore, otherUserId]);
+
+    // Effect to mark messages as read
+    useEffect(() => {
+        if (!firestore || !user || messages.length === 0) return;
+        
+        const markMessagesAsRead = async () => {
+            const unreadMessages = messages.filter(msg => msg.senderId !== user.uid && !msg.isRead);
+            if (unreadMessages.length === 0) return;
+
+            const batch = writeBatch(firestore);
+            unreadMessages.forEach(msg => {
+                const msgRef = doc(firestore, `matches/${matchId}/messages`, msg.id);
+                batch.update(msgRef, { 
+                    isRead: true,
+                    readTimestamp: serverTimestamp()
+                });
+            });
+            await batch.commit();
+        };
+
+        markMessagesAsRead();
+    }, [messages, firestore, user, matchId]);
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,14 +104,13 @@ export default function ChatPage() {
             senderId: user.uid,
             text: newMessage.trim(),
             timestamp: serverTimestamp(),
+            isRead: false,
         };
 
         setNewMessage('');
         
-        // Add the new message to the subcollection
         await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
 
-        // Update the last message in the denormalized match data for both users
         const lastMessageUpdate = {
             lastMessage: newMessage.trim(),
             timestamp: serverTimestamp(),
@@ -95,7 +128,6 @@ export default function ChatPage() {
         const date = timestamp.toDate();
         const prevDate = prevTimestamp?.toDate();
         
-        // If it's the first message or the day is different from the previous one
         if (!prevDate || date.toDateString() !== prevDate.toDateString()) {
              let label;
              if (isToday(date)) {
@@ -114,6 +146,17 @@ export default function ChatPage() {
 
         return null;
     };
+    
+    const renderOnlineStatus = () => {
+        if (!otherUser) return null;
+        if (otherUser.isOnline) {
+            return <span className="text-xs text-green-500">Çevrimiçi</span>
+        }
+        if (otherUser.lastSeen) {
+            return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(otherUser.lastSeen.toDate(), { locale: tr, addSuffix: true })}</span>
+        }
+        return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+    }
 
 
     return (
@@ -127,9 +170,11 @@ export default function ChatPage() {
                         <AvatarImage src={otherUser?.profilePicture} />
                         <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex items-center gap-1">
-                        <span className="font-semibold">{otherUser?.fullName}</span>
-                         <ShieldCheck className="h-5 w-5 text-primary" fill="currentColor" />
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-1">
+                           <span className="font-semibold">{otherUser?.fullName}</span>
+                        </div>
+                        {renderOnlineStatus()}
                     </div>
                 </div>
                 <Button variant="ghost" size="icon">
@@ -138,7 +183,7 @@ export default function ChatPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
+                <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
                         const prevMessage = index > 0 ? messages[index - 1] : null;
@@ -146,21 +191,27 @@ export default function ChatPage() {
                         return (
                             <div key={message.id}>
                                 {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
-                                <div className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+                                <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                      {!isSender && (
-                                        <Avatar className="h-8 w-8">
+                                        <Avatar className="h-8 w-8 self-end mb-1">
                                             <AvatarImage src={otherUser?.profilePicture} />
                                             <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                     )}
                                     <div
                                         className={cn(
-                                            "max-w-[70%] rounded-2xl px-4 py-2",
+                                            "max-w-[70%] rounded-2xl px-4 py-2 flex items-end gap-2",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
                                         )}
                                     >
-                                        <p>{message.text}</p>
+                                        <p className='break-words'>{message.text}</p>
+                                        <span className="text-xs text-end -mb-1 shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                     </div>
+                                    {isSender && (
+                                        <div className='self-end mb-1'>
+                                            {renderMessageStatus(message, isSender)}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
