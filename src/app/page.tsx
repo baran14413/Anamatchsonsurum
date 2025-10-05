@@ -110,15 +110,12 @@ export default function WelcomePage() {
                 )}
                 {t.welcome.continueWithGoogle}
               </Button>
-               <Button
-                disabled={true}
-                variant="outline"
-                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm relative"
-              >
-                <Icons.logo width={24} height={24} className="mr-4" />
-                {t.welcome.continueWithEmail}
-                 <Badge variant="secondary" className="absolute right-4">Yakında</Badge>
-              </Button>
+               <Link href="/login" legacyBehavior>
+                <a className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm inline-flex items-center">
+                    <Icons.logo width={24} height={24} className="mr-4" />
+                    {t.welcome.continueWithEmail}
+                </a>
+              </Link>
           </div>
         </div>
       </main>
