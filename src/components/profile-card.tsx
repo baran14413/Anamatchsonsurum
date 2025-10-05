@@ -142,11 +142,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     )}
 
                     <div
-                    className={`absolute left-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
+                    className={`absolute left-0 top-0 h-full w-1/2 z-[1] ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'left')}
                     ></div>
                     <div
-                    className={`absolute right-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
+                    className={`absolute right-0 top-0 h-full w-1/2 z-[1] ${isDraggable ? 'cursor-pointer' : ''}`}
                     onClick={(e) => handleAreaClick(e, 'right')}
                     ></div>
 
@@ -161,7 +161,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     />
 
                     <div
-                        className={`absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-[1] ${isDraggable ? 'cursor-pointer' : ''}`}
+                        className={`absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-[2] ${isDraggable ? 'cursor-pointer' : ''}`}
                         onClick={() => isDraggable && setShowDetails(prev => !prev)}
                     >
                         <div className='flex items-end justify-between'>

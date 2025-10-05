@@ -193,9 +193,8 @@ export default function AnasayfaPage() {
           <AnimatePresence>
             {profiles.map((profile, index) => {
               const isTopCard = index === 0;
-              const isNextCard = index === 1;
-
-              if (index > 1) return null; // Render only top two cards
+              
+              if (index > 1) return null;
 
               return (
                 <motion.div
