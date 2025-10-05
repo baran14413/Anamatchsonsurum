@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RotateCcw } from 'lucide-react';
+import { Loader2, RotateCcw, X, Heart, Zap, Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -25,30 +26,14 @@ export default function AnasayfaPage() {
 
     setIsLoading(true);
     try {
-      // 1. Get all interactions for the current user to find out who they've seen.
-      const interactionsAsUser1Query = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-      const interactionsAsUser2Query = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+      // Fetch all users except the current one.
+      const usersQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
+      const allUsersSnapshot = await getDocs(usersQuery);
 
-      const [interactionsAsUser1Snap, interactionsAsUser2Snap] = await Promise.all([
-        getDocs(interactionsAsUser1Query),
-        getDocs(interactionsAsUser2Query),
-      ]);
-
-      const interactedUserIds = new Set<string>();
-      interactedUserIds.add(user.uid); // Add self to avoid showing own profile
-
-      interactionsAsUser1Snap.forEach(doc => interactedUserIds.add(doc.data().user2Id));
-      interactionsAsUser2Snap.forEach(doc => interactedUserIds.add(doc.data().user1Id));
-
-      // 2. Fetch all users from the 'users' collection.
-      const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
-
-      // 3. Filter out the current user and users who have been interacted with.
       const potentialMatches: UserProfile[] = [];
       allUsersSnapshot.forEach(doc => {
           const userData = doc.data() as Partial<UserProfile>;
-          // Ensure the doc is a valid profile and not an interacted one
-          if (userData.uid && !interactedUserIds.has(userData.uid) && userData.images && userData.images.length > 0) {
+          if (userData.uid && userData.images && userData.images.length > 0) {
               potentialMatches.push({
                   id: doc.id,
                   ...userData,
@@ -132,49 +117,55 @@ export default function AnasayfaPage() {
   };
 
 
-  const handleSwipe = (direction: 'left' | 'right') => {
+  const handleSwipe = (direction: 'left' | 'right' | 'up') => {
     if (currentIndex >= profiles.length) return;
 
     const swipedProfile = profiles[currentIndex];
-    recordSwipe(swipedProfile.uid, direction === 'right' ? 'liked' : 'disliked');
+    
+    if (direction === 'up') {
+        // Handle Super Like logic here if needed
+    } else {
+        recordSwipe(swipedProfile.uid, direction === 'right' ? 'liked' : 'disliked');
+    }
     
     setCurrentIndex(prev => prev + 1);
   };
   
   const handleReset = () => {
+    fetchProfiles();
     setCurrentIndex(0);
     toast({
       title: t.anasayfa.resetToastTitle,
       description: t.anasayfa.resetToastDescription,
     });
   };
-
+  
   const activeProfile = !isLoading && currentIndex < profiles.length ? profiles[currentIndex] : null;
 
   return (
     <div className="relative h-full w-full">
-      {isLoading ? (
-        <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      ) : activeProfile ? (
+        {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        ) : activeProfile ? (
         <div className="absolute inset-0 p-4">
-          <ProfileCard
-              key={activeProfile.uid}
-              profile={activeProfile}
-              onSwipe={handleSwipe}
-          />
+             <ProfileCard
+                key={activeProfile.uid}
+                profile={activeProfile}
+                onSwipe={(dir) => handleSwipe(dir as 'left' | 'right')}
+             />
         </div>
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center text-center p-4">
-          <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
-          <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
-          <Button onClick={handleReset} className="mt-6 rounded-full" size="lg">
-            <RotateCcw className="mr-2 h-5 w-5" />
-            Yeniden Başla
-          </Button>
-        </div>
-      )}
+        ) : (
+            <div className="flex h-full flex-col items-center justify-center text-center p-4">
+            <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
+            <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
+            <Button onClick={handleReset} className="mt-6 rounded-full" size="lg">
+                <RotateCcw className="mr-2 h-5 w-5" />
+                Yeniden Başla
+            </Button>
+            </div>
+        )}
     </div>
   );
 }
