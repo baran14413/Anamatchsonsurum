@@ -54,6 +54,7 @@ export default function ProfilePage() {
         if (!userProfile) return 0;
         
         let score = 0;
+        const maxScore = 70;
         
         // Basic profile info is worth 10 points
         if (userProfile.fullName && userProfile.dateOfBirth && userProfile.gender && userProfile.location && userProfile.lookingFor) {
@@ -63,13 +64,9 @@ export default function ProfilePage() {
         // Each photo is worth 10 points, up to 6 photos
         const photoCount = userProfile.images?.length || 0;
         score += Math.min(photoCount, 6) * 10;
-
-        // The remaining 30 points logic will be added here later.
-        // For now, the max score is 70. We can represent this as a percentage of the current max.
         
-        const maxCurrentScore = 70;
-        
-        return Math.round((score / maxCurrentScore) * 100);
+        // Calculate the percentage based on the current max possible score (70)
+        return Math.round((score / maxScore) * 100);
     }
 
     const age = calculateAge(userProfile?.dateOfBirth);
