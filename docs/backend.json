@@ -70,6 +70,18 @@
         "distancePreference": {
             "type": "number",
             "description": "Maximum distance in kilometers for potential matches."
+        },
+        "ageRange": {
+            "type": "object",
+            "properties": {
+                "min": {"type": "number"},
+                "max": {"type": "number"}
+            },
+            "description": "The preferred age range for matches."
+        },
+        "expandAgeRange": {
+            "type": "boolean",
+            "description": "Whether to show people outside the preferred age range if there are no matches."
         }
       },
       "required": [

@@ -26,6 +26,11 @@ export type UserProfile = {
   school?: string;
   lookingFor?: string;
   distancePreference?: number;
+  ageRange?: {
+    min: number;
+    max: number;
+  };
+  expandAgeRange?: boolean;
   lifestyle?: {
     drinking?: string;
     smoking?: string;

@@ -10,9 +10,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 
 
 export default function PreferencesPage() {
@@ -21,6 +22,14 @@ export default function PreferencesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const t = langTr;
+
+    const [ageRange, setAgeRange] = useState([userProfile?.ageRange?.min || 18, userProfile?.ageRange?.max || 35]);
+
+    useEffect(() => {
+        if (userProfile?.ageRange) {
+            setAgeRange([userProfile.ageRange.min, userProfile.ageRange.max]);
+        }
+    }, [userProfile?.ageRange]);
 
     const handleGenderPreferenceChange = async (value: 'male' | 'female' | 'both') => {
         if (!user || !firestore) return;
@@ -65,6 +74,41 @@ export default function PreferencesPage() {
             });
         }
     };
+    
+    const handleAgeRangeChange = (value: number[]) => {
+        setAgeRange(value);
+    };
+
+    const handleAgeRangeCommit = async (value: number[]) => {
+        if (!user || !firestore) return;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        try {
+            await updateDoc(userDocRef, {
+                ageRange: { min: value[0], max: value[1] }
+            });
+            toast({
+                title: "Yaş Aralığı Güncellendi",
+                description: "Yaş aralığı tercihiniz başarıyla kaydedildi.",
+            });
+        } catch (error) {
+            console.error("Failed to update age range: ", error);
+            toast({
+                title: "Hata",
+                description: "Yaş aralığı güncellenirken bir hata oluştu.",
+                variant: "destructive"
+            });
+        }
+    };
+    
+    const handleExpandAgeRangeChange = async (checked: boolean) => {
+        if (!user || !firestore) return;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        try {
+            await updateDoc(userDocRef, { expandAgeRange: checked });
+        } catch (error) {
+            console.error("Failed to update expand age range toggle: ", error);
+        }
+    };
 
 
     return (
@@ -79,7 +123,7 @@ export default function PreferencesPage() {
             <main className="flex-1 overflow-y-auto p-6 space-y-8">
                 <div className='space-y-4'>
                     <div>
-                        <h2 className="text-xl font-bold">Görmek İstiyorum</h2>
+                        <h2 className="text-xl font-bold">Bana Göster</h2>
                         <p className='text-muted-foreground'>Kiminle eşleşmek istersin?</p>
                     </div>
 
@@ -110,6 +154,39 @@ export default function PreferencesPage() {
                            <RadioGroupItem value="both" id="both" />
                         </Label>
                     </RadioGroup>
+                </div>
+                <Separator />
+                 <div className='space-y-4'>
+                    <div>
+                        <h2 className="text-xl font-bold">Yaş Aralığı</h2>
+                    </div>
+                     <div className="space-y-4">
+                        <div className="flex justify-between items-baseline">
+                            <Label className="text-base">Yaş Aralığı</Label>
+                            <span className="text-lg font-bold text-foreground">{ageRange[0]} - {ageRange[1]}</span>
+                        </div>
+                        <Slider
+                            value={ageRange}
+                            max={100}
+                            min={18}
+                            step={1}
+                            onValueChange={handleAgeRangeChange}
+                            onValueCommit={handleAgeRangeCommit}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+                        <Label htmlFor="expand-age" className="flex flex-col space-y-1">
+                            <span className="font-normal leading-snug text-muted-foreground">
+                                Görecek profil kalmadığında, tercih ettiğim yaş aralığının biraz dışındaki kişileri göster
+                            </span>
+                        </Label>
+                        <Switch
+                            id="expand-age"
+                            checked={userProfile?.expandAgeRange || false}
+                            onCheckedChange={handleExpandAgeRangeChange}
+                        />
+                    </div>
                 </div>
                 <Separator />
                 <div className='space-y-4'>

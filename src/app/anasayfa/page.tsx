@@ -15,6 +15,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
+const calculateAge = (dateString?: string): number | null => {
+    if (!dateString) return null;
+    const birthDate = new Date(dateString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+};
+
+
 export default function AnasayfaPage() {
   const t = langTr;
   const { user, userProfile } = useUser();
@@ -131,6 +145,7 @@ export default function AnasayfaPage() {
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
         const isGlobalMode = userProfile?.globalModeEnabled;
+        const ageRange = userProfile?.ageRange;
 
         if (genderPref && genderPref !== 'both') {
           qConstraints.push(where('gender', '==', genderPref));
@@ -147,32 +162,46 @@ export default function AnasayfaPage() {
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
-                if (!p.location?.latitude || !p.location?.longitude) return false;
-
-                const distance = getDistance(
-                    userProfile.location!.latitude!,
-                    userProfile.location!.longitude!,
-                    p.location.latitude,
-                    p.location.longitude
-                );
                 
-                (p as ProfileWithDistance).distance = distance;
-
-                if (isGlobalMode) {
-                  return true;
+                // Age filter
+                if (ageRange) {
+                    const age = calculateAge(p.dateOfBirth);
+                    if (age === null || age < ageRange.min || age > ageRange.max) {
+                        return false;
+                    }
                 }
-
-                const userDistancePref = userProfile.distancePreference || 50;
                 
-                if (distance > userDistancePref) {
-                    return false;
+                // Location filter
+                if (!isGlobalMode) {
+                    if (!p.location?.latitude || !p.location?.longitude) return false;
+                    const distance = getDistance(
+                        userProfile.location!.latitude!,
+                        userProfile.location!.longitude!,
+                        p.location.latitude,
+                        p.location.longitude
+                    );
+                    (p as ProfileWithDistance).distance = distance;
+                    const userDistancePref = userProfile.distancePreference || 50;
+                    if (distance > userDistancePref) {
+                        return false;
+                    }
+                } else {
+                     if (p.location?.latitude && p.location?.longitude) {
+                        const distance = getDistance(
+                            userProfile.location!.latitude!,
+                            userProfile.location!.longitude!,
+                            p.location.latitude,
+                            p.location.longitude
+                        );
+                        (p as ProfileWithDistance).distance = distance;
+                     }
                 }
                 
                 return true;
             });
         
         if (isGlobalMode) {
-          fetchedProfiles.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+          fetchedProfiles.sort((a, b) => ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity));
         }
         
         setProfiles(fetchedProfiles);
