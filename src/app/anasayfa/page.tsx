@@ -108,7 +108,7 @@ export default function AnasayfaPage() {
             const systemMessage = {
                 matchId: matchId,
                 senderId: 'system',
-                text: `${userProfile.fullName} sana bir Super Like yolladı. Onu tanımak ister misin?`,
+                text: `${swipedProfile.fullName} merhaba, benim adım ${userProfile.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`,
                 timestamp: serverTimestamp(),
                 isRead: false,
                 type: 'system_superlike_prompt',
@@ -329,5 +329,7 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
 
     
