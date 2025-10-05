@@ -9,7 +9,7 @@ import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile;
-  onSwipe: (action: 'liked' | 'disliked') => void;
+  onSwipe: (action: 'liked') => void;
   isDraggable: boolean;
 }
 
@@ -31,7 +31,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
-  // For Tinder-like drag rotation
+  // For Tinder-like drag rotation and exit animation
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
 
@@ -68,22 +68,23 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: PanInfo) => {
     if (!isDraggable) return;
+
     const swipe = swipePower(offset.x, velocity.x);
-    if (swipe < -swipeConfidenceThreshold) {
-      onSwipe('disliked');
-    } else if (swipe > swipeConfidenceThreshold) {
+
+    // Only handle right swipe for now
+    if (swipe > swipeConfidenceThreshold) {
       onSwipe('liked');
     }
   };
-
 
   return (
      <motion.div
         style={{ x, rotate }} // Apply dynamic rotation and position
         drag={isDraggable ? "x" : false}
         dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={1}
         onDragEnd={handleDragEnd}
-        className="absolute w-full h-full"
+        className="w-full h-full"
      >
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
