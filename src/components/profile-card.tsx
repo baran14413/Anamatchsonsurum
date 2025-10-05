@@ -5,7 +5,7 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
 import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 
 interface ProfileCardProps {
@@ -28,17 +28,17 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
-  // Animation values
+  // Animation values are now self-contained within the component
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
-  // Reset image index and details view when the profile changes
+  // Reset internal state when the profile prop changes
   useEffect(() => {
     setImageIndex(0);
     setShowDetails(false);
-    x.set(0); // Reset motion value
+    x.set(0); 
   }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
@@ -66,7 +66,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const highlights = getProfileHighlights(profile);
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.x > SWIPE_THRESHOLD) {
       onSwipe('liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
@@ -77,14 +77,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   return (
      <motion.div 
-        className="w-full h-full"
+        className="w-full h-full cursor-grab active:cursor-grabbing"
         drag={isDraggable ? "x" : false}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        dragElastic={0.5}
         onDragEnd={handleDragEnd}
         style={{ x, rotate }}
-        initial={{ scale: 0.95, opacity: 0.5 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ x: x.get() > 0 ? 300 : -300, opacity: 0, transition: { duration: 0.2 } }}
         whileTap={{ cursor: 'grabbing' }}
       >
         <div
@@ -118,11 +116,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             </motion.div>
 
             <div
-            className="absolute left-0 top-0 h-full w-1/2 z-[5]"
+            className="absolute left-0 top-0 h-full w-1/2 z-[5] cursor-pointer"
             onClick={(e) => handleAreaClick(e, 'left')}
             ></div>
             <div
-            className="absolute right-0 top-0 h-full w-1/2 z-[5]"
+            className="absolute right-0 top-0 h-full w-1/2 z-[5] cursor-pointer"
             onClick={(e) => handleAreaClick(e, 'right')}
             ></div>
 
