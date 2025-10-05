@@ -35,11 +35,6 @@ const formSchema = z.object({
         .refine(date => !isNaN(date.getTime()), { message: "Lütfen geçerli bir tarih girin." }),
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
     lookingFor: z.string({ required_error: "Lütfen birini seç." }).min(1, { message: "Lütfen birini seç." }),
-    address: z.object({
-        country: z.string().optional(),
-        state: z.string().optional(),
-        city: z.string().optional(),
-    }).optional(),
     location: z.object({
         latitude: z.number(),
         longitude: z.number(),
@@ -194,7 +189,7 @@ export default function ProfileCompletionForm() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        form.setValue('location', { latitude, longitude });
+        form.setValue('location', { latitude, longitude }, { shouldValidate: true });
         setLocationStatus('success');
         setIsLocationLoading(false);
       },
@@ -266,7 +261,6 @@ export default function ProfileCompletionForm() {
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
         location: data.location,
-        address: data.address,
       };
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
@@ -335,7 +329,7 @@ export default function ProfileCompletionForm() {
       return;
     }
 
-    const fieldsByStep: (keyof SignupFormValues | 'location')[] = [
+    const fieldsByStep: (keyof SignupFormValues)[] = [
         ['name'], // 0
         ['location'], // 1
         ['photos'], // 2
