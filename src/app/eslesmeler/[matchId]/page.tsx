@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
@@ -212,9 +212,10 @@ export default function ChatPage() {
             return;
         }
 
-        if (!content.text?.trim() && !content.imageUrl && !content.audioUrl) return;
-    
-        if (content.text) setNewMessage('');
+        const currentMessage = newMessage.trim();
+        if (!currentMessage && !content.imageUrl && !content.audioUrl) return;
+
+        if (currentMessage) setNewMessage('');
     
         const messageData: Partial<ChatMessage> = {
             matchId: matchId,
@@ -230,9 +231,9 @@ export default function ChatPage() {
             messageData.imagePublicId = content.imagePublicId;
             messageData.isViewOnce = content.isViewOnce;
             if(content.isViewOnce) messageData.viewed = false;
-        } else if (content.text?.trim()) {
+        } else if (currentMessage) {
             messageData.type = 'user';
-            messageData.text = content.text.trim();
+            messageData.text = currentMessage;
         } else if (content.audioUrl) {
             messageData.type = 'audio';
             messageData.audioUrl = content.audioUrl;
@@ -763,6 +764,8 @@ export default function ChatPage() {
             </AlertDialog>
              <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
                 <DialogContent className="p-0 border-0 bg-black/90 text-white max-w-full h-full max-h-full sm:rounded-none flex flex-col">
+                    <DialogTitle className="sr-only">Fotoğraf Önizleme ve Gönderme</DialogTitle>
+                    <DialogDescription className="sr-only">Göndermeden önce fotoğrafı önizleyin, başlık ekleyin ve tek seferlik görüntüleme olarak ayarlayın.</DialogDescription>
                     <DialogClose asChild>
                         <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-20 rounded-full bg-black/50 hover:bg-black/70">
                             <X className="h-6 w-6" />
@@ -804,3 +807,5 @@ export default function ChatPage() {
         </div>
     );
 }
+
+    
