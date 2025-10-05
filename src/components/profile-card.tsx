@@ -9,7 +9,6 @@ import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from '
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from './ui/button';
-import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -87,25 +86,17 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 <div
                     className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
                 >
-                    <Carousel className="w-full h-full">
-                        <CarouselContent>
-                            {profile.images.map((img, index) => (
-                            <CarouselItem key={index}>
-                                <div className="relative w-full h-full">
-                                <Image
-                                    src={img}
-                                    alt={`${profile.fullName} profile image ${index + 1}`}
-                                    fill
-                                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                                    style={{ objectFit: 'cover' }}
-                                    className="pointer-events-none"
-                                    priority={isDraggable && index === 0}
-                                />
-                                </div>
-                            </CarouselItem>
-                            ))}
-                        </CarouselContent>
-                    </Carousel>
+                    {profile.images && profile.images.length > 0 && (
+                        <Image
+                            src={profile.images[0]}
+                            alt={`${profile.fullName} profile image`}
+                            fill
+                            sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                            style={{ objectFit: 'cover' }}
+                            className="pointer-events-none"
+                            priority={isDraggable}
+                        />
+                    )}
 
                     {isDraggable && (
                         <>
