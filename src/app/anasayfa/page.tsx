@@ -6,12 +6,14 @@ import { Undo, X, Star, Heart, Send, Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import ProfileCard from '@/components/profile-card';
 import type { UserProfile } from '@/lib/types';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { collection, query, where, getDocs, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function AnasayfaPage() {
   const t = langTr;
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,23 +21,60 @@ export default function AnasayfaPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      if (!user) return;
+      if (!user || !firestore) return;
 
       setIsLoading(true);
       try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/api/get-potential-matches', {
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
+        // 1. Get IDs of users the current user has already interacted with
+        const userInteractionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const userInteractionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+
+        const [interactionsSnapshot1, interactionsSnapshot2] = await Promise.all([
+          getDocs(userInteractionsQuery1),
+          getDocs(userInteractionsQuery2),
+        ]);
+
+        const interactedUserIds = new Set<string>();
+        interactionsSnapshot1.forEach(doc => {
+            const data = doc.data();
+            if (data.user2Id) interactedUserIds.add(data.user2Id);
+        });
+        interactionsSnapshot2.forEach(doc => {
+            const data = doc.data();
+            if (data.user1Id) interactedUserIds.add(data.user1Id);
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch profiles');
-        }
+        // Add current user to interacted set to filter them out
+        interactedUserIds.add(user.uid);
+        
+        const interactedIdsArray = Array.from(interactedUserIds);
 
-        const data = await response.json();
-        setProfiles(data);
+        // 2. Fetch users who are NOT in the interacted list.
+        // Firestore 'not-in' query requires a non-empty array.
+        let potentialMatchesQuery;
+        if (interactedIdsArray.length > 0) {
+            potentialMatchesQuery = query(collection(firestore, 'users'), where('uid', 'not-in', interactedIdsArray));
+        } else {
+            potentialMatchesQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
+        }
+        
+        const usersSnapshot = await getDocs(potentialMatchesQuery);
+        
+        const potentialMatches: UserProfile[] = [];
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data() as UserProfile;
+             if (userData && userData.uid) {
+                potentialMatches.push({
+                    id: doc.id,
+                    ...userData,
+                    images: userData.images || [], 
+                });
+            }
+        });
+        
+        // 3. Shuffle for randomness
+        const shuffledMatches = potentialMatches.sort(() => 0.5 - Math.random());
+        setProfiles(shuffledMatches);
 
       } catch (error) {
         console.error("Error fetching profiles:", error);
@@ -48,37 +87,65 @@ export default function AnasayfaPage() {
         setIsLoading(false);
       }
     }
-
-    fetchProfiles();
-  }, [user, toast, t.common.error]);
+    
+    if (user && firestore) {
+      fetchProfiles();
+    }
+  }, [user, firestore, toast, t.common.error]);
 
   const recordSwipe = async (swipedProfile: UserProfile, direction: 'left' | 'right') => {
-    if (!user || !swipedProfile.uid) return;
+    if (!user || !firestore || !swipedProfile.uid) return;
 
     try {
-        const idToken = await user.getIdToken();
-        const response = await fetch('/api/record-swipe', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-                swipedUserId: swipedProfile.uid,
-                direction: direction,
-            }),
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to record swipe');
-        }
+        const currentUserId = user.uid;
+        const swipedUserId = swipedProfile.uid;
 
-        const result = await response.json();
-        if (result.match) {
-            toast({
-                title: t.anasayfa.matchToastTitle,
-                description: t.anasayfa.matchToastDescription
-            });
+        const matchId = [currentUserId, swipedUserId].sort().join('_');
+        const matchRef = doc(firestore, `matches/${matchId}`);
+
+        if (direction === 'right') {
+            const otherUserSwipeRef = doc(firestore, 'matches', [swipedUserId, currentUserId].sort().join('_'));
+            const otherUserSwipeDoc = await getDoc(otherUserSwipeRef);
+
+            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.user1Id === swipedUserId && otherUserSwipeDoc.data()?.status === 'liked') {
+                // It's a match!
+                await setDoc(matchRef, { status: 'matched', matchDate: serverTimestamp() }, { merge: true });
+
+                // Create match documents in both users' subcollections
+                const matchDataForSubcollection = {
+                    id: matchId,
+                    users: [currentUserId, swipedUserId],
+                    matchDate: serverTimestamp(),
+                };
+                const currentUserMatchRef = doc(firestore, `users/${currentUserId}/matches/${matchId}`);
+                const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
+                
+                await setDoc(currentUserMatchRef, matchDataForSubcollection);
+                await setDoc(otherUserMatchRef, matchDataForSubcollection);
+                
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: t.anasayfa.matchToastDescription
+                });
+
+            } else {
+                // Not a match yet, just record the like.
+                 await setDoc(matchRef, {
+                    id: matchId,
+                    user1Id: currentUserId,
+                    user2Id: swipedUserId,
+                    status: 'liked',
+                    timestamp: serverTimestamp(),
+                }, { merge: true });
+            }
+        } else { // 'left' swipe
+             await setDoc(matchRef, {
+                id: matchId,
+                user1Id: currentUserId,
+                user2Id: swipedUserId,
+                status: 'disliked',
+                timestamp: serverTimestamp(),
+            }, { merge: true });
         }
 
     } catch (error) {
