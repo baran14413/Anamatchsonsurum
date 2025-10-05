@@ -491,7 +491,7 @@ export default function SignupForm() {
             if (permissionStatus.state === 'denied') {
                  toast({
                     title: t.signup.step6.errorTitle,
-                    description: t.signup.step6.errorMessage,
+                    description: t.ayarlarKonum.errors.permissionDenied,
                     variant: "destructive"
                 });
                 setIsLoading(false);
@@ -1134,16 +1134,7 @@ export default function SignupForm() {
             </div>
 
           <div className="shrink-0 pt-6">
-            {step === 2 ? (
-                <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full h-14 rounded-full text-lg font-bold"
-                    disabled={isLoading || ageStatus !== 'valid'}
-                >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
-                </Button>
-            ) : step === 5 ? (
+            {step === 5 ? (
               <Button
                 type="button"
                 onClick={handleLocationRequest}
@@ -1152,50 +1143,21 @@ export default function SignupForm() {
               >
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step6.button}
               </Button>
-            ) : step === 8 ? (
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading || filledLifestyleCount < 4}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
-              </Button>
-            ) : step === 9 ? (
-                <Button
-                type="button"
-                onClick={handleNextStep}
-                className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading || filledMoreInfoCount < 4}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
-              </Button>
-            ) : step === 10 ? (
-                 <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="w-full h-14 rounded-full text-lg font-bold"
-                    disabled={isLoading || selectedInterests.length < 1}
-                    >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
-                 </Button>
-            ) : step === finalStep ? (
-                <Button
-                  type="button"
-                  onClick={handleNextStep}
-                  className="w-full h-14 rounded-full text-lg font-bold"
-                  disabled={isLoading || uploadedPhotoCount < 2}
-                >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.common.done}
-                </Button>
             ) : (
               <Button
                 type="button"
                 onClick={handleNextStep}
                 className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading}
+                disabled={
+                  isLoading ||
+                  (step === 2 && ageStatus !== 'valid') ||
+                  (step === 8 && filledLifestyleCount < 4) ||
+                  (step === 9 && filledMoreInfoCount < 4) ||
+                  (step === 10 && selectedInterests.length < 1) ||
+                  (step === finalStep && uploadedPhotoCount < 2)
+                }
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === finalStep ? t.common.done : t.signup.common.next)}
               </Button>
             )}
 
@@ -1210,15 +1172,3 @@ export default function SignupForm() {
     </div>
   );
 }
-
-    
-
-    
-
-
-
-    
-
-
-
-    
