@@ -7,8 +7,9 @@ import FooterNav from './footer-nav';
 import { Loader2, ShieldCheck, Settings } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
+import Link from 'next/link';
 
-const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil'];
+const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
 const authRoutes = ['/', '/login', '/kayit-ol', '/kurallar', '/tos', '/privacy', '/cookies'];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -44,8 +45,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // If the route is not protected, or if the user is loaded, render the content.
   // For protected routes, this will only render if the user is authenticated (due to the redirect above).
   const isProfilePage = pathname === '/profil';
+  const showHeaderAndFooter = protectedRoutes.includes(pathname) && pathname !== '/ayarlar';
+
 
   if (isProtectedRoute && user) {
+    if (!showHeaderAndFooter) {
+        return <>{children}</>;
+    }
     return (
       <div className="flex h-screen flex-col bg-background text-foreground">
         <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b px-4">
@@ -56,9 +62,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <Button variant="ghost" size="icon">
                         <ShieldCheck className="h-6 w-6 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon">
-                        <Settings className="h-6 w-6 text-muted-foreground" />
-                    </Button>
+                    <Link href="/ayarlar">
+                      <Button variant="ghost" size="icon">
+                          <Settings className="h-6 w-6 text-muted-foreground" />
+                      </Button>
+                    </Link>
                 </div>
             </>
           ) : (
