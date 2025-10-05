@@ -25,13 +25,13 @@ export default function AnasayfaPage() {
 
       setIsLoading(true);
       try {
-        // 1. Get IDs of users the current user has already interacted with from the `matches` collection
+        // 1. Get IDs of users the current user has already interacted with.
         const interactionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
         const interactionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-
+        
         const [interactionsSnapshot1, interactionsSnapshot2] = await Promise.all([
-            getDocs(interactionsQuery1),
-            getDocs(interactionsQuery2)
+          getDocs(interactionsQuery1),
+          getDocs(interactionsQuery2)
         ]);
 
         const interactedUserIds = new Set<string>();
@@ -41,19 +41,17 @@ export default function AnasayfaPage() {
         interactionsSnapshot2.forEach(doc => {
             interactedUserIds.add(doc.data().user1Id);
         });
-        
-        // Add current user to the set to filter them out
-        interactedUserIds.add(user.uid);
 
-        // 2. Fetch all users from the 'users' collection
-        const allUsersQuery = query(collection(firestore, 'users'), where('uid', '!=', user.uid));
-        const usersSnapshot = await getDocs(allUsersQuery);
+        // 2. Fetch all users from the 'users' collection.
+        const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
 
-        // 3. Filter out users who have been interacted with on the client side
+        // 3. Filter out the current user and users who have been interacted with.
         const potentialMatches: UserProfile[] = [];
-        usersSnapshot.forEach(doc => {
-            const userData = doc.data();
-             if (userData && userData.uid && !interactedUserIds.has(userData.uid)) {
+        allUsersSnapshot.forEach(doc => {
+            const userData = doc.data() as Omit<UserProfile, 'id'>;
+            // Ensure the user is not the current user and has not been interacted with
+            // and has a valid UID and images array.
+            if (userData.uid && userData.uid !== user.uid && !interactedUserIds.has(userData.uid)) {
                 potentialMatches.push({
                     id: doc.id,
                     ...userData,
@@ -90,22 +88,27 @@ export default function AnasayfaPage() {
         const currentUserId = user.uid;
         const swipedUserId = swipedProfile.uid;
 
+        // Use a consistent ID generation for the match document
         const matchId = [currentUserId, swipedUserId].sort().join('_');
-        const matchRef = doc(firestore, `matches/${matchId}`);
-
+        const matchRef = doc(firestore, 'matches', matchId);
+        
         if (direction === 'right') {
-            const otherUserSwipeRef = doc(firestore, 'matches', [swipedUserId, currentUserId].sort().join('_'));
-            const otherUserSwipeDoc = await getDoc(otherUserSwipeRef);
+            // Check if the other user has already liked the current user.
+            const otherUserSwipeDoc = await getDoc(matchRef);
 
-            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.user1Id === swipedUserId && otherUserSwipeDoc.data()?.status === 'liked') {
-                // It's a match!
-                await setDoc(matchRef, { status: 'matched', matchDate: serverTimestamp() }, { merge: true });
+            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.user2Id === swipedUserId && otherUserSwipeDoc.data()?.status === 'liked') {
+                // It's a match! The other user liked us, and we are liking them back.
+                 await setDoc(matchRef, { 
+                    ...otherUserSwipeDoc.data(),
+                    status: 'matched',
+                    matchDate: serverTimestamp() 
+                }, { merge: true });
 
-                // Create match documents in both users' subcollections
                 const matchDataForSubcollection = {
                     id: matchId,
-                    users: [currentUserId, swipedUserId],
+                    users: [currentUserId, swipedUserId].sort(),
                     matchDate: serverTimestamp(),
+                    // You can add other relevant info here like names and pictures for the chat list
                 };
                 const currentUserMatchRef = doc(firestore, `users/${currentUserId}/matches/${matchId}`);
                 const otherUserMatchRef = doc(firestore, `users/${swipedUserId}/matches/${matchId}`);
@@ -119,8 +122,8 @@ export default function AnasayfaPage() {
                 });
 
             } else {
-                // Not a match yet, just record the like.
-                 await setDoc(matchRef, {
+                // First "like" in this pair.
+                await setDoc(matchRef, {
                     id: matchId,
                     user1Id: currentUserId,
                     user2Id: swipedUserId,
@@ -128,10 +131,11 @@ export default function AnasayfaPage() {
                     timestamp: serverTimestamp(),
                 }, { merge: true });
             }
-        } else { // 'left' swipe
+        } else { // 'left' swipe (dislike)
              await setDoc(matchRef, {
                 id: matchId,
-                user1Id: currentUserId,
+                // To track who disliked whom, you can be more specific
+                user1Id: currentUserId, 
                 user2Id: swipedUserId,
                 status: 'disliked',
                 timestamp: serverTimestamp(),

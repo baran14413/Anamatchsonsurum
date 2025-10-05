@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { Icons } from './icons';
 
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil'];
-const publicRoutes = ['/', '/login', '/kayit-ol', '/kurallar', '/tos', '/privacy', '/cookies'];
+const authRoutes = ['/', '/login', '/kayit-ol', '/kurallar', '/tos', '/privacy', '/cookies'];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -16,24 +16,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isAuthRoute = authRoutes.includes(pathname);
 
   useEffect(() => {
     if (isUserLoading) {
-      // Still loading, do nothing
+      // Still loading, do nothing yet.
       return;
     }
 
     if (!user && isProtectedRoute) {
-      // If not logged in and on a protected route, redirect to welcome page
+      // If not logged in and trying to access a protected route, redirect to welcome page
       router.replace('/');
-    } else if (user && (pathname === '/' || pathname === '/login')) {
-      // If logged in and on the welcome or login page, redirect to home
+    } else if (user && isAuthRoute) {
+      // If logged in and on a public/auth route, redirect to the main app page
       router.replace('/anasayfa');
     }
-  }, [isUserLoading, user, pathname, isProtectedRoute, router]);
+  }, [isUserLoading, user, pathname, isProtectedRoute, isAuthRoute, router]);
 
-  if (isUserLoading && (isProtectedRoute || pathname === '/')) {
+  if (isUserLoading && (isProtectedRoute || isAuthRoute)) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
