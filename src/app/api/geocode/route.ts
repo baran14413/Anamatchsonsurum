@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
 
         if (!city) {
             console.warn("Could not determine city from geocoder response:", address);
-            return NextResponse.json({ error: 'City could not be determined from coordinates.' }, { status: 404 });
+            // Even if city is not found, we can proceed. The client requested this.
+            // Let's just return the country code if available.
+             return NextResponse.json({ address: { city: null, country: address.countryCode } });
         }
 
         const responseData = {
@@ -55,3 +57,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Either lat/lon or an address query parameter is required' }, { status: 400 });
   }
 }
+
+    

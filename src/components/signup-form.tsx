@@ -37,8 +37,8 @@ const formSchema = z.object({
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
     lookingFor: z.string({ required_error: "Lütfen birini seç." }).min(1, { message: "Lütfen birini seç." }),
     address: z.object({
-        country: z.string().min(1),
-        state: z.string().min(1),
+        country: z.string().optional(),
+        state: z.string().optional(),
         city: z.string().optional(),
     }),
     location: z.object({
@@ -150,7 +150,6 @@ export default function ProfileCompletionForm() {
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [address, setAddress] = useState<string | null>(null);
 
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,13 +192,13 @@ export default function ProfileCompletionForm() {
     setIsLocationLoading(true);
     setLocationStatus('idle');
     setLocationError(null);
-    setAddress(null);
 
     if (!navigator.geolocation) {
-        toast({ title: "Hata", description: "Tarayıcınız konum servisini desteklemiyor.", variant: "destructive" });
+        const errorMsg = "Tarayıcınız konum servisini desteklemiyor.";
+        toast({ title: "Hata", description: errorMsg, variant: "destructive" });
         setIsLocationLoading(false);
         setLocationStatus('error');
-        setLocationError("Tarayıcınız konum servisini desteklemiyor.");
+        setLocationError(errorMsg);
         return;
     }
 
@@ -207,31 +206,9 @@ export default function ProfileCompletionForm() {
         async (position) => {
             const { latitude, longitude } = position.coords;
             form.setValue('location', { latitude, longitude });
-
-            try {
-                const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-
-                if (!response.ok || data.error) {
-                    throw new Error(data.error || "Adres bulunamadı.");
-                }
-
-                const fetchedAddress = data.address;
-                form.setValue('address', {
-                    country: fetchedAddress.country || '',
-                    state: fetchedAddress.city || '',
-                    city: '',
-                });
-
-                setAddress(`${fetchedAddress.city}, ${fetchedAddress.country}`);
-                setLocationStatus('success');
-
-            } catch (error: any) {
-                setLocationError(error.message);
-                setLocationStatus('error');
-            } finally {
-                setIsLocationLoading(false);
-            }
+            // We don't need to geocode anymore, just confirm success.
+            setLocationStatus('success');
+            setIsLocationLoading(false);
         },
         (error) => {
             let message = "Konum alınırken bir hata oluştu.";
@@ -305,7 +282,7 @@ export default function ProfileCompletionForm() {
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
         location: data.location,
-        address: data.address,
+        address: data.address, // Still here, but might be empty. That's OK.
       };
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
@@ -406,17 +383,16 @@ export default function ProfileCompletionForm() {
                             {isLocationLoading ? t.ayarlarKonum.updatingButton : t.signup.step6.button}
                         </Button>
                     )}
-                    {locationStatus === 'success' && address && (
+                    {locationStatus === 'success' && (
                         <div className="flex flex-col items-center gap-2 text-green-600">
                            <CheckCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">Konum Başarıyla Alındı!</p>
-                           <p className="text-muted-foreground">{address}</p>
                         </div>
                     )}
                     {locationStatus === 'error' && (
                          <div className="flex flex-col items-center gap-2 text-destructive">
                            <XCircle className="w-12 h-12" />
-                           <p className="font-semibold text-lg">{t.ayarlarKonum.errors.refNotFoundError}</p>
+                           <p className="font-semibold text-lg">{t.ayarlarKonum.errors.permissionDenied}</p>
                            <p className="text-muted-foreground max-w-xs">{locationError}</p>
                            <Button onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
                         </div>
@@ -596,3 +572,5 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
+    
