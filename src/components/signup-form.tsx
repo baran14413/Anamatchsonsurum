@@ -576,16 +576,8 @@ export default function SignupForm() {
       }
     }
   };
-  
-  const handleSkip = () => {
-    if (step === 7) { 
-        form.setValue('school', '');
-        nextStep();
-    }
-  }
-  
-  const finalStep = isGoogleSignup ? 10 : 11;
 
+  const finalStep = isGoogleSignup ? 10 : 11;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -595,7 +587,7 @@ export default function SignupForm() {
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
         {(step > 0 && step < finalStep) ? (
-            <Button variant="ghost" onClick={handleSkip} className={`shrink-0 w-16 ${step === 7 ? '' : 'invisible'}`}>
+            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 7 ? '' : 'invisible'}`}>
                 {t.signup.progressHeader.skip}
             </Button>
         ) : <div className="w-16"></div>}
