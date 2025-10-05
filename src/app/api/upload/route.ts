@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
 
+// Configure Cloudinary at the top level to ensure env vars are loaded
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+
 // This is a workaround for a bug in Next.js where the body is not parsed correctly
 // See: https://github.com/vercel/next.js/discussions/54128
 async function getFileFromRequest(req: NextRequest) {
@@ -15,13 +23,6 @@ async function getFileFromRequest(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Configure Cloudinary within the POST function to ensure env vars are loaded
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-
   try {
     const file = await getFileFromRequest(req);
     
@@ -56,10 +57,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
   }
 }
-
-// Disable the default body parser for this route
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

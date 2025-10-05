@@ -4,6 +4,9 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  serverActions: {
+    bodySizeLimit: '4mb',
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -37,7 +40,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'httpshttps',
         hostname: 'www.citypng.com',
         port: '',
         pathname: '/**',
