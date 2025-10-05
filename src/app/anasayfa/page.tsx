@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Undo, X, Star, Heart, Send, Loader2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
@@ -8,7 +8,7 @@ import ProfileCard from '@/components/profile-card';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, getDoc, serverTimestamp, query, where, writeBatch } from 'firebase/firestore';
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -25,9 +25,17 @@ export default function AnasayfaPage() {
 
       setIsLoading(true);
       try {
-        // 1. Get IDs of users the current user has already interacted with
-        const interactionsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/interactions`));
-        const interactedUserIds = new Set(interactionsSnapshot.docs.map(doc => doc.id));
+        // 1. Get IDs of users the current user has already interacted with (liked, disliked, or matched)
+        const currentUserSwipesSnapshot = await getDocs(collection(firestore, `matches`));
+        const interactedUserIds = new Set<string>();
+        currentUserSwipesSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.user1Id === user.uid) {
+            interactedUserIds.add(data.user2Id);
+          } else if (data.user2Id === user.uid) {
+            interactedUserIds.add(data.user1Id);
+          }
+        });
         interactedUserIds.add(user.uid); // Filter out the current user
 
         // 2. Get all user profiles
@@ -36,9 +44,7 @@ export default function AnasayfaPage() {
         const allUsers: UserProfile[] = [];
         allUsersSnapshot.forEach(doc => {
             const userData = doc.data();
-            // IMPORTANT FIX: Ensure it's a valid user profile document with a `uid`.
-            // This filters out documents that are just containers for subcollections.
-            if (userData && userData.uid) {
+            if (userData && userData.uid) { // Ensure it's a valid user profile
                 allUsers.push({
                     id: doc.id,
                     ...userData,
@@ -74,47 +80,61 @@ export default function AnasayfaPage() {
     if (!user || !firestore) return;
 
     try {
-        // Record the swipe in the current user's interactions subcollection
-        const currentUserInteractionRef = doc(firestore, `users/${user.uid}/interactions/${swipedProfile.uid}`);
-        await setDoc(currentUserInteractionRef, {
-            swipe: direction,
-            timestamp: serverTimestamp(),
-        });
+        const swipeId = [user.uid, swipedProfile.uid].sort().join('_');
+        const swipeDocRef = doc(firestore, `matches/${swipeId}`);
 
         if (direction === 'right') {
-            // Check if the other user has swiped right on the current user
-            const otherUserInteractionRef = doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`);
-            const otherUserSwipeDoc = await getDoc(otherUserInteractionRef);
+            const otherUserSwipeId = [swipedProfile.uid, user.uid].sort().join('_');
+            const otherUserSwipeDocRef = doc(firestore, `matches/${otherUserSwipeId}`);
+            const otherUserSwipeDoc = await getDoc(otherUserSwipeDocRef);
 
-            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.swipe === 'right') {
+            if (otherUserSwipeDoc.exists() && otherUserSwipeDoc.data()?.user1Id === swipedProfile.uid && otherUserSwipeDoc.data()?.status === 'liked') {
                 // It's a match!
-                const matchId = [user.uid, swipedProfile.uid].sort().join('_');
+                const batch = writeBatch(firestore);
                 const matchDate = serverTimestamp();
                 const [user1Id, user2Id] = [user.uid, swipedProfile.uid].sort();
 
                 const matchData = {
-                    id: matchId,
+                    id: swipeId,
                     user1Id,
                     user2Id,
                     matchDate: matchDate,
                     users: [user.uid, swipedProfile.uid],
+                    status: 'matched',
                 };
+                
+                // Update the match document
+                batch.set(swipeDocRef, matchData);
 
-                // Create the match document for both users
-                await setDoc(doc(firestore, `users/${user.uid}/matches/${matchId}`), matchData);
-                await setDoc(doc(firestore, `users/${swipedProfile.uid}/matches/${matchId}`), matchData);
+                // Create match documents in both users' subcollections
+                const user1MatchRef = doc(firestore, `users/${user1Id}/matches/${swipeId}`);
+                const user2MatchRef = doc(firestore, `users/${user2Id}/matches/${swipeId}`);
+                batch.set(user1MatchRef, matchData);
+                batch.set(user2MatchRef, matchData);
 
-                // Update interaction records to 'match' to prevent them from seeing each other again
-                 await setDoc(currentUserInteractionRef, { swipe: 'match', timestamp: matchDate });
-                 const otherUserMatchInteractionRef = doc(firestore, `users/${swipedProfile.uid}/interactions/${user.uid}`);
-                 await setDoc(otherUserMatchInteractionRef, { swipe: 'match', timestamp: matchDate });
-
+                await batch.commit();
 
                 toast({
                     title: t.anasayfa.matchToastTitle,
                     description: t.anasayfa.matchToastDescription
                 });
+            } else {
+                 // First "like"
+                await setDoc(swipeDocRef, {
+                    user1Id: user.uid,
+                    user2Id: swipedProfile.uid,
+                    status: 'liked',
+                    timestamp: serverTimestamp(),
+                });
             }
+        } else {
+            // Dislike
+            await setDoc(swipeDocRef, {
+                user1Id: user.uid,
+                user2Id: swipedProfile.uid,
+                status: 'disliked',
+                timestamp: serverTimestamp(),
+            });
         }
     } catch (error) {
         console.error('Error recording swipe:', error);

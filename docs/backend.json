@@ -63,23 +63,33 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Match",
       "type": "object",
-      "description": "Represents a match between two users.",
+      "description": "Represents a potential or confirmed match between two users.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Match entity."
+          "description": "Composite key for the match, typically 'user1Id_user2Id' sorted."
         },
         "user1Id": {
           "type": "string",
-          "description": "Reference to UserProfile 1. (Relationship: UserProfile 1:N Match)"
+          "description": "The UID of the user who initiated the swipe."
         },
         "user2Id": {
           "type": "string",
-          "description": "Reference to UserProfile 2. (Relationship: UserProfile 1:N Match)"
+          "description": "The UID of the user who was swiped."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["liked", "disliked", "matched"],
+            "description": "The status of the interaction."
         },
         "timestamp": {
           "type": "string",
-          "description": "The date and time when the match occurred.",
+          "description": "The date and time when the interaction occurred.",
+          "format": "date-time"
+        },
+        "matchDate": {
+          "type": "string",
+          "description": "The date and time when the match was confirmed.",
           "format": "date-time"
         }
       },
@@ -87,6 +97,7 @@
         "id",
         "user1Id",
         "user2Id",
+        "status",
         "timestamp"
       ]
     },
@@ -137,13 +148,13 @@
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}/profile",
+        "path": "/users/{userId}",
         "definition": {
           "entityName": "UserProfile",
           "schema": {
             "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profile data. Access is restricted to the user identified by {userId} and admins.",
+          "description": "Stores public user profile data.",
           "params": [
             {
               "name": "userId",
@@ -159,11 +170,11 @@
           "schema": {
             "$ref": "#/backend/entities/Match"
           },
-          "description": "Stores match data between two users.",
+          "description": "Stores interaction data (likes, dislikes, matches) between two users. The document ID is a composite key of the two user UIDs.",
           "params": [
             {
               "name": "matchId",
-              "description": "The unique ID of the match."
+              "description": "Composite ID, e.g., 'uid1_uid2'."
             }
           ]
         }
@@ -175,7 +186,7 @@
           "schema": {
             "$ref": "#/backend/entities/Match"
           },
-          "description": "Stores denormalized match data for easy querying and access control by a specific user. Includes denormalized 'user1Id' and 'user2Id' for authorization independence.",
+          "description": "Stores denormalized data for confirmed matches for a specific user, allowing for easy querying of a user's match list.",
           "params": [
             {
               "name": "userId",
@@ -195,7 +206,7 @@
           "schema": {
             "$ref": "#/backend/entities/ChatMessage"
           },
-          "description": "Stores chat messages for a specific match.  Access is controlled by match membership.",
+          "description": "Stores chat messages for a specific confirmed match. Access is controlled by match membership.",
           "params": [
             {
               "name": "matchId",
@@ -209,6 +220,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support BeMatch's core features, focusing on user profiles, matches, and real-time chat.  The structure emphasizes authorization independence and optimized query capabilities.\n\n1.  **User Profiles:** `/users/{userId}/profile` stores individual user profiles. This path-based ownership ensures that only the user (or an admin) can access their profile data.  Authorization is simplified as it directly correlates to the authenticated user ID.\n\n2.  **Matches:** `/matches/{matchId}` stores match data.  Each match document contains `user1Id` and `user2Id` to identify the matched users.  To ensure queryable access to matches for a given user, a subcollection `/users/{userId}/matches/{matchId}` is used. Here, the `user1Id` and `user2Id` are DENORMALIZED into documents within each user's subcollection of matches, providing Authorization Independence and making it straightforward to securely list matches for a specific user without requiring complex `get()` calls in security rules (QAP).\n\n3.  **Chat Messages:** `/matches/{matchId}/messages/{messageId}` stores chat messages associated with a match. This structure is highly secure because access to messages is implicitly controlled by the match. Only users who are part of a match should be able to read or write messages within that match.\n\nThis design prioritizes structural segregation by storing user-specific data under `/users/{userId}` and match-specific data under `/matches/{matchId}`. This segregation ensures that each collection has a homogeneous security posture, simplifying security rules and improving maintainability. The denormalization strategy for matches addresses authorization independence, removing the need for `get()` calls in security rules and supporting robust atomic operations."
+    "reasoning": "The Firestore structure is simplified to improve query performance and reliability for the core matching feature. Interactions (likes/dislikes) are now stored in a root `matches` collection, which prevents issues with subcollection queries. When a confirmed match occurs, denormalized data is written to a subcollection under each user (`/users/{userId}/matches`) to easily populate their chat list. This separation of concerns—a root collection for all interactions and a user-specific subcollection for confirmed matches—optimizes for both write operations during swiping and read operations for displaying a user's personal match list."
   }
 }
