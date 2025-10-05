@@ -43,65 +43,72 @@ export default function AnasayfaPage() {
   }, []);
   
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userProfile) return;
     
-    // Optimistic UI update
     removeTopCard();
 
     try {
         const user1Id = user.uid;
         const user2Id = swipedProfile.uid;
+        // The matchId is always consistent, regardless of who initiated the action.
         const matchId = [user1Id, user2Id].sort().join('_');
         const matchDocRef = doc(firestore, 'matches', matchId);
 
+        // We need to know which user field (user1 or user2) corresponds to the current user.
+        const isUser1 = user1Id < user2Id;
+        const currentUserField = isUser1 ? 'user1' : 'user2';
+        const otherUserField = isUser1 ? 'user2' : 'user1';
+
+        // Prepare the update payload
         const updateData: any = {
+            [`${currentUserField}_action`]: action,
+            [`${currentUserField}_timestamp`]: serverTimestamp(),
+            // Ensure the base data is always present
             user1Id: [user1Id, user2Id].sort()[0],
             user2Id: [user1Id, user2Id].sort()[1],
             status: 'pending',
         };
-        
-        const userIndex = [user1Id, user2Id].sort().indexOf(user1Id) + 1;
-        updateData[`user${userIndex}_action`] = action;
-        updateData[`user${userIndex}_timestamp`] = serverTimestamp();
-        
-        if (action === 'liked') {
-            const theirInteractionSnap = await getDoc(matchDocRef);
-            if (theirInteractionSnap.exists()) {
-                const theirData = theirInteractionSnap.data();
-                const otherUserIndex = userIndex === 1 ? 2 : 1;
-                if (theirData[`user${otherUserIndex}_action`] === 'liked') {
-                    updateData.status = 'matched';
-                    updateData.matchDate = serverTimestamp();
-                    
-                    toast({
-                        title: t.anasayfa.matchToastTitle,
-                        description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
-                    });
 
-                    const user1MatchData = {
-                      id: matchId,
-                      matchedWith: user2Id,
-                      lastMessage: t.eslesmeler.defaultMessage,
-                      timestamp: serverTimestamp(),
-                      fullName: swipedProfile.fullName,
-                      profilePicture: swipedProfile.images[0],
-                    };
-
-                    const currentUserProfileData = {
-                      id: matchId,
-                      matchedWith: user1Id,
-                      lastMessage: t.eslesmeler.defaultMessage,
-                      timestamp: serverTimestamp(),
-                      fullName: userProfile?.fullName || user.displayName || t.eslesmeler.user,
-                      profilePicture: userProfile?.profilePicture || user.photoURL || '',
-                    };
-
-                    await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), user1MatchData);
-                    await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), currentUserProfileData);
-                }
-            }
+        const theirInteractionSnap = await getDoc(matchDocRef);
+        let theirAction: string | undefined;
+        if(theirInteractionSnap.exists()) {
+            theirAction = theirInteractionSnap.data()?.[`${otherUserField}_action`];
         }
 
+        // Check for a match
+        if (action === 'liked' && theirAction === 'liked') {
+            updateData.status = 'matched';
+            updateData.matchDate = serverTimestamp();
+            
+            toast({
+                title: t.anasayfa.matchToastTitle,
+                description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
+            });
+
+            // Create denormalized match data for both users
+             const currentUserMatchData = {
+                id: matchId,
+                matchedWith: user2Id,
+                lastMessage: t.eslesmeler.defaultMessage,
+                timestamp: serverTimestamp(),
+                fullName: swipedProfile.fullName,
+                profilePicture: swipedProfile.images[0] || '',
+             };
+
+             const swipedUserMatchData = {
+                id: matchId,
+                matchedWith: user1Id,
+                lastMessage: t.eslesmeler.defaultMessage,
+                timestamp: serverTimestamp(),
+                fullName: userProfile.fullName,
+                profilePicture: userProfile.profilePicture || '',
+             };
+            
+             await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+             await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+        }
+
+        // Atomically write the interaction to the matches collection
         await setDoc(matchDocRef, updateData, { merge: true });
 
     } catch (error) {

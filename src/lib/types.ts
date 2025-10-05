@@ -52,6 +52,15 @@ export type Match = {
   matchDate: any; // Using 'any' for serverTimestamp flexibility
 };
 
+export type LikerInfo = {
+  uid: string;
+  fullName: string;
+  profilePicture: string;
+  age: number | null;
+  matchId: string;
+};
+
+
 export type Post = {
   id: string;
   username: string;
