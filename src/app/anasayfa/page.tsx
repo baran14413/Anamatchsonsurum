@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RotateCcw, X, Heart } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
 
@@ -62,7 +62,6 @@ export default function AnasayfaPage() {
   };
 
   const handleReset = () => {
-    fetchProfiles();
     setCurrentIndex(0);
     toast({
       title: t.anasayfa.resetToastTitle,
@@ -79,21 +78,13 @@ export default function AnasayfaPage() {
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         ) : activeProfile ? (
-        <div className="flex flex-col h-full items-center justify-center p-4">
+        <div className="flex h-full items-center justify-center p-4">
              <div className="w-full max-w-sm aspect-[9/16] relative">
                 <ProfileCard
                     key={activeProfile.uid}
                     profile={activeProfile}
                 />
              </div>
-             <div className="flex items-center gap-4 mt-4">
-                <Button onClick={() => handleAction('disliked')} variant="outline" size="icon" className="h-16 w-16 rounded-full border-2 border-red-500 text-red-500 hover:bg-red-100">
-                    <X className="h-8 w-8" />
-                </Button>
-                 <Button onClick={() => handleAction('liked')} variant="outline" size="icon" className="h-16 w-16 rounded-full border-2 border-green-500 text-green-500 hover:bg-green-100">
-                    <Heart className="h-8 w-8" />
-                </Button>
-            </div>
         </div>
         ) : (
             <div className="flex h-full flex-col items-center justify-center text-center p-4">
