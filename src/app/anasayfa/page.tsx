@@ -6,7 +6,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, collectionGroup } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 
 export default function AnasayfaPage() {
   const t = langTr;
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -27,20 +27,48 @@ export default function AnasayfaPage() {
     setIsLoading(true);
     
     try {
-        const usersQuery = query(
+        // 1. Get IDs of users the current user has already interacted with
+        const interactedUsers = new Set<string>();
+        interactedUsers.add(user.uid); // Add self to avoid showing own profile
+
+        const matchesQuery = query(collectionGroup(firestore, 'matches'), where('users', 'array-contains', user.uid));
+        const matchesSnapshot = await getDocs(matchesQuery);
+        matchesSnapshot.forEach(matchDoc => {
+            const users = matchDoc.data().users;
+            const otherUser = users.find((uid: string) => uid !== user.uid);
+            if (otherUser) {
+                interactedUsers.add(otherUser);
+            }
+        });
+
+        // 2. Fetch profiles, excluding the interacted ones
+        // Note: Firestore's `not-in` query is limited to 10 elements.
+        // For a scalable solution, we fetch a larger batch and filter client-side.
+        let usersQuery = query(
             collection(firestore, 'users'),
-            where('uid', '!=', user.uid),
-            limit(20)
+            limit(50) // Fetch more to have a good pool after filtering
         );
+        
+        // Add gender preference filtering if it exists
+        if (userProfile?.genderPreference && userProfile.genderPreference !== 'both') {
+            usersQuery = query(
+                collection(firestore, 'users'),
+                where('gender', '==', userProfile.genderPreference),
+                limit(50)
+            );
+        }
 
         const querySnapshot = await getDocs(usersQuery);
         
-        const fetchedProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserProfile));
+        const fetchedProfiles = querySnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
+            // Filter out already interacted users and invalid profiles
+            .filter(p => 
+                !interactedUsers.has(p.uid) && 
+                p.uid && p.fullName && p.images && p.images.length > 0
+            );
 
-        // Filter out profiles that don't have required data to prevent crashes
-        const validProfiles = fetchedProfiles.filter(p => p.uid && p.fullName && p.images && p.images.length > 0);
-
-        setProfiles(validProfiles);
+        setProfiles(fetchedProfiles);
         setCurrentIndex(0);
 
     } catch (error) {
@@ -53,7 +81,7 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, firestore, toast, t.common.error]);
+  }, [user, firestore, toast, t.common.error, userProfile]);
 
   useEffect(() => {
     fetchProfiles();

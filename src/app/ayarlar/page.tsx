@@ -3,7 +3,7 @@
 import { useUser } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, User, Bell, Lock, Shield, HelpCircle, FileText, Star, Users, LogOut, MessageCircle, Settings, UserPlus } from 'lucide-react';
+import { ArrowLeft, ChevronRight, User, Bell, Lock, Shield, HelpCircle, FileText, Star, Users, LogOut, MessageCircle, Settings, UserPlus, SlidersHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
@@ -61,7 +61,7 @@ export default function SettingsPage() {
             <main className="flex-1 overflow-y-auto">
                 <SectionTitle title="Hesabın" />
                 <div className="bg-background border-y">
-                   <SettingsItem icon={User} iconColor="#3b82f6" text="Hesap" href='/ayarlar/hesap' />
+                   <SettingsItem icon={SlidersHorizontal} iconColor="#3b82f6" text="Tercihler" href='/ayarlar/tercihler' />
                    <SettingsItem icon={Settings} iconColor="#8b5cf6" text="Bağlı Hesaplar" href='/ayarlar/bagli-hesaplar' />
                 </div>
                 

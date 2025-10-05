@@ -11,6 +11,7 @@ export type UserProfile = {
   bio?: string;
   interests?: string[];
   gender: 'male' | 'female' | 'other';
+  genderPreference?: 'male' | 'female' | 'both';
   location?: {
     latitude: number;
     longitude: number;
@@ -40,7 +41,7 @@ export type UserProfile = {
 export type Match = {
   id: string;
   user1Id: string;
-  user2Id: string;
+  user2Id:string;
   matchDate: any; // Using 'any' for serverTimestamp flexibility
 };
 
