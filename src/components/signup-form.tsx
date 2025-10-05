@@ -1194,7 +1194,7 @@ export default function SignupForm() {
                           }`}
                         >
                           <div
-                            onClick={()={() => openFilePicker(index)}}
+                            onClick={() => openFilePicker(index)}
                             className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
