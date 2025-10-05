@@ -82,12 +82,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     onDragEnd: handleDragEnd,
     style: { x, rotate },
     whileTap: { cursor: 'grabbing' as const },
-    exit: { 
-      x: x.get() > 0 ? 300 : -300, 
-      opacity: 0,
-      scale: 0.8,
-      transition: { duration: 0.3, ease: 'easeIn' }
-    }
   } : {};
 
   return (
@@ -99,7 +93,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
             {totalImages > 1 && (
-                <div className="absolute top-2 left-2 right-2 z-10 flex gap-1 px-1">
+                <div className="absolute top-2 left-2 right-2 z-[11] flex gap-1 px-1">
                     {profile.images.map((_, index) => (
                     <div key={index} className="relative h-1 flex-1 bg-white/40 rounded-full overflow-hidden">
                          <div
@@ -114,13 +108,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             {isDraggable && (
                 <>
                 <motion.div
-                    className="absolute top-8 left-8 text-green-400"
+                    className="absolute top-8 left-8 text-green-400 z-[11]"
                     style={{ opacity: opacityLike }}
                 >
                     <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
                 </motion.div>
                 <motion.div
-                    className="absolute top-8 right-8 text-red-500"
+                    className="absolute top-8 right-8 text-red-500 z-[11]"
                     style={{ opacity: opacityDislike }}
                 >
                     <X className="h-20 w-20" strokeWidth={3} />
@@ -129,11 +123,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             )}
 
             <div
-              className={`absolute left-0 top-0 h-full w-1/2 z-[5] ${isDraggable ? 'cursor-pointer' : ''}`}
+              className={`absolute left-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
               onClick={(e) => handleAreaClick(e, 'left')}
             ></div>
             <div
-              className={`absolute right-0 top-0 h-full w-1/2 z-[5] ${isDraggable ? 'cursor-pointer' : ''}`}
+              className={`absolute right-0 top-0 h-full w-1/2 z-10 ${isDraggable ? 'cursor-pointer' : ''}`}
               onClick={(e) => handleAreaClick(e, 'right')}
             ></div>
 

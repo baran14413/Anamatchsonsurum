@@ -6,7 +6,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -213,7 +213,8 @@ export default function AnasayfaPage() {
                     opacity: 1, 
                     transition: { duration: 0.3, ease: 'easeOut' }
                   }}
-                  exit={{
+                   exit={{
+                    x: (isTopCard && (Math.abs(100) > SWIPE_THRESHOLD)) ? (100 > 0 ? 300 : -300) : 0,
                     opacity: 0,
                     scale: 0.8,
                     transition: { duration: 0.3, ease: 'easeIn' }
@@ -243,3 +244,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+const SWIPE_THRESHOLD = 80;
