@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, MoreHorizontal } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -147,18 +147,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                 </SheetTrigger>
                                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
                                      <ScrollArea className="h-full">
-                                        <Carousel className="w-full">
-                                            <CarouselContent>
-                                                {profile.images.map((img, index) => (
-                                                <CarouselItem key={index} className="basis-auto">
-                                                    <div className="relative aspect-[3/4] h-[60vh]">
-                                                        <Image src={img} alt={`Detail view ${index}`} fill style={{ objectFit: "cover" }} className="rounded-md" />
-                                                    </div>
-                                                </CarouselItem>
-                                                ))}
-                                            </CarouselContent>
-                                        </Carousel>
-                                        
                                         <div className="p-6 space-y-6">
                                             <div>
                                                 <h2 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h2>
@@ -208,5 +196,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
      </AnimatePresence>
   );
 }
-
-    
