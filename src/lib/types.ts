@@ -15,6 +15,11 @@ export type UserProfile = {
     latitude: number;
     longitude: number;
   };
+  address?: {
+    city?: string | null;
+    district?: string | null;
+    country?: string | null;
+  }
   school?: string;
   lookingFor?: string;
   distancePreference?: number;

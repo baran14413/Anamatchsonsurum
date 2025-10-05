@@ -42,6 +42,11 @@ const formSchema = z.object({
         latitude: z.number(),
         longitude: z.number(),
     }).optional(),
+    address: z.object({
+        city: z.string().optional().nullable(),
+        district: z.string().optional().nullable(),
+        country: z.string().optional().nullable(),
+    }).optional(),
     distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
     drinking: z.string({ required_error: "Please choose one." }).min(1),
@@ -192,7 +197,6 @@ export default function SignupForm() {
   const { user } = useUser();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(0); // Start at step 0 for email/password
   const [isGoogleSignup, setIsGoogleSignup] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
 
@@ -206,6 +210,32 @@ export default function SignupForm() {
     Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, progress: 0, isUploading: false }))
   );
   
+  const [step, setStep] = useState(0); 
+
+  useEffect(() => {
+    try {
+        const googleDataString = sessionStorage.getItem('googleSignupData');
+        if (googleDataString) {
+            setIsGoogleSignup(true);
+            setStep(1); // Start from name step
+            const googleData = JSON.parse(googleDataString);
+            form.setValue('email', googleData.email || '');
+            form.setValue('name', googleData.name || '');
+            form.setValue('uid', googleData.uid);
+            
+            if (googleData.profilePicture) {
+                const initialSlots = [...photoSlots];
+                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
+                setPhotoSlots(initialSlots);
+                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
+            }
+        }
+    } catch (error) {
+        console.error("Failed to parse Google signup data", error);
+        router.push('/');
+    }
+  }, []);
+
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -229,31 +259,6 @@ export default function SignupForm() {
     },
     mode: "onChange",
   });
-
-  useEffect(() => {
-    try {
-        const googleDataString = sessionStorage.getItem('googleSignupData');
-        if (googleDataString) {
-            const googleData = JSON.parse(googleDataString);
-            form.setValue('email', googleData.email || '');
-            form.setValue('name', googleData.name || '');
-            form.setValue('uid', googleData.uid);
-            
-            if (googleData.profilePicture) {
-                const initialSlots = [...photoSlots];
-                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
-                setPhotoSlots(initialSlots);
-                // Also update the form state so validation works correctly
-                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
-            }
-            setIsGoogleSignup(true);
-            setStep(1); // Skip email/password step for Google signup
-        }
-    } catch (error) {
-        console.error("Failed to parse Google signup data", error);
-        router.push('/');
-    }
-  }, []); // Only run once on mount
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -311,24 +316,20 @@ export default function SignupForm() {
     
     setIsLoading(true);
     try {
-        let userId = user?.uid; // Prioritize already authenticated user (Google signup case)
-
-        // If it's not a Google signup, we need to create the user with email/password first
-        if (!isGoogleSignup) {
-            if (!data.password || !data.email) {
-                throw new Error("Email and password are required.");
-            }
-            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-            userId = userCredential.user.uid;
-        }
+        let userId = user?.uid;
 
         if (!userId) {
+          if (!isGoogleSignup && data.email && data.password) {
+            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+            userId = userCredential.user.uid;
+          } else if (data.uid) {
+             userId = data.uid;
+          } else {
             throw new Error("User ID could not be determined.");
+          }
         }
         
       const filesToUpload = photoSlots.filter(p => p.file);
-
-      // Set isUploading for visual feedback
       setPhotoSlots(prev => prev.map(slot => filesToUpload.some(f => f.file === slot.file) ? { ...slot, isUploading: true } : slot));
 
       const uploadPromises = filesToUpload.map(slot => {
@@ -336,9 +337,6 @@ export default function SignupForm() {
         const formData = new FormData();
         formData.append('file', file);
         
-        // This is a mock upload for demonstration.
-        // In a real app, you'd use XMLHttpRequest to get progress.
-        // Here we simulate it.
         return new Promise<string>((resolve, reject) => {
             fetch('/api/upload', {
                 method: 'POST',
@@ -391,14 +389,12 @@ export default function SignupForm() {
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
         location: data.location || null,
+        address: data.address || null,
       };
 
       await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
       
       sessionStorage.removeItem('googleSignupData');
-      
-      // router.push("/anasayfa"); // AppShell will handle this redirection now
-
     } catch (error: any) {
       console.error("Signup error:", error);
        let errorMessage = error.message || t.signup.errors.signupFailed;
@@ -410,7 +406,7 @@ export default function SignupForm() {
         description: errorMessage,
         variant: "destructive",
       });
-      setIsLoading(false); // Only set loading to false on error, success leads to navigation
+      setIsLoading(false);
       setPhotoSlots(prev => prev.map(s => ({ ...s, isUploading: false, progress: 0 })));
     }
   }
@@ -436,8 +432,6 @@ export default function SignupForm() {
 
   const openFilePicker = (index: number) => {
       if(isLoading) return;
-      // Allow picking a file for any slot, but if it's an empty slot,
-      // find the first actual empty one to fill.
       const targetIndex = photoSlots[index].preview ? index : uploadedPhotoCount;
       setActiveSlot(targetIndex);
       fileInputRef.current?.click();
@@ -452,11 +446,7 @@ export default function SignupForm() {
       if (deletedSlot.file && deletedSlot.preview) {
         URL.revokeObjectURL(deletedSlot.preview);
       }
-
-      // Remove the slot at the index
       newSlots.splice(index, 1);
-
-      // Add a new empty slot at the end
       newSlots.push({ file: null, preview: null, progress: 0, isUploading: false });
       
       setPhotoSlots(newSlots);
@@ -473,7 +463,7 @@ export default function SignupForm() {
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
     if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['location'];
+    if (step === 5) fieldsToValidate = ['location', 'address'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
@@ -492,26 +482,44 @@ export default function SignupForm() {
     }
   };
 
-  const handleLocationRequest = () => {
+  const handleLocationRequest = async () => {
     setIsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
         form.setValue('location', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
         });
-        setIsLoading(false);
+        
+        const response = await fetch(`/api/geocode?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch address');
+        }
+        const data = await response.json();
+        
+        if (data.address) {
+            form.setValue('address', {
+                city: data.address.state,
+                district: data.address.city || data.address.district,
+                country: data.address.country,
+            });
+        }
+        
         nextStep();
-      },
-      (error) => {
+
+    } catch (error) {
+        console.error("Location error:", error);
         toast({
             title: t.signup.step6.errorTitle,
             description: t.signup.step6.errorMessage,
             variant: "destructive"
         });
+    } finally {
         setIsLoading(false);
-      }
-    );
+    }
   };
   
   const handleSkip = () => {
@@ -528,10 +536,10 @@ export default function SignupForm() {
             <ArrowLeft className="h-6 w-6" />
         </Button>
         {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
-        {step === 7 ? (
-          <Button variant="ghost" onClick={handleSkip} className="shrink-0 w-16">
-            {t.signup.progressHeader.skip}
-          </Button>
+        {(step > 0 && step < totalSteps) ? (
+            <Button variant="ghost" onClick={handleSkip} className={`shrink-0 w-16 ${step === 7 ? '' : 'invisible'}`}>
+                {t.signup.progressHeader.skip}
+            </Button>
         ) : <div className="w-16"></div>}
       </header>
       
@@ -1126,7 +1134,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledLifestyleCount < 4}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledLifestyleCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
               </Button>
             ) : step === 9 ? (
                 <Button
@@ -1135,7 +1143,7 @@ export default function SignupForm() {
                 className="w-full h-14 rounded-full text-lg font-bold"
                 disabled={isLoading || filledMoreInfoCount < 4}
               >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(filledMoreInfoCount)).replace('{total}', '4')}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
               </Button>
             ) : step === 10 ? (
                  <Button
@@ -1144,7 +1152,7 @@ export default function SignupForm() {
                     className="w-full h-14 rounded-full text-lg font-bold"
                     disabled={isLoading || selectedInterests.length < 1}
                     >
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.nextDynamic.replace('{count}', String(selectedInterests.length)).replace('{total}', '10')}
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.common.next}
                  </Button>
             ) : step === 11 ? (
                 <Button
