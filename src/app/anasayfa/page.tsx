@@ -221,7 +221,7 @@ export default function AnasayfaPage() {
   return (
     <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
       {isLoading ? (
-        <Icons.logo width={48} height={48} className="animate-spin text-primary" />
+        <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       ) : profiles.length > 0 ? (
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
           <AnimatePresence>

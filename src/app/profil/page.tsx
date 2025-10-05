@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -9,10 +10,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Flame, Star, Zap, ShieldCheckIcon, Pencil, ChevronRight, GalleryHorizontal, Loader2 } from 'lucide-react';
+import { Flame, Star, Zap, ShieldCheckIcon, GalleryHorizontal } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
+import CircularProgress from '@/components/circular-progress';
 
 
 export default function ProfilePage() {
@@ -53,18 +55,16 @@ export default function ProfilePage() {
         if (!userProfile) return 0;
         
         let score = 0;
-        const maxScore = 70;
+        const maxScore = 7; // Total number of checks
         
-        // Basic profile info is worth 10 points
-        if (userProfile.fullName && userProfile.dateOfBirth && userProfile.gender && userProfile.location && userProfile.lookingFor) {
-            score += 10;
-        }
-        
-        // Each photo is worth 10 points, up to 6 photos
-        const photoCount = userProfile.images?.length || 0;
-        score += Math.min(photoCount, 6) * 10;
-        
-        // Calculate the percentage based on the current max possible score (70)
+        if (userProfile.fullName) score++;
+        if (userProfile.dateOfBirth) score++;
+        if (userProfile.gender) score++;
+        if (userProfile.location) score++;
+        if (userProfile.lookingFor) score++;
+        if (userProfile.images && userProfile.images.length >= 2) score++;
+        if (userProfile.interests && userProfile.interests.length > 0) score++;
+
         return Math.round((score / maxScore) * 100);
     }
 
@@ -84,12 +84,7 @@ export default function ProfilePage() {
               <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
              <div className="absolute -bottom-1 -right-1">
-                 <div
-                    className="relative flex items-center justify-center bg-white rounded-full shadow-md"
-                    style={{ width: 44, height: 44 }}
-                    >
-                    <Icons.logo width={24} height={24} className="animate-spin" />
-                </div>
+                 <CircularProgress progress={profileCompletionPercentage} size={44} />
              </div>
           </div>
           
@@ -156,7 +151,7 @@ export default function ProfilePage() {
                     <AlertDialogFooter>
                     <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
-                        {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : t.common.logout}
+                        {isLoggingOut ? <Icons.logo width={16} height={16} className="h-4 w-4 animate-pulse" /> : t.common.logout}
                     </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

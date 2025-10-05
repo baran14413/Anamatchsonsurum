@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
-import { Loader2, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import type { UserProfile, LikerInfo } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -93,7 +94,7 @@ export default function BegenilerPage() {
     if (isLoading) {
         return (
             <div className="flex h-dvh w-full items-center justify-center">
-                <Icons.logo width={48} height={48} className="animate-spin text-primary" />
+                <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
             </div>
         );
     }

@@ -82,7 +82,7 @@ export default function WelcomePage() {
   if (isUserLoading || (user && userProfile)) {
       return (
            <div className="flex h-dvh items-center justify-center">
-             <Icons.logo width={48} height={48} className="animate-spin" />
+             <Icons.logo width={48} height={48} className="animate-pulse" />
            </div>
       );
   }
@@ -121,7 +121,7 @@ export default function WelcomePage() {
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 {isGoogleLoading ? (
-                   <Icons.logo width={24} height={24} className="animate-spin mr-4" />
+                   <Icons.logo width={24} height={24} className="animate-pulse mr-4" />
                 ) : (
                    <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
                 )}

@@ -104,7 +104,7 @@ export default function LocationSettingsPage() {
                         <Button onClick={handleLocationRequest} disabled={isLocationLoading}>
                             {isLocationLoading ? (
                                 <>
-                                 <Icons.logo width={24} height={24} className="mr-2 animate-spin" />
+                                 <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />
                                  {tc.updatingButton}
                                 </>
                             ) : (

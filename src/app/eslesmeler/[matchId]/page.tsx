@@ -361,7 +361,7 @@ export default function ChatPage() {
             <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                      <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                        {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                        {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
                     </Button>
                     <Input
                         value={newMessage}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import ProfileCompletionForm from "@/components/signup-form";

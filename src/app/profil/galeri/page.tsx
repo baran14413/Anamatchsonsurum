@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -183,7 +184,7 @@ export default function GalleryEditPage() {
         </Button>
         <h1 className="text-lg font-semibold">{t.title}</h1>
         <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedPhotoCount < 1}>
-          {isSubmitting ? <Icons.logo width={24} height={24} className="animate-spin" /> : langTr.common.save}
+          {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : langTr.common.save}
         </Button>
       </header>
       
@@ -202,7 +203,7 @@ export default function GalleryEditPage() {
                             {slot.preview ? (
                                 <>
                                     <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                    {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-spin" /></div>}
+                                    {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
                                     {!isSubmitting && (
                                         <div className="absolute bottom-2 right-2 flex gap-2">
                                             <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
