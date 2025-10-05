@@ -95,7 +95,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             {/* Image Background */}
             <div className='absolute inset-0'>
                 <Image
-                    src={profile.images[activeImageIndex]}
+                    src={profile.images[activeImageIndex].url}
                     alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
                     fill
                     sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"

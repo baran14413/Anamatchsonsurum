@@ -10,20 +10,22 @@ import { Loader2, ArrowLeft, Plus, Trash2, Pencil, GalleryHorizontal } from "luc
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
 import CircularProgress from "@/components/circular-progress";
+import type { UserImage } from "@/lib/types";
 
 type PhotoSlot = {
     file: File | null;
     preview: string | null;
+    public_id?: string | null;
     isUploading: boolean;
-    isNew: boolean; // Flag to check if it's a newly added file
+    isNew: boolean;
 };
 
 const getInitialPhotoSlots = (userProfile: any): PhotoSlot[] => {
-  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, isUploading: false, isNew: false }));
+  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false }));
   if (userProfile?.images) {
-    userProfile.images.forEach((img: string, index: number) => {
+    userProfile.images.forEach((img: UserImage, index: number) => {
       if (index < 6) {
-        initialSlots[index] = { file: null, preview: img, isUploading: false, isNew: false };
+        initialSlots[index] = { file: null, preview: img.url, public_id: img.public_id, isUploading: false, isNew: false };
       }
     });
   }
@@ -69,7 +71,7 @@ export default function GalleryEditPage() {
     e.target.value = ''; 
   };
 
-  const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
+  const handleDeletePhoto = async (e: React.MouseEvent, index: number) => {
       e.stopPropagation(); 
       if(isSubmitting) return;
 
@@ -83,8 +85,22 @@ export default function GalleryEditPage() {
       }
       
       const newSlots = [...photoSlots];
-      
       const deletedSlot = newSlots[index];
+
+      // If it's a previously saved image, delete from Cloudinary
+      if (deletedSlot.public_id) {
+          try {
+              await fetch('/api/delete-image', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ public_id: deletedSlot.public_id }),
+              });
+          } catch (error) {
+              console.error("Failed to delete from cloudinary", error);
+              // We can still proceed with removing it from the UI
+          }
+      }
+      
       if (deletedSlot.file && deletedSlot.preview) URL.revokeObjectURL(deletedSlot.preview);
       newSlots.splice(index, 1);
       newSlots.push({ file: null, preview: null, isUploading: false, isNew: false });
@@ -112,25 +128,34 @@ export default function GalleryEditPage() {
                     if (!response.ok) throw new Error(`File upload failed for ${file.name}`);
                     return response.json();
                 })
-                .then(result => ({ originalFile: file, url: result.url }));
+                .then(result => ({ originalFile: file, url: result.url, public_id: result.public_id }));
         });
 
         const uploadResults = await Promise.all(uploadPromises);
 
-        let finalImageUrls = [...photoSlots.map(p => p.preview)];
+        let finalImages: UserImage[] = photoSlots
+          .filter(p => p.preview && !p.isNew && p.public_id)
+          .map(p => ({ url: p.preview!, public_id: p.public_id! }));
 
         uploadResults.forEach(result => {
-            const index = photoSlots.findIndex(p => p.file === result.originalFile);
-            if (index !== -1) {
-                finalImageUrls[index] = result.url;
-            }
+           finalImages.push({ url: result.url, public_id: result.public_id });
         });
 
-        const validUrls = finalImageUrls.filter((url): url is string => url !== null);
+        // Reorder based on final slot positions
+        const finalOrderedImages: UserImage[] = [];
+        for (const slot of photoSlots) {
+            if (slot.isNew && slot.file) {
+                 const uploaded = uploadResults.find(r => r.originalFile === slot.file);
+                 if (uploaded) finalOrderedImages.push({ url: uploaded.url, public_id: uploaded.public_id });
+            } else if (slot.preview && slot.public_id) {
+                 finalOrderedImages.push({ url: slot.preview, public_id: slot.public_id });
+            }
+        }
+
 
         await updateDoc(doc(firestore, "users", user.uid), {
-            images: validUrls,
-            profilePicture: validUrls[0] || '',
+            images: finalOrderedImages,
+            profilePicture: finalOrderedImages[0]?.url || '',
         });
 
         toast({

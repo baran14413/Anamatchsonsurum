@@ -27,6 +27,7 @@ import Image from "next/image";
 import CircularProgress from "./circular-progress";
 import { Slider } from "./ui/slider";
 import googleLogo from '@/img/googlelogin.png';
+import type { UserImage } from "@/lib/types";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -45,7 +46,10 @@ const formSchema = z.object({
         longitude: z.number(),
     }),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
-    photos: z.array(z.string().url()).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
+    photos: z.array(z.object({
+        url: z.string().url(),
+        public_id: z.string(),
+    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
     ageRange: z.object({
       min: z.number(),
       max: z.number()
@@ -54,11 +58,18 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
+type PhotoSlot = {
+    file: File | null;
+    preview: string | null;
+    public_id?: string | null;
+    isUploading: boolean;
+};
+
 const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
-  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
+  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 
   if (user?.photoURL) {
-    initialSlots[0] = { file: null, preview: user.photoURL, progress: 100, isUploading: false };
+    initialSlots[0] = { file: null, preview: user.photoURL, public_id: null, isUploading: false };
   }
 
   return initialSlots;
@@ -74,12 +85,6 @@ const lookingForOptions = [
     { id: 'whatever', icon: Hand },
 ];
 
-type PhotoSlot = {
-    file: File | null;
-    preview: string | null;
-    progress: number;
-    isUploading: boolean;
-};
 
 const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean, t: any }) => {
     const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
@@ -166,7 +171,7 @@ export default function ProfileCompletionForm() {
     defaultValues: {
       name: "",
       lookingFor: "",
-      photos: photoSlots.map(s => s.preview).filter(p => p) as string[],
+      photos: [],
       distancePreference: 80,
     },
     mode: "onChange",
@@ -175,7 +180,9 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
-        const initialPhotos = getInitialPhotoSlots(user).map(slot => slot.preview).filter((p): p is string => p !== null);
+        const initialPhotos = getInitialPhotoSlots(user)
+            .filter(slot => slot.preview)
+            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '' }));
         form.setValue('photos', initialPhotos, { shouldValidate: true });
         setPhotoSlots(getInitialPhotoSlots(user));
     }
@@ -259,42 +266,13 @@ export default function ProfileCompletionForm() {
     
     setIsSubmitting(true);
     try {
-      const filesToUpload = photoSlots.filter(p => p.file);
-      setPhotoSlots(prev => prev.map(slot => filesToUpload.some(f => f.file === slot.file) ? { ...slot, isUploading: true } : slot));
-
-      const uploadPromises = filesToUpload.map(slot => {
-        const file = slot.file!;
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        return new Promise<string>((resolve, reject) => {
-            fetch('/api/upload', { method: 'POST', body: formData })
-                .then(response => {
-                    if (!response.ok) return response.json().then(err => reject(new Error(err.error || `Dosya yüklenemedi: ${file.name}`)));
-                    return response.json();
-                })
-                .then(result => {
-                    setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, progress: 100, isUploading: false } : s));
-                    resolve(result.url);
-                })
-                .catch(error => {
-                    setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, isUploading: false, progress: 0 } : s));
-                    reject(error);
-                });
-        });
-      });
-
-      const uploadedUrls = await Promise.all(uploadPromises);
-      
-      const existingUrls = photoSlots.filter(p => !p.file && p.preview).map(p => p.preview!);
-      const allPhotoUrls = [...existingUrls, ...uploadedUrls];
       
       const userProfileData = {
         ...data,
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
-        images: allPhotoUrls,
-        profilePicture: allPhotoUrls[0] || '',
+        images: data.photos,
+        profilePicture: data.photos[0]?.url || '',
         globalModeEnabled: false, 
         expandAgeRange: true,
       };
@@ -307,26 +285,46 @@ export default function ProfileCompletionForm() {
       console.error("Signup error:", error);
       toast({ title: "Profil Tamamlama Başarısız", description: error.message || "Bir hata oluştu", variant: "destructive" });
       setIsSubmitting(false);
-      setPhotoSlots(prev => prev.map(s => ({ ...s, isUploading: false, progress: 0 })));
     }
   }
   
   const totalSteps = 6;
   const progressValue = (step / totalSteps) * 100;
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && activeSlot !== null) {
-      const file = e.target.files[0];
-      const preview = URL.createObjectURL(file);
-      const newSlots = [...photoSlots];
-      newSlots[activeSlot] = { file, preview, progress: 0, isUploading: false };
-      setPhotoSlots(newSlots);
-      
-      const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
-      form.setValue('photos', newPhotos, { shouldValidate: true });
+  const handlePhotoUpload = async (file: File, slotIndex: number) => {
+    const tempId = `uploading-${slotIndex}`;
+    
+    setPhotoSlots(prev => {
+        const newSlots = [...prev];
+        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
+        return newSlots;
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Yükleme başarısız');
+        }
+        const result = await response.json();
+
+        setPhotoSlots(prev => {
+            const newSlots = [...prev];
+            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
+            
+            const currentPhotos = form.getValues('photos') || [];
+            form.setValue('photos', [...currentPhotos, { url: result.url, public_id: result.public_id }], { shouldValidate: true });
+            
+            return newSlots;
+        });
+
+    } catch (error: any) {
+        toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
+        setPhotoSlots(prev => prev.map(s => s.file === file ? { file: null, preview: null, isUploading: false, public_id: null } : s));
     }
-    setActiveSlot(null);
-    e.target.value = ''; 
   };
 
   const openFilePicker = (index: number) => {
@@ -336,19 +334,34 @@ export default function ProfileCompletionForm() {
       fileInputRef.current?.click();
   };
   
-  const handleDeletePhoto = (e: React.MouseEvent, index: number) => {
+  const handleDeletePhoto = async (e: React.MouseEvent, index: number) => {
       e.stopPropagation(); 
       if(isSubmitting) return;
-      const newSlots = [...photoSlots];
       
-      const deletedSlot = newSlots[index];
-      if (deletedSlot.file && deletedSlot.preview) URL.revokeObjectURL(deletedSlot.preview);
+      const slotToDelete = photoSlots[index];
+
+      if(slotToDelete.public_id){
+        try {
+            await fetch('/api/delete-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ public_id: slotToDelete.public_id }),
+            });
+        } catch(err){
+            console.error("Failed to delete from Cloudinary but proceeding in UI", err);
+        }
+      }
+
+      const newSlots = [...photoSlots];
+      if (slotToDelete.preview && slotToDelete.file) URL.revokeObjectURL(slotToDelete.preview);
       newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, progress: 0, isUploading: false });
+      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
       
       setPhotoSlots(newSlots);
       
-      const newPhotos = newSlots.map(slot => slot.preview).filter((p): p is string => p !== null);
+      const newPhotos = newSlots
+        .filter(slot => slot.preview && slot.public_id)
+        .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
   
@@ -361,22 +374,26 @@ export default function ProfileCompletionForm() {
 
   const handleNextStep = async () => {
     if (step === totalSteps) {
-      form.handleSubmit(onSubmit)();
+      await form.trigger();
+      if(form.formState.isValid) {
+        onSubmit(form.getValues());
+      }
       return;
     }
 
-    const fieldsByStep: (keyof SignupFormValues)[] = [
-        ['name'],
-        ['location'],
-        ['photos'],
-        ['dateOfBirth'],
-        ['gender'],
-        ['lookingFor'],
-        ['distancePreference'],
-    ][step] as any;
+    const fieldsByStep: (keyof SignupFormValues | (keyof SignupFormValues)[])[] = [
+        'name',
+        'location',
+        'photos',
+        'dateOfBirth',
+        'gender',
+        'lookingFor',
+        'distancePreference',
+    ];
     
-    const isValid = await form.trigger(fieldsByStep);
-
+    const fieldsToValidate = fieldsByStep[step];
+    const isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
+    
     if (isValid) {
       nextStep();
     }
@@ -465,8 +482,8 @@ export default function ProfileCompletionForm() {
                             {slot.preview ? (
                               <>
                                 <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><CircularProgress progress={slot.progress} size={60} /></div>}
-                                {!slot.isUploading && (
+                                {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><CircularProgress progress={100} size={60} /></div>}
+                                {!isSubmitting && (
                                   <div className="absolute bottom-2 right-2 flex gap-2">
                                     <button type="button" onClick={(e) => {e.stopPropagation(); openFilePicker(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
                                     {uploadedPhotoCount > 2 && <button type="button" onClick={(e) => handleDeletePhoto(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
@@ -484,7 +501,7 @@ export default function ProfileCompletionForm() {
                       ))}
                     </div>
                   </div>
-                  <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
+                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handlePhotoUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*" />
                 </div>
               )}
               {step === 3 && (

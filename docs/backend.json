@@ -42,10 +42,18 @@
         },
         "images": {
           "type": "array",
-          "description": "A list of URLs for the user's profile photos.",
+          "description": "A list of image objects for the user's profile photos.",
           "items": {
-            "type": "string",
-            "format": "uri"
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "public_id": {
+                "type": "string"
+              }
+            }
           }
         },
         "interests": {
@@ -171,6 +179,15 @@
           "type": "string",
           "description": "The text content of the message."
         },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of an image sent in the message."
+        },
+        "imagePublicId": {
+          "type": "string",
+          "description": "Public ID of the image on Cloudinary for deletion."
+        },
         "timestamp": {
           "type": "string",
           "description": "The date and time when the message was sent.",
@@ -190,7 +207,6 @@
         "id",
         "matchId",
         "senderId",
-        "text",
         "timestamp",
         "isRead"
       ]

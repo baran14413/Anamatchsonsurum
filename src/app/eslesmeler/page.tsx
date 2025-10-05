@@ -5,11 +5,14 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, MessageSquare, Loader2, Trash2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { motion } from 'framer-motion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface MatchData {
   id: string;
@@ -24,9 +27,12 @@ export default function EslesmelerPage() {
   const t = langTr.eslesmeler;
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [matches, setMatches] = useState<MatchData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [chatToDelete, setChatToDelete] = useState<MatchData | null>(null);
 
   useEffect(() => {
     if (!user || !firestore) {
@@ -65,6 +71,41 @@ export default function EslesmelerPage() {
     );
   }, [matches, searchTerm]);
 
+  const handleDeleteChat = async () => {
+    if (!chatToDelete) return;
+    setIsDeleting(true);
+
+    try {
+        const response = await fetch('/api/delete-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchId: chatToDelete.id }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Sohbet silinemedi.');
+        }
+        
+        setChatToDelete(null);
+        toast({
+            title: 'Sohbet Silindi',
+            description: `${chatToDelete.fullName} ile olan sohbetiniz kalıcı olarak silindi.`,
+        });
+
+    } catch (error: any) {
+        console.error("Error deleting chat:", error);
+        toast({
+            title: 'Hata',
+            description: error.message || 'Sohbet silinirken bir hata oluştu.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
+
   if (isLoading) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -98,25 +139,30 @@ export default function EslesmelerPage() {
                     {filteredMatches.length > 0 ? (
                         <div className="divide-y">
                             {filteredMatches.map(match => (
-                                <Link href={`/eslesmeler/${match.id}`} key={match.id}>
-                                    <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
-                                        <Avatar className="h-12 w-12">
-                                            <AvatarImage src={match.profilePicture} />
-                                            <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="ml-4 flex-1">
-                                            <div className="flex justify-between items-center">
-                                                <h3 className="font-semibold">{match.fullName}</h3>
-                                                {match.timestamp && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
-                                                    </p>
-                                                )}
+                                <motion.div
+                                    key={match.id}
+                                    onLongPress={() => setChatToDelete(match)}
+                                >
+                                    <Link href={`/eslesmeler/${match.id}`}>
+                                        <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
+                                            <Avatar className="h-12 w-12">
+                                                <AvatarImage src={match.profilePicture} />
+                                                <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="ml-4 flex-1">
+                                                <div className="flex justify-between items-center">
+                                                    <h3 className="font-semibold">{match.fullName}</h3>
+                                                    {match.timestamp && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground truncate">{match.lastMessage}</p>
                                             </div>
-                                            <p className="text-sm text-muted-foreground truncate">{match.lastMessage}</p>
                                         </div>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                </motion.div>
                             ))}
                         </div>
                      ) : (
@@ -127,6 +173,23 @@ export default function EslesmelerPage() {
                 </div>
             </>
         )}
+
+        <AlertDialog open={!!chatToDelete} onOpenChange={(isOpen) => !isOpen && setChatToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Sohbeti Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Bu işlem geri alınamaz. {chatToDelete?.fullName} ile olan tüm sohbet geçmişiniz, gönderilen fotoğraflar dahil kalıcı olarak silinecektir.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                         {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }

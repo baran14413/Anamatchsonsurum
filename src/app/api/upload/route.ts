@@ -22,8 +22,6 @@ export async function POST(req: NextRequest) {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 
-  const res = new NextResponse();
-
   try {
     const file = await getFileFromRequest(req);
     
@@ -32,7 +30,6 @@ export async function POST(req: NextRequest) {
     }
 
     const fileBuffer = await file.arrayBuffer();
-    const mimeType = file.type;
 
     const uploadPromise = new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
@@ -53,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const result: any = await uploadPromise;
 
-    return NextResponse.json({ url: result.secure_url });
+    return NextResponse.json({ url: result.secure_url, public_id: result.public_id });
   } catch (error: any) {
     console.error("Cloudinary Upload Error:", error);
     return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });

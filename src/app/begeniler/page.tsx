@@ -41,12 +41,22 @@ export default function BegenilerPage() {
                 const data = docSnap.data();
                 let likerId: string | null = null;
                 
+                // Scenario 1: Someone liked me, and I haven't acted yet.
                 if (data.user2Id === user.uid && data.user1_action === 'liked' && !data.user2_action) {
                     likerId = data.user1Id;
                 }
-                else if (data.user1Id === user.uid && data.user2_action === 'liked' && !data.user1_action) {
+                // Scenario 2: I liked someone, but this page is for who liked ME.
+                // But if they also liked me, it's a match, not a "like".
+                // The logic here is to show who has an open "liked" action towards the current user.
+                
+                // This logic is tricky with compound queries. Let's simplify.
+                // We fetch all docs where I am involved and one party has liked.
+                // Then we filter client-side.
+
+                if (data.user1Id === user.uid && data.user2_action === 'liked' && !data.user1_action) {
                     likerId = data.user2Id;
                 }
+
 
                 if (likerId && !seenLikerIds.has(likerId)) {
                     seenLikerIds.add(likerId);
@@ -57,7 +67,7 @@ export default function BegenilerPage() {
                             return {
                                 uid: likerId!,
                                 fullName: profileData.fullName || 'BeMatch User',
-                                profilePicture: profileData.images?.[0] || '',
+                                profilePicture: profileData.images?.[0]?.url || '',
                                 age: calculateAge(profileData.dateOfBirth),
                                 matchId: docSnap.id,
                             };
@@ -90,7 +100,7 @@ export default function BegenilerPage() {
     return (
         <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
             <header className="sticky top-0 z-10 p-4 border-b flex items-center justify-center shrink-0 bg-background">
-                <h1 className="text-xl font-bold">{t.title}</h1>
+                <h1 className="text-xl font-bold">{t.title} ({likers.length})</h1>
             </header>
             
             {likers.length > 0 ? (

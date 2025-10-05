@@ -1,5 +1,10 @@
 
 
+export interface UserImage {
+  url: string;
+  public_id: string;
+}
+
 export type UserProfile = {
   id: string;
   uid: string;
@@ -7,7 +12,7 @@ export type UserProfile = {
   email?: string;
   dateOfBirth?: string;
   profilePicture?: string;
-  images: string[];
+  images: UserImage[];
   bio?: string;
   interests?: string[];
   gender: 'male' | 'female' | 'other';
@@ -79,7 +84,9 @@ export type ChatMessage = {
   id: string;
   matchId: string;
   senderId: string;
-  text: string;
+  text?: string;
+  imageUrl?: string;
+  imagePublicId?: string;
   timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;

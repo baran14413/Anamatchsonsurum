@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Loader2 } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
+import Image from 'next/image';
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
     if (!isSender) return null;
@@ -58,7 +59,9 @@ export default function ChatPage() {
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
@@ -117,24 +120,29 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newMessage.trim() || !user || !firestore) return;
+    const handleSendMessage = async (e?: React.FormEvent, imageUrl: string | null = null, imagePublicId: string | null = null) => {
+        e?.preventDefault();
+        if ((!newMessage.trim() && !imageUrl) || !user || !firestore) return;
 
-        const messageData = {
+        const textContent = newMessage.trim();
+        setNewMessage('');
+        
+        const messageData: Partial<ChatMessage> = {
             matchId: matchId,
             senderId: user.uid,
-            text: newMessage.trim(),
             timestamp: serverTimestamp(),
             isRead: false,
         };
-
-        setNewMessage('');
+        
+        if (textContent) messageData.text = textContent;
+        if (imageUrl) messageData.imageUrl = imageUrl;
+        if (imagePublicId) messageData.imagePublicId = imagePublicId;
         
         await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
 
+        const lastMessageText = textContent ? textContent : '📷 Fotoğraf';
         const lastMessageUpdate = {
-            lastMessage: newMessage.trim(),
+            lastMessage: lastMessageText,
             timestamp: serverTimestamp(),
         };
         const user1Id = matchId.split('_')[0];
@@ -144,29 +152,59 @@ export default function ChatPage() {
         await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
     };
 
+    const handleFileSelect = () => fileInputRef.current?.click();
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Fotoğraf yüklenemedi.');
+            }
+
+            const { url, public_id } = await response.json();
+            await handleSendMessage(undefined, url, public_id);
+
+        } catch (error: any) {
+            toast({
+                title: 'Yükleme Başarısız',
+                description: error.message,
+                variant: 'destructive',
+            });
+        } finally {
+            setIsUploading(false);
+            if(fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+
     const handleBlockUser = async () => {
         if (!user || !firestore || !otherUserId) return;
         
         setIsBlocking(true);
         try {
-            const batch = writeBatch(firestore);
+            const response = await fetch('/api/delete-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ matchId }),
+            });
             
-            // 1. Delete the main match document
-            const matchDocRef = doc(firestore, 'matches', matchId);
-            batch.delete(matchDocRef);
-            
-            // 2. Delete the denormalized match from the current user's subcollection
-            const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-            batch.delete(currentUserMatchRef);
-
-            // 3. Delete the denormalized match from the other user's subcollection
-            const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
-            batch.delete(otherUserMatchRef);
-
-            // TODO: In a real app, you might add a `blockedUsers` subcollection
-            // to prevent them from ever seeing each other again.
-            
-            await batch.commit();
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Kullanıcı engellenemedi.');
+            }
 
             toast({
                 title: 'Kullanıcı Engellendi',
@@ -175,7 +213,7 @@ export default function ChatPage() {
             
             router.back();
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error blocking user:", error);
             toast({
                 title: t.common.error,
@@ -297,18 +335,20 @@ export default function ChatPage() {
                                     )}
                                     <div
                                         className={cn(
-                                            "max-w-[70%] rounded-2xl px-4 py-2 flex items-end gap-2",
-                                            isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+                                            "max-w-[70%] rounded-2xl flex flex-col items-end gap-2",
+                                            isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
+                                             message.imageUrl ? 'p-1.5' : 'px-4 py-2'
                                         )}
                                     >
-                                        <p className='break-words'>{message.text}</p>
-                                        <span className="text-xs text-end -mb-1 shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
-                                    </div>
-                                    {isSender && (
-                                        <div className='self-end mb-1'>
-                                            {renderMessageStatus(message, isSender)}
+                                        {message.imageUrl && (
+                                            <Image src={message.imageUrl} alt="Gönderilen fotoğraf" width={200} height={200} className="rounded-xl w-full h-auto" />
+                                        )}
+                                        {message.text && <p className={cn('break-words', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
+                                        <div className={cn("flex items-center gap-1 self-end", !message.imageUrl && '-mb-1')}>
+                                            <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(message, isSender)}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -319,16 +359,21 @@ export default function ChatPage() {
             
             <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                     <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
+                        {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                    </Button>
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Mesajını yaz..."
                         className="flex-1 rounded-full bg-muted"
+                        disabled={isUploading}
                     />
-                    <Button type="submit" size="icon" className="rounded-full" disabled={!newMessage.trim()}>
+                    <Button type="submit" size="icon" className="rounded-full" disabled={!newMessage.trim() || isUploading}>
                         <Send className="h-5 w-5" />
                     </Button>
                 </form>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
             </footer>
         </div>
     );

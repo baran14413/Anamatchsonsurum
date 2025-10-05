@@ -58,7 +58,7 @@ export default function WelcomePage() {
                 uid: signedInUser.uid,
                 email: signedInUser.email || '',
                 fullName: signedInUser.displayName || '',
-                images: signedInUser.photoURL ? [signedInUser.photoURL] : [],
+                images: signedInUser.photoURL ? [{ url: signedInUser.photoURL, public_id: '' }] : [],
                 profilePicture: signedInUser.photoURL || '',
             };
             await setDoc(userDocRef, initialProfileData, { merge: true });

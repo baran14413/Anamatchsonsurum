@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, UserImage } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or } from 'firebase/firestore';
@@ -92,7 +92,7 @@ export default function AnasayfaPage() {
                 lastMessage: t.eslesmeler.defaultMessage,
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images[0] || '',
+                profilePicture: swipedProfile.images[0]?.url || '',
              };
 
              const swipedUserMatchData = {
