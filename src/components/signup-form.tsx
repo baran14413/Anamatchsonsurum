@@ -94,6 +94,24 @@ type PhotoSlot = {
     isUploading: boolean;
 };
 
+const getInitialPhotoSlots = (): PhotoSlot[] => {
+    const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
+    try {
+        if (typeof window !== 'undefined') {
+            const googleDataString = sessionStorage.getItem('googleSignupData');
+            if (googleDataString) {
+                const googleData = JSON.parse(googleDataString);
+                if (googleData.profilePicture) {
+                    initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Failed to initialize photo slots from session storage", e);
+    }
+    return initialSlots;
+};
+
 
 const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean, t: any }) => {
     const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
@@ -206,9 +224,7 @@ export default function SignupForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(
-    Array.from({ length: 6 }, (_, i) => ({ file: null, preview: null, progress: 0, isUploading: false }))
-  );
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(getInitialPhotoSlots);
   
   const [step, setStep] = useState(0); 
 
@@ -231,7 +247,7 @@ export default function SignupForm() {
       educationLevel: "",
       zodiacSign: "",
       interests: [],
-      photos: [],
+      photos: getInitialPhotoSlots().map(s => s.preview).filter(p => p) as string[],
     },
     mode: "onChange",
   });
@@ -248,13 +264,6 @@ export default function SignupForm() {
             form.setValue('email', googleData.email || '');
             form.setValue('name', googleData.name || '');
             form.setValue('uid', googleData.uid);
-            
-            if (googleData.profilePicture) {
-                const initialSlots = [...photoSlots];
-                initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
-                setPhotoSlots(initialSlots);
-                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
-            }
         } else {
            router.push('/');
         }
@@ -262,8 +271,7 @@ export default function SignupForm() {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form, router]);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -464,15 +472,14 @@ export default function SignupForm() {
         ['gender'], // 2
         ['lookingFor'], // 3
         ['address.country', 'address.state'], // 4
-        ['distancePreference'], // 5
-        ['school'], // 6
-        ['drinking', 'smoking', 'workout', 'pets'], // 7
-        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 8
-        ['interests'], // 9
-        ['photos'] // 10
+        ['school'], // 5
+        ['interests'], // 6
+        ['photos'], // 7
+        ['lifestyle'], // 8
+        ['moreInfo'], // 9
     ];
 
-    const finalStep = 10;
+    const finalStep = 8;
     
     if (step < flow.length) {
         fieldsToValidate = flow[step] as any;
@@ -491,8 +498,7 @@ export default function SignupForm() {
     }
   };
 
-  const finalStep = 10;
-  const interestStep = 9;
+  const finalStep = 8;
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -765,182 +771,6 @@ export default function SignupForm() {
                 </>
               )}
               {step === 6 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{t.signup.step9.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{t.signup.step9.description}</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto -mr-6 pr-5">
-                    <div className="space-y-8 py-4">
-                      <FormField
-                        control={form.control}
-                        name="drinking"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GlassWater className="w-5 h-5" />{t.signup.step9.drinking.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step9.drinking.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="smoking"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Cigarette className="w-5 h-5" />{t.signup.step9.smoking.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step9.smoking.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="workout"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Dumbbell className="w-5 h-5" />{t.signup.step9.workout.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step9.workout.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Controller
-                        name="pets"
-                        control={form.control}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><PawPrint className="w-5 h-5" />{t.signup.step9.pets.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step9.pets.options.map((opt: {id: string, label: string}) => {
-                                  const isSelected = field.value?.includes(opt.id);
-                                  return (
-                                    <Button
-                                      key={opt.id}
-                                      type="button"
-                                      variant={isSelected ? 'default' : 'outline'}
-                                      onClick={() => {
-                                        const newValue = isSelected
-                                          ? field.value?.filter(v => v !== opt.id)
-                                          : [...(field.value || []), opt.id];
-                                        field.onChange(newValue);
-                                      }}
-                                      className="rounded-full"
-                                    >
-                                      {opt.label}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-               {step === 7 && (
-                 <div className="flex-1 flex flex-col min-h-0">
-                  <div className="shrink-0">
-                      <h1 className="text-3xl font-bold">{t.signup.step10.title.replace('{name}', currentName)}</h1>
-                      <p className="text-muted-foreground">{t.signup.step10.description}</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto -mr-6 pr-5">
-                    <div className="space-y-8 py-4">
-                      <FormField
-                        control={form.control}
-                        name="loveLanguage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Heart className="w-5 h-5" />{t.signup.step10.loveLanguage.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step10.loveLanguage.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={form.control}
-                        name="communicationStyle"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="w-5 h-5" />{t.signup.step10.communication.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step10.communication.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="educationLevel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5" />{t.signup.step10.education.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step10.education.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="zodiacSign"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Moon className="w-5 h-5" />{t.signup.step10.zodiac.question}</FormLabel>
-                            <FormControl>
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {t.signup.step10.zodiac.options.map((opt: {id: string, label: string}) => (
-                                  <Button key={opt.id} type="button" variant={field.value === opt.id ? 'default' : 'outline'} onClick={() => field.onChange(opt.id)} className="rounded-full">{opt.label}</Button>
-                                ))}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {step === 8 && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
@@ -992,7 +822,7 @@ export default function SignupForm() {
                         />
                   </div>
               )}
-              {step === 9 && (
+              {step === 7 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
@@ -1098,16 +928,14 @@ export default function SignupForm() {
                 isLoading ||
                 (step === 1 && ageStatus !== 'valid') ||
                 (step === 4 && (!currentAddress?.country || !currentAddress?.state)) ||
-                (step === 6 && filledLifestyleCount < 4) ||
-                (step === 7 && filledMoreInfoCount < 4) ||
-                (step === 8 && selectedInterests.length < 1) ||
-                (step === 9 && uploadedPhotoCount < 2)
+                (step === 6 && selectedInterests.length < 1) ||
+                (step === 7 && uploadedPhotoCount < 2)
               }
             >
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === 9 ? t.common.done : t.signup.common.next)}
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === finalStep ? t.common.done : t.signup.common.next)}
             </Button>
 
-            {step === 9 && (
+            {step === 7 && (
               <p className="text-center text-sm text-muted-foreground mt-4">
                   {t.signup.step12.requirementText}
               </p>
