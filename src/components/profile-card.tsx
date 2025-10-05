@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { langTr } from '@/languages/tr';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from './ui/button';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
@@ -56,8 +56,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const handleAction = (action: 'liked' | 'disliked') => {
     if (!onSwipe || !isDraggable) return;
-    setIsVisible(false); 
-    setTimeout(() => onSwipe(action), 300);
+    setIsVisible(false);
+    onSwipe(action);
   };
   
 
@@ -144,7 +144,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
-                                    {/* Content is intentionally left blank for now */}
+                                     <SheetTitle className="sr-only">Profil Detayları</SheetTitle>
+                                     <SheetDescription className="sr-only">{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                                 </SheetContent>
                             </Sheet>
                         </div>
