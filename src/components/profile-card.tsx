@@ -148,7 +148,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                     >
                        <div className="flex items-end justify-between">
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-1 min-w-0">
                                 <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                                 <div className="flex items-center gap-2">
                                     <MapPin className="w-4 h-4" />
@@ -161,7 +161,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </div>
                              <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm">
+                                    <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
                                         <ChevronUp className="h-6 w-6" />
                                     </Button>
                                 </SheetTrigger>
