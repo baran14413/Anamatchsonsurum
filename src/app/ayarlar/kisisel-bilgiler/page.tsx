@@ -7,11 +7,12 @@ import * as z from "zod";
 import { useUser, useFirestore } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useRef } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -21,7 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from 'lucide-react';
+import Image from "next/image";
+import googleLogo from '@/img/googlelogin.png';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -178,40 +180,57 @@ export default function PersonalInfoPage() {
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : langTr.common.save}
                 </Button>
             </header>
-            <main className="flex-1 overflow-y-auto p-6">
-                <Form {...form}>
-                    <form id="personal-info-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                         <FormField
-                            control={form.control}
-                            name="fullName"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Tam İsim</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Adınız" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Controller
-                            control={form.control}
-                            name="dateOfBirth"
-                            render={({ field, fieldState }) => (
-                              <FormItem>
-                                <FormLabel>Doğum Tarihi</FormLabel>
-                                <FormControl>
-                                  <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} />
-                                </FormControl>
-                                 {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2 text-sm"><CheckCircle className="mr-2 h-4 w-4" />18 yaşından büyüksünüz.</div>}
-                                 {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2 text-sm"><XCircle className="mr-2 h-4 w-4" />18 yaşından küçükler kullanamaz.</div>}
-                                 {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
-                              </FormItem>
-                            )}
-                        />
-                    </form>
-                </Form>
+            <main className="flex-1 overflow-y-auto p-6 flex flex-col justify-center items-center">
+                 <div className="w-full max-w-md space-y-6">
+                    <div className="flex items-center justify-center gap-3 rounded-lg border bg-background p-4">
+                        <Image src={googleLogo} alt="Google logo" width={20} height={20} />
+                        <span className="text-sm text-muted-foreground">{user?.email}</span>
+                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Profil Bilgileri</CardTitle>
+                            <CardDescription>Bu bilgiler profilinde herkese açık olarak görünecektir.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <Form {...form}>
+                                <form id="personal-info-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                                    <FormField
+                                        control={form.control}
+                                        name="fullName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Tam İsim</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Adınız" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Controller
+                                        control={form.control}
+                                        name="dateOfBirth"
+                                        render={({ field, fieldState }) => (
+                                        <FormItem>
+                                            <FormLabel>Doğum Tarihi</FormLabel>
+                                            <FormControl>
+                                            <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} />
+                                            </FormControl>
+                                            {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2 text-sm"><CheckCircle className="mr-2 h-4 w-4" />18 yaşından büyüksünüz.</div>}
+                                            {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2 text-sm"><XCircle className="mr-2 h-4 w-4" />18 yaşından küçükler kullanamaz.</div>}
+                                            {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
+                                        </FormItem>
+                                        )}
+                                    />
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
+                 </div>
             </main>
         </div>
     )
 }
+
+    
