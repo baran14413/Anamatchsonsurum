@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button';
 const cardVariants = {
   enter: (direction: number) => {
     return {
-      x: direction > 0 ? 1000 : -1000,
+      x: 0,
       opacity: 0,
     };
   },
