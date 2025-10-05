@@ -89,7 +89,7 @@ export default function GalleryEditPage() {
       const deletedSlot = newSlots[index];
 
       // If it's a previously saved image, delete from Cloudinary
-      if (deletedSlot.public_id) {
+      if (deletedSlot.public_id && !deletedSlot.public_id.startsWith('google_')) {
           try {
               await fetch('/api/delete-image', {
                   method: 'POST',
@@ -156,6 +156,7 @@ export default function GalleryEditPage() {
 
         await updateDoc(doc(firestore, "users", user.uid), {
             images: finalOrderedImages,
+            profilePicture: finalOrderedImages.length > 0 ? finalOrderedImages[0].url : '',
         });
 
         toast({

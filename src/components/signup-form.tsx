@@ -67,11 +67,10 @@ type PhotoSlot = {
 
 const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
   const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
-
   if (user?.photoURL) {
-    initialSlots[0] = { file: null, preview: user.photoURL, public_id: null, isUploading: false };
+    // Treat the Google photo as a non-file, already "uploaded" photo. It won't have a public_id from Cloudinary.
+    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false };
   }
-
   return initialSlots;
 };
 
@@ -180,11 +179,14 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
-        const initialPhotos = getInitialPhotoSlots(user)
-            .filter(slot => slot.preview)
+        const initialSlots = getInitialPhotoSlots(user);
+        setPhotoSlots(initialSlots);
+
+        const initialPhotos = initialSlots
+            .filter(slot => slot.preview) // Get only slots that have a photo (i.e., the Google one)
             .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '' }));
+
         form.setValue('photos', initialPhotos, { shouldValidate: true });
-        setPhotoSlots(getInitialPhotoSlots(user));
     }
   }, [user, form]);
   
@@ -269,10 +271,12 @@ export default function ProfileCompletionForm() {
       
       const userProfileData = {
         ...data,
+        uid: user.uid,
+        email: user.email,
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
         images: data.photos,
-        profilePicture: user?.photoURL || '',
+        profilePicture: data.photos.length > 0 ? data.photos[0].url : '',
         globalModeEnabled: false, 
         expandAgeRange: true,
       };
@@ -340,7 +344,7 @@ export default function ProfileCompletionForm() {
       
       const slotToDelete = photoSlots[index];
 
-      if(slotToDelete.public_id){
+      if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
         try {
             await fetch('/api/delete-image', {
                 method: 'POST',
@@ -360,7 +364,7 @@ export default function ProfileCompletionForm() {
       setPhotoSlots(newSlots);
       
       const newPhotos = newSlots
-        .filter(slot => slot.preview && slot.public_id)
+        .filter(slot => slot.preview)
         .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
       form.setValue('photos', newPhotos, { shouldValidate: true });
   }
@@ -627,3 +631,4 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
