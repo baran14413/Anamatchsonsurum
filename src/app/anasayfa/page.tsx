@@ -8,7 +8,6 @@ import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { AnimatePresence } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 
 export default function AnasayfaPage() {
@@ -27,21 +26,26 @@ export default function AnasayfaPage() {
     setIsLoading(true);
     try {
       // 1. Get IDs of users the current user has already interacted with.
-      const interactionsQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-      const interactionsQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-      
-      const [interactionsSnapshot1, interactionsSnapshot2] = await Promise.all([
-        getDocs(interactionsQuery1),
-        getDocs(interactionsQuery2)
-      ]);
+      const interactionsQuery = query(
+        collection(firestore, 'matches'), 
+        where('user1Id', '==', user.uid)
+      );
+      const interactionsSnapshot = await getDocs(interactionsQuery);
 
       const interactedUserIds = new Set<string>();
       interactedUserIds.add(user.uid); // Add self to avoid showing own profile
 
-      interactionsSnapshot1.forEach(doc => {
+      interactionsSnapshot.forEach(doc => {
           interactedUserIds.add(doc.data().user2Id);
       });
-      interactionsSnapshot2.forEach(doc => {
+      
+      // Also check where the current user is user2
+      const interactionsQuery2 = query(
+        collection(firestore, 'matches'),
+        where('user2Id', '==', user.uid)
+      );
+      const interactionsSnapshot2 = await getDocs(interactionsQuery2);
+       interactionsSnapshot2.forEach(doc => {
           interactedUserIds.add(doc.data().user1Id);
       });
 
@@ -52,7 +56,8 @@ export default function AnasayfaPage() {
       const potentialMatches: UserProfile[] = [];
       allUsersSnapshot.forEach(doc => {
           const userData = doc.data();
-          if (userData.uid && !interactedUserIds.has(userData.uid)) {
+          // Ensure the doc is a valid profile and not an interacted one
+          if (userData.uid && !interactedUserIds.has(userData.uid) && userData.images && userData.images.length > 0) {
               potentialMatches.push({
                   id: doc.id,
                   ...userData,
@@ -83,52 +88,57 @@ export default function AnasayfaPage() {
   const recordSwipe = async (swipedProfileId: string, action: 'liked' | 'disliked') => {
     if (!user || !firestore) return;
 
+    // Use a consistent ID format by sorting UIDs
     const interactionId = [user.uid, swipedProfileId].sort().join('_');
     const interactionRef = doc(firestore, 'matches', interactionId);
 
     try {
-      // Record the current user's action
-      await setDoc(interactionRef, {
-        [user.uid]: action,
-        user1Id: [user.uid, swipedProfileId].sort()[0],
-        user2Id: [user.uid, swipedProfileId].sort()[1],
-        timestamp: serverTimestamp(),
-      }, { merge: true });
-
-      if (action === 'liked') {
-        // Check if the other user has also liked
         const interactionDoc = await getDoc(interactionRef);
-        const interactionData = interactionDoc.data();
 
-        if (interactionData && interactionData[swipedProfileId] === 'liked') {
-          // It's a match!
-          await setDoc(interactionRef, { status: 'matched', matchDate: serverTimestamp() }, { merge: true });
-          
-          // Add match to both users' subcollections for easy retrieval
-          const user1MatchRef = doc(firestore, `users/${user.uid}/matches`, swipedProfileId);
-          const user2MatchRef = doc(firestore, `users/${swipedProfileId}/matches`, user.uid);
-          
-          const matchData = {
-            id: swipedProfileId,
-            matchDate: serverTimestamp()
-          };
-          
-          await setDoc(user1MatchRef, matchData);
-          await setDoc(user2MatchRef, { ...matchData, id: user.uid });
-          
-          toast({
-            title: t.anasayfa.matchToastTitle,
-            description: t.anasayfa.matchToastDescription,
-          });
+        if (action === 'liked') {
+            if (interactionDoc.exists() && interactionDoc.data().user2Id === user.uid) {
+                // The other user (user1) liked us (user2). It's a match!
+                await setDoc(interactionRef, { 
+                    status: 'matched', 
+                    matchDate: serverTimestamp() 
+                }, { merge: true });
+
+                // Add match to both users' subcollections
+                const user1MatchRef = doc(firestore, `users/${user.uid}/matches`, swipedProfileId);
+                const user2MatchRef = doc(firestore, `users/${swipedProfileId}/matches`, user.uid);
+                const matchData = { matchDate: serverTimestamp() };
+                await setDoc(user1MatchRef, { ...matchData, matchedUserId: swipedProfileId });
+                await setDoc(user2MatchRef, { ...matchData, matchedUserId: user.uid });
+
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: t.anasayfa.matchToastDescription,
+                });
+            } else {
+                // Other user hasn't interacted or we are user1, so just record our like
+                 await setDoc(interactionRef, {
+                    user1Id: user.uid,
+                    user2Id: swipedProfileId,
+                    status: 'liked',
+                    timestamp: serverTimestamp(),
+                }, { merge: true });
+            }
+        } else { // disliked
+            // Just record the dislike action
+            await setDoc(interactionRef, {
+                user1Id: user.uid,
+                user2Id: swipedProfileId,
+                status: 'disliked',
+                timestamp: serverTimestamp(),
+            }, { merge: true });
         }
-      }
     } catch (error) {
-      console.error("Error recording swipe:", error);
-      toast({
-        title: "Hata",
-        description: "İşlem kaydedilemedi.",
-        variant: "destructive"
-      });
+        console.error("Error recording swipe:", error);
+        toast({
+            title: "Hata",
+            description: "İşlem kaydedilemedi.",
+            variant: "destructive"
+        });
     }
   };
 
@@ -162,8 +172,7 @@ export default function AnasayfaPage() {
         </div>
       ) : (
         <>
-          <div className="flex-1 relative flex items-center justify-center">
-            <AnimatePresence>
+          <div className="flex-1 relative flex items-center justify-center p-4">
               {activeProfile ? (
                  <ProfileCard
                     key={activeProfile.uid}
@@ -174,35 +183,39 @@ export default function AnasayfaPage() {
                 <div className="text-center">
                   <h2 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h2>
                   <p className="text-muted-foreground mt-2">{t.anasayfa.outOfProfilesDescription}</p>
+                   <button onClick={handleReset} className="mt-4 p-2 bg-blue-500 text-white rounded-full">Yeniden Başla</button>
                 </div>
               )}
-            </AnimatePresence>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-center items-center gap-4 p-4 z-10">
-            <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-transform transform hover:scale-110">
-              <Undo size={28} />
-            </button>
-            <button 
-              onClick={() => handleSwipe('left')}
-              className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-transform transform hover:scale-110">
-              <X size={40} strokeWidth={2.5} />
-            </button>
-            <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-blue-400 hover:bg-blue-50 transition-transform transform hover:scale-110">
-              <Star size={28} className="fill-current" />
-            </button>
-            <button 
-              onClick={() => handleSwipe('right')}
-              className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-green-500 hover:bg-green-50 transition-transform transform hover:scale-110">
-              <Heart size={40} className="fill-current" />
-            </button>
-            <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-purple-500 hover:bg-purple-50 transition-transform transform hover:scale-110">
-              <Zap size={28} className="fill-current" />
-            </button>
-          </div>
+           {activeProfile && (
+            <div className="flex justify-center items-center gap-4 p-4 z-10">
+              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-transform transform hover:scale-110">
+                <Undo size={28} />
+              </button>
+              <button 
+                onClick={() => handleSwipe('left')}
+                className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-transform transform hover:scale-110">
+                <X size={40} strokeWidth={2.5} />
+              </button>
+              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-blue-400 hover:bg-blue-50 transition-transform transform hover:scale-110">
+                <Star size={28} className="fill-current" />
+              </button>
+              <button 
+                onClick={() => handleSwipe('right')}
+                className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-green-500 hover:bg-green-50 transition-transform transform hover:scale-110">
+                <Heart size={40} className="fill-current" />
+              </button>
+              <button className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center text-purple-500 hover:bg-purple-50 transition-transform transform hover:scale-110">
+                <Zap size={28} className="fill-current" />
+              </button>
+            </div>
+           )}
         </>
       )}
     </div>
   );
 }
+
+    
