@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -30,14 +30,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
-
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
     if (!isSender || message.type === 'system_superlike_prompt') return null;
@@ -127,7 +126,7 @@ export default function ChatPage() {
     const [imagePreview, setImagePreview] = useState<{file: File, url: string} | null>(null);
     const [caption, setCaption] = useState('');
     const [isViewOnce, setIsViewOnce] = useState(false);
-
+    
     const [viewingOnceImage, setViewingOnceImage] = useState<ChatMessage | null>(null);
     const [viewOnceProgress, setViewOnceProgress] = useState(0);
 
@@ -557,7 +556,7 @@ export default function ChatPage() {
         }
         return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
     }
-
+    
     const handleOpenViewOnce = (message: ChatMessage) => {
         if (!user || message.senderId === user.uid || message.viewed) return;
         setViewingOnceImage(message);
@@ -565,6 +564,7 @@ export default function ChatPage() {
 
         const timerDuration = 5000; // 5 seconds
         let startTime: number;
+        let animationFrameId: number;
 
         const animateProgress = (timestamp: number) => {
             if (!startTime) startTime = timestamp;
@@ -573,31 +573,23 @@ export default function ChatPage() {
             setViewOnceProgress(progress);
 
             if (progress < 100) {
-                requestAnimationFrame(animateProgress);
+                animationFrameId = requestAnimationFrame(animateProgress);
             } else {
-                handleCloseViewOnce();
+                handleCloseViewOnce(true); 
             }
         };
-        requestAnimationFrame(animateProgress);
+        animationFrameId = requestAnimationFrame(animateProgress);
+
+        return () => cancelAnimationFrame(animationFrameId);
     };
 
-    const handleCloseViewOnce = async () => {
-        if (viewingOnceImage && firestore) {
+    const handleCloseViewOnce = async (markAsViewed = false) => {
+        if (markAsViewed && viewingOnceImage && firestore) {
             const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
             await updateDoc(msgRef, { viewed: true });
-
-            const user1Id = matchId.split('_')[0];
-            const user2Id = matchId.split('_')[1];
-            const lastMessageUpdate = {
-                lastMessage: "✉️ Fotoğraf açıldı",
-                timestamp: serverTimestamp(),
-            };
-            await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
-            await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
         }
         setViewingOnceImage(null);
     };
-
     
     const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = matchData?.status === 'matched';
@@ -684,40 +676,38 @@ export default function ChatPage() {
                                     {isSender && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(message)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                                            {message.text && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
+                                            {message.text && !message.imageUrl && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
                                         </div>
                                     )}
                                     <div
                                         className={cn(
-                                            "max-w-[70%] rounded-2xl flex flex-col items-end gap-1",
+                                            "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            message.imageUrl && !message.isViewOnce && 'p-1.5',
-                                            message.isViewOnce ? 'p-0' : 'px-3 py-2',
+                                            message.imageUrl && !message.isViewOnce ? 'p-1.5' : 'px-3 py-2',
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
                                         {message.isViewOnce ? (
-                                            <button
+                                             <button
                                                 className={cn(
-                                                    "flex items-center gap-2 px-4 py-3 rounded-2xl w-[200px]",
+                                                    "flex items-center gap-3 px-4 py-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                    message.viewed && "opacity-70 cursor-not-allowed"
+                                                    (message.viewed || isSender) && "opacity-80 cursor-not-allowed"
                                                 )}
-                                                onClick={() => !message.viewed && handleOpenViewOnce(message)}
-                                                disabled={message.viewed || message.senderId === user?.uid}
+                                                onClick={() => handleOpenViewOnce(message)}
+                                                disabled={message.viewed || isSender}
                                             >
-                                                {message.viewed ? <EyeOff className="w-5 h-5" /> : <History className="w-5 h-5 text-green-500" />}
-                                                <span className="font-medium">{message.viewed ? "Fotoğraf açıldı" : "Fotoğraf"}</span>
+                                                {message.viewed ? <EyeOff className="w-6 h-6" /> : <History className="w-6 h-6 text-green-400" />}
+                                                <span className="font-medium text-base">{message.viewed ? "Fotoğraf açıldı" : "Fotoğraf"}</span>
                                             </button>
-                                        ) : message.imageUrl ? (
-                                            <Image src={message.imageUrl} alt="Gönderilen fotoğraf" width={200} height={200} className="rounded-xl w-full h-auto" />
-                                        ) : null }
-
+                                        ) : message.imageUrl && (
+                                            <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
+                                        )}
                                         {message.text && <p className={cn('break-words text-left w-full', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !message.isViewOnce && '-mb-1', (message.imageUrl || message.isViewOnce) && 'pr-2 pb-1')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !message.isViewOnce && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
@@ -859,44 +849,38 @@ export default function ChatPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* View Once Image Dialog */}
-             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
+            <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
                 <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col">
-                     <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
-                        <div className="flex items-center gap-3 text-white">
+                    <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
+                       <div className="flex items-center gap-3 text-white">
                            <Avatar className="h-8 w-8">
-                               <AvatarImage src={isSender(viewingOnceImage?.senderId) ? userProfile?.profilePicture : otherUser?.profilePicture} />
-                               <AvatarFallback>{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName?.charAt(0) : otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                               <AvatarImage src={otherUser?.profilePicture} />
+                               <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                            </Avatar>
-                           <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
+                           <span className="font-semibold text-sm">{otherUser?.fullName}</span>
                        </div>
                         <DialogClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
                                 <X className="h-5 w-5" />
                             </Button>
                         </DialogClose>
-                     </DialogHeader>
-                     <div className="absolute top-2 left-2 right-2 z-10">
+                    </DialogHeader>
+                    <div className="absolute top-2 left-2 right-2 z-10">
                         <Progress value={viewOnceProgress} className="h-1 bg-white/30" indicatorClassName="bg-white" />
-                     </div>
-                     <div className="flex-1 flex items-center justify-center relative">
+                    </div>
+                    <div className="flex-1 flex items-center justify-center relative">
                         {viewingOnceImage?.imageUrl && <Image src={viewingOnceImage.imageUrl} alt="Tek seferlik fotoğraf" fill style={{objectFit: 'contain'}}/>}
-                     </div>
-                     {viewingOnceImage?.text && (
+                    </div>
+                    {viewingOnceImage?.text && (
                         <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black/70 to-transparent">
                             <p className="text-white text-center">{viewingOnceImage.text}</p>
                         </div>
-                     )}
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
     );
-    
-    function isSender(senderId: string | undefined): boolean {
-        return senderId === user?.uid;
-    }
 }
-    
+
 
     
