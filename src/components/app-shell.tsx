@@ -1,14 +1,15 @@
 
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import FooterNav from './footer-nav';
 import { Loader2, ShieldCheck, Settings } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
@@ -18,8 +19,12 @@ const registrationRoute = '/profilini-tamamla';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, userProfile, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
+
+  const [hasNewLikes, setHasNewLikes] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthFlowRoute = authFlowRoutes.includes(pathname);
@@ -27,6 +32,66 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   // Specific check for the dynamic chat page
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
+
+  // Effect for notifications
+  useEffect(() => {
+    if (!user || !firestore) return;
+
+    // --- Check for new likes ---
+    const likesQuery = query(
+      collection(firestore, "matches"),
+      where('user2Id', '==', user.uid),
+      where('user1_action', '==', 'liked'),
+      where('user2_action', '==', null)
+    );
+    const unsubscribeLikes = onSnapshot(likesQuery, (snapshot) => {
+        setHasNewLikes(!snapshot.empty);
+    });
+
+    // --- Check for unread messages ---
+    const matchesQuery = query(collection(firestore, `users/${user.uid}/matches`));
+    const unsubscribeMatches = onSnapshot(matchesQuery, (snapshot) => {
+        const matchIds = snapshot.docs.map(doc => doc.id);
+        if (matchIds.length === 0) {
+            setHasUnreadMessages(false);
+            return;
+        }
+
+        // For each match, check for unread messages.
+        // This is a simplified approach. For large scale, a dedicated `unreadCount` field would be better.
+        let anyUnread = false;
+        const unreadChecks = matchIds.map(matchId => {
+            return new Promise<void>(resolve => {
+                const messagesQuery = query(
+                    collection(firestore, `matches/${matchId}/messages`),
+                    where('senderId', '!=', user.uid),
+                    where('isRead', '==', false)
+                );
+                const unsub = onSnapshot(messagesQuery, msgSnapshot => {
+                    if (!msgSnapshot.empty) {
+                        anyUnread = true;
+                    }
+                    unsub(); // Unsubscribe after first check to avoid multiple listeners
+                    resolve();
+                });
+            });
+        });
+        
+        Promise.all(unreadChecks).then(() => {
+            setHasUnreadMessages(anyUnread);
+        });
+
+    }, () => setHasUnreadMessages(false));
+
+
+    return () => {
+        unsubscribeLikes();
+        unsubscribeMatches();
+    };
+
+  }, [user, firestore]);
+
+
 
   useEffect(() => {
     if (isUserLoading) {
@@ -104,7 +169,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto">
            {children}
         </main>
-        <FooterNav />
+        <FooterNav hasNewLikes={hasNewLikes} hasUnreadMessages={hasUnreadMessages} />
       </div>
     );
   }
