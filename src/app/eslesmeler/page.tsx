@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Loader2, Trash2 } from 'lucide-react';
+import { Search, MessageSquare, Trash2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -142,7 +143,7 @@ export default function EslesmelerPage() {
                             {filteredMatches.map(match => (
                                 <motion.div
                                     key={match.id}
-                                    onLongPress={() => setChatToDelete(match)}
+                                    onContextMenu={(e) => { e.preventDefault(); setChatToDelete(match); }}
                                 >
                                     <Link href={`/eslesmeler/${match.id}`}>
                                         <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
@@ -194,3 +195,5 @@ export default function EslesmelerPage() {
     </div>
   );
 }
+
+    
