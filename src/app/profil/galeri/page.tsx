@@ -7,7 +7,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, Pencil, GalleryHorizontal } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil, Images } from "lucide-react";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
 import { Icons } from "@/components/icons";
@@ -174,7 +174,7 @@ export default function GalleryEditPage() {
       <main className="flex-1 flex flex-col p-6 overflow-hidden">
         <div className="shrink-0 space-y-4">
             <div className="flex items-center gap-3">
-                <GalleryHorizontal className="w-8 h-8 text-primary shrink-0" />
+                <Images className="w-8 h-8 text-primary shrink-0" />
                 <p className="text-muted-foreground text-sm">Profilinde gösterilecek fotoğraflarını buradan yönetebilirsin.</p>
             </div>
              <div className="space-y-2">
