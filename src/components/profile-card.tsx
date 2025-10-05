@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,6 @@ import { Button } from './ui/button';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
-import { Card, CardContent } from './ui/card';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -43,7 +43,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
-  const totalImages = profile.images?.length || 0;
   
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!onSwipe || !isDraggable) return;
@@ -51,17 +50,14 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     const velocity = info.velocity.x;
 
     if (offset > SWIPE_THRESHOLD || velocity > 500) {
-      setIsVisible(false);
       onSwipe('liked');
     } else if (offset < -SWIPE_THRESHOLD || velocity < -500) {
-      setIsVisible(false);
       onSwipe('disliked');
     }
   };
 
   const handleSwipe = (action: 'liked' | 'disliked') => {
     if (!onSwipe || !isDraggable) return;
-    setIsVisible(false);
     onSwipe(action);
   };
   
@@ -83,7 +79,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   
 
   return (
-    <AnimatePresence onExitComplete={() => setIsVisible(false)}>
+    <AnimatePresence>
         {isVisible && (
             <motion.div 
                 className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
@@ -206,8 +202,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </Sheet>
                         </div>
                 </div>
-            </motion.div>
+            </div>
+        </motion.div>
         )}
      </AnimatePresence>
   );
 }
+
+    
