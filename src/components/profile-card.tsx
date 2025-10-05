@@ -10,7 +10,7 @@ import { langTr } from '@/languages/tr';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  onSwipe: (action: 'liked' | 'disliked') => void;
+  onSwipe?: (action: 'liked' | 'disliked') => void;
   isDraggable: boolean;
 }
 
@@ -64,6 +64,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const highlights = getProfileHighlights(profile);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!onSwipe) return;
     if (info.offset.x > SWIPE_THRESHOLD) {
       onSwipe('liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
@@ -98,19 +99,22 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </div>
             )}
 
-            {/* Like/Dislike Indicators */}
-            <motion.div
-                className="absolute top-8 left-8 text-green-400"
-                style={{ opacity: opacityLike }}
-            >
-                <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
-            </motion.div>
-            <motion.div
-                className="absolute top-8 right-8 text-red-500"
-                style={{ opacity: opacityDislike }}
-            >
-                <X className="h-20 w-20" strokeWidth={3} />
-            </motion.div>
+            {isDraggable && (
+                <>
+                <motion.div
+                    className="absolute top-8 left-8 text-green-400"
+                    style={{ opacity: opacityLike }}
+                >
+                    <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
+                </motion.div>
+                <motion.div
+                    className="absolute top-8 right-8 text-red-500"
+                    style={{ opacity: opacityDislike }}
+                >
+                    <X className="h-20 w-20" strokeWidth={3} />
+                </motion.div>
+                </>
+            )}
 
             <div
             className="absolute left-0 top-0 h-full w-1/2 z-[5] cursor-pointer"
@@ -128,7 +132,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                 style={{ objectFit: 'cover' }}
                 className="pointer-events-none"
-                priority={true}
+                priority={isDraggable}
             />
 
             <div

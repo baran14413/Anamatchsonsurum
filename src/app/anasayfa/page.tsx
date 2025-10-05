@@ -22,7 +22,6 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [direction, setDirection] = useState<'left' | 'right' | null>(null);
 
   const removeTopCard = useCallback(() => {
     setProfiles(prev => prev.slice(1));
@@ -31,7 +30,8 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
     if (!user || !firestore) return;
     
-    setDirection(action === 'liked' ? 'right' : 'left');
+    // UI update happens immediately via AnimatePresence exit animation
+    removeTopCard();
 
     try {
         const user1Id = user.uid;
@@ -97,7 +97,7 @@ export default function AnasayfaPage() {
             variant: "destructive",
         });
     }
-  }, [user, firestore, t, toast, userProfile]);
+  }, [user, firestore, t, toast, userProfile, removeTopCard]);
 
  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
@@ -105,7 +105,6 @@ export default function AnasayfaPage() {
         return;
     }
     setIsLoading(true);
-    setDirection(null); // Reset direction on fetch
 
     try {
         const interactedUids = new Set<string>();
@@ -185,52 +184,48 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
 
-  const onExitComplete = () => {
-    removeTopCard();
-    setDirection(null);
-  }
-
   return (
     <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
       {isLoading ? (
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       ) : profiles.length > 0 ? (
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[70vh]">
-          <AnimatePresence onExitComplete={onExitComplete}>
+          <AnimatePresence>
             {profiles.map((profile, index) => {
-              if (index > 1) return null;
-
               const isTopCard = index === 0;
+              const isNextCard = index === 1;
+
+              if (!isTopCard && !isNextCard) return null;
+
+              if (isTopCard) {
+                return (
+                  <motion.div
+                    key={profile.uid}
+                    className="absolute w-full h-full"
+                    exit={{
+                      y: 800,
+                      opacity: 0,
+                      transition: { duration: 0.4 }
+                    }}
+                  >
+                    <ProfileCard
+                      profile={profile}
+                      onSwipe={(action) => handleSwipe(profile, action)}
+                      isDraggable={true}
+                    />
+                  </motion.div>
+                );
+              }
 
               return (
-                <motion.div
-                  key={profile.uid}
-                  className="absolute w-full h-full"
-                  style={{
-                    zIndex: isTopCard ? 2 : 1,
-                    scale: isTopCard ? 1 : 0.95,
-                    y: isTopCard ? 0 : 10,
-                  }}
-                  initial={false}
-                  animate={{
-                     scale: 1,
-                     y: 0,
-                     filter: isTopCard ? 'blur(0px)' : 'blur(4px)',
-                     transition: { duration: 0.3 }
-                  }}
-                  exit={{
-                    x: direction === 'right' ? 300 : -300,
-                    opacity: 0,
-                    scale: 0.8,
-                    transition: { duration: 0.3 }
-                  }}
-                >
-                  <ProfileCard
-                    profile={profile}
-                    onSwipe={(action) => handleSwipe(profile, action)}
-                    isDraggable={isTopCard}
-                  />
-                </motion.div>
+                  <motion.div
+                    key={profile.uid}
+                    className="absolute w-full h-full"
+                    initial={{ scale: 0.95, y: 10, opacity: 0.8 }}
+                    animate={{ scale: 1, y: 0, opacity: 1, transition: { duration: 0.4 } }}
+                  >
+                    <ProfileCard profile={profile} isDraggable={false} />
+                  </motion.div>
               );
             }).reverse()}
           </AnimatePresence>
