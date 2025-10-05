@@ -700,9 +700,10 @@ export default function ChatPage() {
                                                 {message.viewed ? <EyeOff className="w-6 h-6" /> : <History className="w-6 h-6 text-green-400" />}
                                                 <span className="font-medium text-base">{message.viewed ? "Fotoğraf açıldı" : "Fotoğraf"}</span>
                                             </button>
-                                        ) : message.imageUrl && (
+                                        ) : message.imageUrl ? (
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
-                                        )}
+                                        ) : null }
+
                                         {message.text && <p className={cn('break-words text-left w-full', message.imageUrl && 'px-2 pb-1 pt-2')}>{message.text}</p>}
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
@@ -849,38 +850,43 @@ export default function ChatPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
+            {/* View Once Image Dialog */}
+             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
                 <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col">
-                    <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
-                       <div className="flex items-center gap-3 text-white">
+                     <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
+                        <div className="flex items-center gap-3 text-white">
                            <Avatar className="h-8 w-8">
-                               <AvatarImage src={otherUser?.profilePicture} />
-                               <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                               <AvatarImage src={isSender(viewingOnceImage?.senderId) ? userProfile?.profilePicture : otherUser?.profilePicture} />
+                               <AvatarFallback>{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName?.charAt(0) : otherUser?.fullName?.charAt(0)}</AvatarFallback>
                            </Avatar>
-                           <span className="font-semibold text-sm">{otherUser?.fullName}</span>
+                           <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
                        </div>
                         <DialogClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
                                 <X className="h-5 w-5" />
                             </Button>
                         </DialogClose>
-                    </DialogHeader>
-                    <div className="absolute top-2 left-2 right-2 z-10">
+                     </DialogHeader>
+                     <div className="absolute top-2 left-2 right-2 z-10">
                         <Progress value={viewOnceProgress} className="h-1 bg-white/30" indicatorClassName="bg-white" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-center relative">
+                     </div>
+                     <div className="flex-1 flex items-center justify-center relative">
                         {viewingOnceImage?.imageUrl && <Image src={viewingOnceImage.imageUrl} alt="Tek seferlik fotoğraf" fill style={{objectFit: 'contain'}}/>}
-                    </div>
-                    {viewingOnceImage?.text && (
+                     </div>
+                     {viewingOnceImage?.text && (
                         <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black/70 to-transparent">
                             <p className="text-white text-center">{viewingOnceImage.text}</p>
                         </div>
-                    )}
+                     )}
                 </DialogContent>
             </Dialog>
         </div>
     );
+    
+    function isSender(senderId: string | undefined): boolean {
+        return senderId === user?.uid;
+    }
 }
-
+    
 
     
