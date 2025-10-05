@@ -10,8 +10,6 @@ import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from './ui/button';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
-import { ScrollArea } from './ui/scroll-area';
-import { Badge } from './ui/badge';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -147,46 +145,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
-                                     <ScrollArea className="h-full">
-                                        <div className="p-6 space-y-6">
-                                            <div>
-                                                <h2 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h2>
-                                                 <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-                                                    <MapPin className="w-4 h-4" />
-                                                    {profile.distance !== undefined ? (
-                                                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-
-                                            {profile.bio && (
-                                                <div>
-                                                    <h3 className="text-lg font-semibold mb-2">Hakkında</h3>
-                                                    <p className='text-muted-foreground'>{profile.bio}</p>
-                                                </div>
-                                            )}
-
-                                            {profile.interests && profile.interests.length > 0 && (
-                                                 <div>
-                                                    <h3 className="text-lg font-semibold mb-2">İlgi Alanları</h3>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {profile.interests.map(interest => (
-                                                            <Badge key={interest} variant="secondary" className="text-sm">{interest}</Badge>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="py-10 flex justify-center gap-4">
-                                                 <Button onClick={() => handleAction('disliked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-red-500 text-red-500 hover:bg-red-500/10">
-                                                    <X className="h-10 w-10" />
-                                                </Button>
-                                                 <Button onClick={() => handleAction('liked')} variant="outline" size="icon" className="h-20 w-20 rounded-full border-2 border-green-400 text-green-400 hover:bg-green-400/10">
-                                                    <Heart className="h-10 w-10" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </ScrollArea>
+                                     {/* Content is intentionally left blank for now */}
                                 </SheetContent>
                             </Sheet>
                         </div>
@@ -197,3 +156,4 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
      </AnimatePresence>
   );
 }
+
