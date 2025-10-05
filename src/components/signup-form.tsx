@@ -296,66 +296,6 @@ export default function SignupForm() {
         setAgeStatus('invalid');
     }
   };
-
-  const handleLocationRequest = async () => {
-    if (!navigator.geolocation) {
-        toast({ title: "Hata", description: "Tarayıcınız konum servisini desteklemiyor.", variant: "destructive" });
-        return;
-    }
-
-    const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-    if (permissionStatus.state === 'denied') {
-        setLocationPermissionDenied(true);
-        toast({
-            title: t.signup.step6.errorTitle,
-            description: t.signup.step6.errorMessage,
-            variant: "destructive",
-            duration: 5000,
-        });
-        return;
-    }
-
-    setIsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-                const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
-                const data = await response.json();
-                if (data.address) {
-                    const country = Country.getAllCountries().find(c => c.isoCode === data.address.country);
-                    
-                    if (country) {
-                        const allStates = State.getStatesOfCountry(country.isoCode);
-                        const state = allStates.find(s => s.name === data.address.city);
-                        
-                        form.setValue('address', {
-                            country: country?.isoCode,
-                            state: state?.isoCode,
-                            city: data.address.city
-                        }, { shouldValidate: true });
-                    }
-                     form.setValue('location', { latitude, longitude });
-                } else {
-                    toast({ title: "Hata", description: "Adres bulunamadı.", variant: "destructive" });
-                }
-            } catch (error) {
-                 toast({ title: "Hata", description: "Adres getirilirken bir sorun oluştu.", variant: "destructive" });
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        (error) => {
-            let message = "Konum alınırken bir hata oluştu.";
-            if (error.code === error.PERMISSION_DENIED) {
-                 message = "Konum iznini reddettiniz. Lütfen tarayıcı ayarlarından izin verin.";
-                 setLocationPermissionDenied(true);
-            }
-            toast({ title: "Hata", description: message, variant: "destructive" });
-            setIsLoading(false);
-        }
-    );
-  };
   
   const currentName = form.watch("name");
   const currentAddress = form.watch("address");
@@ -549,27 +489,50 @@ export default function SignupForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues | `photos.${number}` | 'address.country')[] = [];
-    if (step === 0 && !isGoogleSignup) fieldsToValidate = ['email', 'password'];
-    if (step === 1) fieldsToValidate = ['name'];
-    if (step === 2) fieldsToValidate = ['dateOfBirth'];
-    if (step === 3) fieldsToValidate = ['gender'];
-    if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['address.country'];
-    if (step === 6) fieldsToValidate = ['distancePreference'];
-    if (step === 7) fieldsToValidate = ['school'];
-    if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
-    if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
-    if (step === 10) fieldsToValidate = ['interests'];
     
-    const finalStep = isGoogleSignup ? 10 : 11;
-    if (step === finalStep) {
-        fieldsToValidate = ['photos'];
+    // Define steps for each flow
+    const normalFlow = [
+        ['email', 'password'], // 0
+        ['name'], // 1
+        ['dateOfBirth'], // 2
+        ['gender'], // 3
+        ['lookingFor'], // 4
+        ['address.country'], // 5
+        ['distancePreference'], // 6
+        ['school'], // 7
+        ['drinking', 'smoking', 'workout', 'pets'], // 8
+        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
+        ['interests'], // 10
+        ['photos'] // 11 (final)
+    ];
+    
+    const googleFlow = [
+        [], // 0 - dummy step for alignment
+        ['name'], // 1
+        ['dateOfBirth'], // 2
+        ['gender'], // 3
+        ['lookingFor'], // 4
+        ['address.country'], // 5
+        ['distancePreference'], // 6
+        ['school'], // 7
+        ['drinking', 'smoking', 'workout', 'pets'], // 8
+        ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'], // 9
+        ['interests'], // 10
+        ['photos'] // 11 (final)
+    ];
+
+    const currentFlow = isGoogleSignup ? googleFlow : normalFlow;
+    
+    if (step < currentFlow.length) {
+        fieldsToValidate = currentFlow[step] as any;
     }
+
+    const isFinalStep = step === currentFlow.length - 1;
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
     if (isValid) {
-      if (step === finalStep) {
+      if (isFinalStep) {
          form.handleSubmit(onSubmit)();
       } else {
         nextStep();
@@ -577,8 +540,9 @@ export default function SignupForm() {
     }
   };
 
-  const finalStep = isGoogleSignup ? 10 : 11;
-
+  const finalStep = isGoogleSignup ? 11 : 11;
+  const interestStep = isGoogleSignup ? 10 : 10;
+  
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
@@ -816,7 +780,9 @@ export default function SignupForm() {
                                 onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedState(value);
-                                    setCities(City.getCitiesOfState(selectedCountry!, value));
+                                    if(selectedCountry) {
+                                      setCities(City.getCitiesOfState(selectedCountry, value));
+                                    }
                                     form.setValue('address.city', undefined);
                                 }}
                                 value={field.value}
@@ -860,7 +826,7 @@ export default function SignupForm() {
                                 <SelectContent>
                                      <ScrollArea className="h-72">
                                         {cities.map((city) => (
-                                            <SelectItem key={city.name} value={String(city.id)}>
+                                            <SelectItem key={city.name} value={city.name}>
                                                 {city.name}
                                             </SelectItem>
                                         ))}
@@ -1104,7 +1070,7 @@ export default function SignupForm() {
                   </div>
                 </div>
               )}
-              {step === 10 && (
+              {step === interestStep && (
                   <div className="flex-1 flex flex-col min-h-0">
                       <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.signup.step11.title}</h1>
@@ -1264,7 +1230,7 @@ export default function SignupForm() {
                 (step === 5 && (!currentAddress?.country || !currentAddress?.state)) ||
                 (step === 8 && filledLifestyleCount < 4) ||
                 (step === 9 && filledMoreInfoCount < 4) ||
-                (step === 10 && selectedInterests.length < 1) ||
+                (step === interestStep && selectedInterests.length < 1) ||
                 (step === finalStep && uploadedPhotoCount < 2)
               }
             >
