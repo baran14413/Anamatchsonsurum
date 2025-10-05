@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 type Address = {
     city: string | null;
