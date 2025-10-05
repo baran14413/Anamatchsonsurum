@@ -39,7 +39,7 @@ const formSchema = z.object({
         country: z.string().optional(),
         state: z.string().optional(),
         city: z.string().optional(),
-    }),
+    }).optional(),
     location: z.object({
         latitude: z.number(),
         longitude: z.number(),
@@ -177,36 +177,36 @@ export default function ProfileCompletionForm() {
     setAgeStatus(age >= 18 ? 'valid' : 'invalid');
   };
 
-  const handleLocationRequest = () => {
+ const handleLocationRequest = () => {
     setIsLocationLoading(true);
     setLocationStatus('idle');
     setLocationError(null);
 
     if (!navigator.geolocation) {
-        const errorMsg = "Tarayıcınız konum servisini desteklemiyor.";
-        toast({ title: "Hata", description: errorMsg, variant: "destructive" });
-        setIsLocationLoading(false);
-        setLocationStatus('error');
-        setLocationError(errorMsg);
-        return;
+      const errorMsg = "Tarayıcınız konum servisini desteklemiyor.";
+      toast({ title: "Hata", description: errorMsg, variant: "destructive" });
+      setLocationError(errorMsg);
+      setLocationStatus('error');
+      setIsLocationLoading(false);
+      return;
     }
 
     navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const { latitude, longitude } = position.coords;
-            form.setValue('location', { latitude, longitude });
-            setLocationStatus('success');
-            setIsLocationLoading(false);
-        },
-        (error) => {
-            let message = "Konum alınırken bir hata oluştu.";
-            if (error.code === error.PERMISSION_DENIED) {
-                 message = "Konum izni reddedildi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
-            }
-            setLocationError(message);
-            setLocationStatus('error');
-            setIsLocationLoading(false);
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        form.setValue('location', { latitude, longitude });
+        setLocationStatus('success');
+        setIsLocationLoading(false);
+      },
+      (error) => {
+        let message = "Konum alınırken bir hata oluştu.";
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Konum izni reddedildi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
         }
+        setLocationError(message);
+        setLocationStatus('error');
+        setIsLocationLoading(false);
+      }
     );
   };
   
@@ -330,6 +330,11 @@ export default function ProfileCompletionForm() {
 
 
   const handleNextStep = async () => {
+    if (step === totalSteps) {
+      form.handleSubmit(onSubmit)();
+      return;
+    }
+
     const fieldsByStep: (keyof SignupFormValues | 'location')[] = [
         ['name'], // 0
         ['location'], // 1
@@ -343,8 +348,7 @@ export default function ProfileCompletionForm() {
     const isValid = await form.trigger(fieldsByStep);
 
     if (isValid) {
-      if (step === totalSteps) form.handleSubmit(onSubmit)();
-      else nextStep();
+      nextStep();
     }
   };
 
