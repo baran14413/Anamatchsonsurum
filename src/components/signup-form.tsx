@@ -278,6 +278,7 @@ export default function SignupForm() {
   };
   
   const currentName = form.watch("name");
+  const currentAddress = form.watch("address");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
@@ -463,13 +464,13 @@ export default function SignupForm() {
     if (step === 2) fieldsToValidate = ['dateOfBirth'];
     if (step === 3) fieldsToValidate = ['gender'];
     if (step === 4) fieldsToValidate = ['lookingFor'];
-    if (step === 5) fieldsToValidate = ['location', 'address'];
+    if (step === 5) fieldsToValidate = ['address'];
     if (step === 6) fieldsToValidate = ['distancePreference'];
     if (step === 7) fieldsToValidate = ['school'];
     if (step === 8) fieldsToValidate = ['drinking', 'smoking', 'workout', 'pets'];
     if (step === 9) fieldsToValidate = ['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign'];
     if (step === 10) fieldsToValidate = ['interests'];
-    if (step === 11) fieldsToValidate = ['photos'];
+    if (step === (isGoogleSignup ? 10 : 11)) fieldsToValidate = ['photos'];
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
 
@@ -522,10 +523,8 @@ export default function SignupForm() {
                 city: data.address.city,
                 district: data.address.district,
                 country: data.address.country,
-            });
+            }, { shouldValidate: true });
         }
-
-        nextStep();
 
     } catch (error: any) {
         console.error("Location error:", error);
@@ -743,14 +742,40 @@ export default function SignupForm() {
                 </div>
               )}
               {step === 5 && (
-                <div className="flex flex-col items-center text-center h-full justify-center">
-                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                    <MapPin className="w-12 h-12 text-primary" />
-                  </div>
-                  <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
-                  <p className="text-muted-foreground mt-2 max-w-sm">
-                    {t.signup.step6.description}
-                  </p>
+                <div className="flex flex-col items-center text-center h-full justify-center space-y-6">
+                  {!currentAddress ? (
+                    <>
+                      <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                        <MapPin className="w-12 h-12 text-primary" />
+                      </div>
+                      <h1 className="text-3xl font-bold">{t.signup.step6.title}</h1>
+                      <p className="text-muted-foreground max-w-sm">
+                        {t.signup.step6.description}
+                      </p>
+                       <Button
+                        type="button"
+                        onClick={handleLocationRequest}
+                        className="h-14 rounded-full text-lg font-bold px-8"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t.signup.step6.button}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle className="w-12 h-12 text-green-500" />
+                      </div>
+                      <h1 className="text-2xl font-bold">Konumun Alındı!</h1>
+                      <div className="flex items-center gap-2 text-lg text-muted-foreground p-3 border rounded-lg bg-secondary">
+                        <MapPin className="w-6 h-6 text-primary" />
+                        <span>{currentAddress.city}, {currentAddress.district}</span>
+                      </div>
+                       <FormMessage>
+                          {form.formState.errors.address?.message}
+                      </FormMessage>
+                    </>
+                  )}
                 </div>
               )}
               {step === 6 && (
@@ -1134,32 +1159,22 @@ export default function SignupForm() {
             </div>
 
           <div className="shrink-0 pt-6">
-            {step === 5 ? (
-              <Button
-                type="button"
-                onClick={handleLocationRequest}
-                className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step6.button}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleNextStep}
-                className="w-full h-14 rounded-full text-lg font-bold"
-                disabled={
-                  isLoading ||
-                  (step === 2 && ageStatus !== 'valid') ||
-                  (step === 8 && filledLifestyleCount < 4) ||
-                  (step === 9 && filledMoreInfoCount < 4) ||
-                  (step === 10 && selectedInterests.length < 1) ||
-                  (step === finalStep && uploadedPhotoCount < 2)
-                }
-              >
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === finalStep ? t.common.done : t.signup.common.next)}
-              </Button>
-            )}
+            <Button
+              type="button"
+              onClick={handleNextStep}
+              className="w-full h-14 rounded-full text-lg font-bold"
+              disabled={
+                isLoading ||
+                (step === 2 && ageStatus !== 'valid') ||
+                (step === 5 && !currentAddress) ||
+                (step === 8 && filledLifestyleCount < 4) ||
+                (step === 9 && filledMoreInfoCount < 4) ||
+                (step === 10 && selectedInterests.length < 1) ||
+                (step === finalStep && uploadedPhotoCount < 2)
+              }
+            >
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (step === finalStep ? t.common.done : t.signup.common.next)}
+            </Button>
 
             {step === finalStep && (
               <p className="text-center text-sm text-muted-foreground mt-4">
