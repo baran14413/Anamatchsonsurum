@@ -70,9 +70,10 @@ export default function AnasayfaPage() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [direction, setDirection] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  const activeIndex = profiles.length > 0 ? profiles.length - 1 : -1;
-  const nextCardIndex = profiles.length > 1 ? profiles.length - 2 : -1;
+  const topCard = profiles[profiles.length - 1];
+  const nextCard = profiles[profiles.length - 2];
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
@@ -145,14 +146,16 @@ export default function AnasayfaPage() {
 
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
-    if (activeIndex < 0) return;
+    if (isAnimating || !topCard) return;
     
-    const swipedProfile = profiles[activeIndex];
+    setIsAnimating(true);
+    setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
+    
+    const swipedProfile = topCard;
     if (!user || !firestore || !swipedProfile) return;
     
-    setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
-
-    removeTopCard();
+    // The card is removed from view by the exit animation of AnimatePresence.
+    // The state update will happen in onExitComplete.
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -199,8 +202,6 @@ export default function AnasayfaPage() {
                     title: t.anasayfa.matchToastTitle,
                     description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
                 });
-
-                return; // Exit after match logic
              }
         }
         
@@ -224,7 +225,7 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast, profiles, activeIndex, removeTopCard]);
+  }, [user, firestore, t, toast, topCard, isAnimating]);
 
 
   const handleReset = async () => {
@@ -262,13 +263,20 @@ export default function AnasayfaPage() {
             <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
-        ) : activeIndex > -1 ? (
+        ) : topCard ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
-                <AnimatePresence initial={false} onExitComplete={() => setDirection(0)}>
-                    {nextCardIndex > -1 && (
-                        <motion.div
-                           key={profiles[nextCardIndex].uid}
+                <AnimatePresence 
+                    initial={false}
+                    onExitComplete={() => {
+                        removeTopCard();
+                        setDirection(0);
+                        setIsAnimating(false);
+                    }}
+                >
+                    {nextCard && (
+                         <motion.div
+                           key={nextCard.uid}
                            variants={secondCardVariants}
                            initial="initial"
                            animate="animate"
@@ -276,42 +284,42 @@ export default function AnasayfaPage() {
                            className="absolute w-full max-w-sm h-full max-h-[75vh]"
                         >
                             <ProfileCard
-                                profile={profiles[nextCardIndex]}
+                                profile={nextCard}
                                 onSwipe={() => {}}
-                                isTopCard={false}
+                                isDraggable={false}
                             />
                         </motion.div>
                     )}
-                    <motion.div
-                        key={profiles[activeIndex].uid}
+                     <motion.div
+                        key={topCard.uid}
                         custom={direction}
                         variants={cardVariants}
-                        initial="animate"
+                        animate="animate"
                         exit="exit"
                         className="absolute w-full max-w-sm h-full max-h-[75vh]"
                     >
                         <ProfileCard
-                            profile={profiles[activeIndex]}
+                            profile={topCard}
                             onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked' | 'superlike')}
-                            isTopCard={true}
+                            isDraggable={!isAnimating}
                         />
                     </motion.div>
                 </AnimatePresence>
             </div>
             <div className="flex justify-center items-center gap-4 py-4">
-                <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                <motion.button whileHover={{ scale: 1.1 }} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Undo2 className="w-5 h-5 text-yellow-500" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked')} className="bg-white rounded-full p-4 shadow-lg">
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked')} disabled={isAnimating} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
                     <X className="w-7 h-7 text-red-500" />
                 </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike')} className="bg-white rounded-full p-3 shadow-lg">
+                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike')} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Star className="w-5 h-5 text-blue-500" />
                 </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked')} className="bg-white rounded-full p-4 shadow-lg">
+                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked')} disabled={isAnimating} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
                     <Heart className="w-7 h-7 text-green-400" />
                 </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} className="bg-white rounded-full p-3 shadow-lg">
+                 <motion.button whileHover={{ scale: 1.1 }} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Zap className="w-5 h-5 text-purple-500" />
                 </motion.button>
             </div>

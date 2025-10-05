@@ -10,7 +10,7 @@ import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 interface ProfileCardProps {
   profile: UserProfile;
   onSwipe: (action: 'liked' | 'disliked') => void;
-  isTopCard: boolean; // To control drag functionality
+  isDraggable: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -27,7 +27,7 @@ const swipePower = (offset: number, velocity: number) => {
 };
 
 
-export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCardProps) {
+export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -67,6 +67,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   const highlights = getProfileHighlights(profile);
 
   const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: PanInfo) => {
+    if (!isDraggable) return;
     const swipe = swipePower(offset.x, velocity.x);
     if (swipe < -swipeConfidenceThreshold) {
       onSwipe('disliked');
@@ -79,7 +80,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   return (
      <motion.div
         style={{ x, rotate }} // Apply dynamic rotation and position
-        drag={isTopCard ? "x" : false}
+        drag={isDraggable ? "x" : false}
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
         className="absolute w-full h-full"
@@ -120,7 +121,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
                 sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                 style={{ objectFit: 'cover' }}
                 className="pointer-events-none"
-                priority={isTopCard}
+                priority={isDraggable}
             />
 
             {/* Profile Info Overlay */}
