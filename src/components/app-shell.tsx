@@ -17,25 +17,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthRoute = authRoutes.includes(pathname);
-  const isProfilePage = pathname === '/profil';
-
+  
   useEffect(() => {
+    // This effect now ONLY handles redirecting unauthenticated users from protected routes.
+    // It no longer handles redirecting authenticated users from public routes.
     if (isUserLoading) {
-      // Still loading, do nothing yet.
-      return;
+      return; // Wait until user status is resolved
     }
 
     if (!user && isProtectedRoute) {
       // If not logged in and trying to access a protected route, redirect to welcome page
       router.replace('/');
-    } else if (user && isAuthRoute) {
-      // If logged in and on a public/auth route, redirect to the main app page
-      router.replace('/anasayfa');
     }
-  }, [isUserLoading, user, pathname, isProtectedRoute, isAuthRoute, router]);
+  }, [isUserLoading, user, isProtectedRoute, router]);
 
-  if (isUserLoading && (isProtectedRoute || isAuthRoute)) {
+
+  // While loading user state, show a loader for protected routes.
+  if (isUserLoading && isProtectedRoute) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -43,7 +41,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Show shell for logged-in users on protected routes
+  // If the route is not protected, or if the user is loaded, render the content.
+  // For protected routes, this will only render if the user is authenticated (due to the redirect above).
+  const isProfilePage = pathname === '/profil';
+
   if (isProtectedRoute && user) {
     return (
       <div className="flex h-screen flex-col bg-background text-foreground">
@@ -74,6 +75,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For public routes or when no user is logged in, just render the children
+  // For public routes, just render the children.
+  // This will also handle the case where a user is logged in but on a public page,
+  // letting the page-level logic (like in page.tsx) handle the redirect.
   return <>{children}</>;
 }

@@ -9,20 +9,31 @@ import { motion } from 'framer-motion';
 import googleLogo from '@/img/googlelogin.png';
 import { langTr } from '@/languages/tr';
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function WelcomePage() {
   const t = langTr;
   const auth = useAuth();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    // If user is loaded and exists, they are already logged in.
+    // The logic to decide if they should be on this page or another
+    // is now handled here instead of AppShell for public routes.
+    if (!isUserLoading && user) {
+        // A logged-in user should not be on the welcome page.
+        router.replace('/anasayfa');
+    }
+  }, [user, isUserLoading, router]);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -38,39 +49,35 @@ export default function WelcomePage() {
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+        const signedInUser = result.user;
 
-        const userDocRef = doc(firestore, "users", user.uid);
+        const userDocRef = doc(firestore, "users", signedInUser.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists() && userDoc.data()?.gender) { 
-            // User profile is complete, log them in
+            // User profile is complete, log them in by sending to main page
             router.push("/anasayfa");
         } else {
             // New user or incomplete profile, redirect to signup
             
-            // Prepare data to pass to the signup page
             const googleData = {
-                email: user.email,
-                name: user.displayName,
-                profilePicture: user.photoURL,
-                uid: user.uid,
+                email: signedInUser.email,
+                name: signedInUser.displayName,
+                profilePicture: signedInUser.photoURL,
+                uid: signedInUser.uid,
             };
             
-            // If the document doesn't exist, create it with initial info
-            // This ensures the UID is in our system before proceeding to signup
             if (!userDoc.exists()) {
                 const initialProfileData = {
-                    uid: user.uid,
-                    email: user.email || '',
-                    fullName: user.displayName || '',
-                    images: user.photoURL ? [user.photoURL] : [],
-                    profilePicture: user.photoURL || '',
+                    uid: signedInUser.uid,
+                    email: signedInUser.email || '',
+                    fullName: signedInUser.displayName || '',
+                    images: signedInUser.photoURL ? [signedInUser.photoURL] : [],
+                    profilePicture: signedInUser.photoURL || '',
                 };
                 await setDoc(userDocRef, initialProfileData, { merge: true });
             }
 
-            // Store data in session storage to pass to the signup page
             sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
             router.push("/kayit-ol");
         }
@@ -86,6 +93,15 @@ export default function WelcomePage() {
         setIsGoogleLoading(false);
     }
   };
+
+  // Do not render the page content if a logged-in user is about to be redirected.
+  if (isUserLoading || user) {
+      return (
+           <div className="flex h-dvh items-center justify-center">
+             <Loader2 className="h-8 w-8 animate-spin" />
+           </div>
+      );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
