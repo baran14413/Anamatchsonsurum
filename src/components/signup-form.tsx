@@ -400,8 +400,9 @@ export default function SignupForm() {
   };
 
   const openFilePicker = (index: number) => {
-      const firstEmptyIndex = photoSlots.findIndex(p => !p.preview);
-      const targetIndex = photoSlots[index].preview ? index : firstEmptyIndex;
+      // Allow picking a file for any slot, but if it's an empty slot,
+      // find the first actual empty one to fill.
+      const targetIndex = photoSlots[index].preview ? index : uploadedPhotoCount;
       setActiveSlot(targetIndex);
       fileInputRef.current?.click();
   };
@@ -415,8 +416,10 @@ export default function SignupForm() {
         URL.revokeObjectURL(deletedSlot.preview);
       }
 
+      // Remove the slot at the index
       newSlots.splice(index, 1);
 
+      // Add a new empty slot at the end
       newSlots.push({ file: null, preview: null, label: '' });
 
       const reorderedSlots = newSlots.map((slot, i) => ({
@@ -970,72 +973,90 @@ export default function SignupForm() {
                         />
                   </div>
               )}
-               {step === 11 && (
+              {step === 11 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.signup.step12.title}</h1>
-                     <div className="flex items-center gap-4 mt-2">
-                        <CircularProgress progress={Math.round((uploadedPhotoCount / 6) * 100)} size={40} />
-                        <p className="text-muted-foreground flex-1">{t.signup.step12.description.replace('{count}', String(uploadedPhotoCount))}</p>
-                     </div>
+                    <div className="flex items-center gap-4 mt-2">
+                      <CircularProgress
+                        progress={Math.round((uploadedPhotoCount / 6) * 100)}
+                        size={40}
+                      />
+                      <p className="text-muted-foreground flex-1">
+                        {t.signup.step12.description.replace(
+                          "{count}",
+                          String(uploadedPhotoCount)
+                        )}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
-                     <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       {photoSlots.map((slot, index) => (
-                        <div key={index} 
-                          className={`relative aspect-[3/4] rounded-lg
-                            ${index === 0 ? 'col-span-2 row-span-2' : ''}
-                          `}
+                        <div
+                          key={index}
+                          className={`relative aspect-[3/4] rounded-lg ${
+                            index === 0 ? "col-span-1 row-span-2" : ""
+                          }`}
                         >
-                           <div
+                          <div
                             onClick={() => openFilePicker(index)}
                             className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted"
                           >
                             {slot.preview ? (
                               <>
-                                <Image src={slot.preview} alt={`Preview ${index}`} layout="fill" objectFit="cover" className="rounded-lg"/>
+                                <Image
+                                  src={slot.preview}
+                                  alt={`Preview ${index}`}
+                                  fill
+                                  style={{ objectFit: "cover" }}
+                                  className="rounded-lg"
+                                />
                                 <div className="absolute bottom-2 right-2 flex gap-2">
-                                   <button
+                                  <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); openFilePicker(index); }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openFilePicker(index);
+                                    }}
                                     className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
-                                   >
-                                     <Pencil className="w-4 h-4"/>
-                                   </button>
-                                   {uploadedPhotoCount > 2 && (
-                                     <button
-                                        type="button"
-                                        onClick={(e) => handleDeletePhoto(e, index)}
-                                        className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"
-                                     >
-                                         <Trash2 className="w-4 h-4"/>
-                                     </button>
-                                   )}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                  {uploadedPhotoCount > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleDeletePhoto(e, index)}
+                                      className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
                                 </div>
                               </>
                             ) : (
-                                <div className="text-center text-muted-foreground p-2">
-                                  <button
-                                    type="button"
-                                    className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto"
-                                  >
-                                    <Plus className="w-5 h-5"/>
-                                  </button>
-                                  {slot.label && <span className="text-xs font-medium mt-2 block">{slot.label}</span>}
-                                </div>
+                              <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center">
+                                <span className="text-sm font-medium mb-2 block">{slot.label}</span>
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+                                >
+                                  <Plus className="w-5 h-5" />
+                                </button>
+                              </div>
                             )}
-                           </div>
+                          </div>
                         </div>
                       ))}
-                     </div>
+                    </div>
                   </div>
-                   <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                        accept="image/*"
-                    />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    accept="image/*"
+                  />
                 </div>
               )}
             </div>
@@ -1084,7 +1105,7 @@ export default function SignupForm() {
                   className="w-full h-14 rounded-full text-lg font-bold"
                   disabled={isLoading || uploadedPhotoCount < 2}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.signup.step12.button}
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t.common.done}
                 </Button>
             ) : (
               <Button
@@ -1108,3 +1129,5 @@ export default function SignupForm() {
     </div>
   );
 }
+
+    
