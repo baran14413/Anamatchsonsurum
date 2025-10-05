@@ -77,6 +77,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     style: { x, rotate },
     whileTap: { cursor: 'grabbing' as const },
   } : {};
+
+  const hasImages = profile.images && profile.images.length > 0 && profile.images[activeImageIndex] && profile.images[activeImageIndex].url;
   
   return (
     <motion.div 
@@ -94,31 +96,35 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         >
             {/* Image Background */}
             <div className='absolute inset-0'>
-                <Image
-                    src={profile.images[activeImageIndex].url}
-                    alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ objectFit: 'cover' }}
-                    className="pointer-events-none"
-                    priority={isDraggable}
-                />
+                {hasImages && (
+                    <Image
+                        src={profile.images[activeImageIndex].url}
+                        alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
+                        fill
+                        sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                        style={{ objectFit: 'cover' }}
+                        className="pointer-events-none"
+                        priority={isDraggable}
+                    />
+                )}
             </div>
             
              {/* Progress Bars and Navigation */}
-            <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
-                {profile.images.map((_, index) => (
-                    <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                        <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+            {hasImages && profile.images.length > 1 && (
+                <>
+                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
+                        {profile.images.map((_, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
 
-            {profile.images.length > 1 && (
-                <div className='absolute inset-0 flex z-20'>
-                    <div className='flex-1 h-full' onClick={handlePrevImage} />
-                    <div className='flex-1 h-full' onClick={handleNextImage} />
-                </div>
+                    <div className='absolute inset-0 flex z-20'>
+                        <div className='flex-1 h-full' onClick={handlePrevImage} />
+                        <div className='flex-1 h-full' onClick={handleNextImage} />
+                    </div>
+                </>
             )}
 
 
