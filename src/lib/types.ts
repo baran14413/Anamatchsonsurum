@@ -57,6 +57,8 @@ export type Match = {
   user1Id: string;
   user2Id:string;
   matchDate: any; 
+  isSuperLike?: boolean;
+  status: 'pending' | 'matched' | 'superlike_pending';
 };
 
 export type LikerInfo = {
@@ -83,11 +85,26 @@ export type Post = {
 export type ChatMessage = {
   id: string;
   matchId: string;
-  senderId: string;
+  senderId: string; // "system" for system messages
   text?: string;
   imageUrl?: string;
   imagePublicId?: string;
   timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;
+  type?: 'user' | 'system_superlike_prompt';
+  action?: 'accepted' | 'declined';
+  actionTaken?: boolean;
 };
+
+export interface DenormalizedMatch {
+    id: string;
+    matchedWith: string;
+    lastMessage: string;
+    timestamp: any;
+    fullName: string;
+    profilePicture: string;
+    isSuperLike?: boolean;
+    status?: 'pending' | 'matched' | 'superlike_pending';
+    superLikeInitiator?: string;
+}

@@ -125,7 +125,7 @@
         },
         "user1_action": {
           "type": "string",
-          "enum": ["liked", "disliked"],
+          "enum": ["liked", "disliked", "superliked"],
           "description": "The action taken by user1."
         },
         "user1_timestamp": {
@@ -134,7 +134,7 @@
         },
         "user2_action": {
           "type": "string",
-          "enum": ["liked", "disliked"],
+          "enum": ["liked", "disliked", "superliked"],
           "description": "The action taken by user2."
         },
         "user2_timestamp": {
@@ -143,13 +143,21 @@
         },
         "status": {
             "type": "string",
-            "enum": ["pending", "matched"],
+            "enum": ["pending", "matched", "superlike_pending"],
             "description": "The current status of the interaction."
         },
         "matchDate": {
           "type": "string",
           "description": "The date and time when the match was confirmed.",
           "format": "date-time"
+        },
+        "isSuperLike": {
+            "type": "boolean",
+            "description": "Indicates if this interaction was initiated with a Super Like."
+        },
+        "superLikeInitiator": {
+          "type": "string",
+          "description": "UID of the user who sent the Super Like."
         }
       },
       "required": [
@@ -173,7 +181,7 @@
         },
         "senderId": {
           "type": "string",
-          "description": "Reference to UserProfile who sent the message. (Relationship: UserProfile 1:N ChatMessage)"
+          "description": "Reference to UserProfile who sent the message, or 'system'."
         },
         "text": {
           "type": "string",
@@ -201,6 +209,20 @@
             "type": "string",
             "format": "date-time",
             "description": "The date and time when the message was read."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["user", "system_superlike_prompt"],
+          "description": "The type of message."
+        },
+        "action": {
+          "type": "string",
+          "enum": ["accepted", "declined"],
+          "description": "Action taken on a system message."
+        },
+        "actionTaken": {
+          "type": "boolean",
+          "description": "Indicates if an action has been taken on the system message."
         }
       },
       "required": [

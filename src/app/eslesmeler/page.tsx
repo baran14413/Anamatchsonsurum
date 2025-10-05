@@ -3,10 +3,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Trash2 } from 'lucide-react';
+import { Search, MessageSquare, Trash2, Check, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,26 +15,20 @@ import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-
-interface MatchData {
-  id: string;
-  matchedWith: string;
-  lastMessage: string;
-  timestamp: any;
-  fullName: string;
-  profilePicture: string;
-}
+import { DenormalizedMatch } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export default function EslesmelerPage() {
   const t = langTr.eslesmeler;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [matches, setMatches] = useState<MatchData[]>([]);
+  const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [chatToDelete, setChatToDelete] = useState<MatchData | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<DenormalizedMatch | null>(null);
 
   useEffect(() => {
     if (!user || !firestore) {
@@ -50,7 +44,7 @@ export default function EslesmelerPage() {
     );
     
     const unsubMatches = onSnapshot(matchesQuery, (snapshot) => {
-      const matchesData = snapshot.docs.map(doc => doc.data() as MatchData);
+      const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
       setMatches(matchesData);
       setIsLoading(false);
     }, (error) => {
@@ -107,6 +101,50 @@ export default function EslesmelerPage() {
     }
   };
 
+  const handleAcceptSuperLike = async (e: React.MouseEvent, match: DenormalizedMatch) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !firestore) return;
+
+    try {
+        const batch = writeBatch(firestore);
+
+        // Update the main match document
+        const matchDocRef = doc(firestore, 'matches', match.id);
+        batch.update(matchDocRef, { status: 'matched', matchDate: serverTimestamp() });
+
+        // Update denormalized documents
+        const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, match.id);
+        batch.update(currentUserMatchRef, { status: 'matched', lastMessage: "Super Like'ı kabul ettin!" });
+        
+        const otherUserMatchRef = doc(firestore, `users/${match.matchedWith}/matches`, match.id);
+        batch.update(otherUserMatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
+
+        // Update the system message
+        const messagesColRef = collection(firestore, `matches/${match.id}/messages`);
+        const q = query(messagesColRef, where('type', '==', 'system_superlike_prompt'));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+            batch.update(doc.ref, { action: 'accepted', actionTaken: true });
+        });
+        
+        await batch.commit();
+        
+        toast({
+            title: 'Super Like Kabul Edildi!',
+            description: `${match.fullName} ile artık eşleştiniz.`,
+        });
+
+    } catch (error) {
+        console.error("Error accepting super like:", error);
+        toast({
+            title: 'Hata',
+            description: 'Super Like kabul edilirken bir hata oluştu.',
+            variant: 'destructive',
+        });
+    }
+  };
+
 
   if (isLoading) {
       return (
@@ -140,32 +178,46 @@ export default function EslesmelerPage() {
                 <div className='flex-1 overflow-y-auto'>
                     {filteredMatches.length > 0 ? (
                         <div className="divide-y">
-                            {filteredMatches.map(match => (
-                                <motion.div
-                                    key={match.id}
-                                    onContextMenu={(e) => { e.preventDefault(); setChatToDelete(match); }}
-                                >
-                                    <Link href={`/eslesmeler/${match.id}`}>
-                                        <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
-                                            <Avatar className="h-12 w-12">
-                                                <AvatarImage src={match.profilePicture} />
-                                                <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="ml-4 flex-1">
-                                                <div className="flex justify-between items-center">
-                                                    <h3 className="font-semibold">{match.fullName}</h3>
-                                                    {match.timestamp && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
-                                                        </p>
-                                                    )}
+                            {filteredMatches.map(match => {
+                                const isSuperLikePending = match.status === 'superlike_pending';
+                                const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
+                                const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
+
+                                return (
+                                    <motion.div
+                                        key={match.id}
+                                        onContextMenu={(e) => { e.preventDefault(); setChatToDelete(match); }}
+                                    >
+                                        <Link href={`/eslesmeler/${match.id}`}>
+                                            <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer">
+                                                <Avatar className="h-12 w-12">
+                                                    <AvatarImage src={match.profilePicture} />
+                                                    <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="ml-4 flex-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <h3 className="font-semibold flex items-center gap-1.5">
+                                                          {match.fullName}
+                                                          {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+                                                        </h3>
+                                                        {match.timestamp && (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <p className={cn("text-sm truncate", isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium" : "text-muted-foreground")}>{match.lastMessage}</p>
                                                 </div>
-                                                <p className="text-sm text-muted-foreground truncate">{match.lastMessage}</p>
+                                                {showAcceptButton && (
+                                                    <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
+                                                        <Check className="h-6 w-6" />
+                                                    </Button>
+                                                )}
                                             </div>
-                                        </div>
-                                    </Link>
-                                </motion.div>
-                            ))}
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                      ) : (
                         <div className="text-center p-8 text-muted-foreground">
@@ -195,5 +247,3 @@ export default function EslesmelerPage() {
     </div>
   );
 }
-
-    

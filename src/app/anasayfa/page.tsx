@@ -7,7 +7,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile, UserImage } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or, addDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,75 +43,122 @@ export default function AnasayfaPage() {
     setProfiles(prev => prev.slice(1));
   }, []);
   
-  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked') => {
+  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
     
     removeTopCard();
 
+    const user1Id = user.uid;
+    const user2Id = swipedProfile.uid;
+    const matchId = [user1Id, user2Id].sort().join('_');
+    const matchDocRef = doc(firestore, 'matches', matchId);
+
     try {
-        const user1Id = user.uid;
-        const user2Id = swipedProfile.uid;
-        // The matchId is always consistent, regardless of who initiated the action.
-        const matchId = [user1Id, user2Id].sort().join('_');
-        const matchDocRef = doc(firestore, 'matches', matchId);
-
-        // We need to know which user field (user1 or user2) corresponds to the current user.
-        const isUser1 = user1Id < user2Id;
-        const currentUserField = isUser1 ? 'user1' : 'user2';
-        const otherUserField = isUser1 ? 'user2' : 'user1';
-
-        // Prepare the update payload
-        const updateData: any = {
-            [`${currentUserField}_action`]: action,
-            [`${currentUserField}_timestamp`]: serverTimestamp(),
-            // Ensure the base data is always present
-            user1Id: [user1Id, user2Id].sort()[0],
-            user2Id: [user1Id, user2Id].sort()[1],
-            status: 'pending',
-        };
-
-        const theirInteractionSnap = await getDoc(matchDocRef);
-        let theirAction: string | undefined;
-        if(theirInteractionSnap.exists()) {
-            theirAction = theirInteractionSnap.data()?.[`${otherUserField}_action`];
-        }
-
-        // Check for a match
-        if (action === 'liked' && theirAction === 'liked') {
-            updateData.status = 'matched';
-            updateData.matchDate = serverTimestamp();
-            
-            toast({
-                title: t.anasayfa.matchToastTitle,
-                description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
-            });
-
-            // Create denormalized match data for both users
-             const currentUserMatchData = {
+        if (action === 'superliked') {
+            // Create denormalized match data for both users with superlike status
+            const currentUserMatchData = {
                 id: matchId,
                 matchedWith: user2Id,
-                lastMessage: t.eslesmeler.defaultMessage,
+                lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images[0]?.url || '',
-             };
+                profilePicture: swipedProfile.images?.[0]?.url || '',
+                isSuperLike: true,
+                status: 'superlike_pending',
+                superLikeInitiator: user1Id
+            };
 
-             const swipedUserMatchData = {
+            const swipedUserMatchData = {
                 id: matchId,
                 matchedWith: user1Id,
-                lastMessage: t.eslesmeler.defaultMessage,
+                lastMessage: `${userProfile.fullName} sana bir Super Like gönderdi!`,
                 timestamp: serverTimestamp(),
                 fullName: userProfile.fullName,
                 profilePicture: userProfile.profilePicture || '',
-             };
+                isSuperLike: true,
+                status: 'superlike_pending',
+                superLikeInitiator: user1Id
+            };
             
-             await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
-             await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+            await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            
+            // Create the main match document
+            await setDoc(matchDocRef, {
+                user1Id: [user1Id, user2Id].sort()[0],
+                user2Id: [user1Id, user2Id].sort()[1],
+                status: 'superlike_pending',
+                isSuperLike: true,
+                superLikeInitiator: user1Id,
+                [`${user1Id < user2Id ? 'user1' : 'user2'}_action`]: 'superliked',
+                [`${user1Id < user2Id ? 'user1' : 'user2'}_timestamp`]: serverTimestamp(),
+            }, { merge: true });
+
+             // Create a system message for the recipient
+            const systemMessage = {
+                matchId: matchId,
+                senderId: 'system',
+                text: `${userProfile.fullName} sana bir Super Like yolladı. Onu tanımak ister misin?`,
+                timestamp: serverTimestamp(),
+                isRead: false,
+                type: 'system_superlike_prompt',
+                actionTaken: false,
+            };
+            await addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
+
+        } else { // Handle normal like/dislike
+            const isUser1 = user1Id < user2Id;
+            const currentUserField = isUser1 ? 'user1' : 'user2';
+            const otherUserField = isUser1 ? 'user2' : 'user1';
+
+            const updateData: any = {
+                [`${currentUserField}_action`]: action,
+                [`${currentUserField}_timestamp`]: serverTimestamp(),
+                user1Id: [user1Id, user2Id].sort()[0],
+                user2Id: [user1Id, user2Id].sort()[1],
+                status: 'pending',
+            };
+
+            const theirInteractionSnap = await getDoc(matchDocRef);
+            let theirAction: string | undefined;
+            if(theirInteractionSnap.exists()) {
+                theirAction = theirInteractionSnap.data()?.[`${otherUserField}_action`];
+            }
+
+            if (action === 'liked' && theirAction === 'liked') {
+                updateData.status = 'matched';
+                updateData.matchDate = serverTimestamp();
+                
+                toast({
+                    title: t.anasayfa.matchToastTitle,
+                    description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
+                });
+
+                const currentUserMatchData = {
+                    id: matchId,
+                    matchedWith: user2Id,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: swipedProfile.fullName,
+                    profilePicture: swipedProfile.images[0]?.url || '',
+                    status: 'matched',
+                };
+
+                const swipedUserMatchData = {
+                    id: matchId,
+                    matchedWith: user1Id,
+                    lastMessage: t.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: userProfile.fullName,
+                    profilePicture: userProfile.profilePicture || '',
+                    status: 'matched',
+                };
+                
+                await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+                await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            }
+            await setDoc(matchDocRef, updateData, { merge: true });
         }
-
-        // Atomically write the interaction to the matches collection
-        await setDoc(matchDocRef, updateData, { merge: true });
-
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
         toast({

@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  onSwipe?: (action: 'liked' | 'disliked') => void;
+  onSwipe?: (action: 'liked' | 'disliked' | 'superliked') => void;
   isDraggable: boolean;
 }
 
@@ -30,31 +30,33 @@ const SWIPE_THRESHOLD = 80;
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Reset index when profile changes
   useEffect(() => {
     setActiveImageIndex(0);
   }, [profile.uid]);
   
   const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
   const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
+  const opacitySuperLike = useTransform(y, [-SWIPE_THRESHOLD, -10], [1, 0]);
   
   const age = calculateAge(profile.dateOfBirth);
   
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!onSwipe || !isDraggable) return;
-    const offset = info.offset.x;
-    const velocity = info.velocity.x;
 
-    if (offset > SWIPE_THRESHOLD || velocity > 500) {
+    if (info.offset.y < -SWIPE_THRESHOLD) {
+      handleAction('superliked');
+    } else if (info.offset.x > SWIPE_THRESHOLD) {
       handleAction('liked');
-    } else if (offset < -SWIPE_THRESHOLD || velocity < -500) {
+    } else if (info.offset.x < -SWIPE_THRESHOLD) {
       handleAction('disliked');
     }
   };
 
-  const handleAction = (action: 'liked' | 'disliked') => {
+  const handleAction = (action: 'liked' | 'disliked' | 'superliked') => {
     if (!onSwipe || !isDraggable) return;
     onSwipe(action);
   };
@@ -70,11 +72,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   };
   
   const motionProps = isDraggable ? {
-    drag: "x" as const,
+    drag: true as const,
     dragConstraints: { left: 0, right: 0, top: 0, bottom: 0 },
     dragElastic: 0.5,
     onDragEnd: handleDragEnd,
-    style: { x, rotate },
+    style: { x, y, rotate },
     whileTap: { cursor: 'grabbing' as const },
   } : {};
 
@@ -86,6 +88,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         {...motionProps}
         exit={{ 
             x: x.get() > 0 ? 300 : -300,
+            y: y.get() < 0 ? -300 : 0,
             opacity: 0,
             scale: 0.8,
             transition: { duration: 0.3, ease: 'easeIn' }
@@ -94,7 +97,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
-            {/* Image Background */}
             <div className='absolute inset-0'>
                 {hasImages && (
                     <Image
@@ -109,7 +111,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 )}
             </div>
             
-             {/* Progress Bars and Navigation */}
             {hasImages && profile.images.length > 1 && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
@@ -119,7 +120,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </div>
                         ))}
                     </div>
-
                     <div className='absolute inset-0 flex z-20'>
                         <div className='flex-1 h-full' onClick={handlePrevImage} />
                         <div className='flex-1 h-full' onClick={handleNextImage} />
@@ -127,9 +127,14 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </>
             )}
 
-
             {isDraggable && (
                 <>
+                <motion.div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10"
+                    style={{ opacity: opacitySuperLike }}
+                >
+                    <Star className="h-24 w-24 fill-current" strokeWidth={1.5} />
+                </motion.div>
                 <motion.div
                     className="absolute top-8 left-8 text-green-400 z-10"
                     style={{ opacity: opacityLike }}

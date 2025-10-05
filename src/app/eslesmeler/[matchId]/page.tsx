@@ -12,7 +12,7 @@ import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip } 
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { ChatMessage, UserProfile } from '@/lib/types';
+import type { ChatMessage, UserProfile, DenormalizedMatch } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
@@ -36,13 +35,11 @@ import Image from 'next/image';
 import { Icons } from '@/components/icons';
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
-    if (!isSender) return null;
+    if (!isSender || message.type === 'system_superlike_prompt') return null;
 
     if (message.isRead) {
         return <CheckCheck className="h-4 w-4 text-blue-500" />;
     }
-    // For simplicity, we'll assume if it's sent, it's delivered.
-    // A more complex system could track delivery status separately.
     return <Check className="h-4 w-4 text-muted-foreground" />;
 };
 
@@ -50,17 +47,19 @@ const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
 export default function ChatPage() {
     const { matchId } = useParams() as { matchId: string };
     const router = useRouter();
-    const { user } = useUser();
+    const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const t = langTr;
 
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
+    const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,7 +72,12 @@ export default function ChatPage() {
             if (doc.exists()) {
                 setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
             }
-            setIsLoading(false);
+        });
+        
+        const unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
+            if (doc.exists()) {
+                setMatchData(doc.data() as DenormalizedMatch);
+            }
         });
 
         const messagesQuery = query(
@@ -87,11 +91,13 @@ export default function ChatPage() {
                 ...doc.data()
             } as ChatMessage));
             setMessages(fetchedMessages);
+            setIsLoading(false);
         });
 
         return () => {
             unsubOtherUser();
             unsubMessages();
+            unsubMatchData();
         };
     }, [matchId, user, firestore, otherUserId]);
 
@@ -133,6 +139,7 @@ export default function ChatPage() {
             senderId: user.uid,
             timestamp: serverTimestamp(),
             isRead: false,
+            type: 'user',
         };
         
         if (textContent) messageData.text = textContent;
@@ -187,6 +194,52 @@ export default function ChatPage() {
         } finally {
             setIsUploading(false);
             if(fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleAcceptSuperLike = async () => {
+        if (!user || !firestore || !otherUserId) return;
+        setIsAcceptingSuperLike(true);
+
+        try {
+            const batch = writeBatch(firestore);
+
+            // 1. Update the main match document
+            const matchDocRef = doc(firestore, 'matches', matchId);
+            batch.update(matchDocRef, {
+                status: 'matched',
+                matchDate: serverTimestamp(),
+            });
+            
+            // 2. Update both denormalized match documents
+            const user1MatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            batch.update(user1MatchRef, { status: 'matched', lastMessage: "Super Like'ı kabul ettin!" });
+            
+            const user2MatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+            batch.update(user2MatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
+            
+            // 3. Mark the system message as action taken
+            const systemMessage = messages.find(m => m.type === 'system_superlike_prompt');
+            if (systemMessage) {
+                const systemMessageRef = doc(firestore, `matches/${matchId}/messages`, systemMessage.id);
+                batch.update(systemMessageRef, { action: 'accepted', actionTaken: true });
+            }
+            
+            await batch.commit();
+
+            toast({
+                title: 'Super Like Kabul Edildi!',
+                description: `${otherUser?.fullName} ile artık eşleştiniz.`,
+            });
+        } catch(error) {
+            console.error("Error accepting super like:", error);
+             toast({
+                title: 'Hata',
+                description: 'Super Like kabul edilirken bir hata oluştu.',
+                variant: 'destructive',
+            });
+        } finally {
+             setIsAcceptingSuperLike(false);
         }
     };
 
@@ -258,14 +311,15 @@ export default function ChatPage() {
         }
         if (otherUser.lastSeen) {
             const lastSeenDate = otherUser.lastSeen.toDate();
-            // Check if lastSeenDate is a valid date
             if (!isNaN(lastSeenDate.getTime())) {
                 return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}</span>
             }
         }
         return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
     }
-
+    
+    const isSuperLikePending = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
+    const canSendMessage = matchData?.status === 'matched';
 
     return (
         <div className="flex h-dvh flex-col bg-background">
@@ -324,6 +378,17 @@ export default function ChatPage() {
                         const isSender = message.senderId === user?.uid;
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
+                        if (message.type === 'system_superlike_prompt' && !message.actionTaken) {
+                            return (
+                                <div key={message.id} className="text-center my-6 p-4 border rounded-lg bg-muted/50 space-y-4">
+                                    <p className="text-sm">{message.text}</p>
+                                    <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
+                                        {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Check className="mr-2 h-4 w-4" /> Kabul Et</>}
+                                    </Button>
+                                </div>
+                            )
+                        }
+
                         return (
                             <div key={message.id}>
                                 {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
@@ -358,24 +423,30 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
             </main>
             
-            <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                     <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                        {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
-                    </Button>
-                    <Input
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Mesajını yaz..."
-                        className="flex-1 rounded-full bg-muted"
-                        disabled={isUploading}
-                    />
-                    <Button type="submit" size="icon" className="rounded-full" disabled={!newMessage.trim() || isUploading}>
-                        <Send className="h-5 w-5" />
-                    </Button>
-                </form>
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
-            </footer>
+            {canSendMessage ? (
+              <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
+                  <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                       <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
+                          {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
+                      </Button>
+                      <Input
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Mesajını yaz..."
+                          className="flex-1 rounded-full bg-muted"
+                          disabled={isUploading}
+                      />
+                      <Button type="submit" size="icon" className="rounded-full" disabled={!newMessage.trim() || isUploading}>
+                          <Send className="h-5 w-5" />
+                      </Button>
+                  </form>
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+              </footer>
+            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t">
+                    Yanıt bekleniyor...
+                </div>
+            )}
         </div>
     );
 }
