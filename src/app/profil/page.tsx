@@ -119,7 +119,9 @@ export default function ProfilePage() {
            <Card className="p-3 shadow-md">
               <Star className="h-6 w-6 text-blue-400 mx-auto mb-1" />
               <p className="font-semibold">{t.profil.superLikes.replace('{count}', '0')}</p>
-              <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
+              <Link href="/satin-al/super-like">
+                <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
+              </Link>
           </Card>
           <Card className="p-3 shadow-md">
               <Zap className="h-6 w-6 text-purple-500 mx-auto mb-1" />
