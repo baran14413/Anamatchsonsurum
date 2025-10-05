@@ -111,6 +111,7 @@ export default function PersonalInfoPage() {
     });
 
     const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
+    const isDobSet = !!userProfile?.dateOfBirth;
 
     useEffect(() => {
         if (userProfile) {
@@ -149,10 +150,13 @@ export default function PersonalInfoPage() {
         const userDocRef = doc(firestore, 'users', user.uid);
         
         try {
-            await updateDoc(userDocRef, {
-                fullName: data.fullName,
-                dateOfBirth: data.dateOfBirth.toISOString()
-            });
+            const dataToUpdate: any = { fullName: data.fullName };
+            if (!isDobSet) {
+              dataToUpdate.dateOfBirth = data.dateOfBirth.toISOString();
+            }
+
+            await updateDoc(userDocRef, dataToUpdate);
+
             toast({
                 title: "Bilgiler Güncellendi",
                 description: "Kişisel bilgileriniz başarıyla kaydedildi.",
@@ -215,8 +219,9 @@ export default function PersonalInfoPage() {
                                         <FormItem>
                                             <FormLabel>Doğum Tarihi</FormLabel>
                                             <FormControl>
-                                            <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} />
+                                            <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={isDobSet} />
                                             </FormControl>
+                                            {isDobSet && <p className="text-sm text-muted-foreground mt-2">Doğum tarihi değiştirilemez.</p>}
                                             {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2 text-sm"><CheckCircle className="mr-2 h-4 w-4" />18 yaşından büyüksünüz.</div>}
                                             {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2 text-sm"><XCircle className="mr-2 h-4 w-4" />18 yaşından küçükler kullanamaz.</div>}
                                             {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
@@ -232,5 +237,3 @@ export default function PersonalInfoPage() {
         </div>
     )
 }
-
-    

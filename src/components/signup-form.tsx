@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -15,6 +16,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +46,10 @@ const formSchema = z.object({
     }),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
     photos: z.array(z.string().url()).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
+    ageRange: z.object({
+      min: z.number(),
+      max: z.number()
+    })
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -490,6 +496,7 @@ export default function ProfileCompletionForm() {
                           <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} t={t.step3} />
                         </FormControl>
                         <FormLabel className="text-muted-foreground pt-2 block">{t.step3.label}</FormLabel>
+                        <FormDescription>Doğum tarihinizi yalnızca bir kez ayarlayabilirsiniz ve bu daha sonra değiştirilemez.</FormDescription>
                          {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2"><CheckCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageConfirm}</p></div>}
                          {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2"><XCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageError}</p></div>}
                          {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
