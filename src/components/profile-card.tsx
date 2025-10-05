@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
-import { ChevronUp, GraduationCap, Dumbbell, MapPin } from 'lucide-react';
+import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  onSwipe: (action: 'liked') => void; // This prop is kept for type consistency but not used
+  onSwipe: (action: 'liked' | 'disliked') => void;
   isDraggable: boolean;
 }
 
@@ -22,15 +22,24 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
+const SWIPE_THRESHOLD = 80;
+
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
+
+  // Animation values
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const opacityLike = useTransform(x, [10, SWIPE_THRESHOLD], [0, 1]);
+  const opacityDislike = useTransform(x, [-SWIPE_THRESHOLD, -10], [1, 0]);
 
   // Reset image index and details view when the profile changes
   useEffect(() => {
     setImageIndex(0);
     setShowDetails(false);
-  }, [profile.uid]);
+    x.set(0); // Reset motion value
+  }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
   const totalImages = profile.images?.length || 0;
@@ -57,9 +66,27 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const highlights = getProfileHighlights(profile);
 
+  const handleDragEnd = (event: any, info: any) => {
+    if (info.offset.x > SWIPE_THRESHOLD) {
+      onSwipe('liked');
+    } else if (info.offset.x < -SWIPE_THRESHOLD) {
+      onSwipe('disliked');
+    }
+  };
+
 
   return (
-     <div className="w-full h-full">
+     <motion.div 
+        className="w-full h-full"
+        drag={isDraggable ? "x" : false}
+        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        onDragEnd={handleDragEnd}
+        style={{ x, rotate }}
+        initial={{ scale: 0.95, opacity: 0.5 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ x: x.get() > 0 ? 300 : -300, opacity: 0, transition: { duration: 0.2 } }}
+        whileTap={{ cursor: 'grabbing' }}
+      >
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
@@ -75,6 +102,20 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     ))}
                 </div>
             )}
+
+            {/* Like/Dislike Indicators */}
+            <motion.div
+                className="absolute top-8 left-8 text-green-400"
+                style={{ opacity: opacityLike }}
+            >
+                <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
+            </motion.div>
+            <motion.div
+                className="absolute top-8 right-8 text-red-500"
+                style={{ opacity: opacityDislike }}
+            >
+                <X className="h-20 w-20" strokeWidth={3} />
+            </motion.div>
 
             <div
             className="absolute left-0 top-0 h-full w-1/2 z-[5]"
@@ -153,6 +194,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </motion.div>
             </div>
         </div>
-    </div>
+    </motion.div>
   );
 }
