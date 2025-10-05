@@ -36,7 +36,9 @@ export default function RulesPage() {
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b px-4">
         <Link href="/" className="p-2 -ml-2">
-          <ArrowLeft className="h-6 w-6" />
+          <Button variant="ghost" size="icon">
+             <ArrowLeft className="h-6 w-6" />
+          </Button>
         </Link>
       </header>
       <main className="flex-1 overflow-y-auto p-6">

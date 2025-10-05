@@ -236,24 +236,23 @@ export default function SignupForm() {
                 const initialSlots = [...photoSlots];
                 initialSlots[0] = { file: null, preview: googleData.profilePicture };
                 setPhotoSlots(initialSlots);
-                form.setValue('photos', [googleData.profilePicture]);
+                // Also update the form state so validation works correctly
+                form.setValue('photos', [googleData.profilePicture], { shouldValidate: true });
             }
             setIsGoogleSignup(true);
             setStep(1); // Skip email/password step for Google signup
-            // Do NOT remove the item from session storage here, as a page reload might lose the data.
-            // It will be implicitly cleared when the session ends.
         }
     } catch (error) {
         console.error("Failed to parse Google signup data", error);
         router.push('/');
     }
-  }, [form]); // Removed dependencies
+  }, [form]); // Only run once on mount
   
   const currentName = form.watch("name");
   const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
   const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
-  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.file || p.preview).length, [photoSlots]);
+  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.preview).length, [photoSlots]);
 
   const filledLifestyleCount = useMemo(() => {
     return lifestyleValues.filter((value, index) => {
@@ -444,7 +443,6 @@ export default function SignupForm() {
     if (step === 11) fieldsToValidate = ['photos'];
 
     const isValid = await form.trigger(fieldsToValidate as (keyof SignupFormValues)[]);
-
 
     if (isValid) {
       if (step === totalSteps) {
@@ -970,6 +968,9 @@ export default function SignupForm() {
                         )}
                       </p>
                     </div>
+                     <FormMessage className="pt-2">
+                        {form.formState.errors.photos?.message}
+                    </FormMessage>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
                     <div className="grid grid-cols-2 gap-4">
@@ -1016,15 +1017,14 @@ export default function SignupForm() {
                                 </div>
                               </>
                             ) : (
-                              <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center">
-                                <span className="text-xs font-medium mb-1 block">{t.signup.step12.photoSlotLabels[index]}</span>
-                                <button
-                                  type="button"
-                                  className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
-                                >
-                                  <Plus className="w-5 h-5" />
-                                </button>
-                              </div>
+                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
+                                  <span className="text-xs font-medium block">Fotoğraf ekle</span>
+                                  <div
+                                    className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+                                  >
+                                    <Plus className="w-5 h-5" />
+                                  </div>
+                                </div>
                             )}
                           </div>
                         </div>
@@ -1114,3 +1114,4 @@ export default function SignupForm() {
     
 
     
+
