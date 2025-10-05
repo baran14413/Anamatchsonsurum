@@ -72,3 +72,11 @@ export type Post = {
   comments: number;
   timestamp: Date;
 };
+
+export type ChatMessage = {
+  id: string;
+  matchId: string;
+  senderId: string;
+  text: string;
+  timestamp: any; // Firestore ServerTimestamp
+};
