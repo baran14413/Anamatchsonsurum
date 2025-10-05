@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Heart, X, RefreshCw } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, updateDoc, or, getDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+
 
 const cardVariants = {
   enter: (direction: number) => {
@@ -259,7 +261,13 @@ export default function AnasayfaPage() {
         </div>
       ) : (
         <div className="flex h-full items-center justify-center text-center">
-          <p>{t.anasayfa.outOfProfilesDescription}</p>
+            <div className='space-y-4'>
+                <p>{t.anasayfa.outOfProfilesDescription}</p>
+                <Button onClick={() => fetchProfiles()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Tekrar Dene
+                </Button>
+            </div>
         </div>
       )}
     </div>
