@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
-import { ChevronUp, GraduationCap, Dumbbell, MapPin, Heart, X } from 'lucide-react';
-import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
+import { ChevronUp, GraduationCap, Dumbbell, MapPin } from 'lucide-react';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  onSwipe: (action: 'liked') => void;
+  onSwipe: (action: 'liked') => void; // This prop is kept for type consistency but not used
   isDraggable: boolean;
 }
 
@@ -22,21 +22,11 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
-const swipeConfidenceThreshold = 10000;
-const swipePower = (offset: number, velocity: number) => {
-  return Math.abs(offset) * velocity;
-};
-
-
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
-  const heartOpacity = useTransform(x, [0, 100], [0, 1]);
-  const xOpacity = useTransform(x, [-100, 0], [1, 0]);
-
+  // Reset image index and details view when the profile changes
   useEffect(() => {
     setImageIndex(0);
     setShowDetails(false);
@@ -67,50 +57,19 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const highlights = getProfileHighlights(profile);
 
-  const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: PanInfo) => {
-    if (!isDraggable) return;
-
-    const swipe = swipePower(offset.x, velocity.x);
-
-    if (swipe > swipeConfidenceThreshold) {
-      onSwipe('liked');
-    }
-  };
 
   return (
-     <motion.div
-        style={{ x, rotate }}
-        drag={isDraggable ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={1}
-        onDragEnd={handleDragEnd}
-        className="w-full h-full"
-     >
+     <div className="w-full h-full">
         <div
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
-            <motion.div
-              style={{ opacity: heartOpacity }}
-              className="absolute top-8 right-8 z-20"
-            >
-              <Heart className="h-16 w-16 text-green-500 fill-current" />
-            </motion.div>
-             <motion.div
-              style={{ opacity: xOpacity }}
-              className="absolute top-8 left-8 z-20"
-            >
-              <X className="h-16 w-16 text-red-500" strokeWidth={4} />
-            </motion.div>
-            
             {totalImages > 1 && (
                 <div className="absolute top-2 left-2 right-2 z-10 flex gap-1 px-1">
                     {profile.images.map((_, index) => (
                     <div key={index} className="relative h-1 flex-1 bg-white/40 rounded-full overflow-hidden">
-                        <motion.div
+                         <div
                             className="absolute top-0 left-0 h-full bg-white"
-                            initial={{ width: '0%' }}
-                            animate={{ width: index === imageIndex ? '100%' : (index < imageIndex ? '100%' : '0%') }}
-                            transition={{ duration: index === imageIndex ? 0.3 : 0, ease: "easeInOut" }}
+                            style={{ width: index < imageIndex ? '100%' : (index === imageIndex ? '100%' : '0%'), transition: 'width 0.3s ease-in-out' }}
                         />
                     </div>
                     ))}
@@ -133,7 +92,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                 style={{ objectFit: 'cover' }}
                 className="pointer-events-none"
-                priority={isDraggable}
+                priority={true}
             />
 
             <div
@@ -194,6 +153,6 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </motion.div>
             </div>
         </div>
-    </motion.div>
+    </div>
   );
 }
