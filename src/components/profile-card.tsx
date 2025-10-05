@@ -31,6 +31,10 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
   const [imageIndex, setImageIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
+  // For Tinder-like drag rotation
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-30, 30]);
+
   // Reset image index when profile changes
   useEffect(() => {
     setImageIndex(0);
@@ -74,6 +78,7 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
 
   return (
      <motion.div
+        style={{ x, rotate }} // Apply dynamic rotation and position
         drag={isTopCard ? "x" : false}
         dragConstraints={{ left: 0, right: 0 }}
         onDragEnd={handleDragEnd}
@@ -90,8 +95,8 @@ export default function ProfileCard({ profile, onSwipe, isTopCard }: ProfileCard
                         <motion.div
                             className="absolute top-0 left-0 h-full bg-white"
                             initial={{ width: '0%' }}
-                            animate={{ width: index === imageIndex ? '100%' : '0%' }}
-                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            animate={{ width: index === imageIndex ? '100%' : (index < imageIndex ? '100%' : '0%') }}
+                            transition={{ duration: index === imageIndex ? 0.3 : 0, ease: "easeInOut" }}
                         />
                     </div>
                     ))}

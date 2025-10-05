@@ -12,25 +12,54 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const cardVariants = {
-  enter: (direction: number) => {
-    return {
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0,
-    };
-  },
-  center: {
-    zIndex: 1,
+  initial: (direction: number) => ({
+    x: direction > 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.8,
+    rotate: direction > 0 ? 15: -15,
+  }),
+  animate: {
     x: 0,
     opacity: 1,
+    scale: 1,
+    rotate: 0,
+    transition: {
+      duration: 0.4,
+      ease: 'easeOut',
+    },
   },
-  exit: (direction: number) => {
-    return {
-      zIndex: 0,
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0,
-    };
-  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.8,
+    rotate: direction > 0 ? 15: -15,
+    transition: {
+      duration: 0.4,
+      ease: 'easeIn',
+    },
+  }),
 };
+
+const secondCardVariants = {
+    initial: {
+        scale: 0.95,
+        y: 20,
+        opacity: 0.8,
+    },
+    animate: {
+        scale: 1,
+        y: 0,
+        opacity: 1,
+        transition: { duration: 0.4, ease: 'easeOut' },
+    },
+    exit: {
+        scale: 0.95,
+        y: 20,
+        opacity: 0.8,
+        transition: { duration: 0.4, ease: 'easeIn' },
+    },
+};
+
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -42,7 +71,8 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [direction, setDirection] = useState(0);
 
-  const activeIndex = profiles.length - 1;
+  const activeIndex = profiles.length > 0 ? profiles.length - 1 : 0;
+  const nextCardIndex = profiles.length > 1 ? profiles.length - 2 : 0;
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
@@ -104,9 +134,14 @@ export default function AnasayfaPage() {
       fetchProfiles();
     }
   }, [user, firestore, userProfile, fetchProfiles]);
+  
+  const removeTopCard = useCallback(() => {
+    setProfiles((currentProfiles) => currentProfiles.slice(0, -1));
+  }, []);
+
 
   const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
-    if (activeIndex < 0) return;
+    if (profiles.length === 0) return;
 
     const swipedProfile = profiles[activeIndex];
     if (!user || !firestore || !swipedProfile) return;
@@ -115,8 +150,7 @@ export default function AnasayfaPage() {
     setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
 
     // --- Optimistic UI Update ---
-    // Remove the swiped profile from the local state immediately.
-    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
+    removeTopCard();
 
     // --- Firestore Logic (runs in the background) ---
     const user1 = user.uid;
@@ -180,7 +214,7 @@ export default function AnasayfaPage() {
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast, profiles, activeIndex]);
+  }, [user, firestore, t, toast, profiles, activeIndex, removeTopCard]);
 
 
   const handleReset = async () => {
@@ -221,29 +255,37 @@ export default function AnasayfaPage() {
         ) : profiles.length > 0 ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
-                <AnimatePresence initial={false} custom={direction}>
-                    {profiles.map((profile, index) => (
-                         <motion.div
-                            key={profile.uid}
-                            custom={direction}
-                            variants={cardVariants}
-                            initial="enter"
-                            animate="center"
-                            exit="exit"
-                            transition={{
-                                x: { type: "spring", stiffness: 300, damping: 30 },
-                                opacity: { duration: 0.2 },
-                            }}
-                            className="absolute w-full max-w-sm h-full max-h-[75vh]"
-                            style={{ zIndex: profiles.length - index }}
+                <AnimatePresence initial={false}>
+                    {profiles.length > 1 && (
+                        <motion.div
+                           key={profiles[nextCardIndex].uid}
+                           variants={secondCardVariants}
+                           initial="initial"
+                           animate="animate"
+                           exit="exit"
+                           className="absolute w-full max-w-sm h-full max-h-[75vh]"
                         >
                             <ProfileCard
-                                profile={profile}
-                                onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked')}
-                                isTopCard={index === activeIndex}
+                                profile={profiles[nextCardIndex]}
+                                onSwipe={() => {}}
+                                isTopCard={false}
                             />
                         </motion.div>
-                    ))}
+                    )}
+                    <motion.div
+                        key={profiles[activeIndex].uid}
+                        custom={direction}
+                        variants={cardVariants}
+                        initial="animate"
+                        exit="exit"
+                        className="absolute w-full max-w-sm h-full max-h-[75vh]"
+                    >
+                        <ProfileCard
+                            profile={profiles[activeIndex]}
+                            onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked')}
+                            isTopCard={true}
+                        />
+                    </motion.div>
                 </AnimatePresence>
             </div>
             <div className="flex justify-center items-center gap-4 py-4">
