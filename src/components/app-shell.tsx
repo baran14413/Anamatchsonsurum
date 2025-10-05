@@ -32,7 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     // SCENARIO 1: User is logged in
     if (user) {
-      // 1a: But profile is INCOMPLETE
+      // 1a: But profile is INCOMPLETE (we use 'gender' as the marker for a complete profile)
       if (!userProfile) {
         // If they are not on the registration page, FORCE them to it.
         if (!isRegistrationRoute) {

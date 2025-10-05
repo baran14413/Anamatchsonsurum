@@ -52,30 +52,21 @@ export default function WelcomePage() {
         const userDocRef = doc(firestore, "users", signedInUser.uid);
         const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists() && userDoc.data()?.gender) { 
-            router.push("/anasayfa");
-        } else {
-            const googleData = {
-                email: signedInUser.email,
-                name: signedInUser.displayName,
-                profilePicture: signedInUser.photoURL,
+        // If user document doesn't exist, create a minimal one.
+        if (!userDoc.exists()) {
+            const initialProfileData = {
                 uid: signedInUser.uid,
+                email: signedInUser.email || '',
+                fullName: signedInUser.displayName || '',
+                images: signedInUser.photoURL ? [signedInUser.photoURL] : [],
+                profilePicture: signedInUser.photoURL || '',
             };
-            
-            if (!userDoc.exists()) {
-                const initialProfileData = {
-                    uid: signedInUser.uid,
-                    email: signedInUser.email || '',
-                    fullName: signedInUser.displayName || '',
-                    images: signedInUser.photoURL ? [signedInUser.photoURL] : [],
-                    profilePicture: signedInUser.photoURL || '',
-                };
-                await setDoc(userDocRef, initialProfileData, { merge: true });
-            }
-
-            sessionStorage.setItem('googleSignupData', JSON.stringify(googleData));
-            router.push("/kayit-ol");
+            await setDoc(userDocRef, initialProfileData, { merge: true });
         }
+
+        // Regardless of whether they are new or returning, send them to the main app.
+        // AppShell will handle redirecting to /kayit-ol if the profile is incomplete.
+        router.push("/anasayfa");
 
     } catch (error: any) {
         console.error("Google Sign-In Error:", error);

@@ -19,14 +19,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, MapPin, Cigarette, Dumbbell, PawPrint, MessageCircle, GraduationCap, Moon, CheckCircle, XCircle, Tent, Globe, DoorOpen, Home, Music, Gamepad2, Sprout, Clapperboard, Paintbrush, Plus, Trash2, Pencil, Search } from "lucide-react";
+import { Loader2, ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
 import { langTr } from "@/languages/tr";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import CircularProgress from "./circular-progress";
-import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
+import { Country, State, ICountry, IState, ICity } from 'country-state-city';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "./ui/checkbox";
 
@@ -45,20 +44,9 @@ const formSchema = z.object({
         state: z.string().min(1, { message: "State is required." }),
         city: z.string().optional(),
     }),
-    distancePreference: z.number().min(1).max(100).default(80),
     school: z.string().optional(),
-    drinking: z.string({ required_error: "Please choose one." }).min(1),
-    smoking: z.string({ required_error: "Please choose one." }).min(1),
-    workout: z.string({ required_error: "Please choose one." }).min(1),
-    pets: z.array(z.string()).min(1, { message: 'Please choose one.'}),
-    communicationStyle: z.string({ required_error: "Please choose one." }).min(1),
-    loveLanguage: z.string({ required_error: "Please choose one." }).min(1),
-    educationLevel: z.string({ required_error: "Please choose one." }).min(1),
-    zodiacSign: z.string({ required_error: "Please choose one." }).min(1),
     interests: z.array(z.string()).min(1).max(5, { message: 'You can select up to 5 interests.'}),
     photos: z.array(z.string().url()).min(2, {message: 'You must upload at least 2 photos.'}).max(6),
-    uid: z.string(),
-    email: z.string().email(),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -82,20 +70,18 @@ type PhotoSlot = {
     isUploading: boolean;
 };
 
-const getInitialPhotoSlots = (): PhotoSlot[] => {
+const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
     const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, progress: 0, isUploading: false }));
-    try {
-        if (typeof window !== 'undefined') {
-            const googleDataString = sessionStorage.getItem('googleSignupData');
-            if (googleDataString) {
-                const googleData = JSON.parse(googleDataString);
-                if (googleData.profilePicture) {
-                    initialSlots[0] = { file: null, preview: googleData.profilePicture, progress: 100, isUploading: false };
-                }
+    if (user?.profilePicture) {
+        initialSlots[0] = { file: null, preview: user.profilePicture, progress: 100, isUploading: false };
+    }
+    // If the user already has images, fill the slots
+    if (user?.images?.length > 0) {
+        user.images.slice(0, 6).forEach((imgUrl: string, index: number) => {
+            if (!initialSlots[index].preview) { // Avoid overwriting the main profile pic if it's the same
+                 initialSlots[index] = { file: null, preview: imgUrl, progress: 100, isUploading: false };
             }
-        }
-    } catch (e) {
-        console.error("Failed to initialize photo slots from session storage", e);
+        });
     }
     return initialSlots;
 };
@@ -197,24 +183,22 @@ export default function SignupForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr;
+  const { user, userProfile } = useUser();
   
   const [isLoading, setIsLoading] = useState(false);
   const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
   
   const [countries, setCountries] = useState<ICountry[]>([]);
   const [states, setStates] = useState<IState[]>([]);
-  const [cities, setCities] = useState<ICity[]>([]);
-
   
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
   const [selectedState, setSelectedState] = useState<string | undefined>();
 
-  const auth = useAuth();
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(getInitialPhotoSlots);
+  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots(userProfile || user));
   const [interestSearch, setInterestSearch] = useState("");
   
   const [step, setStep] = useState(0); 
@@ -222,23 +206,12 @@ export default function SignupForm() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      gender: undefined,
+      name: userProfile?.fullName || user?.displayName || "",
       lookingFor: "",
       address: { country: undefined, state: undefined, city: undefined },
-      distancePreference: 50,
       school: "",
-      drinking: "",
-      smoking: "",
-      workout: "",
-      pets: [],
-      communicationStyle: "",
-      loveLanguage: "",
-      educationLevel: "",
-      zodiacSign: "",
       interests: [],
-      photos: getInitialPhotoSlots().map(s => s.preview).filter(p => p) as string[],
+      photos: getInitialPhotoSlots(userProfile || user).map(s => s.preview).filter(p => p) as string[],
     },
     mode: "onChange",
   });
@@ -248,21 +221,17 @@ export default function SignupForm() {
   }, []);
 
   useEffect(() => {
-    try {
-        const googleDataString = sessionStorage.getItem('googleSignupData');
-        if (googleDataString) {
-            const googleData = JSON.parse(googleDataString);
-            form.setValue('email', googleData.email || '');
-            form.setValue('name', googleData.name || '');
-            form.setValue('uid', googleData.uid);
-        } else {
-           router.push('/');
-        }
-    } catch (error) {
-        console.error("Failed to parse Google signup data", error);
-        router.push('/');
+    // Pre-fill form with existing data if available
+    if (user) {
+        form.setValue('name', userProfile?.fullName || user.displayName || '');
     }
-  }, [form, router]);
+     if (userProfile) {
+        const initialPhotos = getInitialPhotoSlots(userProfile);
+        setPhotoSlots(initialPhotos);
+        form.setValue('photos', initialPhotos.map(p => p.preview).filter(Boolean) as string[]);
+    }
+
+  }, [user, userProfile, form]);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -283,26 +252,11 @@ export default function SignupForm() {
   
   const currentName = form.watch("name");
   const currentAddress = form.watch("address");
-  const lifestyleValues = form.watch(['drinking', 'smoking', 'workout', 'pets']);
-  const moreInfoValues = form.watch(['communicationStyle', 'loveLanguage', 'educationLevel', 'zodiacSign']);
   const selectedInterests = form.watch('interests') || [];
   const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.preview).length, [photoSlots]);
   const filteredInterests = useMemo(() => {
     return allInterests.filter(interest => interest.toLowerCase().includes(interestSearch.toLowerCase()));
   }, [interestSearch]);
-
-  const filledLifestyleCount = useMemo(() => {
-    return lifestyleValues.filter((value, index) => {
-        if (index === 3) {
-            return Array.isArray(value) && value.length > 0;
-        }
-        return !!value;
-    }).length;
-  }, [lifestyleValues]);
-
-  const filledMoreInfoCount = useMemo(() => {
-    return moreInfoValues.filter(v => !!v).length;
-  }, [moreInfoValues]);
 
 
   const nextStep = () => setStep((prev) => prev + 1);
@@ -315,15 +269,13 @@ export default function SignupForm() {
   };
 
   async function onSubmit(data: SignupFormValues) {
-    if (!firestore || !auth) {
+    if (!firestore || !user) {
       toast({ title: t.common.error, description: t.signup.errors.dbConnectionError, variant: "destructive" });
       return;
     }
     
     setIsLoading(true);
     try {
-        let userId = data.uid;
-        
       const filesToUpload = photoSlots.filter(p => p.file);
       setPhotoSlots(prev => prev.map(slot => filesToUpload.some(f => f.file === slot.file) ? { ...slot, isUploading: true } : slot));
 
@@ -345,7 +297,7 @@ export default function SignupForm() {
                 setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, progress: 100, isUploading: false } : s));
                 resolve(result.url);
             }).catch(error => {
-                 setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, progress: 0, isUploading: false } : s));
+                 setPhotoSlots(prev => prev.map(s => s.file === file ? { ...s, isUploading: false, progress: 0 } : s));
                 reject(error);
             });
         });
@@ -367,27 +319,12 @@ export default function SignupForm() {
       
       const stateDetails = State.getStateByCodeAndCountry(data.address.state!, data.address.country!);
 
-      const userProfile = {
-        uid: userId,
+      const userProfileData = {
         fullName: data.name,
-        email: data.email,
         dateOfBirth: data.dateOfBirth.toISOString(),
         gender: data.gender,
         lookingFor: data.lookingFor,
-        distancePreference: data.distancePreference,
         school: data.school,
-        lifestyle: {
-          drinking: data.drinking,
-          smoking: data.smoking,
-          workout: data.workout,
-          pets: data.pets,
-        },
-        moreInfo: {
-            communicationStyle: data.communicationStyle,
-            loveLanguage: data.loveLanguage,
-            educationLevel: data.educationLevel,
-            zodiacSign: data.zodiacSign,
-        },
         interests: data.interests,
         images: allPhotoUrls,
         profilePicture: allPhotoUrls[0] || '',
@@ -398,9 +335,10 @@ export default function SignupForm() {
         address: finalAddress,
       };
 
-      await setDoc(doc(firestore, "users", userId), userProfile, { merge: true });
+      await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
       
-      sessionStorage.removeItem('googleSignupData');
+      router.push('/anasayfa');
+
     } catch (error: any) {
       console.error("Signup error:", error);
        let errorMessage = error.message || t.signup.errors.signupFailed;
@@ -414,7 +352,7 @@ export default function SignupForm() {
     }
   }
   
-  const totalSteps = 9;
+  const totalSteps = 7;
   const progressValue = (step / totalSteps) * 100;
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -469,11 +407,9 @@ export default function SignupForm() {
         ['school'], // 5
         ['interests'], // 6
         ['photos'], // 7
-        ['lifestyle'], // 8
-        ['moreInfo'], // 9
     ];
 
-    const finalStep = 8;
+    const finalStep = 7;
     
     if (step < flow.length) {
         fieldsToValidate = flow[step] as any;
@@ -491,21 +427,19 @@ export default function SignupForm() {
       }
     }
   };
-
-  const finalStep = 8;
   
+  const finalStep = 7;
+
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
         <Button variant="ghost" size="icon" onClick={prevStep}>
             <ArrowLeft className="h-6 w-6" />
         </Button>
-        {step > 0 && <Progress value={progressValue} className="h-2 flex-1" />}
-        {(step > 0 && step < finalStep) ? (
-            <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 5 ? '' : 'invisible'}`}>
-                {t.signup.progressHeader.skip}
-            </Button>
-        ) : <div className="w-16"></div>}
+        <Progress value={progressValue} className="h-2 flex-1" />
+        <Button variant="ghost" onClick={nextStep} className={`shrink-0 w-16 ${step === 5 ? '' : 'invisible'}`}>
+            {t.signup.progressHeader.skip}
+        </Button>
       </header>
       
       <Form {...form}>
@@ -696,7 +630,6 @@ export default function SignupForm() {
                                 onValueChange={(value) => {
                                     field.onChange(value);
                                     setSelectedState(value);
-                                    setCities(City.getCitiesOfState(selectedCountry!, value));
                                     form.setValue('address.city', '');
                                 }}
                                 value={field.value}
