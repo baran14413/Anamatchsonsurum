@@ -9,57 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, getDoc, doc, setDoc, serverTimestamp, updateDoc, or } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const cardVariants = {
-  initial: (direction: number) => ({
-    x: direction > 0 ? '100%' : '-100%',
-    opacity: 0,
-    scale: 0.8,
-    rotate: direction > 0 ? 15: -15,
-  }),
-  animate: {
-    x: 0,
-    opacity: 1,
-    scale: 1,
-    rotate: 0,
-    transition: {
-      duration: 0.4,
-      ease: 'easeOut',
-    },
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? '100%' : '-100%',
-    opacity: 0,
-    scale: 0.8,
-    rotate: direction > 0 ? 15: -15,
-    transition: {
-      duration: 0.4,
-      ease: 'easeIn',
-    },
-  }),
-};
-
-const secondCardVariants = {
-    initial: {
-        scale: 0.95,
-        y: 20,
-        opacity: 0.8,
-    },
-    animate: {
-        scale: 1,
-        y: 0,
-        opacity: 1,
-        transition: { duration: 0.4, ease: 'easeOut' },
-    },
-    exit: {
-        scale: 0.95,
-        y: 20,
-        opacity: 0.8,
-        transition: { duration: 0.4, ease: 'easeIn' },
-    },
-};
-
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -69,15 +18,15 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [direction, setDirection] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  const topCard = profiles[profiles.length - 1];
-  const nextCard = profiles[profiles.length - 2];
+  const topCard = profiles[currentIndex];
+  const nextCard = profiles[currentIndex + 1];
 
   const fetchProfiles = useCallback(async (options?: { resetInteractions?: boolean }) => {
     if (!user || !firestore) return;
     setIsLoading(true);
+    setCurrentIndex(0); // Reset index on new fetch
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -100,10 +49,11 @@ export default function AnasayfaPage() {
         }
         
         let usersQuery;
-        if (userProfile?.genderPreference && userProfile.genderPreference !== 'both') {
+        const genderPref = userProfile?.genderPreference;
+        if (genderPref && genderPref !== 'both') {
             usersQuery = query(
                 collection(firestore, 'users'),
-                where('gender', '==', userProfile.genderPreference),
+                where('gender', '==', genderPref),
                 limit(50)
             );
         } else {
@@ -117,8 +67,7 @@ export default function AnasayfaPage() {
         
         const fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id } as UserProfile))
-            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0)
-            .reverse(); // Reverse to treat the array like a stack
+            .filter(p => p.uid && !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
 
         setProfiles(fetchedProfiles);
 
@@ -135,40 +84,34 @@ export default function AnasayfaPage() {
   }, [user, firestore, toast, t.common.error, userProfile]);
 
   useEffect(() => {
-    if (user && firestore && userProfile) { // Ensure userProfile is also loaded
+    if (user && firestore && userProfile) {
       fetchProfiles();
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
-  const removeTopCard = useCallback(() => {
-    setProfiles((currentProfiles) => currentProfiles.slice(0, -1));
-  }, []);
-
-
-  const handleSwipe = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
-    if (isAnimating || !topCard) return;
-    
-    setIsAnimating(true);
-    setDirection(action === 'liked' || action === 'superlike' ? 1 : -1);
+  const handleInteraction = useCallback(async (action: 'liked' | 'disliked' | 'superlike') => {
+    if (!topCard || !user || !firestore) return;
     
     const swipedProfile = topCard;
-    if (!user || !firestore || !swipedProfile) return;
-    
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     
     const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
+    // Go to next card immediately (optimistic update)
+    setCurrentIndex(prevIndex => prevIndex + 1);
+
     try {
-        const theirInteractionRef = doc(firestore, 'matches', matchId);
-        const theirInteractionSnap = await getDoc(theirInteractionRef);
+        const theirInteractionSnap = await getDoc(matchDocRef);
+        const theirInteraction = theirInteractionSnap.data();
 
+        // Check if it's a match
         if ((action === 'liked' || action === 'superlike') && theirInteractionSnap.exists()) {
-             const data = theirInteractionSnap.data();
-             const theirAction = data.user1Id === user2Id ? data.user1_action : data.user2_action;
+             const theirActionKey = `user${[user2Id, user1Id].sort().indexOf(user2Id) + 1}_action`;
+             const theirAction = theirInteraction?.[theirActionKey];
 
-             if(theirAction === 'liked' || theirAction === 'superlike') {
+             if (theirAction === 'liked' || theirAction === 'superlike') {
                  // It's a match!
                 await updateDoc(matchDocRef, {
                     status: 'matched',
@@ -197,7 +140,7 @@ export default function AnasayfaPage() {
 
                 toast({
                     title: t.anasayfa.matchToastTitle,
-                    description: swipedProfile.fullName + " " + t.anasayfa.matchToastDescription,
+                    description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}`,
                 });
              }
         }
@@ -210,47 +153,25 @@ export default function AnasayfaPage() {
         await setDoc(matchDocRef, {
             user1Id: [user1Id, user2Id].sort()[0],
             user2Id: [user1Id, user2Id].sort()[1],
+            status: 'pending',
             ...updateData
         }, { merge: true });
 
     } catch (error) {
         console.error(`Error handling ${action}:`, error);
+        // Optional: Revert optimistic update if something fails
+        setCurrentIndex(prevIndex => prevIndex - 1);
         toast({
             title: t.common.error,
             description: "Etkileşim kaydedilemedi.",
             variant: "destructive"
         })
     }
-  }, [user, firestore, t, toast, topCard, isAnimating]);
+  }, [user, firestore, t, toast, topCard]);
 
 
-  const handleReset = async () => {
-    if (!user || !firestore) return;
-    setIsLoading(true);
-
-    try {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, {
-            genderPreference: 'both'
-        });
-        
-        toast({
-            title: "Filtreler Sıfırlandı",
-            description: "Tüm filtreleriniz sıfırlandı, baştan başlıyoruz!",
-        });
-
-        await fetchProfiles({ resetInteractions: true });
-
-    } catch (error) {
-        console.error("Error resetting filters:", error);
-        toast({
-            title: "Hata",
-            description: "Filtreler sıfırlanırken bir hata oluştu.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoading(false);
-    }
+  const handleReset = () => {
+    fetchProfiles({ resetInteractions: true });
   };
   
   return (
@@ -262,62 +183,41 @@ export default function AnasayfaPage() {
         ) : topCard ? (
           <>
             <div className="flex-1 flex items-center justify-center relative">
-                <AnimatePresence 
-                    initial={false}
-                    onExitComplete={() => {
-                        removeTopCard();
-                        setDirection(0);
-                        setIsAnimating(false);
-                    }}
-                >
-                    {nextCard && (
-                         <motion.div
-                           key={nextCard.uid}
-                           variants={secondCardVariants}
-                           initial="initial"
-                           animate="animate"
-                           exit="exit"
-                           className="absolute w-full max-w-sm h-full max-h-[75vh]"
-                        >
-                            <ProfileCard
-                                profile={nextCard}
-                                onSwipe={() => {}}
-                                isDraggable={false}
-                            />
-                        </motion.div>
-                    )}
-                     <motion.div
-                        key={topCard.uid}
-                        custom={direction}
-                        variants={cardVariants}
-                        animate="animate"
-                        exit="exit"
-                        className="absolute w-full max-w-sm h-full max-h-[75vh]"
-                    >
+               {/* Next Card in the background */}
+                {nextCard && (
+                    <div className="absolute w-full max-w-sm h-full max-h-[75vh] transform scale-95 -translate-y-6">
                         <ProfileCard
-                            profile={topCard}
-                            onSwipe={(action) => handleSwipe(action as 'liked' | 'disliked' | 'superlike')}
-                            isDraggable={!isAnimating}
+                            profile={nextCard}
+                            onSwipe={() => {}} // No-op
+                            isDraggable={false}
                         />
-                    </motion.div>
-                </AnimatePresence>
+                    </div>
+                )}
+                {/* Top Card */}
+                <div className="absolute w-full max-w-sm h-full max-h-[75vh]">
+                    <ProfileCard
+                        profile={topCard}
+                        onSwipe={() => {}} // No-op
+                        isDraggable={false}
+                    />
+                </div>
             </div>
-            <div className="flex justify-center items-center gap-4 py-4">
-                <motion.button whileHover={{ scale: 1.1 }} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
+            <div className="flex justify-center items-center gap-4 py-4 z-10">
+                <button className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Undo2 className="w-5 h-5 text-yellow-500" />
-                </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('disliked')} disabled={isAnimating} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
+                </button>
+                <button onClick={() => handleInteraction('disliked')} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
                     <X className="w-7 h-7 text-red-500" />
-                </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('superlike')} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
+                </button>
+                 <button onClick={() => handleInteraction('superlike')} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Star className="w-5 h-5 text-blue-500" />
-                </motion.button>
-                <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleSwipe('liked')} disabled={isAnimating} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
+                </button>
+                <button onClick={() => handleInteraction('liked')} className="bg-white rounded-full p-4 shadow-lg disabled:opacity-50">
                     <Heart className="w-7 h-7 text-green-400" />
-                </motion.button>
-                 <motion.button whileHover={{ scale: 1.1 }} disabled={isAnimating} className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
+                </button>
+                 <button className="bg-white rounded-full p-3 shadow-lg disabled:opacity-50">
                     <Zap className="w-5 h-5 text-purple-500" />
-                </motion.button>
+                </button>
             </div>
           </>
         ) : (
