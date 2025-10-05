@@ -3,7 +3,7 @@
 import { useUser } from '@/firebase';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, User, Bell, Lock, Shield, HelpCircle, FileText, Star, Users, LogOut, MessageCircle, Settings, UserPlus, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
@@ -62,26 +62,11 @@ export default function SettingsPage() {
                 <SectionTitle title="Hesabın" />
                 <div className="bg-background border-y">
                    <SettingsItem icon={SlidersHorizontal} iconColor="#3b82f6" text="Tercihler" href='/ayarlar/tercihler' />
-                   <SettingsItem icon={Settings} iconColor="#8b5cf6" text="Bağlı Hesaplar" href='/ayarlar/bagli-hesaplar' />
                 </div>
                 
-                <SectionTitle title="İçeriklerini kimler görebilir?" />
+                <SectionTitle title="İlgi Alanları" />
                  <div className="bg-background border-y">
-                   <SettingsItem icon={Lock} iconColor="#ef4444" text="Hesap gizliliği" value="Herkese açık" />
-                   <SettingsItem icon={Star} iconColor="#f97316" text="Yakın Arkadaşlar" value="0" />
-                   <SettingsItem icon={Users} iconColor="#10b981" text="Engellenenler" value="0"/>
-                </div>
-
-                <SectionTitle title="Başkalarının seninle etkileşimleri" />
-                 <div className="bg-background border-y">
-                   <SettingsItem icon={MessageCircle} iconColor="#0ea5e9" text="Mesajlar ve hikaye yanıtları" />
-                   <SettingsItem icon={UserPlus} iconColor="#6366f1" text="Takip etme ve davet etme" />
-                </div>
-
-                <SectionTitle title="Daha fazla bilgi ve destek" />
-                 <div className="bg-background border-y">
-                    <SettingsItem icon={HelpCircle} iconColor="#84cc16" text="Yardım" />
-                    <SettingsItem icon={FileText} iconColor="#a855f7" text="Hakkında" />
+                   <SettingsItem icon={Heart} iconColor="#ef4444" text="İlgi Alanlarını Düzenle" href='/ayarlar/ilgi-alanlari' />
                 </div>
 
                  <SectionTitle title="Oturum" />
