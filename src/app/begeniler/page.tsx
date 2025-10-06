@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { Heart, Star } from 'lucide-react';
+import { Heart, Star, CheckCircle } from 'lucide-react';
 import type { UserProfile, LikerInfo } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ProfileCard from '@/components/profile-card';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
@@ -54,11 +56,12 @@ export default function BegenilerPage() {
                 const data = docSnap.data();
                 let likerId: string | null = null;
                 
-                if (data.user2Id === user.uid && data.user1_action === 'liked' && !data.user2_action) {
+                // Case 1: user2 is me, user1 liked me
+                if (data.user2Id === user.uid && data.user1_action === 'liked') {
                     likerId = data.user1Id;
                 }
-                
-                if (data.user1Id === user.uid && data.user2_action === 'liked' && !data.user1_action) {
+                // Case 2: user1 is me, user2 liked me
+                if (data.user1Id === user.uid && data.user2_action === 'liked') {
                     likerId = data.user2Id;
                 }
 
@@ -75,6 +78,7 @@ export default function BegenilerPage() {
                                 profilePicture: profileData.images?.[0]?.url || '',
                                 age: calculateAge(profileData.dateOfBirth),
                                 matchId: docSnap.id,
+                                status: data.status,
                                 profile: { ...profileData, uid: likerId!, id: likerId! }
                             };
                         }
@@ -84,7 +88,9 @@ export default function BegenilerPage() {
                 }
             });
             
-            const likerProfiles = (await Promise.all(potentialLikerTasks)).filter((p): p is (LikerInfo & { profile: UserProfile }) => p !== null && !!p.profilePicture);
+            const likerProfiles = (await Promise.all(potentialLikerTasks))
+              .filter((p): p is (LikerInfo & { profile: UserProfile }) => p !== null && !!p.profilePicture)
+              .filter(p => p.status !== 'matched'); // Exclude already matched users from the main list.
             setLikers(likerProfiles);
             setIsLoading(false);
         }, (error) => {
@@ -96,7 +102,7 @@ export default function BegenilerPage() {
     }, [matchesQuery, firestore, user]);
 
     const handleInstantMatch = async (liker: LikerInfo & { profile: UserProfile }) => {
-        if (!user || !firestore || !userProfile) return;
+        if (!user || !firestore || !userProfile || liker.status === 'matched') return;
 
         setIsMatching(liker.uid);
         try {
@@ -117,6 +123,9 @@ export default function BegenilerPage() {
             await batch.commit();
 
             toast({ title: t.anasayfa.matchToastTitle, description: `${liker.fullName} ${t.anasayfa.matchToastDescription}` });
+            
+            // Update local state to reflect the match
+            setLikers(prevLikers => prevLikers.map(l => l.uid === liker.uid ? { ...l, status: 'matched' } : l));
 
         } catch (error) {
             console.error("Error creating instant match:", error);
@@ -139,7 +148,7 @@ export default function BegenilerPage() {
         );
     }
 
-    const LikerCard = ({ liker }: { liker: LikerInfo }) => (
+    const LikerCard = ({ liker }: { liker: LikerInfo & { profile: UserProfile } }) => (
         <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
             <Avatar className="h-full w-full rounded-lg">
                 <AvatarImage src={liker.profilePicture} className={!isGoldMember ? "object-cover blur-md" : "object-cover"} />
@@ -153,6 +162,14 @@ export default function BegenilerPage() {
              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white">
                 <p className="font-bold text-lg truncate">{liker.fullName}{liker.age && `, ${liker.age}`}</p>
             </div>
+             {liker.status === 'matched' && (
+                 <div className="absolute inset-0 bg-green-900/40 flex items-center justify-center">
+                    <Badge className='bg-green-500 text-white text-base py-2 px-4'>
+                        <CheckCircle className='mr-2 h-5 w-5'/>
+                        Eşleştiniz
+                    </Badge>
+                </div>
+            )}
         </div>
     );
     
@@ -169,7 +186,7 @@ export default function BegenilerPage() {
                             {likers.map(liker => (
                                 isGoldMember ? (
                                     <Sheet key={liker.uid}>
-                                        <SheetTrigger>
+                                        <SheetTrigger disabled={liker.status === 'matched'}>
                                             <LikerCard liker={liker} />
                                         </SheetTrigger>
                                         <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent'>
@@ -182,18 +199,20 @@ export default function BegenilerPage() {
                                             <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
                                                 <ProfileCard profile={liker.profile} isDraggable={false} />
                                                 <div className='absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent z-30'>
-                                                    <Button 
-                                                        className='w-full h-14 rounded-full bg-green-500 hover:bg-green-600 text-white' 
-                                                        onClick={() => handleInstantMatch(liker)}
-                                                        disabled={isMatching === liker.uid}
-                                                    >
-                                                        {isMatching === liker.uid ? (
-                                                            <Icons.logo className='h-6 w-6 animate-pulse' />
-                                                        ) : (
-                                                            <Heart className="mr-2 h-6 w-6 fill-white" />
-                                                        )}
-                                                        <span className='font-bold text-lg'>Beğen ve Eşleş</span>
-                                                    </Button>
+                                                     {liker.status !== 'matched' && (
+                                                         <Button 
+                                                            className='w-full h-14 rounded-full bg-green-500 hover:bg-green-600 text-white' 
+                                                            onClick={() => handleInstantMatch(liker)}
+                                                            disabled={isMatching === liker.uid}
+                                                        >
+                                                            {isMatching === liker.uid ? (
+                                                                <Icons.logo className='h-6 w-6 animate-pulse' />
+                                                            ) : (
+                                                                <Heart className="mr-2 h-6 w-6 fill-white" />
+                                                            )}
+                                                            <span className='font-bold text-lg'>Beğen ve Eşleş</span>
+                                                        </Button>
+                                                     )}
                                                 </div>
                                             </div>
                                         </SheetContent>
