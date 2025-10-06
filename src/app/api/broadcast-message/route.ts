@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
         }
         
         const batchSize = 500;
-        const batches = [];
-        let currentBatch = db.batch();
+        let batch = db.batch();
         let operationCount = 0;
+        const commitPromises: Promise<any>[] = [];
 
         const systemMessage = {
             senderId: 'system',
@@ -34,23 +34,22 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < usersSnapshot.docs.length; i++) {
             const userDoc = usersSnapshot.docs[i];
             const userId = userDoc.id;
-            // The collection should be under each user, e.g., /users/{userId}/system_messages
             const messageRef = db.collection('users').doc(userId).collection('system_messages').doc();
-            currentBatch.set(messageRef, systemMessage);
+            batch.set(messageRef, systemMessage);
             operationCount++;
 
             if (operationCount === batchSize) {
-                batches.push(currentBatch);
-                currentBatch = db.batch();
+                commitPromises.push(batch.commit());
+                batch = db.batch();
                 operationCount = 0;
             }
         }
 
         if (operationCount > 0) {
-            batches.push(currentBatch);
+            commitPromises.push(batch.commit());
         }
         
-        await Promise.all(batches.map(batch => batch.commit()));
+        await Promise.all(commitPromises);
 
         return NextResponse.json({ message: 'Duyuru tüm kullanıcılara gönderildi.', recipientCount: usersSnapshot.size });
 

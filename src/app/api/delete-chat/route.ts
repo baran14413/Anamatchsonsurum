@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import { v2 as cloudinary } from 'cloudinary';
 
-// Initialize Cloudinary
-if (process.env.CLOUDINARY_CLOUD_NAME) {
+// Initialize Cloudinary only if the credentials are provided
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
     cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -36,6 +36,8 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
             }
             batch.delete(doc.ref);
         });
+        
+        await batch.commit();
 
         // Only try to delete from cloudinary if it's configured and there are images to delete.
         if (publicIdsToDelete.length > 0 && cloudinary.config().api_key) {
@@ -47,8 +49,6 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
                 console.error("Cloudinary silme işlemi bazı kaynaklar için başarısız oldu, ancak Firestore silme işlemine devam ediliyor:", cloudinaryError);
             }
         }
-        
-        await batch.commit();
 
         if (snapshot.size < batchSize) {
             break;

@@ -21,6 +21,10 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
         });
         await batch.commit();
 
+        if (snapshot.size < batchSize) {
+            break;
+        }
+
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
         query = collectionRef.orderBy('__name__').startAfter(lastVisible).limit(batchSize);
     }
