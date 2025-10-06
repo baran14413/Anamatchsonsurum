@@ -17,7 +17,7 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
     if (!db) throw new Error("Veritabanı başlatılamadı.");
 
     const collectionRef = db.collection(collectionPath);
-    let query = collectionRef.limit(batchSize);
+    let query = collectionRef.orderBy('__name__').limit(batchSize);
 
     while (true) {
         const snapshot = await query.get();
@@ -30,6 +30,7 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
         snapshot.docs.forEach(doc => {
             const data = doc.data();
+            // Ensure public_id exists and is not a google-related one
             if (data.imagePublicId && !data.imagePublicId.startsWith('google_')) {
                 publicIdsToDelete.push(data.imagePublicId);
             }
@@ -38,7 +39,9 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
         if (publicIdsToDelete.length > 0 && cloudinary.config().api_key) {
             try {
-                await cloudinary.api.delete_resources(publicIdsToDelete);
+                // This will delete up to 100 resources at a time.
+                await cloudinary.api.delete_resources(publicIdsToDelete, { resource_type: 'image' });
+                 await cloudinary.api.delete_resources(publicIdsToDelete, { resource_type: 'video' });
             } catch(cloudinaryError) {
                 console.error("Cloudinary silme işlemi bazı kaynaklar için başarısız oldu, ancak Firestore silme işlemine devam ediliyor:", cloudinaryError);
             }
@@ -46,16 +49,19 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
         
         await batch.commit();
 
-        // Get the last document from the batch
+        if (snapshot.size < batchSize) {
+            break;
+        }
+
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        query = collectionRef.startAfter(lastVisible).limit(batchSize);
+        query = collectionRef.orderBy('__name__').startAfter(lastVisible).limit(batchSize);
     }
 }
 
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
+    if (!db || !cloudinary.config().api_key) {
+         return NextResponse.json({ error: 'Sunucu hatası: Gerekli servisler (veritabanı veya resim servisi) başlatılamadı.' }, { status: 500 });
     }
     
     try {
