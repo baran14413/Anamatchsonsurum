@@ -37,11 +37,12 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
             batch.delete(doc.ref);
         });
 
+        // Only try to delete from cloudinary if it's configured and there are images to delete.
         if (publicIdsToDelete.length > 0 && cloudinary.config().api_key) {
             try {
                 // This will delete up to 100 resources at a time.
                 await cloudinary.api.delete_resources(publicIdsToDelete, { resource_type: 'image' });
-                 await cloudinary.api.delete_resources(publicIdsToDelete, { resource_type: 'video' });
+                await cloudinary.api.delete_resources(publicIdsToDelete, { resource_type: 'video' });
             } catch(cloudinaryError) {
                 console.error("Cloudinary silme işlemi bazı kaynaklar için başarısız oldu, ancak Firestore silme işlemine devam ediliyor:", cloudinaryError);
             }
@@ -60,8 +61,8 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
 
 export async function POST(req: NextRequest) {
-    if (!db || !cloudinary.config().api_key) {
-         return NextResponse.json({ error: 'Sunucu hatası: Gerekli servisler (veritabanı veya resim servisi) başlatılamadı.' }, { status: 500 });
+    if (!db) {
+         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
     }
     
     try {
