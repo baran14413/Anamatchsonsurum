@@ -36,13 +36,23 @@ export default function AdminDashboardPage() {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Sistem sıfırlanamadı.');
+            let errorMsg = 'Sistem sıfırlanamadı.';
+            try {
+                // Try to parse as JSON, but prepare for it to fail.
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                // If JSON parsing fails, it's likely an HTML error page.
+                console.error("Failed to parse error response as JSON:", await response.text());
+                errorMsg = 'Sunucudan beklenmeyen bir yanıt alındı.';
+            }
+            throw new Error(errorMsg);
         }
 
+        const result = await response.json();
         toast({
             title: 'Sistem Sıfırlandı',
-            description: 'Tüm eşleşmeler ve sohbetler başarıyla silindi.',
+            description: result.message || 'Tüm eşleşmeler ve sohbetler başarıyla silindi.',
         });
 
     } catch (error: any) {
