@@ -1,36 +1,37 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { getFirestore, WriteBatch } from 'firebase-admin/firestore';
-import { credential } from 'firebase-admin';
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { getFirestore, WriteBatch, Query } from 'firebase-admin/firestore';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-    // Check if the service account key is available in environment variables
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-            adminApp = initializeApp({
-                credential: credential.cert(serviceAccount)
-            });
-        } catch (e) {
-            console.error("Firebase Admin initialization from service account key failed.", e);
-        }
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-         // Fallback for Google Cloud environment
-        adminApp = initializeApp({
-            credential: credential.applicationDefault()
-        });
-    } else {
-        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
+function initializeFirebaseAdmin(): App | null {
+    if (getApps().length) {
+        return getApps()[0];
     }
-} else {
-    adminApp = getApps()[0];
+    
+    try {
+        if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+            return initializeApp({
+                credential: cert(serviceAccount)
+            });
+        } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            // Fallback for Google Cloud environment
+            return initializeApp();
+        } else {
+            console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
+            return null;
+        }
+    } catch(e) {
+        console.error("Firebase Admin initialization failed.", e);
+        return null;
+    }
 }
 
-const db = getFirestore(adminApp);
+const adminApp = initializeFirebaseAdmin();
+const db = adminApp ? getFirestore(adminApp) : null;
+
 
 // Initialize Cloudinary
 cloudinary.config({
@@ -39,46 +40,37 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+async function deleteCollection(collectionPath: string, batchSize: number) {
+    if (!db) throw new Error("Firestore not initialized");
 
-async function deleteCollection(collectionPath: string, batchSize: number, batch: WriteBatch) {
     const collectionRef = db.collection(collectionPath);
     const query = collectionRef.limit(batchSize);
 
-    return new Promise((resolve, reject) => {
-        deleteQueryBatch(query, batch, resolve).catch(reject);
-    });
-}
+    let snapshot = await query.get();
+    while (snapshot.size > 0) {
+        const batch = db.batch();
+        const publicIdsToDelete: string[] = [];
 
-async function deleteQueryBatch(query: FirebaseFirestore.Query, batch: WriteBatch, resolve: (value: unknown) => void) {
-    const snapshot = await query.get();
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.imagePublicId) {
+                publicIdsToDelete.push(data.imagePublicId);
+            }
+            batch.delete(doc.ref);
+        });
 
-    const batchSize = snapshot.size;
-    if (batchSize === 0) {
-        resolve(true);
-        return;
-    }
-
-    const publicIdsToDelete: string[] = [];
-
-    // Delete documents in a batch
-    snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.imagePublicId) {
-            publicIdsToDelete.push(data.imagePublicId);
+        if (publicIdsToDelete.length > 0) {
+            try {
+                await cloudinary.api.delete_resources(publicIdsToDelete);
+            } catch(cloudinaryError) {
+                console.error("Cloudinary deletion failed for some resources, but continuing Firestore deletion:", cloudinaryError);
+            }
         }
-        batch.delete(doc.ref);
-    });
-    
-    // Delete images from Cloudinary if any
-    if (publicIdsToDelete.length > 0) {
-        await cloudinary.api.delete_resources(publicIdsToDelete);
-    }
 
-    // Recurse on the next process tick, to avoid
-    // exploding the stack.
-    process.nextTick(() => {
-        deleteQueryBatch(query, batch, resolve);
-    });
+        await batch.commit();
+
+        snapshot = await query.get();
+    }
 }
 
 
@@ -89,19 +81,20 @@ export async function POST(req: NextRequest) {
         if (!matchId) {
             return NextResponse.json({ error: 'Match ID is required.' }, { status: 400 });
         }
-        if (!adminApp) {
+        if (!adminApp || !db) {
              return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
         }
 
         const [user1Id, user2Id] = matchId.split('_');
-
-        const batch = db.batch();
         
         // 1. Delete all messages and their images from Cloudinary
         const messagesPath = `matches/${matchId}/messages`;
-        await deleteCollection(messagesPath, 100, batch);
+        await deleteCollection(messagesPath, 100);
 
-        // 2. Delete denormalized match data from both users' subcollections
+        // 2. Use a single batch for the final deletions
+        const batch = db.batch();
+
+        // Delete denormalized match data from both users' subcollections
         const user1MatchRef = db.collection('users').doc(user1Id).collection('matches').doc(matchId);
         const user2MatchRef = db.collection('users').doc(user2Id).collection('matches').doc(matchId);
         batch.delete(user1MatchRef);
