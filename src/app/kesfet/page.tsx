@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -106,7 +105,7 @@ export default function KesfetPage() {
                 />
                )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/70 to-transparent text-white">
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/80 to-transparent text-white">
                 <h3 className="text-3xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
                 {profile.bio && <p className="mt-2 text-base">{profile.bio}</p>}
             </div>

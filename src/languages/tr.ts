@@ -610,7 +610,7 @@ export const langTr = {
       }
   },
   footerNav: {
-    home: 'Ana sayfa',
+    home: 'Anasayfa',
     discover: 'Keşfet',
     likes: 'Beğeniler',
     chats: 'Sohbetler',
