@@ -8,16 +8,15 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 3
-const TOAST_REMOVE_DELAY = 500000; // This was too short before, now it's a very long time. Dismissal is handled by timers.
-const DISMISS_DELAY = 5000; // 5 seconds for a toast to be visible
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  icon?: React.ReactNode;
+  icon?: React.ReactNode
 }
 
 const actionTypes = {
@@ -142,20 +141,17 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">;
+type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
-  const id = genId();
+  const id = genId()
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
-    });
-
-  const dismiss = () => {
-    dispatch({ type: "DISMISS_TOAST", toastId: id });
-  };
+    })
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
   dispatch({
     type: "ADD_TOAST",
@@ -164,24 +160,16 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
-        if (!open) {
-          // Trigger the dismiss action which will start the removal timer
-          dismiss();
-        }
+        if (!open) dismiss()
       },
     },
-  });
-
-  // Automatically dismiss the toast after the specified delay
-  setTimeout(() => {
-    dismiss();
-  }, DISMISS_DELAY);
+  })
 
   return {
     id: id,
     dismiss,
     update,
-  };
+  }
 }
 
 function useToast() {

@@ -221,13 +221,11 @@ export default function KesfetPage() {
                     toast({
                         title: "Zaten Eşleştiniz!",
                         description: `${swipedProfile.fullName} ile zaten bir eşleşmeniz bulunuyor.`,
-                        icon: <PartyPopper className="h-6 w-6 text-yellow-500" />,
                     });
                 } else if (matchData.status === 'superlike_pending') {
                      toast({
                         title: "Super Like Yanıtı Bekleniyor",
                         description: `Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.`,
-                        icon: <Hourglass className="h-6 w-6 text-blue-500" />,
                     });
                 } else {
                      toast({
@@ -289,7 +287,6 @@ export default function KesfetPage() {
             toast({
                 title: 'Super Like Gönderildi!',
                 description: 'Şimdi eşleşme listeni kontrol et.',
-                icon: <Star className="h-6 w-6 text-blue-500 fill-current" />
             });
 
 
@@ -319,7 +316,6 @@ export default function KesfetPage() {
                 toast({
                     title: t.matchToastTitle,
                     description: `${swipedProfile.fullName} ${t.matchToastDescription}`,
-                    icon: <PartyPopper className="h-6 w-6 text-green-500" />,
                 });
 
                 const currentUserMatchData = {

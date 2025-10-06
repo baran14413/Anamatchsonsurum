@@ -4,7 +4,6 @@ import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
-import { motion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -55,10 +54,6 @@ const Toast = React.forwardRef<
   )
 })
 Toast.displayName = ToastPrimitives.Root.displayName
-
-
-const MotionToast = motion(Toast);
-
 
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
@@ -127,7 +122,6 @@ export {
   ToastProvider,
   ToastViewport,
   Toast,
-  MotionToast,
   ToastTitle,
   ToastDescription,
   ToastClose,
