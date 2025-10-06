@@ -46,9 +46,9 @@ const DiscoveryIntro = ({ onDismiss }: { onDismiss: () => void }) => {
                  <div className="flex items-start gap-4 rounded-lg border p-4 text-left">
                     <Sparkles className="h-6 w-6 shrink-0 text-yellow-500" />
                     <div>
-                        <h3 className="font-semibold">Sınırsız Beğeni</h3>
+                        <h3 className="font-semibold">Günlük Kaydırma Hakları</h3>
                         <p className="text-sm text-muted-foreground">
-                            Anasayfadan farklı olarak, burada günlük beğeni limitin olmadan sınırsızca keşfedebilirsin.
+                            Anasayfada ve keşfet sayfasında günlük toplam 300 + 300, yani 600 adet kaydırma hakkı kazandınız.
                         </p>
                     </div>
                 </div>
