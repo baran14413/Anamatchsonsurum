@@ -168,15 +168,15 @@ export default function KesfetPage() {
                 />
                )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/80 to-transparent text-white space-y-2">
-                <h3 className="text-3xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white space-y-1">
+                <h3 className="text-2xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
                 {profile.distance !== undefined && (
-                    <div className="flex items-center gap-2 text-base">
+                    <div className="flex items-center gap-2 text-sm">
                         <MapPin className="w-4 h-4" />
                         <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
                     </div>
                 )}
-                {profile.bio && <p className="text-base pt-2">{profile.bio}</p>}
+                {profile.bio && <p className="text-base">{profile.bio}</p>}
             </div>
           </div>
         ))
