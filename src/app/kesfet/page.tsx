@@ -30,10 +30,31 @@ const calculateAge = (dateString?: string): number | null => {
 };
 
 // Component for a single profile in the discovery feed
-function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: ProfileWithAgeAndDistance, isPriority: boolean, onAction: (action: 'liked' | 'disliked' | 'superliked') => void }) {
+function DiscoveryProfileItem({ profile, isPriority, onAction, onVisible }: { profile: ProfileWithAgeAndDistance, isPriority: boolean, onAction: (action: 'liked' | 'disliked' | 'superliked') => void, onVisible: () => void }) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const ref = useRef<HTMLDivElement>(null);
 
-    // Reset image index when profile changes
+     useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    onVisible();
+                }
+            },
+            { threshold: 0.8 } // considered "visible" if 80% of the item is in view
+        );
+
+        if (ref.current) {
+            observer.observe(ref.current);
+        }
+
+        return () => {
+            if (ref.current) {
+                observer.unobserve(ref.current);
+            }
+        };
+    }, [onVisible]);
+
     useEffect(() => {
         setActiveImageIndex(0);
     }, [profile.uid]);
@@ -56,7 +77,7 @@ function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: Prof
     const hasMultipleImages = profile.images && profile.images.length > 1;
 
     return (
-        <div className="h-full w-full snap-start flex-shrink-0 relative">
+        <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
             <div className="absolute inset-0">
                 {currentImage?.url && (
                     <Image
@@ -89,7 +110,7 @@ function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: Prof
                  <div className="flex items-end justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
                         <h3 className="text-2xl font-bold truncate">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                        {profile.distance !== undefined && (
+                         {profile.distance !== undefined && (
                             <div className="flex items-center gap-2 text-sm">
                                 <MapPin className="w-4 h-4" />
                                 <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
@@ -111,14 +132,11 @@ function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: Prof
                 </div>
             </div>
             
-            <div className="absolute right-4 bottom-20 flex flex-col items-center gap-4 z-20">
-                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-sm text-red-500 hover:bg-white/30" onClick={() => onAction('disliked')}>
-                    <X className="w-8 h-8" />
-                </Button>
-                 <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-sm text-green-400 hover:bg-white/30" onClick={() => onAction('liked')}>
+             <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-20">
+                 <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => onAction('liked')}>
                     <Heart className="w-9 h-9 fill-current" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-sm text-blue-400 hover:bg-white/30" onClick={() => onAction('superliked')}>
+                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => onAction('superliked')}>
                     <Star className="w-8 h-8 fill-current" />
                 </Button>
             </div>
@@ -134,15 +152,14 @@ export default function KesfetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const t = langTr.anasayfa;
   const { toast } = useToast();
+  
+  const [activeProfileUid, setActiveProfileUid] = useState<string | null>(null);
+  const swipedProfilesRef = useRef(new Set<string>());
 
-  const removeTopProfile = useCallback(() => {
-    setProfiles(prev => prev.slice(1));
-  }, []);
-
-  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
-    if (!user || !firestore || !userProfile) return;
+ const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+    if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
-    removeTopProfile();
+    swipedProfilesRef.current.add(swipedProfile.uid);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -270,7 +287,17 @@ export default function KesfetPage() {
             variant: "destructive",
         });
     }
-  }, [user, firestore, t, toast, userProfile, removeTopProfile]);
+  }, [user, firestore, t, toast, userProfile]);
+
+  useEffect(() => {
+    const previousActiveProfileUid = activeProfileUid;
+    if (previousActiveProfileUid && !swipedProfilesRef.current.has(previousActiveProfileUid)) {
+      const swipedOutProfile = profiles.find(p => p.uid === previousActiveProfileUid);
+      if (swipedOutProfile) {
+        handleAction(swipedOutProfile, 'disliked');
+      }
+    }
+  }, [activeProfileUid, profiles, handleAction]);
 
 
  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
@@ -279,10 +306,12 @@ export default function KesfetPage() {
         return;
     }
     setIsLoading(true);
+    swipedProfilesRef.current.clear();
 
     try {
         const interactedUids = new Set<string>([user.uid]);
         
+        // This is now correctly conditional
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -360,6 +389,11 @@ export default function KesfetPage() {
         }
         
         setProfiles(fetchedProfiles);
+        if (fetchedProfiles.length > 0) {
+            setActiveProfileUid(fetchedProfiles[0].uid);
+        } else {
+            setActiveProfileUid(null);
+        }
 
     } catch (error) {
         console.error("Error fetching profiles for discovery:", error);
@@ -398,6 +432,7 @@ export default function KesfetPage() {
               profile={profile} 
               isPriority={index < 2} 
               onAction={(action) => handleAction(profile, action)}
+              onVisible={() => setActiveProfileUid(profile.uid)}
           />
         ))
       ) : (
@@ -412,3 +447,5 @@ export default function KesfetPage() {
     </div>
   );
 }
+
+    
