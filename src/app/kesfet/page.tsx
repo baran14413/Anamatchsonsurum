@@ -92,20 +92,20 @@ function DiscoveryProfileItem({
 
     const handleNextImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.media && profile.media.length > 1) {
-            setActiveImageIndex((prev) => (prev + 1) % profile.media.length);
+        if (profile.images && profile.images.length > 1) {
+            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
         }
-    }, [profile.media]);
+    }, [profile.images]);
 
     const handlePrevImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.media && profile.media.length > 1) {
-            setActiveImageIndex((prev) => (prev - 1 + profile.media.length) % profile.media.length);
+        if (profile.images && profile.images.length > 1) {
+            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
         }
-    }, [profile.media]);
+    }, [profile.images]);
 
-    const currentMedia = profile.media?.[activeImageIndex];
-    const hasMultipleMedia = profile.media && profile.media.length > 1;
+    const currentImage = profile.images?.[activeImageIndex];
+    const hasMultipleImages = profile.images && profile.images.length > 1;
 
     return (
         <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
@@ -116,33 +116,21 @@ function DiscoveryProfileItem({
                 <X className="h-28 w-28" strokeWidth={3} />
             </motion.div>
             <div className="absolute inset-0">
-               {currentMedia && (
-                    currentMedia.type === 'video' ? (
-                        <video
-                            key={currentMedia.url}
-                            className="w-full h-full object-cover"
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            src={currentMedia.url}
-                        />
-                    ) : (
-                        <Image
-                            src={currentMedia.url}
-                            alt={profile.fullName || 'Profile'}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            priority={isPriority}
-                        />
-                    )
+               {currentImage && (
+                    <Image
+                        src={currentImage.url}
+                        alt={profile.fullName || 'Profile'}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        priority={isPriority}
+                    />
                 )}
             </div>
 
-            {hasMultipleMedia && (
+            {hasMultipleImages && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.media.map((media, index) => (
+                        {profile.images.map((img, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                             </div>
@@ -208,9 +196,9 @@ export default function KesfetPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ container: scrollRef });
 
- const removeTopProfile = () => {
+ const removeTopProfile = useCallback(() => {
     setProfiles(prev => prev.slice(1));
-  };
+  }, []);
 
  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
@@ -241,7 +229,7 @@ export default function KesfetPage() {
                 lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.media?.[0]?.url || '',
+                profilePicture: swipedProfile.images?.[0]?.url || '',
                 isSuperLike: true,
                 status: 'superlike_pending',
                 superLikeInitiator: user1Id
@@ -317,7 +305,7 @@ export default function KesfetPage() {
                     lastMessage: langTr.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.media?.[0].url || '',
+                    profilePicture: swipedProfile.images?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -344,7 +332,7 @@ export default function KesfetPage() {
             variant: "destructive",
         });
     }
-  }, [user, firestore, t, toast, userProfile]);
+  }, [user, firestore, t, toast, userProfile, removeTopProfile]);
 
   useEffect(() => {
     const previousActiveProfileUid = activeProfileUid;
@@ -368,6 +356,7 @@ export default function KesfetPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
+        // Only filter out interacted users if we are NOT resetting the feed.
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -401,7 +390,7 @@ export default function KesfetPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.media || p.media.length === 0) return false;
+                if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
                 (p as ProfileWithAgeAndDistance).age = age ?? undefined;
