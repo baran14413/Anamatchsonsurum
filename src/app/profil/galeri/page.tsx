@@ -23,11 +23,15 @@ type MediaSlot = {
     type: 'image' | 'video';
 };
 
+const MAX_IMAGE_SLOTS = 6;
+const MAX_VIDEO_SLOTS = 4;
+const MAX_TOTAL_SLOTS = MAX_IMAGE_SLOTS + MAX_VIDEO_SLOTS;
+
 const getInitialMediaSlots = (userProfile: any): MediaSlot[] => {
-  const initialSlots: MediaSlot[] = Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }));
+  const initialSlots: MediaSlot[] = Array.from({ length: MAX_TOTAL_SLOTS }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }));
   if (userProfile?.media) {
     userProfile.media.forEach((media: UserMedia, index: number) => {
-      if (index < 10) {
+      if (index < MAX_TOTAL_SLOTS) {
         initialSlots[index] = { file: null, preview: media.url, public_id: media.public_id, isUploading: false, isNew: false, type: media.type };
       }
     });
@@ -45,7 +49,7 @@ export default function GalleryEditPage() {
   const [mediaSlots, setMediaSlots] = useState<MediaSlot[]>(() => getInitialMediaSlots(userProfile));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [activeSlotInfo, setActiveSlotInfo] = useState<{ index: number; type: 'image' | 'video' } | null>(null);
 
   useEffect(() => {
     if (userProfile) {
@@ -53,93 +57,125 @@ export default function GalleryEditPage() {
     }
   }, [userProfile]);
 
-  const uploadedMediaCount = useMemo(() => mediaSlots.filter(p => p.preview).length, [mediaSlots]);
+  const imageSlots = mediaSlots.filter(p => p.type === 'image' || !p.preview).slice(0, MAX_IMAGE_SLOTS);
+  const videoSlots = mediaSlots.filter(p => p.type === 'video' || !p.preview).slice(0, MAX_VIDEO_SLOTS);
+  const uploadedMediaCount = mediaSlots.filter(p => p.preview).length;
 
-  const handleFileSelect = (index: number) => {
+  const handleFileSelect = (index: number, type: 'image' | 'video') => {
       if(isSubmitting) return;
-      const targetIndex = mediaSlots[index].preview ? index : uploadedMediaCount;
-      setActiveSlot(targetIndex);
+
+      const currentSlots = type === 'image' ? imageSlots : videoSlots;
+      const targetIndex = currentSlots[index].preview ? index : currentSlots.filter(s => s.preview).length;
+
+      setActiveSlotInfo({ index: targetIndex, type });
       fileInputRef.current?.click();
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && activeSlot !== null) {
-      let file = e.target.files[0];
-      const isVideo = file.type.startsWith('video/');
-      
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      
-      video.onloadedmetadata = () => {
-          window.URL.revokeObjectURL(video.src); // Clean up original object URL
-          const duration = video.duration;
+    if (!e.target.files || e.target.files.length === 0 || !activeSlotInfo) return;
 
-          if (isVideo && duration > 10) {
-              const newFile = file.slice(0, file.size, file.type);
-              const preview = URL.createObjectURL(newFile);
-              
-              toast({
-                  title: "Video Kırpıldı",
-                  description: "Videonuz 10 saniye ile sınırlandırılmıştır.",
-              });
+    const file = e.target.files[0];
+    const isVideo = file.type.startsWith('video/');
 
-              // Create a new file that represents the trimmed version.
-              // In reality, we are just telling the server to process the first 10s.
-              // For client side, we just use the first 10s.
-              // This is a simplified approach. A real implementation would use a library for trimming.
-              // Here, we just use the original file but limit playback or server processing.
-              // For a simple demo, we can just slice the blob, but it's not a true trim.
-              
-              const trimmedBlob = new Blob([file.slice(0, 10 * 1000 * 1024)], { type: file.type }); // Rough estimate slice
-              const trimmedFile = new File([trimmedBlob], file.name, { type: file.type });
-
-              const newSlots = [...mediaSlots];
-              newSlots[activeSlot] = { file: trimmedFile, preview: preview, isUploading: false, isNew: true, public_id: null, type: 'video' };
-              setMediaSlots(newSlots);
-          } else {
-             const preview = URL.createObjectURL(file);
-             const newSlots = [...mediaSlots];
-             newSlots[activeSlot] = { file, preview, isUploading: false, isNew: true, public_id: null, type: isVideo ? 'video' : 'image' };
-             setMediaSlots(newSlots);
-          }
-      };
-
-      video.onerror = () => {
-          // If it's not a video or can't be loaded, treat as image
-          const preview = URL.createObjectURL(file);
-          const newSlots = [...mediaSlots];
-          newSlots[activeSlot] = { file, preview, isUploading: false, isNew: true, public_id: null, type: 'image' };
-          setMediaSlots(newSlots);
-      }
-      
-      video.src = URL.createObjectURL(file);
+    if (activeSlotInfo.type === 'image' && isVideo) {
+        toast({ title: "Hatalı Dosya Türü", description: "Lütfen bir fotoğraf dosyası seçin.", variant: "destructive" });
+        return;
     }
-    setActiveSlot(null);
-    if (e.target.value) e.target.value = ''; 
+    if (activeSlotInfo.type === 'video' && !isVideo) {
+        toast({ title: "Hatalı Dosya Türü", description: "Lütfen bir video dosyası seçin.", variant: "destructive" });
+        return;
+    }
+
+    const videoDurationCheck = new Promise<void>((resolve, reject) => {
+        if (!isVideo) {
+            resolve();
+            return;
+        }
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(video.src);
+            if (video.duration > 10) {
+                reject(new Error("Video 10 saniyeden uzun olamaz."));
+            } else {
+                resolve();
+            }
+        };
+        video.onerror = () => reject(new Error("Video dosyası okunamadı."));
+        video.src = URL.createObjectURL(file);
+    });
+
+    videoDurationCheck.then(() => {
+        const preview = URL.createObjectURL(file);
+        
+        setMediaSlots(prevSlots => {
+            const newSlots = [...prevSlots];
+            const slotToUpdate = { file, preview, isUploading: false, isNew: true, public_id: null, type: isVideo ? 'video' : 'image' as 'image' | 'video' };
+            
+            // Find the first empty slot of the correct type
+            const firstEmptyIndex = newSlots.findIndex(slot => !slot.preview && (isVideo ? slot.type === 'video' || newSlots.filter(s => s.preview && s.type==='video').length < MAX_VIDEO_SLOTS : slot.type === 'image'));
+
+            // This logic is complex. Let's simplify. Find the correct slot array, find the first empty one, and get its original index.
+            const originalIndex = newSlots.findIndex(s => s.preview === null && (activeSlotInfo.type === 'video' ? s.type === 'video' : true));
+            const targetIndex = activeSlotInfo.index;
+
+            // This needs to be smarter. We need to map the sub-array index back to the main array index.
+            let mainIndex = -1;
+            let count = 0;
+            for(let i=0; i< newSlots.length; i++) {
+                if (newSlots[i].type === activeSlotInfo.type || !newSlots[i].preview) {
+                     if (count === targetIndex) {
+                        mainIndex = i;
+                        break;
+                     }
+                     count++;
+                }
+            }
+            if (mainIndex !== -1) {
+                newSlots[mainIndex] = slotToUpdate;
+            }
+
+
+            return newSlots;
+        });
+
+    }).catch(error => {
+        toast({
+            title: "Yükleme Hatası",
+            description: error.message,
+            variant: "destructive"
+        });
+    }).finally(() => {
+        setActiveSlotInfo(null);
+        if (e.target) e.target.value = '';
+    });
   };
 
 
-  const handleDeleteMedia = async (e: React.MouseEvent, index: number) => {
+  const handleDeleteMedia = async (e: React.MouseEvent, index: number, type: 'image' | 'video') => {
       e.stopPropagation(); 
       if(isSubmitting) return;
 
       if (uploadedMediaCount <= 1) {
-        toast({
-            title: t.toasts.deleteFailedMinRequiredTitle,
-            description: t.toasts.deleteFailedMinRequiredDesc,
-            variant: "destructive"
-        });
+        toast({ title: t.toasts.deleteFailedMinRequiredTitle, description: t.toasts.deleteFailedMinRequiredDesc, variant: "destructive" });
         return;
       }
       
-      const newSlots = [...mediaSlots];
-      const deletedSlot = newSlots[index];
-      
-      if (deletedSlot.file && deletedSlot.preview) URL.revokeObjectURL(deletedSlot.preview);
-      newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' });
-      
-      setMediaSlots(newSlots);
+      const slots = type === 'image' ? imageSlots : videoSlots;
+      const slotToDelete = slots[index];
+
+      setMediaSlots(prevSlots => {
+          const originalIndex = prevSlots.findIndex(s => s.preview === slotToDelete.preview);
+          if (originalIndex === -1) return prevSlots;
+
+          const newSlots = [...prevSlots];
+          if (slotToDelete.file && slotToDelete.preview) URL.revokeObjectURL(slotToDelete.preview);
+          
+          newSlots.splice(originalIndex, 1);
+          newSlots.push({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }); // Add empty slot to the end
+
+          return newSlots;
+      });
   };
 
   const handleSaveChanges = async () => {
@@ -161,12 +197,12 @@ export default function GalleryEditPage() {
                     if (!response.ok) throw new Error(`File upload failed for ${file.name}`);
                     return response.json();
                 })
-                .then(result => ({ originalFile: file, url: result.url, public_id: result.public_id, type: slot.type }));
+                .then(result => ({ originalFile: file, url: result.url, public_id: result.public_id, type: result.resource_type === 'video' ? 'video' : 'image' as 'image' | 'video' }));
         });
 
         const uploadResults = await Promise.all(uploadPromises);
 
-        const finalOrderedMedia: UserMedia[] = [];
+        let finalOrderedMedia: UserMedia[] = [];
         for (const slot of mediaSlots) {
             if (slot.isNew && slot.file) {
                  const uploaded = uploadResults.find(r => r.originalFile === slot.file);
@@ -176,6 +212,7 @@ export default function GalleryEditPage() {
             }
         }
         
+        // Sort videos to be first
         finalOrderedMedia.sort((a, b) => (a.type === 'video' ? -1 : 1) - (b.type === 'video' ? -1 : 1));
 
         await updateDoc(doc(firestore, "users", user.uid), {
@@ -199,8 +236,39 @@ export default function GalleryEditPage() {
     }
   };
 
-  const imageSlots = mediaSlots.slice(0, 6);
-  const videoSlots = mediaSlots.slice(6, 10);
+  const getSlotComponent = (slot: MediaSlot, index: number, type: 'image' | 'video') => (
+     <div key={index} className="relative aspect-square">
+        <div onClick={() => handleFileSelect(index, type)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
+            {slot.preview ? (
+                <>
+                    {type === 'image' ? (
+                        <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
+                    ) : (
+                       <>
+                        <video src={slot.preview} className="w-full h-full object-cover rounded-lg" loop muted />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <Video className="w-8 h-8 text-white/80" />
+                        </div>
+                       </>
+                    )}
+                    {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
+                    {!isSubmitting && (
+                        <div className="absolute bottom-2 right-2 flex gap-2 z-10">
+                            <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index, type);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
+                            {uploadedMediaCount > 1 && <button type="button" onClick={(e) => handleDeleteMedia(e, index, type)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${type === 'image' ? 'bg-primary/20 text-primary' : 'bg-blue-500/20 text-blue-500'}`}>
+                        <Plus className="w-6 h-6" />
+                    </div>
+                </div>
+            )}
+        </div>
+    </div>
+  );
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -221,69 +289,22 @@ export default function GalleryEditPage() {
                 <p className="text-muted-foreground text-sm">Profilinde gösterilecek medya içeriklerini buradan yönetebilirsin.</p>
             </div>
              <div className="space-y-2">
-                <Progress value={(uploadedMediaCount / 10) * 100} className="h-2" />
-                <p className="text-sm font-medium text-muted-foreground text-right">{uploadedMediaCount} / 10</p>
+                <Progress value={(uploadedMediaCount / MAX_TOTAL_SLOTS) * 100} className="h-2" />
+                <p className="text-sm font-medium text-muted-foreground text-right">{uploadedMediaCount} / {MAX_TOTAL_SLOTS}</p>
             </div>
         </div>
         <div className="space-y-6 pt-6">
             <div>
-                <h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Images className="w-5 h-5"/> Fotoğraflar (6)</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Images className="w-5 h-5"/> Fotoğraflar ({MAX_IMAGE_SLOTS})</h2>
                 <div className="grid grid-cols-3 gap-4">
-                    {imageSlots.map((slot, index) => (
-                        <div key={index} className="relative aspect-square">
-                            <div onClick={() => handleFileSelect(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
-                                {slot.preview ? (
-                                    <>
-                                        <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                        {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
-                                        {!isSubmitting && (
-                                            <div className="absolute bottom-2 right-2 flex gap-2">
-                                                <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                                {uploadedMediaCount > 1 && <button type="button" onClick={(e) => handleDeleteMedia(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                        <div className="h-10 w-10 rounded-full bg-primary/20 text-primary flex items-center justify-center"><Plus className="w-6 h-6" /></div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                    {imageSlots.map((slot, index) => getSlotComponent(slot, index, 'image'))}
                 </div>
             </div>
              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Video className="w-5 h-5"/> Videolar (4)</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Video className="w-5 h-5"/> Videolar ({MAX_VIDEO_SLOTS})</h2>
                  <p className="text-sm text-muted-foreground mb-4">Videolar maksimum 10 saniye uzunluğunda olabilir.</p>
                 <div className="grid grid-cols-3 gap-4">
-                    {videoSlots.map((slot, index) => {
-                        const actualIndex = index + 6;
-                        return (
-                        <div key={actualIndex} className="relative aspect-square">
-                            <div onClick={() => handleFileSelect(actualIndex)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
-                                {slot.preview ? (
-                                    <>
-                                        <video src={slot.preview} className="w-full h-full object-cover rounded-lg" loop muted />
-                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                            <Video className="w-8 h-8 text-white/80" />
-                                        </div>
-                                        {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
-                                        {!isSubmitting && (
-                                            <div className="absolute bottom-2 right-2 flex gap-2">
-                                                <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(actualIndex);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                                {uploadedMediaCount > 1 && <button type="button" onClick={(e) => handleDeleteMedia(e, actualIndex)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                        <div className="h-10 w-10 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center"><Plus className="w-6 h-6" /></div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )})}
+                    {videoSlots.map((slot, index) => getSlotComponent(slot, index, 'video'))}
                 </div>
             </div>
         </div>
