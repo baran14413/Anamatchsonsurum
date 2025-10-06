@@ -1,8 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
-import multer from 'multer';
-import { promisify } from 'util';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -11,65 +9,54 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure Multer to use memory storage
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+async function uploadToCloudinary(file: File): Promise<any> {
+    const fileBuffer = await file.arrayBuffer();
+    const mime = file.type;
+    const encoding = 'base64';
+    const base64Data = Buffer.from(fileBuffer).toString('base64');
+    const fileUri = 'data:' + mime + ';' + encoding + ',' + base64Data;
 
-// Helper to run middleware
-function runMiddleware(req: any, res: any, fn: any) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result: any) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload(
+            fileUri,
+            {
+                folder: 'bematch_profiles',
+                resource_type: 'auto', // Let Cloudinary detect if it's an image or audio
+            },
+            (error, result) => {
+                if (error) {
+                    console.error("Cloudinary Upload Error:", error);
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            }
+        );
     });
-  });
 }
 
-// We need to disable the default body parser for multer to work
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export async function POST(req: NextRequest) {
+    try {
+        const formData = await req.formData();
+        const file = formData.get('file') as File;
 
-export async function POST(req: any) {
-  const res = new NextResponse();
-  try {
-    // Run the multer middleware
-    await runMiddleware(req, res, upload.single('file'));
-    
-    // After middleware, req.file will be populated
-    const file = req.file;
+        if (!file) {
+            return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+        }
+        
+        const result = await uploadToCloudinary(file);
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+        return NextResponse.json({
+            url: result.secure_url,
+            public_id: result.public_id,
+            resource_type: result.resource_type,
+        });
+
+    } catch (error: any) {
+        console.error("API Route Upload Error:", error);
+        return NextResponse.json(
+          { error: `Upload failed on server: ${error.message || 'Unknown error'}` }, 
+          { status: 500 }
+        );
     }
-    
-    // Create a data URI from the buffer
-    const b64 = Buffer.from(file.buffer).toString('base64');
-    let dataURI = "data:" + file.mimetype + ";base64," + b64;
-    
-    // Upload the data URI to Cloudinary
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: 'bematch_profiles',
-      resource_type: 'image',
-    });
-
-    return NextResponse.json({
-      url: result.secure_url,
-      public_id: result.public_id,
-      resource_type: result.resource_type,
-    });
-
-  } catch (error: any) {
-    console.error("Cloudinary Upload Error:", error);
-    // Use the file name from the multer file object for a more descriptive error
-    const fileName = error.file?.originalname || 'the file';
-    return NextResponse.json(
-      { error: `'${fileName}' yüklenemedi. ${error.message}` }, 
-      { status: 500 }
-    );
-  }
 }

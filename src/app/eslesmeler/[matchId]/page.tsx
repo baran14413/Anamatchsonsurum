@@ -338,7 +338,7 @@ export default function ChatPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Fotoğraf yüklenemedi.');
+                throw new Error(errorData.error || `Fotoğraf yüklenemedi: ${response.statusText}`);
             }
 
             const { url, public_id } = await response.json();
@@ -433,7 +433,7 @@ export default function ChatPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Sesli mesaj yüklenemedi.');
+                throw new Error(errorData.error || `Sesli mesaj yüklenemedi: ${response.statusText}`);
             }
 
             const { url } = await response.json();

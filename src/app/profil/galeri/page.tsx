@@ -132,8 +132,11 @@ export default function GalleryEditPage() {
             formData.append('file', file);
             
             return fetch('/api/upload', { method: 'POST', body: formData })
-                .then(response => {
-                    if (!response.ok) throw new Error(`File upload failed for ${file.name}`);
+                .then(async response => {
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `File upload failed for ${file.name}`);
+                    }
                     return response.json();
                 })
                 .then(result => ({ originalFile: file, url: result.url, public_id: result.public_id }));
