@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, PartyPopper, Hourglass } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -202,6 +202,7 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
+        // Always fetch all interactions unless we are resetting
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -234,7 +235,7 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (!p.uid || (!options?.reset && interactedUids.has(p.uid))) return false;
+                if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 // Age filter
@@ -246,15 +247,7 @@ export default function AnasayfaPage() {
                     const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
                     
                     if (age < minAge || age > maxAge) {
-                        // If expand is on, check if we should still include them
-                        if (userProfile.expandAgeRange && (age >= ageRange.min && age <= ageRange.max)) {
-                           // They are within original range, so it's fine.
-                        } else if (!userProfile.expandAgeRange) {
-                           return false;
-                        } else {
-                            // If they are outside the expanded range, filter them out
-                            if (age < ageRange.min || age > ageRange.max) return false;
-                        }
+                        return false;
                     }
                 }
                 
@@ -289,6 +282,8 @@ export default function AnasayfaPage() {
         
         if (isGlobalMode) {
           fetchedProfiles.sort((a, b) => ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity));
+        } else {
+          fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle for non-global mode
         }
         
         setProfiles(fetchedProfiles);
@@ -365,3 +360,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    

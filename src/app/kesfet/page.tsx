@@ -3,12 +3,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -194,7 +194,6 @@ export default function KesfetPage() {
   const t = langTr.anasayfa;
   const { toast } = useToast();
   
-  const swipedProfilesRef = useRef(new Set<string>());
   const scrollRef = useRef<HTMLDivElement>(null);
 
  const removeTopProfile = useCallback(() => {
@@ -202,9 +201,8 @@ export default function KesfetPage() {
 }, []);
 
  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
-    if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
+    if (!user || !firestore || !userProfile) return;
     
-    swipedProfilesRef.current.add(swipedProfile.uid);
     removeTopProfile();
 
     const user1Id = user.uid;
@@ -376,8 +374,6 @@ export default function KesfetPage() {
             query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
             query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
         }
-        
-        swipedProfilesRef.current.clear();
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -398,7 +394,7 @@ export default function KesfetPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (!p.uid || (!options?.reset && interactedUids.has(p.uid))) return false;
+                if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
@@ -495,3 +491,5 @@ export default function KesfetPage() {
     </div>
   );
 }
+
+    
