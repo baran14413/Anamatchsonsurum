@@ -53,12 +53,6 @@ const nextConfig: NextConfig = {
   serverActions: {
     bodySizeLimit: '20mb',
   },
-  env: {
-    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
-    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
-    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
-    FIREBASE_SERVICE_ACCOUNT_KEY: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
-  }
 };
 
 export default nextConfig;
