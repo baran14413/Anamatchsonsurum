@@ -316,7 +316,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                          <Carousel className="w-full">
                                             <CarouselContent>
                                                 {profile.images
-                                                    .filter(image => image && image.url && validImageExtensions.some(ext => image.url.toLowerCase().includes(ext)))
+                                                    .filter(image => image && image.url)
                                                     .map((image, index) => (
                                                     <CarouselItem key={index}>
                                                         <div className="relative w-full aspect-[4/3]">
@@ -366,7 +366,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                                     {lookingForText && (
                                                         <div className="flex items-start gap-3">
                                                             <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                              <Heart className="w-6 h-6 text-primary" />
+                                                                <Heart className="w-6 h-6 text-primary" />
                                                             </div>
                                                             <div className='flex flex-col'>
                                                                 <span className="font-medium text-sm">İlişki Tercihi</span>
@@ -417,5 +417,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
-
-    
