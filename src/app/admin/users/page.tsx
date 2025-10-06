@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
                                 </DropdownMenuItem>
                                  <DropdownMenuItem onClick={() => handleToggleGold(user)}>
                                     <Gem className='mr-2 h-4 w-4' />
-                                    <span>{user.membershipType === 'gold' ? 'Gold\'u Kaldır' : 'Gold Yap'}</span>
+                                    <span>{user.membershipType === 'gold' ? "Gold'u Kaldır" : 'Gold Yap'}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleAddSuperLike(user)}>
                                      <Star className='mr-2 h-4 w-4' />
