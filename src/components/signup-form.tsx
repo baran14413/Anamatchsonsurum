@@ -27,7 +27,7 @@ import Image from "next/image";
 import { Icons } from "./icons";
 import { Slider } from "./ui/slider";
 import googleLogo from '@/img/googlelogin.png';
-import type { UserMedia } from "@/lib/types";
+import type { UserImage } from "@/lib/types";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -46,11 +46,10 @@ const formSchema = z.object({
         longitude: z.number(),
     }),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
-    media: z.array(z.object({
+    images: z.array(z.object({
         url: z.string().url(),
         public_id: z.string(),
-        type: z.enum(['image', 'video']),
-    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(10),
+    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
     ageRange: z.object({
       min: z.number(),
       max: z.number()
@@ -59,18 +58,17 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-type MediaSlot = {
+type ImageSlot = {
     file: File | null;
     preview: string | null;
     public_id?: string | null;
     isUploading: boolean;
-    type: 'image' | 'video';
 };
 
-const getInitialMediaSlots = (user: any): MediaSlot[] => {
-  const initialSlots: MediaSlot[] = Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false, type: 'image' }));
+const getInitialImageSlots = (user: any): ImageSlot[] => {
+  const initialSlots: ImageSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
   if (user?.photoURL) {
-    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false, type: 'image' };
+    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false };
   }
   return initialSlots;
 };
@@ -164,14 +162,14 @@ export default function ProfileCompletionForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [distanceValue, setDistanceValue] = useState(80);
 
-  const [mediaSlots, setMediaSlots] = useState<MediaSlot[]>(() => getInitialMediaSlots(user));
+  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(user));
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       lookingFor: "",
-      media: [],
+      images: [],
       distancePreference: 80,
     },
     mode: "onChange",
@@ -180,14 +178,14 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
-        const initialSlots = getInitialMediaSlots(user);
-        setMediaSlots(initialSlots);
+        const initialSlots = getInitialImageSlots(user);
+        setImageSlots(initialSlots);
 
-        const initialMedia = initialSlots
+        const initialImages = initialSlots
             .filter(slot => slot.preview) 
-            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '', type: slot.type }));
+            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '' }));
 
-        form.setValue('media', initialMedia, { shouldValidate: true });
+        form.setValue('images', initialImages, { shouldValidate: true });
     }
   }, [user, form]);
   
@@ -251,7 +249,7 @@ export default function ProfileCompletionForm() {
     );
   };
   
-  const uploadedMediaCount = useMemo(() => mediaSlots.filter(p => p.preview).length, [mediaSlots]);
+  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
 
 
   const nextStep = () => setStep((prev) => prev + 1);
@@ -275,8 +273,8 @@ export default function ProfileCompletionForm() {
         email: user.email,
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
-        media: data.media,
-        profilePicture: data.media.length > 0 ? data.media[0].url : '',
+        images: data.images,
+        profilePicture: data.images.length > 0 ? data.images[0].url : '',
         globalModeEnabled: false, 
         expandAgeRange: true,
       };
@@ -295,11 +293,11 @@ export default function ProfileCompletionForm() {
   const totalSteps = 6;
   const progressValue = (step / totalSteps) * 100;
 
-  const handleMediaUpload = async (file: File, slotIndex: number) => {
+  const handleImageUpload = async (file: File, slotIndex: number) => {
     
-    setMediaSlots(prev => {
+    setImageSlots(prev => {
         const newSlots = [...prev];
-        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true, type: file.type.startsWith('video/') ? 'video' : 'image' };
+        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
         return newSlots;
     });
 
@@ -314,35 +312,34 @@ export default function ProfileCompletionForm() {
         }
         const result = await response.json();
 
-        setMediaSlots(prev => {
+        setImageSlots(prev => {
             const newSlots = [...prev];
-            const type = result.resource_type === 'video' ? 'video' : 'image';
-            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null, type };
+            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
             
-            const currentMedia = form.getValues('media') || [];
-            form.setValue('media', [...currentMedia, { url: result.url, public_id: result.public_id, type }], { shouldValidate: true });
+            const currentImages = form.getValues('images') || [];
+            form.setValue('images', [...currentImages, { url: result.url, public_id: result.public_id }], { shouldValidate: true });
             
             return newSlots;
         });
 
     } catch (error: any) {
         toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
-        setMediaSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null, type: 'image' } : s));
+        setImageSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
     }
   };
 
   const openFilePicker = (index: number) => {
       if(isSubmitting) return;
-      const targetIndex = mediaSlots[index].preview ? index : uploadedMediaCount;
+      const targetIndex = imageSlots[index].preview ? index : uploadedImageCount;
       setActiveSlot(targetIndex);
       fileInputRef.current?.click();
   };
   
-  const handleDeleteMedia = async (e: React.MouseEvent, index: number) => {
+  const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
       e.stopPropagation(); 
       if(isSubmitting) return;
       
-      const slotToDelete = mediaSlots[index];
+      const slotToDelete = imageSlots[index];
 
       if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
         try {
@@ -356,17 +353,17 @@ export default function ProfileCompletionForm() {
         }
       }
 
-      const newSlots = [...mediaSlots];
+      const newSlots = [...imageSlots];
       if (slotToDelete.preview && slotToDelete.file) URL.revokeObjectURL(slotToDelete.preview);
       newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null, type: 'image' });
+      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
       
-      setMediaSlots(newSlots);
+      setImageSlots(newSlots);
       
-      const newMedia = newSlots
+      const newImages = newSlots
         .filter(slot => slot.preview)
-        .map(slot => ({ url: slot.preview!, public_id: slot.public_id!, type: slot.type }));
-      form.setValue('media', newMedia, { shouldValidate: true });
+        .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
+      form.setValue('images', newImages, { shouldValidate: true });
   }
   
   const handleDistanceChange = (value: number[]) => {
@@ -388,7 +385,7 @@ export default function ProfileCompletionForm() {
     const fieldsByStep: (keyof SignupFormValues | (keyof SignupFormValues)[])[] = [
         'name',
         'location',
-        'media',
+        'images',
         'dateOfBirth',
         'gender',
         'lookingFor',
@@ -478,15 +475,15 @@ export default function ProfileCompletionForm() {
                         style={{ width: 40, height: 40 }}
                       >
                         <Icons.logo width={40} height={40} className="animate-pulse" style={{ animationDuration: '3s' }} />
-                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedMediaCount / 10) * 100)}%</span>
+                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedImageCount / 6) * 100)}%</span>
                       </div>
-                      <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedMediaCount))}</p>
+                      <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedImageCount))}</p>
                     </div>
-                     <FormMessage className="pt-2">{form.formState.errors.media?.message}</FormMessage>
+                     <FormMessage className="pt-2">{form.formState.errors.images?.message}</FormMessage>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
                     <div className="grid grid-cols-3 gap-4">
-                      {mediaSlots.map((slot, index) => (
+                      {imageSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
                           <div onClick={() => openFilePicker(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
                             {slot.preview ? (
@@ -496,13 +493,13 @@ export default function ProfileCompletionForm() {
                                 {!isSubmitting && (
                                   <div className="absolute bottom-2 right-2 flex gap-2">
                                     <button type="button" onClick={(e) => {e.stopPropagation(); openFilePicker(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                    {uploadedMediaCount > 2 && <button type="button" onClick={(e) => handleDeleteMedia(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
+                                    {uploadedImageCount > 2 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
                                   </div>
                                 )}
                               </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                  <span className="text-xs font-medium block">Medya ekle</span>
+                                  <span className="text-xs font-medium block">Fotoğraf ekle</span>
                                   <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
                                 </div>
                             )}
@@ -511,7 +508,7 @@ export default function ProfileCompletionForm() {
                       ))}
                     </div>
                   </div>
-                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handleMediaUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*,video/*" />
+                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handleImageUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*" />
                 </div>
               )}
               {step === 3 && (
@@ -619,7 +616,7 @@ export default function ProfileCompletionForm() {
               disabled={
                 isSubmitting ||
                 (step === 1 && locationStatus !== 'success') ||
-                (step === 2 && uploadedMediaCount < 2) ||
+                (step === 2 && uploadedImageCount < 2) ||
                 (step === 3 && ageStatus !== 'valid')
               }
             >

@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
-import { Readable } from 'stream';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -43,11 +42,9 @@ export async function POST(req: any) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
     }
     
-    const isVideo = file.mimetype.startsWith('video/');
-    
     const uploadOptions: any = {
       folder: 'bematch_profiles',
-      resource_type: isVideo ? 'video' : 'image',
+      resource_type: 'image',
     };
 
     // Use the file path provided by multer for direct upload
