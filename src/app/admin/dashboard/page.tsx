@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Heart, MessageSquare, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Heart, MessageSquare, Trash2, AlertTriangle, Send } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
@@ -10,11 +10,15 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+
 
   const usersCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -65,6 +69,47 @@ export default function AdminDashboardPage() {
         setIsResetting(false);
     }
   }
+  
+  const handleBroadcastMessage = async () => {
+    if (!broadcastMessage.trim()) {
+        toast({
+            title: 'Hata',
+            description: 'Duyuru mesajı boş olamaz.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    setIsBroadcasting(true);
+    try {
+        const response = await fetch('/api/broadcast-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: broadcastMessage }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Duyuru gönderilemedi.');
+        }
+        
+        const result = await response.json();
+        toast({
+            title: 'Duyuru Gönderildi',
+            description: `Mesajınız ${result.recipientCount} kullanıcıya başarıyla iletildi.`,
+        });
+        setBroadcastMessage("");
+
+    } catch (error: any) {
+         toast({
+            title: 'Hata',
+            description: error.message,
+            variant: 'destructive',
+        });
+    } finally {
+        setIsBroadcasting(false);
+    }
+  };
+
 
   return (
     <AlertDialog>
@@ -117,6 +162,36 @@ export default function AdminDashboardPage() {
                 </p>
             </CardContent>
             </Card>
+        </div>
+
+        <div className="pt-4">
+             <h2 className='text-xl font-bold mb-2'>Kullanıcı Yönetimi</h2>
+             <Card>
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5"/>
+                        Tüm Kullanıcılara Duyuru Gönder
+                    </CardTitle>
+                    <CardDescription>
+                       Aşağıdaki mesaj, uygulamadaki tüm aktif kullanıcılara "BeMatch - Sistem Mesajları" sohbeti üzerinden anında gönderilecektir.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Textarea 
+                        placeholder="Duyuru mesajınızı buraya yazın..."
+                        value={broadcastMessage}
+                        onChange={(e) => setBroadcastMessage(e.target.value)}
+                        disabled={isBroadcasting}
+                    />
+                     <Button onClick={handleBroadcastMessage} disabled={isBroadcasting}>
+                        {isBroadcasting ? (
+                            <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Gönderiliyor...</>
+                        ) : (
+                            <><Send className='mr-2 h-4 w-4'/> Duyuruyu Gönder</>
+                        )}
+                    </Button>
+                </CardContent>
+             </Card>
         </div>
 
         <div className="pt-8">

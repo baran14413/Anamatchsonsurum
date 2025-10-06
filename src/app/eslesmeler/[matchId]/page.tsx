@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Annoyed } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ import { Progress } from '@/components/ui/progress';
 
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
-    if (!isSender || message.type === 'system_superlike_prompt') return null;
+    if (!isSender || message.type === 'system_superlike_prompt' || message.senderId === 'system') return null;
 
     if (message.isRead) {
         return <CheckCheck className="h-4 w-4 text-blue-500" />;
@@ -130,49 +130,73 @@ export default function ChatPage() {
 
     const [viewingOnceImage, setViewingOnceImage] = useState<ChatMessage | null>(null);
     const [viewOnceProgress, setViewOnceProgress] = useState(0);
+    
+    const isSystemChat = matchId === 'system';
+    const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
 
-
-    const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
 
     useEffect(() => {
-        if (!user || !firestore || !otherUserId) return;
+        if (!user || !firestore) return;
 
-        const unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
-            if (doc.exists()) {
-                setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
-            }
-        });
-        
-        const unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
-            if (doc.exists()) {
-                setMatchData(doc.data() as DenormalizedMatch);
-            }
-        });
+        let unsubMessages: () => void;
 
-        const messagesQuery = query(
-            collection(firestore, `matches/${matchId}/messages`),
-            orderBy('timestamp', 'asc')
-        );
+        if (isSystemChat) {
+            // Logic for system chat
+            const messagesQuery = query(
+                collection(firestore, `users/${user.uid}/system_messages`),
+                orderBy('timestamp', 'asc')
+            );
+            unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
+                const fetchedMessages = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                } as ChatMessage));
+                setMessages(fetchedMessages);
+                setIsLoading(false);
+            });
+        } else if (otherUserId) {
+            // Logic for regular user-to-user chat
+            const unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
+                if (doc.exists()) {
+                    setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
+                }
+            });
+            
+            const unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
+                if (doc.exists()) {
+                    setMatchData(doc.data() as DenormalizedMatch);
+                }
+            });
 
-        const unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-            const fetchedMessages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as ChatMessage));
-            setMessages(fetchedMessages);
-            setIsLoading(false);
-        });
+            const messagesQuery = query(
+                collection(firestore, `matches/${matchId}/messages`),
+                orderBy('timestamp', 'asc')
+            );
+
+            unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
+                const fetchedMessages = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                } as ChatMessage));
+                setMessages(fetchedMessages);
+                setIsLoading(false);
+            });
+             return () => {
+                unsubOtherUser();
+                unsubMessages();
+                unsubMatchData();
+            };
+        }
 
         return () => {
-            unsubOtherUser();
-            unsubMessages();
-            unsubMatchData();
+            unsubMessages?.();
         };
-    }, [matchId, user, firestore, otherUserId]);
+
+    }, [matchId, user, firestore, otherUserId, isSystemChat]);
 
     // Effect to mark messages as read
     useEffect(() => {
-        if (!firestore || !user || messages.length === 0) return;
+        if (!firestore || !user || messages.length === 0 || isSystemChat) return;
         
         const markMessagesAsRead = async () => {
             const unreadMessages = messages.filter(msg => msg.senderId !== user.uid && !msg.isRead);
@@ -190,7 +214,7 @@ export default function ChatPage() {
         };
 
         markMessagesAsRead();
-    }, [messages, firestore, user, matchId]);
+    }, [messages, firestore, user, matchId, isSystemChat]);
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -201,7 +225,7 @@ export default function ChatPage() {
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; isViewOnce?: boolean } = {}
     ) => {
         e?.preventDefault();
-        if (!user || !firestore) return;
+        if (!user || !firestore || isSystemChat) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
@@ -623,8 +647,8 @@ export default function ChatPage() {
     };
 
     
-    const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
-    const canSendMessage = matchData?.status === 'matched';
+    const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
+    const canSendMessage = !isSystemChat && matchData?.status === 'matched';
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
     
     return (
@@ -633,55 +657,74 @@ export default function ChatPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <div className="flex items-center gap-3">
-                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={otherUser?.profilePicture} />
-                        <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-1">
-                           <span className="font-semibold">{otherUser?.fullName}</span>
-                        </div>
-                        {renderOnlineStatus()}
-                    </div>
+                 <div className="flex items-center gap-3">
+                    {isSystemChat ? (
+                        <>
+                           <Avatar className="h-9 w-9">
+                               <Icons.logo className="h-full w-full" />
+                           </Avatar>
+                           <div className="flex flex-col">
+                               <span className="font-semibold">BeMatch - Sistem Mesajları</span>
+                               <span className="text-xs text-green-500">Her zaman aktif</span>
+                           </div>
+                        </>
+                    ) : (
+                         <>
+                             <Avatar className="h-9 w-9">
+                                <AvatarImage src={otherUser?.profilePicture} />
+                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1">
+                                   <span className="font-semibold">{otherUser?.fullName}</span>
+                                </div>
+                                {renderOnlineStatus()}
+                            </div>
+                        </>
+                    )}
                 </div>
-                <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-6 w-6" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className='text-red-600 focus:text-red-600'>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    <span>Kullanıcıyı Engelle</span>
-                                </DropdownMenuItem>
-                             </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                             {isBlocking ? t.common.loading : 'Engelle'}
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                 {isSystemChat ? (
+                    <div className='w-9'></div> // Placeholder for spacing
+                 ) : (
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-6 w-6" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                 <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className='text-red-600 focus:text-red-600'>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        <span>Kullanıcıyı Engelle</span>
+                                    </DropdownMenuItem>
+                                 </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                                 {isBlocking ? t.common.loading : 'Engelle'}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                 )}
             </header>
 
             <main className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
+                        const isSystem = message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
                         if (message.type === 'system_superlike_prompt' && !message.actionTaken && isSuperLikePendingAndIsRecipient) {
@@ -693,6 +736,19 @@ export default function ChatPage() {
                                     </Button>
                                 </div>
                             )
+                        }
+
+                        if (isSystem) {
+                             return (
+                                <div key={message.id} className="my-4">
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    <div className="flex justify-center">
+                                        <div className="max-w-[80%] rounded-lg bg-blue-500/10 text-blue-800 dark:text-blue-200 p-3 text-sm text-center">
+                                            <p>{message.text}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
                         }
 
                         if (message.isViewOnce && message.viewed) {

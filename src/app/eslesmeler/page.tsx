@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Trash2, Check, Star } from 'lucide-react';
@@ -51,6 +51,19 @@ export default function EslesmelerPage() {
         console.error("Error fetching matches:", error);
         setIsLoading(false);
     });
+
+    // Ensure default system message exists
+     const systemMessageRef = collection(firestore, `users/${user.uid}/system_messages`);
+     getDocs(query(systemMessageRef, where('senderId', '==', 'system'))).then(snapshot => {
+         if (snapshot.empty) {
+             addDoc(systemMessageRef, {
+                 senderId: 'system',
+                 text: 'Yeni gelenlere hoşgeldiniz ve kisa bir uygulama tanitimimiz',
+                 timestamp: serverTimestamp(),
+                 isRead: true,
+             });
+         }
+     });
 
     return () => {
       unsubMatches();
@@ -145,6 +158,14 @@ export default function EslesmelerPage() {
     }
   };
 
+   const systemMatch: DenormalizedMatch = {
+        id: 'system',
+        matchedWith: 'system',
+        lastMessage: 'Yeni gelenlere hoşgeldiniz ve kisa bir uygulama tanitimimiz',
+        timestamp: null, 
+        fullName: 'BeMatch - Sistem Mesajları',
+        profilePicture: '', // Use app logo
+    };
 
   if (isLoading) {
       return (
@@ -156,7 +177,7 @@ export default function EslesmelerPage() {
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
-        {matches.length === 0 ? (
+        {(matches.length === 0 && !isLoading) ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
                 <h2 className="text-2xl font-semibold text-foreground mb-2">{t.noChatsTitle}</h2>
@@ -164,10 +185,6 @@ export default function EslesmelerPage() {
             </div>
         ) : (
             <>
-                <div className="p-4 border-b shrink-0 bg-background">
-                    <h1 className="text-xl font-bold text-center">{t.title}</h1>
-                </div>
-
                 <div className="p-4 border-b shrink-0">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -176,24 +193,24 @@ export default function EslesmelerPage() {
                 </div>
                 
                 <div className='flex-1 overflow-y-auto'>
-                    {filteredMatches.length > 0 ? (
                         <div className="divide-y">
-                            {filteredMatches.map(match => {
+                            {[systemMatch, ...filteredMatches].map(match => {
                                 const isSuperLikePending = match.status === 'superlike_pending';
                                 const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
+                                const isSystemChat = match.id === 'system';
 
                                 const MatchItemContent = () => (
                                     <div className="flex items-center p-4 hover:bg-muted/50">
                                         <Avatar className="h-12 w-12">
-                                            <AvatarImage src={match.profilePicture} />
+                                            {isSystemChat ? <Icons.logo className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />}
                                             <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                         <div className="ml-4 flex-1">
                                             <div className="flex justify-between items-center">
                                                 <h3 className="font-semibold flex items-center gap-1.5">
                                                   {match.fullName}
-                                                  {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+                                                  {!isSystemChat && match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
                                                 </h3>
                                                 {match.timestamp && (
                                                     <p className="text-xs text-muted-foreground">
@@ -211,12 +228,17 @@ export default function EslesmelerPage() {
                                     </div>
                                 );
                                 
-                                const isClickable = !(isSuperLikePending && isSuperLikeInitiator);
+                                const isClickable = !(isSuperLikePending && isSuperLikeInitiator) || isSystemChat;
 
                                 return (
                                     <motion.div
                                         key={match.id}
-                                        onContextMenu={(e) => { e.preventDefault(); setChatToDelete(match); }}
+                                        onContextMenu={(e) => { 
+                                            if(!isSystemChat) {
+                                                e.preventDefault(); 
+                                                setChatToDelete(match);
+                                            }
+                                        }}
                                     >
                                         {isClickable ? (
                                             <Link href={`/eslesmeler/${match.id}`}>
@@ -231,11 +253,6 @@ export default function EslesmelerPage() {
                                 );
                             })}
                         </div>
-                     ) : (
-                        <div className="text-center p-8 text-muted-foreground">
-                            <p>Aramanızla eşleşen sohbet bulunamadı.</p>
-                        </div>
-                    )}
                 </div>
             </>
         )}
