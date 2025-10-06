@@ -213,7 +213,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         <div
             className={cn(
                 "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
-                profile.membershipType === 'gold' && "ring-4 ring-yellow-400"
+                profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
             )}
         >
             <div className='absolute inset-0'>

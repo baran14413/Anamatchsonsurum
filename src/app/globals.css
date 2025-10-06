@@ -85,12 +85,12 @@ input, textarea {
     --ring: 348 70.3% 47.5%;
      
     /* Dark Sidebar Variables */
-    --sidebar-background: 240 10% 3.9%; /* Dark */
-    --sidebar-foreground: 0 0% 98%; /* Same as dark foreground */
-    --sidebar-border: 240 3.7% 15.9%; /* Same as dark border */
-    --sidebar-accent: 240 3.7% 15.9%; /* Same as dark accent */
-    --sidebar-accent-foreground: 0 0% 98%; /* Same as dark accent-foreground */
-    --sidebar-ring: 348 70.3% 47.5%; /* Same as dark ring */
+    --sidebar-background: 0 0% 100%; /* White */
+    --sidebar-foreground: 240 10% 3.9%; /* Same as default foreground */
+    --sidebar-border: 240 5.9% 90%; /* Same as default border */
+    --sidebar-accent: 240 4.8% 95.9%; /* Same as default accent */
+    --sidebar-accent-foreground: 240 5.9% 10%; /* Same as default accent-foreground */
+    --sidebar-ring: 346.8 77.2% 49.8%; /* Same as default ring */
   }
 }
 
@@ -100,5 +100,18 @@ input, textarea {
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  @keyframes gold-shimmer {
+    0%, 100% {
+      box-shadow: 0 0 6px 2px rgba(250, 204, 21, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 14px 5px rgba(250, 204, 21, 0.4);
+    }
+  }
+
+  .animate-gold-shimmer {
+    animation: gold-shimmer 2.5s infinite ease-in-out;
   }
 }
