@@ -35,10 +35,11 @@ export default function EditInterestsPage() {
 
   const handleInterestToggle = (interest: string, categoryOptions: string[]) => {
     setSelectedInterests((prev) => {
-      if (prev.includes(interest)) {
+      const isSelected = prev.includes(interest);
+      if (isSelected) {
         return prev.filter((i) => i !== interest);
       }
-      
+
       const interestsInCategory = prev.filter(i => categoryOptions.includes(i));
       if (interestsInCategory.length >= 2) {
         toast({
@@ -140,5 +141,3 @@ export default function EditInterestsPage() {
     </div>
   );
 }
-
-    
