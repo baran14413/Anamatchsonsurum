@@ -32,23 +32,28 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 
 const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen?: any }) => {
     let statusText: string;
+    let iconColor = "bg-gray-400";
+
     if (isOnline) {
         statusText = "Şu an aktif";
+        iconColor = "bg-green-400";
     } else if (lastSeen?.toDate) {
         const lastSeenDate = lastSeen.toDate();
         const hoursAgo = differenceInHours(new Date(), lastSeenDate);
         if (hoursAgo < 10) {
             statusText = `${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })} aktifti`;
+            iconColor = "bg-yellow-400";
         } else {
             statusText = "Yakınlarda aktifti";
+            iconColor = "bg-red-400";
         }
     } else {
         statusText = "Yakınlarda aktifti";
     }
 
     return (
-        <div className="flex items-center gap-2 text-sm text-white font-semibold mb-1">
-            <div className={cn("w-2 h-2 rounded-full", isOnline ? "bg-green-400" : "bg-gray-400")}></div>
+        <div className="inline-flex items-center gap-2 text-xs text-white font-semibold mb-2 rounded-full px-3 py-1 bg-gradient-to-r from-green-500/30 via-yellow-500/10 to-red-500/30 backdrop-blur-sm">
+            <div className={cn("w-2 h-2 rounded-full", iconColor)}></div>
             <span>{statusText}</span>
         </div>
     );
@@ -198,7 +203,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     <div className="space-y-1 flex-1 min-w-0">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
                         <div className='flex items-center gap-4'>
-                          <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
+                          <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                         </div>
                         <div className='flex flex-col gap-1.5'>
                             {profile.distance !== undefined && (
@@ -221,39 +226,64 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                 <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
-                                <div className="p-6 space-y-6">
-                                    <div className="text-center space-y-2">
-                                        <div className='flex items-center justify-center gap-3'>
-                                            <h3 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
-                                            {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
+                                <div className="space-y-6">
+                                     <Carousel>
+                                        <CarouselContent>
+                                            {profile.images.map((image, index) => (
+                                                <CarouselItem key={index}>
+                                                    <div className="relative aspect-[3/4] w-full">
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        {profile.images.length > 1 && (
+                                            <>
+                                                <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10" />
+                                                <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10" />
+                                            </>
+                                        )}
+                                    </Carousel>
+                                    
+                                    <div className="p-6 space-y-6 !pt-2">
+                                        <div className="text-left space-y-2">
+                                            <div className='flex items-center gap-3'>
+                                                <h3 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
+                                                {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
+                                            </div>
+                                            {(profile.distance !== undefined || profile.address?.city) && (
+                                                <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                                                    <MapPin className="w-4 h-4" />
+                                                    <span>
+                                                        {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                         {(profile.distance !== undefined || profile.address?.city) && (
-                                            <div className="flex items-center justify-center gap-2 mt-1 text-muted-foreground">
-                                                <MapPin className="w-4 h-4" />
-                                                <span>
-                                                    {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
-                                                </span>
+                                        
+                                        {profile.bio && (
+                                            <div>
+                                                <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                                <p className='text-muted-foreground'>{profile.bio}</p>
+                                            </div>
+                                        )}
+
+                                        {profile.interests && profile.interests.length > 0 && (
+                                            <div>
+                                                <h4 className='text-lg font-semibold mb-2'>İlgi Alanları</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {profile.interests.map(interest => (
+                                                        <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
-                                    
-                                    {profile.bio && (
-                                        <div>
-                                            <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
-                                            <p className='text-muted-foreground'>{profile.bio}</p>
-                                        </div>
-                                    )}
-
-                                    {profile.interests && profile.interests.length > 0 && (
-                                        <div>
-                                            <h4 className='text-lg font-semibold mb-2'>İlgi Alanları</h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {profile.interests.map(interest => (
-                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </ScrollArea>
                         </SheetContent>
@@ -265,3 +295,4 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   );
 }
 
+    
