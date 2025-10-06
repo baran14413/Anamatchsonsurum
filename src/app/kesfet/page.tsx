@@ -9,8 +9,10 @@ import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getDistance } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
-type ProfileWithAge = UserProfile & { age?: number };
+type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
 const calculateAge = (dateString?: string): number | null => {
     if (!dateString) return null;
@@ -26,14 +28,15 @@ const calculateAge = (dateString?: string): number | null => {
 };
 
 export default function KesfetPage() {
-  const { user } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
-  const [profiles, setProfiles] = useState<ProfileWithAge[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithAgeAndDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const t = langTr.anasayfa;
+  const { toast } = useToast();
 
-  const fetchProfiles = useCallback(async (reset = false) => {
-    if (!user || !firestore) {
+ const fetchProfiles = useCallback(async (reset = false) => {
+    if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
     }
@@ -55,30 +58,89 @@ export default function KesfetPage() {
             query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
         }
 
-        const usersQuery = query(collection(firestore, 'users'), limit(50));
-        const usersSnapshot = await getDocs(usersQuery);
+        const qConstraints = [];
+        const genderPref = userProfile?.genderPreference;
+        const isGlobalMode = userProfile?.globalModeEnabled;
+        const ageRange = userProfile?.ageRange;
 
-        const fetchedProfiles = usersSnapshot.docs
-            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-            .filter(p => p.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0)
-            .map(p => ({
-                ...p,
-                age: calculateAge(p.dateOfBirth)
-            }));
+        if (genderPref && genderPref !== 'both') {
+          qConstraints.push(where('gender', '==', genderPref));
+        }
         
-        // Simple shuffle
-        setProfiles(fetchedProfiles.sort(() => Math.random() - 0.5));
+        qConstraints.push(limit(100));
+        
+        const usersCollectionRef = collection(firestore, 'users');
+        const usersQuery = query(usersCollectionRef, ...qConstraints);
+
+        const querySnapshot = await getDocs(usersQuery);
+        
+        let fetchedProfiles = querySnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            .filter(p => {
+                if (!p.uid || interactedUids.has(p.uid)) return false;
+                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                
+                const age = calculateAge(p.dateOfBirth);
+                (p as ProfileWithAgeAndDistance).age = age ?? undefined;
+
+                if (ageRange && age) {
+                    const minAge = userProfile.expandAgeRange ? ageRange.min - 5 : ageRange.min;
+                    const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
+                    if (age < minAge || age > maxAge) return false;
+                }
+                
+                if (!isGlobalMode) {
+                    if (!p.location?.latitude || !p.location?.longitude) return false;
+                    const distance = getDistance(
+                        userProfile.location!.latitude!,
+                        userProfile.location!.longitude!,
+                        p.location.latitude,
+                        p.location.longitude
+                    );
+                    (p as ProfileWithAgeAndDistance).distance = distance;
+                    const userDistancePref = userProfile.distancePreference || 50;
+                    if (distance > userDistancePref) return false;
+                } else {
+                     if (p.location?.latitude && p.location?.longitude) {
+                        const distance = getDistance(
+                            userProfile.location!.latitude!,
+                            userProfile.location!.longitude!,
+                            p.location.latitude,
+                            p.location.longitude
+                        );
+                        (p as ProfileWithAgeAndDistance).distance = distance;
+                     }
+                }
+                
+                return true;
+            });
+        
+        if (isGlobalMode) {
+          fetchedProfiles.sort((a, b) => ((a as ProfileWithAgeAndDistance).distance || Infinity) - ((b as ProfileWithAgeAndDistance).distance || Infinity));
+        } else {
+          fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle for non-global mode
+        }
+        
+        setProfiles(fetchedProfiles);
 
     } catch (error) {
         console.error("Error fetching profiles for discovery:", error);
+        toast({
+          title: langTr.common.error,
+          description: "Profiller getirilemedi.",
+          variant: "destructive"
+        });
     } finally {
         setIsLoading(false);
     }
-  }, [user, firestore]);
+  }, [user, firestore, userProfile, toast]);
+
 
   useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+    if(userProfile){
+      fetchProfiles();
+    }
+  }, [fetchProfiles, userProfile]);
 
 
   if (isLoading) {
