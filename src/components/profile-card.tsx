@@ -154,14 +154,14 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
                <div className="flex items-end justify-between">
-                    <div className="space-y-1 flex-1 min-w-0">
+                    <div className="space-y-2 flex-1 min-w-0">
                         <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                        <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            {profile.distance !== undefined ? (
+                        {profile.distance !== undefined && (
+                            <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4" />
                                 <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                            ) : null}
-                        </div>
+                            </div>
+                        )}
                     </div>
                      <Sheet>
                         <SheetTrigger asChild>
