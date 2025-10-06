@@ -4,10 +4,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
-import type { UserProfile } from '@/lib/types';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import type { UserProfile, Match } from '@/lib/types';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,98 @@ const calculateAge = (dateString?: string): number | null => {
     return age;
 };
 
+// --- Eşleşme Mantığı Optimizasyonu ---
+
+const updateMatchData = async (db: Firestore, ref: DocumentReference<DocumentData>, data: any, options: SetOptions = {}) => {
+    try {
+        await setDoc(ref, data, options);
+    } catch (error: any) {
+        const errorMessage = error.message || "Etkileşim kaydedilemedi.";
+        throw new Error(errorMessage);
+    }
+};
+
+const createMatch = (batch: WriteBatch, db: Firestore, user1Id: string, user2Id: string, user1Data: any, user2Data: any) => {
+    const matchId = [user1Id, user2Id].sort().join('_');
+    batch.set(doc(db, `users/${user1Id}/matches`, matchId), user1Data);
+    batch.set(doc(db, `users/${user2Id}/matches`, matchId), user2Data);
+};
+
+const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile, matchDocRef: DocumentReference<DocumentData>, existingMatchData: Match | undefined) => {
+    const isUser1 = currentUser.uid < swipedUser.uid;
+    const theirAction = isUser1 ? existingMatchData?.user2_action : existingMatchData?.user1_action;
+    const currentUserField = isUser1 ? 'user1' : 'user2';
+
+    let updateData: any = {
+        [`${currentUserField}_action`]: 'liked',
+        [`${currentUserField}_timestamp`]: serverTimestamp(),
+    };
+
+    if (theirAction === 'liked') {
+        // --- EŞLEŞME OLDU ---
+        updateData.status = 'matched';
+        updateData.matchDate = serverTimestamp();
+        
+        const batch = writeBatch(db);
+        createMatch(
+            batch, db, currentUser.uid, swipedUser.uid,
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
+            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
+        );
+        batch.set(matchDocRef, updateData, { merge: true });
+        await batch.commit();
+
+        return { matched: true, swipedUserName: swipedUser.fullName };
+    } else {
+        // --- BEKLEMEDE ---
+        await updateMatchData(db, matchDocRef, updateData, { merge: true });
+        return { matched: false };
+    }
+};
+
+const handleDislikeAction = async (db: Firestore, currentUserUid: string, swipedUserUid: string, matchDocRef: DocumentReference<DocumentData>) => {
+    const isUser1 = currentUserUid < swipedUserUid;
+    const currentUserField = isUser1 ? 'user1' : 'user2';
+    const updateData = {
+        [`${currentUserField}_action`]: 'disliked',
+        [`${currentUserField}_timestamp`]: serverTimestamp(),
+    };
+    await updateMatchData(db, matchDocRef, updateData, { merge: true });
+};
+
+const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile, matchDocRef: DocumentReference<DocumentData>, existingMatchData: Match | undefined) => {
+    if (existingMatchData?.status === 'matched') {
+        throw new Error("Bu kullanıcıyla zaten eşleştiniz.");
+    }
+    if (existingMatchData?.status === 'superlike_pending' && existingMatchData?.superLikeInitiator === currentUser.uid) {
+        throw new Error("Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.");
+    }
+
+    const isUser1 = currentUser.uid < swipedUser.uid;
+    const currentUserField = isUser1 ? 'user1' : 'user2';
+    
+    const batch = writeBatch(db);
+
+    const currentUserMatchData = { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
+    const swipedUserMatchData = { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: `${currentUser.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
+    
+    createMatch(batch, db, currentUser.uid, swipedUser.uid, currentUserMatchData, swipedUserMatchData);
+    
+    const updateData = {
+        status: 'superlike_pending',
+        isSuperLike: true,
+        superLikeInitiator: currentUser.uid,
+        [`${currentUserField}_action`]: 'superliked',
+        [`${currentUserField}_timestamp`]: serverTimestamp(),
+    };
+    batch.set(matchDocRef, updateData, { merge: true });
+    
+    const systemMessage = { matchId: matchDocRef.id, senderId: 'system', text: `${swipedUser.fullName} merhaba, benim adım ${currentUser.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
+    batch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), systemMessage);
+
+    await batch.commit();
+};
+
 
 export default function AnasayfaPage() {
   const t = langTr;
@@ -43,7 +135,7 @@ export default function AnasayfaPage() {
     setProfiles(prev => prev.slice(0, prev.length - 1));
   }, []);
   
- const handleSwipe = useCallback((swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+ const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
 
     removeTopCard();
@@ -53,83 +145,36 @@ export default function AnasayfaPage() {
     const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
-    getDoc(matchDocRef).then(matchSnap => {
-        const matchData = matchSnap.data();
-
-        let updateData: any = {
-            user1Id: [user1Id, user2Id].sort()[0],
-            user2Id: [user1Id, user2Id].sort()[1],
-        };
+    try {
+        const matchSnap = await getDoc(matchDocRef);
+        const existingMatchData = matchSnap.data() as Match | undefined;
         
-        const isUser1 = user1Id < user2Id;
-        const currentUserField = isUser1 ? 'user1' : 'user2';
-        const otherUserField = isUser1 ? 'user2' : 'user1';
+        // Ortak verileri burada hazırla
+        const baseUpdateData = {
+             user1Id: [user1Id, user2Id].sort()[0],
+             user2Id: [user1Id, user2Id].sort()[1],
+        };
+        await updateMatchData(firestore, matchDocRef, baseUpdateData, { merge: true });
 
-        if (action === 'superliked') {
-             if (matchData?.status === 'matched') {
-                 toast({ title: t.common.error, description: "Bu kullanıcıyla zaten eşleştiniz.", variant: "destructive" });
-                 return;
-             }
-             if (matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user1Id) {
-                  toast({ title: t.common.error, description: "Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.", variant: "destructive" });
-                 return;
-             }
-
-             const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
-             const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: `${userProfile.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
-            
-             const batch = writeBatch(firestore);
-             batch.set(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
-             batch.set(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
-             
-             updateData.status = 'superlike_pending';
-             updateData.isSuperLike = true;
-             updateData.superLikeInitiator = user1Id;
-             updateData[`${currentUserField}_action`] = 'superliked';
-             updateData[`${currentUserField}_timestamp`] = serverTimestamp();
-             batch.set(matchDocRef, updateData, { merge: true });
-
-             const systemMessage = { matchId: matchId, senderId: 'system', text: `${swipedProfile.fullName} merhaba, benim adım ${userProfile.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
-             addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
-
-             batch.commit();
-
-        } else { // Normal like/dislike
-            updateData[`${currentUserField}_action`] = action;
-            updateData[`${currentUserField}_timestamp`] = serverTimestamp();
-            
-            const theirAction = matchData?.[`${otherUserField}_action`];
-
-            if (action === 'liked' && theirAction === 'liked') {
-                updateData.status = 'matched';
-                updateData.matchDate = serverTimestamp();
-                
-                toast({ title: t.anasayfa.matchToastTitle, description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}` });
-
-                const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0].url || '', status: 'matched' };
-                const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', status: 'matched' };
-                
-                const batch = writeBatch(firestore);
-                batch.set(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
-                batch.set(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
-                batch.set(matchDocRef, updateData, { merge: true });
-                batch.commit();
-
-            } else {
-                 updateData.status = 'pending';
-                 setDoc(matchDocRef, updateData, { merge: true });
+        if (action === 'liked') {
+            const result = await handleLikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
+            if(result.matched){
+                 toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
             }
+        } else if (action === 'disliked') {
+            await handleDislikeAction(firestore, user1Id, user2Id, matchDocRef);
+        } else if (action === 'superliked') {
+            await handleSuperlikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
         }
-    }).catch((error: any) => {
-        const errorMessage = typeof error === 'string' ? error : (error.message || "Etkileşim kaydedilemedi.");
+
+    } catch (error: any) {
         toast({
             title: t.common.error,
-            description: errorMessage,
+            description: error.message || "Etkileşim kaydedilemedi.",
             variant: "destructive",
         });
-    });
-
-  }, [user, firestore, t, toast, userProfile, removeTopCard]);
+    }
+ }, [user, firestore, t, toast, userProfile, removeTopCard]);
 
 
  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {

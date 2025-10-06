@@ -62,9 +62,14 @@ export type Match = {
   id: string;
   user1Id: string;
   user2Id:string;
-  matchDate: any; 
-  isSuperLike?: boolean;
+  user1_action?: 'liked' | 'disliked' | 'superliked';
+  user1_timestamp?: any;
+  user2_action?: 'liked' | 'disliked' | 'superliked';
+  user2_timestamp?: any;
   status: 'pending' | 'matched' | 'superlike_pending';
+  matchDate?: any; 
+  isSuperLike?: boolean;
+  superLikeInitiator?: string;
 };
 
 export type LikerInfo = {
