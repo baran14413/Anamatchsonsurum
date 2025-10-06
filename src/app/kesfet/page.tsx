@@ -3,12 +3,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc, deleteDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -197,6 +197,7 @@ export default function KesfetPage() {
   
   const swipedProfilesRef = useRef(new Set<string>());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [lastAction, setLastAction] = useState<{ profile: ProfileWithAgeAndDistance, matchId: string } | null>(null);
 
 
  const removeTopProfile = useCallback(() => {
@@ -212,6 +213,7 @@ export default function KesfetPage() {
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     const matchId = [user1Id, user2Id].sort().join('_');
+    setLastAction({ profile: swipedProfile as ProfileWithAgeAndDistance, matchId });
     const matchDocRef = doc(firestore, 'matches', matchId);
 
     try {
@@ -366,6 +368,7 @@ export default function KesfetPage() {
         return;
     }
     setIsLoading(true);
+    setLastAction(null);
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -462,6 +465,40 @@ export default function KesfetPage() {
     }
   }, [user, firestore, userProfile, toast]);
 
+    const handleRewind = async () => {
+    if (!lastAction || !firestore) return;
+
+     try {
+        const response = await fetch('/api/rewind-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchId: lastAction.matchId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Geri alma işlemi başarısız.');
+        }
+
+        setProfiles(prev => [lastAction.profile, ...prev]);
+        setLastAction(null);
+        swipedProfilesRef.current.delete(lastAction.profile.uid);
+
+        toast({
+            title: "Geri Alındı!",
+            description: "Bir önceki profil tekrar geldi, bir şansın daha var ♥️",
+            icon: <RotateCcw className="h-6 w-6 text-primary" />
+        });
+    } catch (error: any) {
+        console.error('Error rewinding action:', error);
+        toast({
+            title: 'Hata',
+            description: error.message,
+            variant: 'destructive',
+        });
+    }
+  };
+
 
   useEffect(() => {
     if(userProfile){
@@ -480,6 +517,13 @@ export default function KesfetPage() {
 
   return (
     <div ref={scrollRef} className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
+      {lastAction && (
+          <div className="absolute top-4 left-4 z-50">
+              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm shadow-lg" onClick={handleRewind}>
+                  <RotateCcw className="h-6 w-6 text-primary" />
+              </Button>
+          </div>
+      )}
       {profiles.length > 0 ? (
         profiles.map((profile, index) => (
           <DiscoveryProfileItem 

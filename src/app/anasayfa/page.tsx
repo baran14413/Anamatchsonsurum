@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, PartyPopper, Hourglass } from 'lucide-react';
+import { RefreshCw, PartyPopper, Hourglass, RotateCcw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,10 +38,21 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSwipedProfile, setLastSwipedProfile] = useState<{ profile: ProfileWithDistance, matchId: string } | null>(null);
+
 
   const removeTopCard = useCallback(() => {
-    setProfiles(prev => prev.slice(1));
-  }, []);
+    setProfiles(prev => {
+        const topProfile = prev[0];
+        if (topProfile) {
+            const user1Id = user!.uid;
+            const user2Id = topProfile.uid;
+            const matchId = [user1Id, user2Id].sort().join('_');
+            setLastSwipedProfile({ profile: topProfile, matchId });
+        }
+        return prev.slice(1)
+    });
+  }, [user]);
   
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
@@ -194,12 +205,49 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, t, toast, userProfile, removeTopCard]);
 
+
+  const handleRewind = async () => {
+    if (!lastSwipedProfile || !firestore) return;
+
+    try {
+        // API call to delete the interaction document in 'matches' collection
+        const response = await fetch('/api/rewind-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchId: lastSwipedProfile.matchId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Geri alma işlemi başarısız.');
+        }
+
+        // Restore profile to the top of the stack
+        setProfiles(prev => [lastSwipedProfile.profile, ...prev]);
+        setLastSwipedProfile(null); // Clear the last swiped profile
+
+        toast({
+            title: "Geri Alındı!",
+            description: "Bir önceki profil tekrar geldi, bir şansın daha var ♥️",
+            icon: <RotateCcw className="h-6 w-6 text-primary" />
+        });
+    } catch (error: any) {
+        console.error('Error rewinding action:', error);
+        toast({
+            title: 'Hata',
+            description: error.message,
+            variant: 'destructive',
+        });
+    }
+  };
+
  const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
     }
     setIsLoading(true);
+    setLastSwipedProfile(null);
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -315,6 +363,13 @@ export default function AnasayfaPage() {
 
   return (
     <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+        {lastSwipedProfile && (
+            <div className="absolute top-16 left-4 z-40">
+                <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm shadow-lg" onClick={handleRewind}>
+                    <RotateCcw className="h-6 w-6 text-primary" />
+                </Button>
+            </div>
+        )}
       {isLoading ? (
         <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       ) : profiles.length > 0 ? (
