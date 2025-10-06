@@ -1,29 +1,47 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Flame, Star, Zap, ShieldCheckIcon, GalleryHorizontal, ChevronRight } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
-
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const t = langTr;
   const { user, userProfile } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [matchCount, setMatchCount] = useState(0);
+
+  useEffect(() => {
+    if (user && firestore) {
+      const fetchMatches = async () => {
+        const matchesQuery = query(
+          collection(firestore, 'users', user.uid, 'matches'),
+          where('status', '==', 'matched')
+        );
+        const querySnapshot = await getDocs(matchesQuery);
+        setMatchCount(querySnapshot.size);
+      };
+
+      fetchMatches();
+    }
+  }, [user, firestore]);
+
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -70,7 +88,7 @@ export default function ProfilePage() {
 
     const age = calculateAge(userProfile?.dateOfBirth);
     const profileCompletionPercentage = calculateProfileCompletion();
-
+    const superLikeBalance = userProfile?.superLikeBalance ?? 0;
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
@@ -114,24 +132,19 @@ export default function ProfilePage() {
             </CardContent>
         </Card>
 
-        {/* Subscriptions & Boosts */}
-        <div className="grid grid-cols-3 gap-3 text-center text-sm">
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 text-center text-sm">
            <Card className="p-3 shadow-md">
-              <Star className="h-6 w-6 text-blue-400 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.superLikes.replace('{count}', '0')}</p>
-              <Link href="/satin-al/super-like">
+              <Heart className="h-6 w-6 text-red-500 mx-auto mb-1 fill-red-500" />
+              <p className="font-semibold">Toplam {matchCount} Eşleşme</p>
+              <span className="text-xs text-muted-foreground">yakaladınız</span>
+          </Card>
+           <Card className="p-3 shadow-md">
+              <Star className="h-6 w-6 text-blue-400 mx-auto mb-1 fill-blue-400" />
+              <p className="font-semibold">Toplam {superLikeBalance} Super Like</p>
+               <Link href="/satin-al/super-like">
                 <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
               </Link>
-          </Card>
-          <Card className="p-3 shadow-md">
-              <Zap className="h-6 w-6 text-purple-500 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.myBoosts}</p>
-              <span className="text-xs text-purple-500 font-bold cursor-pointer">{t.profil.getMore}</span>
-          </Card>
-           <Card className="p-3 shadow-md">
-              <Flame className="h-6 w-6 text-red-500 mx-auto mb-1" />
-              <p className="font-semibold">{t.profil.subscriptions}</p>
-              <span className="text-xs text-yellow-500 font-bold cursor-pointer">{t.profil.upgrade}</span>
           </Card>
         </div>
 
