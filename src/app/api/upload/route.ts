@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
+import { promisify } from 'util';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -10,8 +11,9 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure Multer for temporary file storage
-const upload = multer({ dest: '/tmp' });
+// Configure Multer to use memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Helper to run middleware
 function runMiddleware(req: any, res: any, fn: any) {
@@ -25,6 +27,7 @@ function runMiddleware(req: any, res: any, fn: any) {
   });
 }
 
+// We need to disable the default body parser for multer to work
 export const config = {
   api: {
     bodyParser: false,
@@ -32,23 +35,27 @@ export const config = {
 };
 
 export async function POST(req: any) {
+  const res = new NextResponse();
   try {
-    const res = new NextResponse();
+    // Run the multer middleware
     await runMiddleware(req, res, upload.single('file'));
     
+    // After middleware, req.file will be populated
     const file = req.file;
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
     }
     
-    const uploadOptions: any = {
+    // Create a data URI from the buffer
+    const b64 = Buffer.from(file.buffer).toString('base64');
+    let dataURI = "data:" + file.mimetype + ";base64," + b64;
+    
+    // Upload the data URI to Cloudinary
+    const result = await cloudinary.uploader.upload(dataURI, {
       folder: 'bematch_profiles',
       resource_type: 'image',
-    };
-
-    // Use the file path provided by multer for direct upload
-    const result = await cloudinary.uploader.upload(file.path, uploadOptions);
+    });
 
     return NextResponse.json({
       url: result.secure_url,
@@ -58,6 +65,11 @@ export async function POST(req: any) {
 
   } catch (error: any) {
     console.error("Cloudinary Upload Error:", error);
-    return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
+    // Use the file name from the multer file object for a more descriptive error
+    const fileName = error.file?.originalname || 'the file';
+    return NextResponse.json(
+      { error: `'${fileName}' yüklenemedi. ${error.message}` }, 
+      { status: 500 }
+    );
   }
 }
