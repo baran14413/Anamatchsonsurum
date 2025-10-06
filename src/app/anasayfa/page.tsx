@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, runTransaction, increment } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,9 +14,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
-
-const DAILY_LIKE_LIMIT = 100;
-const DAILY_DISLIKE_LIMIT = 150;
 
 const calculateAge = (dateString?: string): number | null => {
     if (!dateString) return null;
@@ -48,126 +44,82 @@ export default function AnasayfaPage() {
   
  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
-    
-    const userDocRef = doc(firestore, "users", user.uid);
+
+    removeTopCard();
 
     try {
-        await runTransaction(firestore, async (transaction) => {
-            const userDoc = await transaction.get(userDocRef);
-            if (!userDoc.exists()) throw "Kullanıcı bulunamadı!";
+        const user1Id = user.uid;
+        const user2Id = swipedProfile.uid;
+        const matchId = [user1Id, user2Id].sort().join('_');
+        const matchDocRef = doc(firestore, 'matches', matchId);
+
+        const matchSnap = await getDoc(matchDocRef);
+        const matchData = matchSnap.data();
+
+        let updateData: any = {
+            user1Id: [user1Id, user2Id].sort()[0],
+            user2Id: [user1Id, user2Id].sort()[1],
+        };
+        
+        const isUser1 = user1Id < user2Id;
+        const currentUserField = isUser1 ? 'user1' : 'user2';
+        const otherUserField = isUser1 ? 'user2' : 'user1';
+
+        if (action === 'superliked') {
+             if (matchData?.status === 'matched') {
+                 throw "Bu kullanıcıyla zaten eşleştiniz.";
+             }
+             if (matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user1Id) {
+                 throw "Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.";
+             }
+
+             const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
+             const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: `${userProfile.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
             
-            let currentProfileData = userDoc.data() as UserProfile;
+             await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+             await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+             
+             updateData.status = 'superlike_pending';
+             updateData.isSuperLike = true;
+             updateData.superLikeInitiator = user1Id;
+             updateData[`${currentUserField}_action`] = 'superliked';
+             updateData[`${currentUserField}_timestamp`] = serverTimestamp();
+             await setDoc(matchDocRef, updateData, { merge: true });
 
-            // Check and reset daily counts if needed
-            const lastReset = currentProfileData.dailyCountsLastReset?.toDate();
-            const now = new Date();
-            const aDayHasPassed = !lastReset || (now.getTime() - lastReset.getTime()) > 24 * 60 * 60 * 1000;
+             const systemMessage = { matchId: matchId, senderId: 'system', text: `${swipedProfile.fullName} merhaba, benim adım ${userProfile.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
+             await addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
 
-            if (aDayHasPassed) {
-                currentProfileData.dailyLikeCount = 0;
-                currentProfileData.dailyDislikeCount = 0;
-                transaction.update(userDocRef, {
-                    dailyLikeCount: 0,
-                    dailyDislikeCount: 0,
-                    dailyCountsLastReset: serverTimestamp()
-                });
+        } else { // Normal like/dislike
+            updateData[`${currentUserField}_action`] = action;
+            updateData[`${currentUserField}_timestamp`] = serverTimestamp();
+            
+            const theirAction = matchData?.[`${otherUserField}_action`];
+
+            if (action === 'liked' && theirAction === 'liked') {
+                updateData.status = 'matched';
+                updateData.matchDate = serverTimestamp();
+                
+                toast({ title: t.anasayfa.matchToastTitle, description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}` });
+
+                const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0].url || '', status: 'matched' };
+                const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', status: 'matched' };
+                
+                await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+                await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            } else {
+                 updateData.status = 'pending';
             }
             
-            // Check limits for free users
-            if (currentProfileData.membershipType === 'free') {
-                 if (action === 'liked' && (currentProfileData.dailyLikeCount ?? 0) >= DAILY_LIKE_LIMIT) {
-                    throw "Günlük beğeni limitinize ulaştınız. Yarın tekrar deneyin.";
-                }
-                if (action === 'disliked' && (currentProfileData.dailyDislikeCount ?? 0) >= DAILY_DISLIKE_LIMIT) {
-                    throw "Günlük pas geçme limitinize ulaştınız. Yarın tekrar deneyin.";
-                }
-            }
-            
-            // If checks pass, proceed with the swipe action
-            removeTopCard();
-
-            const user1Id = user.uid;
-            const user2Id = swipedProfile.uid;
-            const matchId = [user1Id, user2Id].sort().join('_');
-            const matchDocRef = doc(firestore, 'matches', matchId);
-            
-            let updateData: any = {
-                user1Id: [user1Id, user2Id].sort()[0],
-                user2Id: [user1Id, user2Id].sort()[1],
-            };
-            
-            const isUser1 = user1Id < user2Id;
-            const currentUserField = isUser1 ? 'user1' : 'user2';
-            const otherUserField = isUser1 ? 'user2' : 'user1';
-
-            if (action === 'superliked') {
-                 const matchSnap = await transaction.get(matchDocRef);
-                 if (matchSnap.exists()) {
-                     const matchData = matchSnap.data();
-                     // Only block if there's already a confirmed match or a pending superlike from the same user
-                     if (matchData.status === 'matched') throw "Bu kullanıcıyla zaten eşleştiniz.";
-                     if (matchData.status === 'superlike_pending' && matchData.superLikeInitiator === user1Id) throw "Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.";
-                 }
-
-                 const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
-                 const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: `${userProfile.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
-                
-                 transaction.set(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
-                 transaction.set(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
-                 
-                 updateData.status = 'superlike_pending';
-                 updateData.isSuperLike = true;
-                 updateData.superLikeInitiator = user1Id;
-                 updateData[`${currentUserField}_action`] = 'superliked';
-                 updateData[`${currentUserField}_timestamp`] = serverTimestamp();
-                 transaction.set(matchDocRef, updateData, { merge: true });
-
-                 const systemMessage = { matchId: matchId, senderId: 'system', text: `${swipedProfile.fullName} merhaba, benim adım ${userProfile.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
-                 transaction.set(doc(collection(firestore, `matches/${matchId}/messages`)), systemMessage);
-
-            } else { // Normal like/dislike
-                updateData[`${currentUserField}_action`] = action;
-                updateData[`${currentUserField}_timestamp`] = serverTimestamp();
-                updateData.status = 'pending';
-                
-                const theirInteractionSnap = await transaction.get(matchDocRef);
-                const theirAction = theirInteractionSnap.data()?.[`${otherUserField}_action`];
-
-                if (action === 'liked' && theirAction === 'liked') {
-                    updateData.status = 'matched';
-                    updateData.matchDate = serverTimestamp();
-                    
-                    toast({ title: t.anasayfa.matchToastTitle, description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}` });
-
-                    const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0].url || '', status: 'matched' };
-                    const swipedUserMatchData = { id: matchId, matchedWith: user1Id, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', status: 'matched' };
-                    
-                    transaction.set(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
-                    transaction.set(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
-                }
-                
-                transaction.set(matchDocRef, updateData, { merge: true });
-                
-                // Increment daily counts for free users
-                if(currentProfileData.membershipType === 'free') {
-                    if (action === 'liked') {
-                        transaction.update(userDocRef, { dailyLikeCount: increment(1) });
-                    } else if (action === 'disliked') {
-                         transaction.update(userDocRef, { dailyDislikeCount: increment(1) });
-                    }
-                }
-            }
-        });
+            await setDoc(matchDocRef, updateData, { merge: true });
+        }
 
     } catch (error: any) {
-        const errorMessage = typeof error === 'string' ? error : "Etkileşim kaydedilemedi.";
+        const errorMessage = typeof error === 'string' ? error : (error.message || "Etkileşim kaydedilemedi.");
         toast({
             title: t.common.error,
             description: errorMessage,
             variant: "destructive",
         });
-        // If the card was removed optimistically, we might need to add it back
-        // For now, we'll just show the error.
     }
   }, [user, firestore, t, toast, userProfile, removeTopCard]);
 

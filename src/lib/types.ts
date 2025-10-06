@@ -54,9 +54,6 @@ export type UserProfile = {
   isAdmin?: boolean;
   superLikeBalance?: number;
   membershipType?: 'free' | 'gold';
-  dailyLikeCount?: number;
-  dailyDislikeCount?: number;
-  dailyCountsLastReset?: any;
 };
 
 export type Match = {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -7,9 +6,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Star, Gem, ThumbsUp, ThumbsDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-
-const DAILY_LIKE_LIMIT = 100;
-const DAILY_DISLIKE_LIMIT = 150;
 
 const StatCard = ({ icon: Icon, title, value, actionText, actionLink, iconColor }: { icon: React.ElementType, title: string, value: string, actionText?: string, actionLink?: string, iconColor?: string }) => (
     <Card>
@@ -40,15 +36,6 @@ export default function WalletPage() {
 
     const membershipType = userProfile?.membershipType === 'gold' ? 'BeMatch Gold' : 'BeMatch Free';
     const superLikeBalance = userProfile?.superLikeBalance ?? 0;
-    
-    const remainingLikes = userProfile?.membershipType === 'free'
-      ? Math.max(0, DAILY_LIKE_LIMIT - (userProfile?.dailyLikeCount ?? 0))
-      : 'Sınırsız';
-
-    const remainingDislikes = userProfile?.membershipType === 'free'
-      ? Math.max(0, DAILY_DISLIKE_LIMIT - (userProfile?.dailyDislikeCount ?? 0))
-      : 'Sınırsız';
-
 
     return (
         <div className="flex h-dvh flex-col bg-gray-50 dark:bg-black">
@@ -89,27 +76,7 @@ export default function WalletPage() {
                      </div>
                 </div>
 
-                {userProfile?.membershipType === 'free' && (
-                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold">Günlük Ücretsiz Hakların</h2>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                             <StatCard
-                                icon={ThumbsUp}
-                                title="Kalan Beğeni Hakkı"
-                                value={String(remainingLikes)}
-                                iconColor="green"
-                            />
-                            <StatCard
-                                icon={ThumbsDown}
-                                title="Kalan Pas Geçme Hakkı"
-                                value={String(remainingDislikes)}
-                                iconColor="red"
-                            />
-                         </div>
-                    </div>
-                )}
             </main>
         </div>
     );
 }
-

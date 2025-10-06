@@ -116,19 +116,6 @@
           "type": "string",
           "enum": ["free", "gold"],
           "description": "The user's membership tier."
-        },
-        "dailyLikeCount": {
-          "type": "number",
-          "description": "The number of likes the user has used today."
-        },
-        "dailyDislikeCount": {
-          "type": "number",
-          "description": "The number of dislikes the user has used today."
-        },
-        "dailyCountsLastReset": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The last time the daily counts were reset."
         }
       },
       "required": [
@@ -340,4 +327,3 @@
     ]
   }
 }
-
