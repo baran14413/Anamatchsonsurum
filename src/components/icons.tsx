@@ -15,6 +15,9 @@ export const Icons = {
   logo: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
     <Image src={bematchLogo} alt="BeMatch Logo" {...props} />
   ),
+  adminLogo: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
+    <Image src={bematchLogo} alt="Admin Logo" {...props} />
+  ),
   tinderFlame: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
      <Image src={bematchLogo} alt="BeMatch Logo" {...props} />
   ),

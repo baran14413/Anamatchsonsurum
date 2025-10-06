@@ -16,7 +16,7 @@ const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/
 const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/profilini-tamamla';
 const rulesRoute = '/kurallar';
-
+const adminRoutes = '/admin';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, userProfile, isUserLoading } = useUser();
@@ -31,6 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthFlowRoute = authFlowRoutes.includes(pathname);
   const isRegistrationRoute = pathname.startsWith(registrationRoute);
   const isRulesRoute = pathname.startsWith(rulesRoute);
+  const isAdminRoute = pathname.startsWith(adminRoutes);
   
   // Specific check for the dynamic chat page
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
@@ -100,6 +101,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return; // Wait until user and profile status is resolved
     }
 
+    if (isAdminRoute && !userProfile?.isAdmin) {
+       router.replace('/anasayfa');
+       return;
+    }
+
     // SCENARIO 1: User is logged in
     if (user) {
       // 1a: But profile is INCOMPLETE (we use 'gender' as the marker for a complete profile)
@@ -126,17 +132,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // SCENARIO 2: User is NOT logged in
     else {
       // If they are trying to access a protected route, redirect to welcome page.
-      if (isProtectedRoute || isRegistrationRoute || isRulesRoute) {
+      if (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute) {
         router.replace('/');
       }
       // If they are on a public or auth-flow page, do nothing.
     }
-  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute, isRulesRoute]);
+  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
 
 
   // Show a global loader while resolving auth/profile state,
   // especially on protected routes to prevent content flashing.
-  if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute)) {
+  if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute)) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <Icons.logo width={48} height={48} className="animate-pulse" />

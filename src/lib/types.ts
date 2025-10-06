@@ -51,6 +51,7 @@ export type UserProfile = {
   isOnline?: boolean;
   lastSeen?: any;
   rulesAgreed?: boolean;
+  isAdmin?: boolean;
 };
 
 export type Match = {
