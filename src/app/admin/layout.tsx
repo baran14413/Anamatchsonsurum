@@ -28,20 +28,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <Link href="/admin/dashboard" className='w-full'>
-                            <SidebarMenuButton tooltip="Dashboard">
+                        <SidebarMenuButton tooltip="Dashboard" asChild>
+                            <Link href="/admin/dashboard">
                                 <Home />
                                 <span>Yönetim Paneli</span>
-                            </SidebarMenuButton>
-                        </Link>
+                            </Link>
+                        </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                         <Link href="/admin/users" className='w-full'>
-                            <SidebarMenuButton tooltip="Users">
+                        <SidebarMenuButton tooltip="Users" asChild>
+                           <Link href="/admin/users">
                                 <Users />
                                 <span>Kullanıcılar</span>
-                            </SidebarMenuButton>
-                        </Link>
+                            </Link>
+                        </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
