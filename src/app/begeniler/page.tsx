@@ -173,6 +173,12 @@ export default function BegenilerPage() {
                                             <LikerCard liker={liker} />
                                         </SheetTrigger>
                                         <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent'>
+                                            <SheetHeader className='sr-only'>
+                                                <SheetTitle>Profil Detayları</SheetTitle>
+                                                <SheetDescription>
+                                                    {liker.fullName} kullanıcısının profil detayları.
+                                                </SheetDescription>
+                                            </SheetHeader>
                                             <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
                                                 <ProfileCard profile={liker.profile} isDraggable={false} />
                                                 <div className='absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent z-30'>
@@ -233,4 +239,3 @@ export default function BegenilerPage() {
         </AlertDialog>
     );
 }
-
