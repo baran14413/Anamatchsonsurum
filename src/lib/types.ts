@@ -55,6 +55,7 @@ export type UserProfile = {
   isAdmin?: boolean;
   superLikeBalance?: number;
   membershipType?: 'free' | 'gold';
+  goldMembershipExpiresAt?: any;
 };
 
 export type Match = {

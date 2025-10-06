@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { UserProfile } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, addMonths } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Shield, Star, Trash2, Gem } from 'lucide-react';
@@ -64,13 +64,31 @@ export default function AdminUsersPage() {
   const handleToggleGold = async (user: UserProfile) => {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', user.id);
-    const newMembershipStatus = user.membershipType === 'gold' ? 'free' : 'gold';
+    const isCurrentlyGold = user.membershipType === 'gold';
+
     try {
-      await updateDoc(userDocRef, { membershipType: newMembershipStatus });
-      toast({
-        title: 'Başarılı',
-        description: `${user.fullName} kullanıcısı ${newMembershipStatus === 'gold' ? 'Gold üye yapıldı' : 'üyeliği normale çevrildi'}.`,
-      });
+      if (isCurrentlyGold) {
+        // Remove Gold membership
+        await updateDoc(userDocRef, { 
+          membershipType: 'free',
+          goldMembershipExpiresAt: null
+        });
+        toast({
+          title: 'Başarılı',
+          description: `${user.fullName} kullanıcısının Gold üyeliği kaldırıldı.`,
+        });
+      } else {
+        // Add Gold membership for 1 month
+        const expiryDate = addMonths(new Date(), 1);
+        await updateDoc(userDocRef, { 
+          membershipType: 'gold',
+          goldMembershipExpiresAt: expiryDate
+        });
+        toast({
+          title: 'Başarılı',
+          description: `${user.fullName} kullanıcısı 1 aylık Gold üye yapıldı.`,
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Hata',

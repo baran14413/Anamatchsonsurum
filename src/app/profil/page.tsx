@@ -94,7 +94,15 @@ export default function ProfilePage() {
     const age = calculateAge(userProfile?.dateOfBirth);
     const profileCompletionPercentage = calculateProfileCompletion();
     const superLikeBalance = userProfile?.superLikeBalance ?? 0;
-    const isGoldMember = userProfile?.membershipType === 'gold';
+    
+    let isGoldMember = userProfile?.membershipType === 'gold';
+    if (isGoldMember && userProfile?.goldMembershipExpiresAt) {
+      const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
+      if (expiryDate < new Date()) {
+        isGoldMember = false;
+      }
+    }
+
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
@@ -128,18 +136,20 @@ export default function ProfilePage() {
         </div>
 
         {/* Gold Card */}
-        <Card className='shadow-md bg-gradient-to-r from-red-500 to-yellow-400 text-white'>
-            <CardContent className='p-4 flex items-center gap-4'>
-                <Icons.beGold width={48} height={48} />
-                <div className='flex-1'>
-                    <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
-                    <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
-                </div>
-                <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
-                    {t.profil.upgrade}
-                </Button>
-            </CardContent>
-        </Card>
+        {!isGoldMember && (
+          <Card className='shadow-md bg-gradient-to-r from-red-500 to-yellow-400 text-white'>
+              <CardContent className='p-4 flex items-center gap-4'>
+                  <Icons.beGold width={48} height={48} />
+                  <div className='flex-1'>
+                      <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
+                      <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
+                  </div>
+                  <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
+                      {t.profil.upgrade}
+                  </Button>
+              </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 text-center text-sm">

@@ -4,9 +4,11 @@
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Star, Gem, ThumbsUp, ThumbsDown, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Star, Gem, ChevronRight, Info } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 const StatCard = ({ icon: Icon, title, value, actionText, actionLink, iconColor }: { icon: React.ElementType, title: string, value: string, actionText?: string, actionLink?: string, iconColor?: string }) => (
     <Card>
@@ -35,8 +37,19 @@ export default function WalletPage() {
     const router = useRouter();
     const { userProfile } = useUser();
 
-    const membershipType = userProfile?.membershipType === 'gold' ? 'BeMatch Gold' : 'BeMatch Free';
+    const isGoldMember = userProfile?.membershipType === 'gold';
+    const membershipType = isGoldMember ? 'BeMatch Gold' : 'BeMatch Free';
     const superLikeBalance = userProfile?.superLikeBalance ?? 0;
+    
+    let expiryDate: Date | null = null;
+    if (userProfile?.goldMembershipExpiresAt) {
+      try {
+        expiryDate = userProfile.goldMembershipExpiresAt.toDate();
+      } catch (e) {
+        console.warn("Could not parse expiry date, it might not be a Firebase Timestamp yet.", e)
+      }
+    }
+
 
     return (
         <div className="flex h-dvh flex-col bg-gray-50 dark:bg-black">
@@ -58,9 +71,17 @@ export default function WalletPage() {
                              <Gem className="h-8 w-8" />
                         </div>
                         <CardDescription className="text-white/80">
-                           {membershipType === 'BeMatch Gold' ? 'Tüm premium özelliklere erişiminiz var.' : 'Daha fazla özellik için Gold\'a yükseltin.'}
+                           {isGoldMember ? 'Tüm premium özelliklere erişiminiz var.' : 'Daha fazla özellik için Gold\'a yükseltin.'}
                         </CardDescription>
                     </CardHeader>
+                     {isGoldMember && expiryDate && (
+                        <CardFooter className='!pt-0 !pb-4'>
+                            <div className="flex items-center gap-2 text-sm text-white/90">
+                                <Info className="h-4 w-4" />
+                                <span>Gold üyeliğiniz {format(expiryDate, "d MMMM yyyy", { locale: tr })} tarihinde sona erecek.</span>
+                            </div>
+                        </CardFooter>
+                    )}
                 </Card>
 
                 <div className="space-y-4">
