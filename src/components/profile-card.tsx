@@ -237,24 +237,26 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
-                                     <Carousel className="w-full">
-                                        <CarouselContent>
-                                            {(profile.images || []).map((image, index) => (
-                                                <CarouselItem key={index}>
-                                                    <div className="relative w-full aspect-[4/3]">
-                                                        <Image
-                                                            src={image.url}
-                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
-                                                    </div>
-                                                </CarouselItem>
-                                            ))}
-                                        </CarouselContent>
-                                        <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                        <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                    </Carousel>
+                                     {profile.images && profile.images.length > 0 && (
+                                        <Carousel className="w-full">
+                                            <CarouselContent>
+                                                {profile.images.map((image, index) => (
+                                                    <CarouselItem key={index}>
+                                                        <div className="relative w-full aspect-[4/3]">
+                                                            <Image
+                                                                src={image.url}
+                                                                alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
+                                                                fill
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
+                                                    </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                        </Carousel>
+                                    )}
                                     
                                     <div className="p-6 space-y-6 !pt-2">
                                         <div className="text-left space-y-2">
