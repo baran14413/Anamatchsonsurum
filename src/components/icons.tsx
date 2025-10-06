@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 import Image from 'next/image';
 import bematchLogo from '@/img/logo.png';
+import beGoldLogo from '@/img/begold.png';
 
 const svgProps = {
   viewBox: "0 0 24 24",
@@ -29,4 +30,7 @@ export const Icons = {
       </text>
     </svg>
   ),
+  beGold: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
+    <Image src={beGoldLogo} alt="BeMatch Gold" {...props} />
+  )
 };

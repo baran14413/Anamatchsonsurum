@@ -89,6 +89,7 @@ export default function ProfilePage() {
     const age = calculateAge(userProfile?.dateOfBirth);
     const profileCompletionPercentage = calculateProfileCompletion();
     const superLikeBalance = userProfile?.superLikeBalance ?? 0;
+    const isGoldMember = userProfile?.membershipType === 'gold';
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
@@ -109,7 +110,7 @@ export default function ProfilePage() {
           <div className="text-center space-y-3">
              <h1 className="text-2xl font-bold flex items-center gap-2">
                 {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
-                <ShieldCheckIcon className="h-6 w-6 text-blue-500" />
+                {isGoldMember ? <Icons.beGold width={24} height={24} /> : <ShieldCheckIcon className="h-6 w-6 text-blue-500" />}
             </h1>
             <Link href="/profil/galeri">
                 <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
@@ -123,7 +124,7 @@ export default function ProfilePage() {
         {/* Gold Card */}
         <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white'>
             <CardContent className='p-4 flex items-center gap-4'>
-                <Gem className="h-8 w-8"/>
+                <Icons.beGold width={32} height={32} />
                 <div className='flex-1'>
                     <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
                     <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>

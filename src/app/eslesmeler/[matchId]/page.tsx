@@ -670,6 +670,7 @@ export default function ChatPage() {
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched';
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
+    const isOtherUserGold = otherUser?.membershipType === 'gold';
     
     return (
         <div className="flex h-dvh flex-col bg-background">
@@ -695,8 +696,9 @@ export default function ChatPage() {
                                 <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1.5">
                                    <span className="font-semibold">{otherUser?.fullName}</span>
+                                   {isOtherUserGold && <Icons.beGold width={20} height={20} />}
                                 </div>
                                 {renderOnlineStatus()}
                             </div>
@@ -1042,5 +1044,3 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
-
-    
