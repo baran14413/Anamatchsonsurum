@@ -170,6 +170,28 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   
   const displayedInterests = useMemo(() => getDisplayedInterests(profile.interests), [profile.interests]);
 
+  const groupedInterests = useMemo(() => {
+    if (!profile.interests) return {};
+
+    const interestCategories = langTr.signup.step11.categories;
+    const categoryMap: { [key: string]: string } = {};
+    interestCategories.forEach(cat => {
+        cat.options.forEach(opt => {
+            categoryMap[opt] = cat.title;
+        });
+    });
+
+    const grouped: { [key: string]: string[] } = {};
+    profile.interests.forEach(interest => {
+        const category = categoryMap[interest] || 'Diğer';
+        if (!grouped[category]) {
+            grouped[category] = [];
+        }
+        grouped[category].push(interest);
+    });
+    return grouped;
+  }, [profile.interests]);
+
   return (
     <motion.div 
         className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
@@ -331,26 +353,30 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                             </div>
                                         )}
                                         
-                                         {lookingForText && (
+                                        {(lookingForText || (profile.interests && profile.interests.length > 0)) && (
                                             <div>
                                                 <h4 className='text-lg font-semibold mb-2'>Tercihler</h4>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-sm">İlişki Tercihi:</span>
-                                                    <Badge variant="secondary" className='text-base py-1 px-3'>{lookingForText}</Badge>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {profile.interests && profile.interests.length > 0 && (
-                                            <div>
-                                                <h4 className='text-lg font-semibold mb-2'>İlgi Alanları</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {profile.interests.map(interest => (
-                                                        <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                <div className="space-y-3">
+                                                    {lookingForText && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-sm w-32 shrink-0">İlişki Tercihi:</span>
+                                                            <Badge variant="secondary" className='text-base py-1 px-3'>{lookingForText}</Badge>
+                                                        </div>
+                                                    )}
+                                                    {Object.entries(groupedInterests).map(([category, interests]) => (
+                                                        <div key={category} className="flex items-start gap-2">
+                                                            <span className="font-medium text-sm w-32 shrink-0">{category}:</span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {interests.map(interest => (
+                                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+
                                     </div>
                                 </div>
                             </ScrollArea>
