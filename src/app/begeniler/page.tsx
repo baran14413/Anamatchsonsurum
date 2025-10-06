@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useState, useEffect, useMemo } from 'react';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { Heart, Star } from 'lucide-react';
 import type { UserProfile, LikerInfo } from '@/lib/types';
@@ -26,17 +26,22 @@ export default function BegenilerPage() {
     const [likers, setLikers] = useState<LikerInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr.begeniler;
+    
+    const matchesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        // This query is broad, but necessary to catch likes from both sides
+        return query(collection(firestore, 'matches'));
+    }, [user, firestore]);
+
 
     useEffect(() => {
-        if (!user || !firestore) {
+        if (!matchesQuery || !firestore || !user) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
-        const q = query(collection(firestore, 'matches'));
-        
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const unsubscribe = onSnapshot(matchesQuery, async (snapshot) => {
             const potentialLikerTasks: Promise<LikerInfo | null>[] = [];
             const seenLikerIds = new Set<string>();
 
@@ -48,18 +53,11 @@ export default function BegenilerPage() {
                 if (data.user2Id === user.uid && data.user1_action === 'liked' && !data.user2_action) {
                     likerId = data.user1Id;
                 }
-                // Scenario 2: I liked someone, but this page is for who liked ME.
-                // But if they also liked me, it's a match, not a "like".
-                // The logic here is to show who has an open "liked" action towards the current user.
                 
-                // This logic is tricky with compound queries. Let's simplify.
-                // We fetch all docs where I am involved and one party has liked.
-                // Then we filter client-side.
-
+                // Scenario 2: I was liked by user2, and I haven't acted.
                 if (data.user1Id === user.uid && data.user2_action === 'liked' && !data.user1_action) {
                     likerId = data.user2Id;
                 }
-
 
                 if (likerId && !seenLikerIds.has(likerId)) {
                     seenLikerIds.add(likerId);
@@ -90,7 +88,7 @@ export default function BegenilerPage() {
         });
 
         return () => unsubscribe();
-    }, [user, firestore]);
+    }, [matchesQuery, firestore, user]);
 
     if (isLoading) {
         return (

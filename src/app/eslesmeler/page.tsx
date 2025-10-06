@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -31,19 +31,31 @@ export default function EslesmelerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [chatToInteract, setChatToInteract] = useState<DenormalizedMatch | null>(null);
 
+  const matchesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, `users/${user.uid}/matches`),
+        orderBy('timestamp', 'desc')
+    );
+  }, [user, firestore]);
+
+  const systemMessageQuery = useMemoFirebase(() => {
+      if (!user || !firestore) return null;
+      return query(
+          collection(firestore, `users/${user.uid}/system_messages`),
+          orderBy('timestamp', 'desc'),
+          limit(1)
+      );
+  }, [user, firestore]);
+
   useEffect(() => {
-    if (!user || !firestore) {
+    if (!matchesQuery) {
       setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
 
-    const matchesQuery = query(
-      collection(firestore, `users/${user.uid}/matches`),
-      orderBy('timestamp', 'desc')
-    );
-    
     const unsubMatches = onSnapshot(matchesQuery, (snapshot) => {
       const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
       setMatches(matchesData);
@@ -53,13 +65,16 @@ export default function EslesmelerPage() {
         setIsLoading(false);
     });
 
-    const systemMessageQuery = query(
-        collection(firestore, `users/${user.uid}/system_messages`),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-    );
+    return () => {
+      unsubMatches();
+    };
 
-    const unsubSystemMessages = onSnapshot(systemMessageQuery, (snapshot) => {
+  }, [matchesQuery]);
+
+  useEffect(() => {
+      if (!systemMessageQuery || !user || !firestore) return;
+
+      const unsubSystemMessages = onSnapshot(systemMessageQuery, (snapshot) => {
         if (snapshot.empty) {
              addDoc(collection(firestore, `users/${user.uid}/system_messages`), {
                  senderId: 'system',
@@ -72,12 +87,8 @@ export default function EslesmelerPage() {
         }
     });
 
-    return () => {
-      unsubMatches();
-      unsubSystemMessages();
-    };
-
-  }, [user, firestore]);
+    return () => unsubSystemMessages();
+  }, [systemMessageQuery, user, firestore])
 
   const filteredMatches = useMemo(() => {
     if (!searchTerm) {

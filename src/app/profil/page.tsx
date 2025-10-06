@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { useAuth, useUser, useFirestore } from '@/firebase';
+import { useAuth, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const t = langTr;
@@ -27,20 +27,25 @@ export default function ProfilePage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
 
-  useEffect(() => {
-    if (user && firestore) {
-      const fetchMatches = async () => {
-        const matchesQuery = query(
-          collection(firestore, 'users', user.uid, 'matches'),
-          where('status', '==', 'matched')
-        );
-        const querySnapshot = await getDocs(matchesQuery);
-        setMatchCount(querySnapshot.size);
-      };
-
-      fetchMatches();
-    }
+  const matchesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'matches'),
+      where('status', '==', 'matched')
+    );
   }, [user, firestore]);
+
+  useEffect(() => {
+    if (!matchesQuery) return;
+
+    const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
+        setMatchCount(snapshot.size);
+    }, (error) => {
+        console.error("Failed to fetch match count:", error);
+    });
+
+    return () => unsubscribe();
+  }, [matchesQuery]);
 
 
   const handleLogout = async () => {

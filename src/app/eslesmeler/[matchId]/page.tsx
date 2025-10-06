@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useUserProfile } from '@/firebase';
+import { useUser, useUserProfile, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,6 @@ import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
-import { useFirestore } from '@/firebase';
 
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
@@ -135,78 +134,74 @@ export default function ChatPage() {
     const isSystemChat = matchId === 'system';
     const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
 
-
-    useEffect(() => {
-        if (!user || !firestore) return;
-
-        let unsubMessages: () => void;
-
+    const messagesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
         if (isSystemChat) {
-            // Logic for system chat
-            const messagesQuery = query(
-                collection(firestore, `users/${user.uid}/system_messages`),
-                orderBy('timestamp', 'asc')
-            );
-            unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-                const fetchedMessages = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                } as ChatMessage));
-                setMessages(fetchedMessages);
-                setIsLoading(false);
-            });
-        } else if (otherUserId) {
-            // Logic for regular user-to-user chat
-            const unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
-                if (doc.exists()) {
-                    setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
-                }
-            });
-            
-            const unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
-                if (doc.exists()) {
-                    setMatchData(doc.data() as DenormalizedMatch);
-                }
-            });
-
-            const messagesQuery = query(
-                collection(firestore, `matches/${matchId}/messages`),
-                orderBy('timestamp', 'asc')
-            );
-
-            unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-                const fetchedMessages = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                } as ChatMessage));
-                setMessages(fetchedMessages);
-                setIsLoading(false);
-            });
-             return () => {
-                unsubOtherUser();
-                unsubMessages();
-                unsubMatchData();
-            };
+            return query(collection(firestore, `users/${user.uid}/system_messages`), orderBy('timestamp', 'asc'));
         }
+        return query(collection(firestore, `matches/${matchId}/messages`), orderBy('timestamp', 'asc'));
+    }, [isSystemChat, matchId, user, firestore]);
 
-        return () => {
-            unsubMessages?.();
-        };
+    const otherUserDocRef = useMemoFirebase(() => {
+        if (!otherUserId || !firestore) return null;
+        return doc(firestore, 'users', otherUserId);
+    }, [otherUserId, firestore]);
 
-    }, [matchId, user, firestore, otherUserId, isSystemChat]);
+    const matchDataDocRef = useMemoFirebase(() => {
+        if (!user || !firestore || isSystemChat) return null;
+        return doc(firestore, `users/${user.uid}/matches`, matchId);
+    }, [user, firestore, isSystemChat, matchId]);
+
+    // Listener for other user's profile
+    useEffect(() => {
+        if (!otherUserDocRef) return;
+        const unsub = onSnapshot(otherUserDocRef, (doc) => {
+            if (doc.exists()) {
+                setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
+            }
+        });
+        return () => unsub();
+    }, [otherUserDocRef]);
+
+    // Listener for denormalized match data
+    useEffect(() => {
+        if (!matchDataDocRef) return;
+        const unsub = onSnapshot(matchDataDocRef, (doc) => {
+            if (doc.exists()) {
+                setMatchData(doc.data() as DenormalizedMatch);
+            }
+        });
+        return () => unsub();
+    }, [matchDataDocRef]);
+
+    // Listener for messages
+    useEffect(() => {
+        if (!messagesQuery) return;
+        setIsLoading(true);
+        const unsub = onSnapshot(messagesQuery, (snapshot) => {
+            const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+            setMessages(fetchedMessages);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching messages:", error);
+            setIsLoading(false);
+        });
+        return () => unsub();
+    }, [messagesQuery]);
+
 
     // Effect to mark messages as read and reset unread count
     useEffect(() => {
-        if (!firestore || !user || isSystemChat) return;
+        if (!firestore || !user || isSystemChat || !matchId) return;
         
-        const markAsRead = async () => {
+        const markAsRead = () => {
              // 1. Reset unread count on the user's denormalized match document
             const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-            const userMatchSnap = await getDoc(userMatchRef);
-
-            if (userMatchSnap.exists() && userMatchSnap.data().unreadCount > 0) {
-                await updateDoc(userMatchRef, { unreadCount: 0 });
-            }
+            getDoc(userMatchRef).then(userMatchSnap => {
+                if (userMatchSnap.exists() && userMatchSnap.data().unreadCount > 0) {
+                    updateDoc(userMatchRef, { unreadCount: 0 });
+                }
+            });
 
             // 2. Mark individual messages as read
             const unreadMessagesQuery = query(
@@ -214,17 +209,18 @@ export default function ChatPage() {
                 where('senderId', '!=', user.uid), 
                 where('isRead', '==', false)
             );
-            const unreadSnapshot = await getDocs(unreadMessagesQuery);
-            if (unreadSnapshot.empty) return;
-            
-            const batch = writeBatch(firestore);
-            unreadSnapshot.forEach(msgDoc => {
-                batch.update(msgDoc.ref, { 
-                    isRead: true,
-                    readTimestamp: serverTimestamp()
+            getDocs(unreadMessagesQuery).then(unreadSnapshot => {
+                if (unreadSnapshot.empty) return;
+                
+                const batch = writeBatch(firestore);
+                unreadSnapshot.forEach(msgDoc => {
+                    batch.update(msgDoc.ref, { 
+                        isRead: true,
+                        readTimestamp: serverTimestamp()
+                    });
                 });
+                batch.commit();
             });
-            await batch.commit();
         };
 
         markAsRead();
@@ -234,17 +230,15 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async (
-        e?: React.FormEvent,
+    const handleSendMessage = useCallback((
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
     ) => {
-        e?.preventDefault();
         if (!user || !firestore || isSystemChat || !otherUserId) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
             const messageRef = doc(firestore, `matches/${matchId}/messages`, editingMessage.id);
-            await updateDoc(messageRef, {
+            updateDoc(messageRef, {
                 text: newMessage.trim(),
                 isEdited: true,
                 editedAt: serverTimestamp()
@@ -279,7 +273,7 @@ export default function ChatPage() {
             messageData.audioDuration = content.audioDuration;
         }
     
-        await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
+        addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
     
         let lastMessageText = "Mesaj";
         if (messageData.type === 'view-once') lastMessageText = "📷 Fotoğraf";
@@ -302,8 +296,14 @@ export default function ChatPage() {
             unreadCount: increment(1)
         });
         
-        await batch.commit();
-    };
+        batch.commit();
+    }, [user, firestore, isSystemChat, otherUserId, matchId, newMessage, editingMessage]);
+
+    const handleFormSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        handleSendMessage({ text: newMessage });
+    }, [handleSendMessage, newMessage]);
+
 
     const handleFileSelect = () => fileInputRef.current?.click();
 
@@ -340,7 +340,7 @@ export default function ChatPage() {
 
             const { url, public_id } = await response.json();
             
-            await handleSendMessage(undefined, { 
+            handleSendMessage({ 
                 text: caption, 
                 imageUrl: url, 
                 imagePublicId: public_id, 
@@ -435,7 +435,7 @@ export default function ChatPage() {
             }
 
             const { url } = await response.json();
-            await handleSendMessage(undefined, { audioUrl: url, audioDuration: recordingTime, type: 'audio' });
+            handleSendMessage({ audioUrl: url, audioDuration: recordingTime, type: 'audio' });
             
         } catch (error: any) {
              toast({
@@ -879,7 +879,7 @@ export default function ChatPage() {
             {canSendMessage ? (
               <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                  {recordingStatus === 'idle' && (
-                    <form onSubmit={(e) => handleSendMessage(e, { text: newMessage })} className="flex items-center gap-2">
+                    <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
                         {editingMessage && (
                              <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
                                 <X className="h-5 w-5" />
