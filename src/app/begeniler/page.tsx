@@ -21,11 +21,13 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 }
 
 export default function BegenilerPage() {
-    const { user } = useUser();
+    const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const [likers, setLikers] = useState<LikerInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr.begeniler;
+
+    const isGoldMember = userProfile?.membershipType === 'gold';
     
     const matchesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -97,6 +99,23 @@ export default function BegenilerPage() {
             </div>
         );
     }
+
+    const LikerCard = ({ liker }: { liker: LikerInfo }) => (
+        <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
+            <Avatar className="h-full w-full rounded-lg">
+                <AvatarImage src={liker.profilePicture} className={!isGoldMember ? "object-cover blur-md" : "object-cover"} />
+                <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            {!isGoldMember && (
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <span className="text-4xl" role="img" aria-label="lock">🔒</span>
+                </div>
+            )}
+             <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white">
+                <p className="font-bold text-lg truncate">{liker.fullName}{liker.age && `, ${liker.age}`}</p>
+            </div>
+        </div>
+    );
     
     return (
         <AlertDialog>
@@ -109,17 +128,17 @@ export default function BegenilerPage() {
                     <div className="flex-1 overflow-y-auto p-4">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {likers.map(liker => (
-                                <AlertDialogTrigger key={liker.uid} asChild>
-                                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
-                                        <Avatar className="h-full w-full rounded-lg">
-                                            <AvatarImage src={liker.profilePicture} className="object-cover blur-md"/>
-                                            <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                            <span className="text-4xl" role="img" aria-label="lock">🔒</span>
-                                        </div>
+                                isGoldMember ? (
+                                    <div key={liker.uid}> {/* TODO: Link to profile or chat */}
+                                        <LikerCard liker={liker} />
                                     </div>
-                                </AlertDialogTrigger>
+                                ) : (
+                                    <AlertDialogTrigger key={liker.uid} asChild>
+                                       <div>
+                                            <LikerCard liker={liker} />
+                                       </div>
+                                    </AlertDialogTrigger>
+                                )
                             ))}
                         </div>
                     </div>
