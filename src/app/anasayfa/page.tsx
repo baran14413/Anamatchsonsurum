@@ -9,7 +9,7 @@ import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
-import { getDistance } from '@/lib/utils';
+import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
@@ -260,7 +260,10 @@ export default function AnasayfaPage() {
               return (
                 <motion.div
                   key={profile.uid}
-                  className="absolute w-full h-full"
+                  className={cn(
+                    "absolute w-full h-full transition-all",
+                    !isTopCard && "blur-sm"
+                  )}
                   style={{
                     zIndex: index,
                   }}
