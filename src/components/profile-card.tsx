@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star, Info, Clock } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
@@ -67,6 +67,7 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showAllInterests, setShowAllInterests] = useState(false);
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -192,6 +193,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     });
     return grouped;
   }, [profile.interests]);
+  
+  const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
+  const visibleInterests = showAllInterests ? interestEntries : interestEntries.slice(0, 5);
 
 
   return (
@@ -295,7 +299,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </div>
                         )}
                     </div>
-                     <Sheet>
+                     <Sheet onOpenChange={(open) => !open && setShowAllInterests(false)}>
                         <SheetTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
                                 <ChevronUp className="h-6 w-6" />
@@ -355,7 +359,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                             </div>
                                         )}
                                         
-                                        {(lookingForText || Object.keys(groupedInterests).length > 0) && (
+                                        {(lookingForText || interestEntries.length > 0) && (
                                             <div>
                                                 <h4 className='text-lg font-semibold mb-4'>Tercihler</h4>
                                                 <div className="space-y-4">
@@ -370,7 +374,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {Object.entries(groupedInterests).map(([category, { icon, interests }]) => {
+                                                    {visibleInterests.map(([category, { icon, interests }]) => {
                                                         const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
                                                         return (
                                                             <div key={category} className="flex items-start gap-3">
@@ -388,6 +392,16 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                                             </div>
                                                         );
                                                     })}
+                                                    {interestEntries.length > 5 && (
+                                                        <Button
+                                                            variant="link"
+                                                            className="p-0 text-primary h-auto"
+                                                            onClick={() => setShowAllInterests(prev => !prev)}
+                                                        >
+                                                            {showAllInterests ? 'Daha Az Göster' : 'Diğerlerini Gör'}
+                                                            <ChevronDown className={cn('w-4 h-4 ml-1 transition-transform', showAllInterests && 'rotate-180')} />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -403,3 +417,5 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
+
+    
