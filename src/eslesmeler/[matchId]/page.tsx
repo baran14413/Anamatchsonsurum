@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,8 +38,9 @@ import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
 
+
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
-    if (!isSender || message.type === 'system_superlike_prompt') return null;
+    if (!isSender || message.type === 'system_superlike_prompt' || message.senderId === 'system') return null;
 
     if (message.isRead) {
         return <CheckCheck className="h-4 w-4 text-blue-500" />;
@@ -126,33 +127,41 @@ export default function ChatPage() {
     const [imagePreview, setImagePreview] = useState<{file: File, url: string} | null>(null);
     const [caption, setCaption] = useState('');
     const [isViewOnce, setIsViewOnce] = useState(false);
-    
+
     const [viewingOnceImage, setViewingOnceImage] = useState<ChatMessage | null>(null);
     const [viewOnceProgress, setViewOnceProgress] = useState(0);
-
-
-    const otherUserId = user ? matchId.replace(user.uid, '').replace('_', '') : null;
+    
+    const isSystemChat = matchId === 'system';
+    const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
 
     useEffect(() => {
-        if (!user || !firestore || !otherUserId) return;
+        if (!firestore || !user || !matchId) return;
 
-        const unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
-            if (doc.exists()) {
-                setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
-            }
-        });
+        let unsubOtherUser: () => void = () => {};
+        let unsubMatchData: () => void = () => {};
         
-        const unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
-            if (doc.exists()) {
-                setMatchData(doc.data() as DenormalizedMatch);
-            }
-        });
+        if (otherUserId) {
+            unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
+                if (doc.exists()) {
+                    setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
+                }
+            });
+        }
+        
+        if (!isSystemChat) {
+            unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
+                if (doc.exists()) {
+                    setMatchData(doc.data() as DenormalizedMatch);
+                }
+            });
+        }
 
         const messagesQuery = query(
-            collection(firestore, `matches/${matchId}/messages`),
+            collection(firestore, isSystemChat ? `users/${user.uid}/system_messages` : `matches/${matchId}/messages`),
             orderBy('timestamp', 'asc')
         );
 
+        setIsLoading(true);
         const unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
             const fetchedMessages = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -160,52 +169,69 @@ export default function ChatPage() {
             } as ChatMessage));
             setMessages(fetchedMessages);
             setIsLoading(false);
+        }, (error) => {
+            console.error("Error fetching messages:", error);
+            setIsLoading(false);
         });
-
+        
         return () => {
             unsubOtherUser();
             unsubMessages();
             unsubMatchData();
         };
-    }, [matchId, user, firestore, otherUserId]);
 
-    // Effect to mark messages as read
+    }, [matchId, user, firestore, otherUserId, isSystemChat]);
+    
+    
+    // Effect to mark messages as read and reset unread count
     useEffect(() => {
-        if (!firestore || !user || messages.length === 0) return;
+        if (!firestore || !user || isSystemChat || !matchId) return;
         
-        const markMessagesAsRead = async () => {
-            const unreadMessages = messages.filter(msg => msg.senderId !== user.uid && !msg.isRead);
-            if (unreadMessages.length === 0) return;
-
-            const batch = writeBatch(firestore);
-            unreadMessages.forEach(msg => {
-                const msgRef = doc(firestore, `matches/${matchId}/messages`, msg.id);
-                batch.update(msgRef, { 
-                    isRead: true,
-                    readTimestamp: serverTimestamp()
-                });
+        const markAsRead = () => {
+             // 1. Reset unread count on the user's denormalized match document
+            const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            getDoc(userMatchRef).then(userMatchSnap => {
+                if (userMatchSnap.exists() && userMatchSnap.data().unreadCount > 0) {
+                    updateDoc(userMatchRef, { unreadCount: 0 });
+                }
             });
-            await batch.commit();
+
+            // 2. Mark individual messages as read
+            const unreadMessagesQuery = query(
+                collection(firestore, `matches/${matchId}/messages`), 
+                where('senderId', '!=', user.uid), 
+                where('isRead', '==', false)
+            );
+            getDocs(unreadMessagesQuery).then(unreadSnapshot => {
+                if (unreadSnapshot.empty) return;
+                
+                const batch = writeBatch(firestore);
+                unreadSnapshot.forEach(msgDoc => {
+                    batch.update(msgDoc.ref, { 
+                        isRead: true,
+                        readTimestamp: serverTimestamp()
+                    });
+                });
+                batch.commit();
+            });
         };
 
-        markMessagesAsRead();
-    }, [messages, firestore, user, matchId]);
+        markAsRead();
+    }, [messages, firestore, user, matchId, isSystemChat]); // Reruns when messages change
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = async (
-        e?: React.FormEvent,
-        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; isViewOnce?: boolean } = {}
+    const handleSendMessage = useCallback((
+        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
     ) => {
-        e?.preventDefault();
-        if (!user || !firestore) return;
+        if (!user || !firestore || isSystemChat || !otherUserId) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
             const messageRef = doc(firestore, `matches/${matchId}/messages`, editingMessage.id);
-            await updateDoc(messageRef, {
+            updateDoc(messageRef, {
                 text: newMessage.trim(),
                 isEdited: true,
                 editedAt: serverTimestamp()
@@ -225,42 +251,52 @@ export default function ChatPage() {
             senderId: user.uid,
             timestamp: serverTimestamp(),
             isRead: false,
+            type: content.type || 'user'
         };
     
         if (content.imageUrl) {
-            messageData.type = 'user';
-            messageData.text = content.text; // Caption for image
+            messageData.text = content.text;
             messageData.imageUrl = content.imageUrl;
             messageData.imagePublicId = content.imagePublicId;
-            messageData.isViewOnce = content.isViewOnce;
-            if(content.isViewOnce) messageData.viewed = false;
+            if(content.type === 'view-once') messageData.viewed = false;
         } else if (currentMessage) {
-            messageData.type = 'user';
             messageData.text = currentMessage;
         } else if (content.audioUrl) {
-            messageData.type = 'audio';
             messageData.audioUrl = content.audioUrl;
             messageData.audioDuration = content.audioDuration;
         }
     
-        await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
+        addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
     
         let lastMessageText = "Mesaj";
-        if (messageData.isViewOnce) lastMessageText = "📷 Fotoğraf";
+        if (messageData.type === 'view-once') lastMessageText = "📷 Fotoğraf";
         else if (messageData.imageUrl) lastMessageText = "📷 Fotoğraf";
         else if (messageData.text) lastMessageText = messageData.text;
         else if (messageData.audioUrl) lastMessageText = "▶️ Sesli Mesaj";
     
-        const lastMessageUpdate = {
+        const batch = writeBatch(firestore);
+
+        const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+        batch.update(currentUserMatchRef, {
+            lastMessage: lastMessageText,
+            timestamp: serverTimestamp()
+        });
+
+        const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+        batch.update(otherUserMatchRef, {
             lastMessage: lastMessageText,
             timestamp: serverTimestamp(),
-        };
-        const user1Id = matchId.split('_')[0];
-        const user2Id = matchId.split('_')[1];
-    
-        await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
-        await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
-    };
+            unreadCount: increment(1)
+        });
+        
+        batch.commit();
+    }, [user, firestore, isSystemChat, otherUserId, matchId, newMessage, editingMessage]);
+
+    const handleFormSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        handleSendMessage({ text: newMessage });
+    }, [handleSendMessage, newMessage]);
+
 
     const handleFileSelect = () => fileInputRef.current?.click();
 
@@ -292,15 +328,16 @@ export default function ChatPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Fotoğraf yüklenemedi.');
+                throw new Error(errorData.error || `Fotoğraf yüklenemedi: ${response.statusText}`);
             }
 
             const { url, public_id } = await response.json();
-            await handleSendMessage(undefined, { 
+            
+            handleSendMessage({ 
                 text: caption, 
                 imageUrl: url, 
                 imagePublicId: public_id, 
-                isViewOnce 
+                type: isViewOnce ? 'view-once' : 'user'
             });
 
         } catch (error: any) {
@@ -387,11 +424,11 @@ export default function ChatPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Sesli mesaj yüklenemedi.');
+                throw new Error(errorData.error || `Sesli mesaj yüklenemedi: ${response.statusText}`);
             }
 
             const { url } = await response.json();
-            await handleSendMessage(undefined, { audioUrl: url, audioDuration: recordingTime });
+            handleSendMessage({ audioUrl: url, audioDuration: recordingTime, type: 'audio' });
             
         } catch (error: any) {
              toast({
@@ -558,54 +595,31 @@ export default function ChatPage() {
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {
-        if (!user || message.senderId === user.uid || message.viewed) return;
-        setViewingOnceImage(message);
-        setViewOnceProgress(0);
+        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed) return;
+        
+        // This function now IMMEDIATELY marks the photo as viewed and starts deletion process.
+        const markAsViewed = async () => {
+            const msgRef = doc(firestore, `matches/${matchId}/messages`, message.id);
+            const publicId = message.imagePublicId;
 
-        const timerDuration = 5000; // 5 seconds
-        let startTime: number;
-        let animationFrameId: number;
+            const batch = writeBatch(firestore);
 
-        const animateProgress = (timestamp: number) => {
-            if (!startTime) startTime = timestamp;
-            const elapsed = timestamp - startTime;
-            const progress = Math.min((elapsed / timerDuration) * 100, 100);
-            setViewOnceProgress(progress);
-
-            if (progress < 100) {
-                animationFrameId = requestAnimationFrame(animateProgress);
-            } else {
-                handleCloseViewOnce(true); 
-            }
-        };
-        animationFrameId = requestAnimationFrame(animateProgress);
-
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-        };
-    };
-
-    const handleCloseViewOnce = async (markAsViewed = false) => {
-        if (markAsViewed && viewingOnceImage && firestore) {
-            const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
-            const publicId = viewingOnceImage.imagePublicId;
-
-            // Update the document to remove image URL and mark as viewed
-            await updateDoc(msgRef, { 
+            batch.update(msgRef, { 
                 viewed: true,
+                type: 'view-once-viewed',
                 imageUrl: null, 
                 imagePublicId: null,
-                text: "📷 Fotoğraf açıldı"
+                text: "📷 Fotoğraf açıldı",
             });
-
-            // Update last message in denormalized match docs
-            const user1Id = matchId.split('_')[0];
-            const user2Id = matchId.split('_')[1];
+            
             const lastMessageUpdate = { lastMessage: "📷 Fotoğraf açıldı", timestamp: serverTimestamp() };
-            await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
-            await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
+            const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+            batch.update(currentUserMatchRef, lastMessageUpdate);
+            batch.update(otherUserMatchRef, lastMessageUpdate);
+            
+            await batch.commit();
 
-            // Delete the image from Cloudinary
             if (publicId) {
                 try {
                     await fetch('/api/delete-image', {
@@ -617,14 +631,39 @@ export default function ChatPage() {
                     console.error("Failed to delete 'view once' image from Cloudinary:", err);
                 }
             }
-        }
-        setViewingOnceImage(null);
+        };
+
+        markAsViewed();
+        setViewingOnceImage(message);
+        setViewOnceProgress(0);
+
+        let animationFrameId: number;
+        const timerDuration = 5000; // 5 seconds
+        let startTime: number | null = null;
+        
+        const animateProgress = (timestamp: number) => {
+            if (startTime === null) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+            const progress = Math.min((elapsed / timerDuration) * 100, 100);
+            setViewOnceProgress(progress);
+
+            if (progress < 100) {
+                animationFrameId = requestAnimationFrame(animateProgress);
+            } else {
+                setViewingOnceImage(null);
+            }
+        };
+
+        animationFrameId = requestAnimationFrame(animateProgress);
+    
+        return () => cancelAnimationFrame(animationFrameId);
     };
 
     
-    const isSuperLikePendingAndIsRecipient = matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
-    const canSendMessage = matchData?.status === 'matched';
+    const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
+    const canSendMessage = !isSystemChat && matchData?.status === 'matched';
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
+    const isOtherUserGold = otherUser?.membershipType === 'gold';
     
     return (
         <div className="flex h-dvh flex-col bg-background">
@@ -632,55 +671,75 @@ export default function ChatPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <div className="flex items-center gap-3">
-                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={otherUser?.profilePicture} />
-                        <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-1">
-                           <span className="font-semibold">{otherUser?.fullName}</span>
-                        </div>
-                        {renderOnlineStatus()}
-                    </div>
+                 <div className="flex items-center gap-3">
+                    {isSystemChat ? (
+                        <>
+                           <Avatar className="h-9 w-9">
+                               <Icons.bmIcon className="h-full w-full" />
+                           </Avatar>
+                           <div className="flex flex-col">
+                               <span className="font-semibold">BeMatch - Sistem Mesajları</span>
+                               <span className="text-xs text-green-500">Her zaman aktif</span>
+                           </div>
+                        </>
+                    ) : (
+                         <>
+                             <Avatar className="h-9 w-9">
+                                <AvatarImage src={otherUser?.profilePicture} />
+                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                   <span className="font-semibold">{otherUser?.fullName}</span>
+                                   {isOtherUserGold && <Icons.beGold width={20} height={20} />}
+                                </div>
+                                {renderOnlineStatus()}
+                            </div>
+                        </>
+                    )}
                 </div>
-                <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-6 w-6" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className='text-red-600 focus:text-red-600'>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    <span>Kullanıcıyı Engelle</span>
-                                </DropdownMenuItem>
-                             </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                             {isBlocking ? t.common.loading : 'Engelle'}
-                        </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                 {isSystemChat ? (
+                    <div className='w-9'></div> // Placeholder for spacing
+                 ) : (
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-6 w-6" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                 <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className='text-red-600 focus:text-red-600'>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        <span>Kullanıcıyı Engelle</span>
+                                    </DropdownMenuItem>
+                                 </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                                 {isBlocking ? t.common.loading : 'Engelle'}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                 )}
             </header>
 
             <main className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
+                        const isSystem = message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
                         if (message.type === 'system_superlike_prompt' && !message.actionTaken && isSuperLikePendingAndIsRecipient) {
@@ -694,8 +753,30 @@ export default function ChatPage() {
                             )
                         }
 
-                        if (message.isViewOnce && message.viewed) {
-                            return (
+                        if (isSystem) {
+                             return (
+                                <div key={message.id}>
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                     <div className={cn("flex items-end gap-2 group justify-start")}>
+                                         <Avatar className="h-8 w-8 self-end mb-1">
+                                            <Icons.bmIcon className="h-full w-full" />
+                                        </Avatar>
+                                        <div
+                                            className={cn(
+                                                "max-w-[70%] rounded-2xl flex flex-col items-end",
+                                                "bg-muted rounded-bl-none",
+                                                'px-3 py-2'
+                                            )}
+                                        >
+                                          <p className='break-words text-left w-full'>{message.text}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                         if (message.type === 'view-once-viewed') {
+                             return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
@@ -712,7 +793,11 @@ export default function ChatPage() {
                                             )}
                                         >
                                             <EyeOff className="w-4 h-4" />
-                                            <span>Fotoğraf açıldı</span>
+                                            <span>Açıldı</span>
+                                        </div>
+                                         <div className="flex items-center gap-1.5 self-end">
+                                            <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
                                 </div>
@@ -740,28 +825,27 @@ export default function ChatPage() {
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            (message.imageUrl && !message.isViewOnce) || (message.isViewOnce && !message.viewed) ? 'p-1.5' : 'px-3 py-2',
+                                            message.type === 'view-once' ? 'p-0' : (message.imageUrl ? 'p-1.5' : 'px-3 py-2'),
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
-                                        {message.isViewOnce && !message.viewed ? (
+                                        {message.type === 'view-once' ? (
                                              <button
                                                 className={cn(
                                                     "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                    (isSender) && "opacity-80 cursor-not-allowed"
+                                                    (isSender) && "cursor-not-allowed"
                                                 )}
-                                                onClick={() => handleOpenViewOnce(message)}
-                                                disabled={isSender}
+                                                onClick={() => isSender ? null : handleOpenViewOnce(message)}
                                             >
                                                 <History className="w-6 h-6 text-green-400" />
-                                                <span className="font-medium text-base">Fotoğraf</span>
+                                                <span className="font-medium text-base">{isSender ? "Fotoğraf Gönderildi" : "Fotoğraf"}</span>
                                             </button>
                                         ) : message.imageUrl ? (
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && !message.viewed && (
+                                        {message.text && message.type !== 'view-once' && (
                                           <p className={cn('break-words text-left w-full', 
                                             message.imageUrl && 'px-2 pb-1 pt-2'
                                           )}>
@@ -771,7 +855,7 @@ export default function ChatPage() {
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !(message.isViewOnce && !message.viewed) && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
@@ -788,7 +872,7 @@ export default function ChatPage() {
             {canSendMessage ? (
               <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                  {recordingStatus === 'idle' && (
-                    <form onSubmit={(e) => handleSendMessage(e, { text: newMessage })} className="flex items-center gap-2">
+                    <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
                         {editingMessage && (
                              <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
                                 <X className="h-5 w-5" />
@@ -853,7 +937,7 @@ export default function ChatPage() {
                  
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
-            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+            ) : isSystemChat ? null : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
                 </div>
@@ -915,8 +999,8 @@ export default function ChatPage() {
             </Dialog>
 
             {/* View Once Image Dialog */}
-             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
-                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col screenshot-secure-backdrop">
+             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && setViewingOnceImage(null)}>
+                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
                      <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
                      <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
                      <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
@@ -928,7 +1012,7 @@ export default function ChatPage() {
                            <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
                        </div>
                         <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
+                            <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white" onClick={() => setViewingOnceImage(null)}>
                                 <X className="h-5 w-5" />
                             </Button>
                         </DialogClose>
@@ -953,6 +1037,3 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
-    
-
-    

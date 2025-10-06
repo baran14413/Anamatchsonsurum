@@ -16,6 +16,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
+import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -280,8 +281,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                <div className="flex items-end justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
-                        <div className='flex items-center gap-4'>
+                        <div className='flex items-center gap-2'>
                           <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
+                           {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} />}
                         </div>
                         <div className='flex flex-col gap-1.5'>
                             {profile.distance !== undefined && (
@@ -316,7 +318,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                          <Carousel className="w-full">
                                             <CarouselContent>
                                                 {profile.images
-                                                    .filter(image => image && image.url)
+                                                    .filter(image => image && image.url && validImageExtensions.some(ext => image.url.toLowerCase().endsWith(ext)))
                                                     .map((image, index) => (
                                                     <CarouselItem key={index}>
                                                         <div className="relative w-full aspect-[4/3]">
@@ -339,8 +341,10 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                         <div className="text-left space-y-2">
                                             <div className='flex items-center gap-3'>
                                                 <h3 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
+                                                {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} />}
                                                 {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
                                             </div>
+                                             {profile.membershipType === 'gold' && <p className="font-semibold text-yellow-500 -mt-1">Gold Üye</p>}
                                             
                                             {(profile.address?.city && profile.address?.country) && (
                                                 <div className="flex items-center gap-2 text-muted-foreground">

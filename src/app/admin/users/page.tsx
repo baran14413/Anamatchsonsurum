@@ -18,7 +18,7 @@ import { UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Shield, Star, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Shield, Star, Trash2, Gem } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +60,26 @@ export default function AdminUsersPage() {
       });
     }
   };
+
+  const handleToggleGold = async (user: UserProfile) => {
+    if (!firestore) return;
+    const userDocRef = doc(firestore, 'users', user.id);
+    const newMembershipStatus = user.membershipType === 'gold' ? 'free' : 'gold';
+    try {
+      await updateDoc(userDocRef, { membershipType: newMembershipStatus });
+      toast({
+        title: 'Başarılı',
+        description: `${user.fullName} kullanıcısı ${newMembershipStatus === 'gold' ? 'Gold üye yapıldı' : 'üyeliği normale çevrildi'}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Hata',
+        description: `İşlem sırasında bir hata oluştu: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   const handleAddSuperLike = async (user: UserProfile) => {
     if (!firestore) return;
@@ -137,6 +157,7 @@ export default function AdminUsersPage() {
                         {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
                         </Badge>
                          {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
+                         {user.membershipType === 'gold' && <Badge className='gap-1 bg-yellow-400 text-yellow-900 hover:bg-yellow-400/90'><Gem className='h-3 w-3'/> Gold</Badge>}
                     </div>
                     </TableCell>
                     <TableCell>
@@ -155,6 +176,10 @@ export default function AdminUsersPage() {
                                 <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
                                     <Shield className='mr-2 h-4 w-4' />
                                     <span>{user.isAdmin ? 'Admin Yetkisini Al' : 'Admin Yap'}</span>
+                                </DropdownMenuItem>
+                                 <DropdownMenuItem onClick={() => handleToggleGold(user)}>
+                                    <Gem className='mr-2 h-4 w-4' />
+                                    <span>{user.membershipType === 'gold' ? 'Gold\'u Kaldır' : 'Gold Yap'}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleAddSuperLike(user)}>
                                      <Star className='mr-2 h-4 w-4' />

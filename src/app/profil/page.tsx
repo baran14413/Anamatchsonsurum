@@ -117,6 +117,7 @@ export default function ProfilePage() {
                 {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
                 {isGoldMember ? <Icons.beGold width={24} height={24} /> : <ShieldCheckIcon className="h-6 w-6 text-blue-500" />}
             </h1>
+            {isGoldMember && <p className="font-semibold text-yellow-500">Gold Üye</p>}
             <Link href="/profil/galeri">
                 <Button className='rounded-full h-10 font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white'>
                     <GalleryHorizontal className="mr-2 h-5 w-5"/>
