@@ -9,17 +9,11 @@ import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from '@/components/ui/sidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, isUserLoading } = useUser();
+  const { isUserLoading } = useUser();
   const router = useRouter();
 
   if (isUserLoading) {
     return <div className="flex h-screen items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
-  }
-
-  if (!userProfile?.isAdmin) {
-    // This is a fallback, AppShell should already handle redirection.
-    router.replace('/anasayfa');
-    return null;
   }
 
   return (

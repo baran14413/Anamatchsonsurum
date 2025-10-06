@@ -5,7 +5,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import FooterNav from './footer-nav';
-import { ShieldCheck, Settings, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Settings, ChevronRight, AtSign } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -100,12 +100,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (isUserLoading) {
       return; // Wait until user and profile status is resolved
     }
-
-    if (isAdminRoute && !userProfile?.isAdmin) {
-       router.replace('/anasayfa');
-       return;
-    }
-
+    
     // SCENARIO 1: User is logged in
     if (user) {
       // 1a: But profile is INCOMPLETE (we use 'gender' as the marker for a complete profile)
@@ -163,6 +158,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <>
                 <Icons.logo width={80} height={26} className="text-pink-500" />
                 <div className="flex items-center gap-2">
+                    <Link href="/admin/dashboard">
+                        <Button variant="ghost" size="icon">
+                            <AtSign className="h-6 w-6 text-muted-foreground" />
+                        </Button>
+                    </Link>
                     <Button variant="ghost" size="icon">
                         <ShieldCheck className="h-6 w-6 text-muted-foreground" />
                     </Button>
