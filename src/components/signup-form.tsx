@@ -281,7 +281,7 @@ export default function ProfileCompletionForm() {
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
       
-      router.push('/anasayfa');
+      router.push('/kurallar');
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -305,7 +305,11 @@ export default function ProfileCompletionForm() {
     formData.append('file', file);
 
     try {
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const response = await fetch('/api/upload', {
+             method: 'POST',
+             body: formData
+        });
+
         if (!response.ok) {
             const err = await response.json();
             throw new Error(err.error || 'Yükleme başarısız');

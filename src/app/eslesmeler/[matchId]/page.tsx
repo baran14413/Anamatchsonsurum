@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useFirestore, useUserProfile } from '@/firebase';
+import { useUser, useUserProfile } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
+import { useFirestore } from '@/firebase';
 
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
