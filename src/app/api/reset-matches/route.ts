@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { credential } from 'firebase-admin';
 
@@ -11,7 +11,7 @@ if (!getApps().length) {
         try {
             const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
             adminApp = initializeApp({
-                credential: credential.cert(serviceAccount)
+                credential: cert(serviceAccount)
             });
         } catch (e) {
             console.error("Firebase Admin initialization from service account key failed.", e);
@@ -31,31 +31,23 @@ const db = getFirestore(adminApp);
 
 async function deleteCollection(collectionPath: string, batchSize: number) {
     const collectionRef = db.collection(collectionPath);
-    const query = collectionRef.limit(batchSize);
+    let query = collectionRef.orderBy('__name__').limit(batchSize);
 
-    return new Promise((resolve, reject) => {
-        deleteQueryBatch(query, resolve).catch(reject);
-    });
-}
+    while (true) {
+        const snapshot = await query.get();
+        if (snapshot.size === 0) {
+            return;
+        }
 
-async function deleteQueryBatch(query: FirebaseFirestore.Query, resolve: (value: unknown) => void) {
-    const snapshot = await query.get();
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
 
-    const batchSize = snapshot.size;
-    if (batchSize === 0) {
-        resolve(true);
-        return;
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        query = collectionRef.orderBy('__name__').startAfter(lastVisible).limit(batchSize);
     }
-
-    const batch = db.batch();
-    snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
-
-    process.nextTick(() => {
-        deleteQueryBatch(query, resolve);
-    });
 }
 
 
@@ -67,8 +59,6 @@ export async function POST(req: NextRequest) {
     try {
         const matchesSnapshot = await db.collection('matches').get();
         const usersSnapshot = await db.collection('users').get();
-        
-        const mainBatch = db.batch();
         
         // --- 1. Delete all subcollections ---
         const deleteSubcollectionPromises: Promise<any>[] = [];

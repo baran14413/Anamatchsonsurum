@@ -1,37 +1,33 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
-import { getFirestore, WriteBatch, Query } from 'firebase-admin/firestore';
+import { initializeApp, getApps, App, cert, credential } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Initialize Firebase Admin SDK
-function initializeFirebaseAdmin(): App | null {
-    if (getApps().length) {
-        return getApps()[0];
-    }
-    
-    try {
-        if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+let adminApp: App;
+if (!getApps().length) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        try {
             const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-            return initializeApp({
+            adminApp = initializeApp({
                 credential: cert(serviceAccount)
             });
-        } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            // Fallback for Google Cloud environment
-            return initializeApp();
-        } else {
-            console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
-            return null;
+        } catch (e) {
+            console.error("Firebase Admin initialization from service account key failed.", e);
         }
-    } catch(e) {
-        console.error("Firebase Admin initialization failed.", e);
-        return null;
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        adminApp = initializeApp({
+            credential: credential.applicationDefault()
+        });
+    } else {
+        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
     }
+} else {
+    adminApp = getApps()[0];
 }
 
-const adminApp = initializeFirebaseAdmin();
-const db = adminApp ? getFirestore(adminApp) : null;
-
+const db = getFirestore(adminApp);
 
 // Initialize Cloudinary
 cloudinary.config({
@@ -44,16 +40,20 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
     if (!db) throw new Error("Firestore not initialized");
 
     const collectionRef = db.collection(collectionPath);
-    const query = collectionRef.limit(batchSize);
+    let query = collectionRef.limit(batchSize);
 
-    let snapshot = await query.get();
-    while (snapshot.size > 0) {
+    while (true) {
+        const snapshot = await query.get();
+        if (snapshot.size === 0) {
+            return;
+        }
+
         const batch = db.batch();
         const publicIdsToDelete: string[] = [];
 
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (data.imagePublicId) {
+            if (data.imagePublicId && !data.imagePublicId.startsWith('google_')) {
                 publicIdsToDelete.push(data.imagePublicId);
             }
             batch.delete(doc.ref);
@@ -66,25 +66,28 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
                 console.error("Cloudinary deletion failed for some resources, but continuing Firestore deletion:", cloudinaryError);
             }
         }
-
+        
         await batch.commit();
 
-        snapshot = await query.get();
+        // Get the last document from the batch
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        query = collectionRef.startAfter(lastVisible).limit(batchSize);
     }
 }
 
 
 export async function POST(req: NextRequest) {
+    if (!adminApp || !db) {
+         return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
+    }
+    
     try {
         const { matchId } = await req.json();
 
         if (!matchId) {
             return NextResponse.json({ error: 'Match ID is required.' }, { status: 400 });
         }
-        if (!adminApp || !db) {
-             return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
-        }
-
+        
         const [user1Id, user2Id] = matchId.split('_');
         
         // 1. Delete all messages and their images from Cloudinary
