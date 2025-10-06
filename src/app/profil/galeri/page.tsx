@@ -28,16 +28,34 @@ const MAX_VIDEO_SLOTS = 4;
 const MAX_TOTAL_SLOTS = MAX_IMAGE_SLOTS + MAX_VIDEO_SLOTS;
 
 const getInitialMediaSlots = (userProfile: any): MediaSlot[] => {
-  const initialSlots: MediaSlot[] = Array.from({ length: MAX_TOTAL_SLOTS }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }));
-  if (userProfile?.media) {
-    userProfile.media.forEach((media: UserMedia, index: number) => {
-      if (index < MAX_TOTAL_SLOTS) {
-        initialSlots[index] = { file: null, preview: media.url, public_id: media.public_id, isUploading: false, isNew: false, type: media.type };
-      }
-    });
-  }
-  return initialSlots;
+    const imageSlots: MediaSlot[] = Array.from({ length: MAX_IMAGE_SLOTS }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }));
+    const videoSlots: MediaSlot[] = Array.from({ length: MAX_VIDEO_SLOTS }, () => ({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'video' }));
+
+    if (userProfile?.media) {
+        let imageIndex = 0;
+        let videoIndex = 0;
+
+        userProfile.media.forEach((media: UserMedia) => {
+            const slotData = {
+                file: null,
+                preview: media.url,
+                public_id: media.public_id,
+                isUploading: false,
+                isNew: false,
+                type: media.type
+            };
+
+            if (media.type === 'image' && imageIndex < MAX_IMAGE_SLOTS) {
+                imageSlots[imageIndex++] = slotData;
+            } else if (media.type === 'video' && videoIndex < MAX_VIDEO_SLOTS) {
+                videoSlots[videoIndex++] = slotData;
+            }
+        });
+    }
+
+    return [...imageSlots, ...videoSlots];
 };
+
 
 export default function GalleryEditPage() {
   const router = useRouter();
@@ -57,17 +75,16 @@ export default function GalleryEditPage() {
     }
   }, [userProfile]);
 
-  const imageSlots = mediaSlots.filter(p => p.type === 'image' || !p.preview).slice(0, MAX_IMAGE_SLOTS);
-  const videoSlots = mediaSlots.filter(p => p.type === 'video' || !p.preview).slice(0, MAX_VIDEO_SLOTS);
-  const uploadedMediaCount = mediaSlots.filter(p => p.preview).length;
+  const imageSlots = useMemo(() => mediaSlots.slice(0, MAX_IMAGE_SLOTS), [mediaSlots]);
+  const videoSlots = useMemo(() => mediaSlots.slice(MAX_IMAGE_SLOTS), [mediaSlots]);
+
+  const uploadedImageCount = imageSlots.filter(p => p.preview).length;
+  const uploadedVideoCount = videoSlots.filter(p => p.preview).length;
+  const uploadedMediaCount = uploadedImageCount + uploadedVideoCount;
 
   const handleFileSelect = (index: number, type: 'image' | 'video') => {
       if(isSubmitting) return;
-
-      const currentSlots = type === 'image' ? imageSlots : videoSlots;
-      const targetIndex = currentSlots[index].preview ? index : currentSlots.filter(s => s.preview).length;
-
-      setActiveSlotInfo({ index: targetIndex, type });
+      setActiveSlotInfo({ index, type });
       fileInputRef.current?.click();
   };
   
@@ -95,8 +112,8 @@ export default function GalleryEditPage() {
         video.preload = 'metadata';
         video.onloadedmetadata = () => {
             window.URL.revokeObjectURL(video.src);
-            if (video.duration > 10) {
-                reject(new Error("Video 10 saniyeden uzun olamaz."));
+            if (video.duration > 20) {
+                reject(new Error("Video 20 saniyeden uzun olamaz."));
             } else {
                 resolve();
             }
@@ -110,31 +127,21 @@ export default function GalleryEditPage() {
         
         setMediaSlots(prevSlots => {
             const newSlots = [...prevSlots];
-            const slotToUpdate = { file, preview, isUploading: false, isNew: true, public_id: null, type: isVideo ? 'video' : 'image' as 'image' | 'video' };
-            
-            // Find the first empty slot of the correct type
-            const firstEmptyIndex = newSlots.findIndex(slot => !slot.preview && (isVideo ? slot.type === 'video' || newSlots.filter(s => s.preview && s.type==='video').length < MAX_VIDEO_SLOTS : slot.type === 'image'));
+            let targetIndex = -1;
 
-            // This logic is complex. Let's simplify. Find the correct slot array, find the first empty one, and get its original index.
-            const originalIndex = newSlots.findIndex(s => s.preview === null && (activeSlotInfo.type === 'video' ? s.type === 'video' : true));
-            const targetIndex = activeSlotInfo.index;
-
-            // This needs to be smarter. We need to map the sub-array index back to the main array index.
-            let mainIndex = -1;
-            let count = 0;
-            for(let i=0; i< newSlots.length; i++) {
-                if (newSlots[i].type === activeSlotInfo.type || !newSlots[i].preview) {
-                     if (count === targetIndex) {
-                        mainIndex = i;
-                        break;
-                     }
-                     count++;
+            if (activeSlotInfo.type === 'image') {
+                targetIndex = newSlots.slice(0, MAX_IMAGE_SLOTS).findIndex(slot => !slot.preview)
+            } else {
+                const videoStartIndex = MAX_IMAGE_SLOTS;
+                const emptyVideoSlotIndex = newSlots.slice(videoStartIndex).findIndex(slot => !slot.preview);
+                if (emptyVideoSlotIndex !== -1) {
+                    targetIndex = videoStartIndex + emptyVideoSlotIndex;
                 }
             }
-            if (mainIndex !== -1) {
-                newSlots[mainIndex] = slotToUpdate;
-            }
 
+            if (targetIndex !== -1) {
+                newSlots[targetIndex] = { file, preview, isUploading: false, isNew: true, public_id: null, type: isVideo ? 'video' : 'image' };
+            }
 
             return newSlots;
         });
@@ -152,7 +159,7 @@ export default function GalleryEditPage() {
   };
 
 
-  const handleDeleteMedia = async (e: React.MouseEvent, index: number, type: 'image' | 'video') => {
+  const handleDeleteMedia = (e: React.MouseEvent, index: number, type: 'image' | 'video') => {
       e.stopPropagation(); 
       if(isSubmitting) return;
 
@@ -161,20 +168,21 @@ export default function GalleryEditPage() {
         return;
       }
       
-      const slots = type === 'image' ? imageSlots : videoSlots;
-      const slotToDelete = slots[index];
+      const mainIndex = type === 'image' ? index : MAX_IMAGE_SLOTS + index;
+      const slotToDelete = mediaSlots[mainIndex];
 
       setMediaSlots(prevSlots => {
-          const originalIndex = prevSlots.findIndex(s => s.preview === slotToDelete.preview);
-          if (originalIndex === -1) return prevSlots;
-
           const newSlots = [...prevSlots];
           if (slotToDelete.file && slotToDelete.preview) URL.revokeObjectURL(slotToDelete.preview);
           
-          newSlots.splice(originalIndex, 1);
-          newSlots.push({ file: null, preview: null, public_id: null, isUploading: false, isNew: false, type: 'image' }); // Add empty slot to the end
+          newSlots[mainIndex] = { file: null, preview: null, public_id: null, isUploading: false, isNew: false, type };
 
-          return newSlots;
+          // Re-organize slots
+          const updatedImages = newSlots.slice(0, MAX_IMAGE_SLOTS).filter(s => s.preview);
+          const updatedVideos = newSlots.slice(MAX_IMAGE_SLOTS).filter(s => s.preview);
+          
+          const finalSlots = getInitialMediaSlots({media: [...updatedVideos, ...updatedImages]});
+          return finalSlots;
       });
   };
 
@@ -213,7 +221,11 @@ export default function GalleryEditPage() {
         }
         
         // Sort videos to be first
-        finalOrderedMedia.sort((a, b) => (a.type === 'video' ? -1 : 1) - (b.type === 'video' ? -1 : 1));
+        finalOrderedMedia.sort((a, b) => {
+          if (a.type === 'video' && b.type !== 'video') return -1;
+          if (a.type !== 'video' && b.type === 'video') return 1;
+          return 0;
+        });
 
         await updateDoc(doc(firestore, "users", user.uid), {
             media: finalOrderedMedia,
@@ -302,7 +314,7 @@ export default function GalleryEditPage() {
             </div>
              <div>
                 <h2 className="text-xl font-bold flex items-center gap-2 mb-2"><Video className="w-5 h-5"/> Videolar ({MAX_VIDEO_SLOTS})</h2>
-                 <p className="text-sm text-muted-foreground mb-4">Videolar maksimum 10 saniye uzunluğunda olabilir.</p>
+                 <p className="text-sm text-muted-foreground mb-4">Videolar maksimum 20 saniye uzunluğunda olabilir.</p>
                 <div className="grid grid-cols-3 gap-4">
                     {videoSlots.map((slot, index) => getSlotComponent(slot, index, 'video'))}
                 </div>
