@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore, useUserProfile } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,18 +194,31 @@ export default function ChatPage() {
 
     }, [matchId, user, firestore, otherUserId, isSystemChat]);
 
-    // Effect to mark messages as read
+    // Effect to mark messages as read and reset unread count
     useEffect(() => {
-        if (!firestore || !user || messages.length === 0 || isSystemChat) return;
+        if (!firestore || !user || isSystemChat) return;
         
-        const markMessagesAsRead = async () => {
-            const unreadMessages = messages.filter(msg => msg.senderId !== user.uid && !msg.isRead);
-            if (unreadMessages.length === 0) return;
+        const markAsRead = async () => {
+             // 1. Reset unread count on the user's denormalized match document
+            const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            const userMatchSnap = await getDoc(userMatchRef);
 
+            if (userMatchSnap.exists() && userMatchSnap.data().unreadCount > 0) {
+                await updateDoc(userMatchRef, { unreadCount: 0 });
+            }
+
+            // 2. Mark individual messages as read
+            const unreadMessagesQuery = query(
+                collection(firestore, `matches/${matchId}/messages`), 
+                where('senderId', '!=', user.uid), 
+                where('isRead', '==', false)
+            );
+            const unreadSnapshot = await getDocs(unreadMessagesQuery);
+            if (unreadSnapshot.empty) return;
+            
             const batch = writeBatch(firestore);
-            unreadMessages.forEach(msg => {
-                const msgRef = doc(firestore, `matches/${matchId}/messages`, msg.id);
-                batch.update(msgRef, { 
+            unreadSnapshot.forEach(msgDoc => {
+                batch.update(msgDoc.ref, { 
                     isRead: true,
                     readTimestamp: serverTimestamp()
                 });
@@ -213,8 +226,8 @@ export default function ChatPage() {
             await batch.commit();
         };
 
-        markMessagesAsRead();
-    }, [messages, firestore, user, matchId, isSystemChat]);
+        markAsRead();
+    }, [messages, firestore, user, matchId, isSystemChat]); // Reruns when messages change
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -225,7 +238,7 @@ export default function ChatPage() {
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; isViewOnce?: boolean } = {}
     ) => {
         e?.preventDefault();
-        if (!user || !firestore || isSystemChat) return;
+        if (!user || !firestore || isSystemChat || !otherUserId) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
@@ -276,15 +289,22 @@ export default function ChatPage() {
         else if (messageData.text) lastMessageText = messageData.text;
         else if (messageData.audioUrl) lastMessageText = "▶️ Sesli Mesaj";
     
-        const lastMessageUpdate = {
+        const batch = writeBatch(firestore);
+
+        const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+        batch.update(currentUserMatchRef, {
+            lastMessage: lastMessageText,
+            timestamp: serverTimestamp()
+        });
+
+        const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+        batch.update(otherUserMatchRef, {
             lastMessage: lastMessageText,
             timestamp: serverTimestamp(),
-        };
-        const user1Id = matchId.split('_')[0];
-        const user2Id = matchId.split('_')[1];
-    
-        await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
-        await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
+            unreadCount: increment(1)
+        });
+        
+        await batch.commit();
     };
 
     const handleFileSelect = () => fileInputRef.current?.click();

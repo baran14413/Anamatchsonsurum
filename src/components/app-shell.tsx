@@ -52,38 +52,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     });
 
     // --- Check for unread messages ---
-    const matchesQuery = query(collection(firestore, `users/${user.uid}/matches`));
+    // This now checks the `unreadCount` field on the denormalized match data
+    const matchesQuery = query(
+        collection(firestore, `users/${user.uid}/matches`),
+        where('unreadCount', '>', 0)
+    );
     const unsubscribeMatches = onSnapshot(matchesQuery, (snapshot) => {
-        const matchIds = snapshot.docs.map(doc => doc.id);
-        if (matchIds.length === 0) {
-            setHasUnreadMessages(false);
-            return;
-        }
-
-        // For each match, check for unread messages.
-        // This is a simplified approach. For large scale, a dedicated `unreadCount` field would be better.
-        let anyUnread = false;
-        const unreadChecks = matchIds.map(matchId => {
-            return new Promise<void>(resolve => {
-                const messagesQuery = query(
-                    collection(firestore, `matches/${matchId}/messages`),
-                    where('senderId', '!=', user.uid),
-                    where('isRead', '==', false)
-                );
-                const unsub = onSnapshot(messagesQuery, msgSnapshot => {
-                    if (!msgSnapshot.empty) {
-                        anyUnread = true;
-                    }
-                    unsub(); // Unsubscribe after first check to avoid multiple listeners
-                    resolve();
-                });
-            });
-        });
-        
-        Promise.all(unreadChecks).then(() => {
-            setHasUnreadMessages(anyUnread);
-        });
-
+        setHasUnreadMessages(!snapshot.empty);
     }, () => setHasUnreadMessages(false));
 
 

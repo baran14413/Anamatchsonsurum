@@ -116,4 +116,5 @@ export interface DenormalizedMatch {
     isSuperLike?: boolean;
     status?: 'pending' | 'matched' | 'superlike_pending';
     superLikeInitiator?: string;
+    unreadCount?: number;
 }
