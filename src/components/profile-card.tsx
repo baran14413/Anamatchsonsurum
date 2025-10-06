@@ -1,16 +1,17 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star, Info } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { ScrollArea } from './ui/scroll-area';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -161,19 +162,12 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                     <div className="space-y-2 flex-1 min-w-0">
                         <div className='flex items-center gap-4'>
                           <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                          {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
                         </div>
                         <div className='flex flex-col gap-1.5'>
                             {profile.distance !== undefined && (
                                 <div className="flex items-center gap-2">
                                     <MapPin className="w-4 h-4" />
                                     <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                </div>
-                            )}
-                            {profile.address?.city && (
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{profile.address.city}, {profile.address.country}</span>
                                 </div>
                             )}
                         </div>
@@ -184,9 +178,80 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                 <ChevronUp className="h-6 w-6" />
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0'>
-                            <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
-                            <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                        <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
+                            <SheetHeader className='sr-only'>
+                                <SheetTitle>Profil Detayları</SheetTitle>
+                                <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                            </SheetHeader>
+                            <ScrollArea className='flex-1'>
+                                <div className='relative'>
+                                    <Carousel>
+                                        <CarouselContent>
+                                            {(profile.images || []).map((image, index) => (
+                                                <CarouselItem key={image.public_id || index}>
+                                                    <div className="aspect-[3/4] relative w-full">
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
+                                                            fill
+                                                            style={{objectFit: 'cover'}}
+                                                            priority={index === 0}
+                                                            className='rounded-b-2xl'
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        <CarouselPrevious className='absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black' />
+                                        <CarouselNext className='absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black' />
+                                    </Carousel>
+                                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-white rounded-b-2xl">
+                                        <div className='flex items-center gap-3'>
+                                            <h3 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
+                                            {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
+                                        </div>
+                                         {(profile.distance !== undefined || profile.address?.city) && (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>
+                                                    {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="p-6 space-y-6">
+                                    {profile.bio && (
+                                        <div>
+                                            <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                            <p className='text-muted-foreground'>{profile.bio}</p>
+                                        </div>
+                                    )}
+
+                                    {profile.interests && profile.interests.length > 0 && (
+                                        <div>
+                                            <h4 className='text-lg font-semibold mb-2'>İlgi Alanları</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {profile.interests.map(interest => (
+                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                             <div className="p-4 border-t flex gap-3 justify-center bg-background">
+                                <Button size="lg" className="h-16 w-16 rounded-full bg-white border-2 border-red-200 shadow-lg" onClick={() => handleAction('disliked')}>
+                                    <X className="h-8 w-8 text-red-500" strokeWidth={3} />
+                                </Button>
+                                <Button size="lg" className="h-16 w-16 rounded-full bg-white border-2 border-blue-200 shadow-lg" onClick={() => handleAction('superliked')}>
+                                    <Star className="h-8 w-8 text-blue-500 fill-blue-500" />
+                                </Button>
+                                <Button size="lg" className="h-16 w-16 rounded-full bg-white border-2 border-green-200 shadow-lg" onClick={() => handleAction('liked')}>
+                                    <Heart className="h-8 w-8 text-green-500 fill-green-500" />
+                                </Button>
+                            </div>
                         </SheetContent>
                     </Sheet>
                 </div>
