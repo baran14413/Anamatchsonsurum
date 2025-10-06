@@ -97,7 +97,7 @@ function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: Prof
                 </div>
             </div>
             
-            <div className="absolute right-4 bottom-20 flex flex-col gap-4 z-20">
+            <div className="absolute right-4 bottom-20 flex flex-col items-center gap-4 z-20">
                 <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-sm text-red-500 hover:bg-white/30" onClick={() => onAction('disliked')}>
                     <X className="w-8 h-8" />
                 </Button>
