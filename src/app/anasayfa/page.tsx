@@ -104,9 +104,9 @@ export default function AnasayfaPage() {
                  const matchSnap = await transaction.get(matchDocRef);
                  if (matchSnap.exists()) {
                      const matchData = matchSnap.data();
+                     // Only block if there's already a confirmed match or a pending superlike from the same user
                      if (matchData.status === 'matched') throw "Bu kullanıcıyla zaten eşleştiniz.";
-                     if (matchData.status === 'superlike_pending') throw "Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.";
-                     throw "Bu kişiyle aranızda zaten bir etkileşim mevcut.";
+                     if (matchData.status === 'superlike_pending' && matchData.superLikeInitiator === user1Id) throw "Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.";
                  }
 
                  const currentUserMatchData = { id: matchId, matchedWith: user2Id, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedProfile.fullName, profilePicture: swipedProfile.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: user1Id };
@@ -340,5 +340,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
