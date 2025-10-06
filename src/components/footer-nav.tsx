@@ -3,10 +3,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, MessageSquare, User } from 'lucide-react';
+import { Heart, MessageSquare, User, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
-import { Icons } from './icons';
 
 interface FooterNavProps {
     hasNewLikes: boolean;
@@ -17,19 +16,29 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/anasayfa', icon: Icons.tinderFlame, label: langTr.footerNav.home, hasNotification: false },
     { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
     { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
+    { href: '/anasayfa', icon: Flame, label: langTr.footerNav.home, hasNotification: false },
     { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
   ];
+
+  // Reorder to put 'anasayfa' in the middle
+  const orderedNavItems = [
+      navItems.find(item => item.href === '/begeniler'),
+      navItems.find(item => item.href === '/eslesmeler'),
+      navItems.find(item => item.href === '/anasayfa'),
+      navItems.find(item => item.href === '/profil'),
+  ].filter(Boolean) as typeof navItems;
 
 
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex h-12 items-center justify-around">
-        {navItems.map((item, index) => {
+      <nav className="flex h-14 items-center justify-around">
+        {orderedNavItems.map((item, index) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
+          const isCenterButton = item.href === '/anasayfa';
+
           return (
             <Link
               key={`${item.href}-${index}`}
@@ -39,14 +48,20 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className={cn("h-6 w-6", 
-                isActive && item.href === '/anasayfa' ? 'fill-primary' : '', 
-                isActive && (item.href === '/begeniler' || item.href === '/profil') ? 'text-primary fill-primary' : '',
-                item.hasNotification && !isActive && 'animate-pulse',
-                isActive && 'drop-shadow-[0_0_3px_hsl(var(--primary))]'
-              )} />
-              {item.hasNotification && (
-                 <span className="absolute top-1.5 right-[calc(50%-1.25rem)] h-2 w-2 rounded-full bg-red-500"></span>
+              <div className={cn(
+                  'flex items-center justify-center rounded-full transition-all duration-300',
+                  isCenterButton ? 'w-12 h-12' : 'w-10 h-10',
+                  isActive && isCenterButton && 'bg-primary/10'
+              )}>
+                <Icon className={cn("transition-all", 
+                  isCenterButton ? "h-7 w-7" : "h-6 w-6",
+                  isActive ? 'fill-primary' : '',
+                  item.hasNotification && !isActive && 'animate-pulse',
+                  isActive && 'drop-shadow-[0_0_4px_hsl(var(--primary))]'
+                )} />
+              </div>
+              {item.hasNotification && !isCenterButton && (
+                 <span className="absolute top-2.5 right-[calc(50%-1.25rem)] h-2 w-2 rounded-full bg-red-500"></span>
               )}
             </Link>
           );
