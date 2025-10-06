@@ -22,8 +22,9 @@ function getServiceAccount() {
     const keyPathFromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (keyPathFromEnv) {
         try {
-            if (fs.existsSync(keyPathFromEnv)) {
-                const keyFileContent = fs.readFileSync(keyPathFromEnv, 'utf-8');
+            const resolvedPath = path.resolve(process.cwd(), keyPathFromEnv);
+            if (fs.existsSync(resolvedPath)) {
+                const keyFileContent = fs.readFileSync(resolvedPath, 'utf-8');
                 return JSON.parse(keyFileContent);
             }
         } catch (e) {
