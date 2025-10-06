@@ -240,7 +240,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                      {profile.images && profile.images.length > 0 && (
                                         <Carousel className="w-full">
                                             <CarouselContent>
-                                                {profile.images.map((image, index) => (
+                                                {profile.images.filter(image => image && image.url).map((image, index) => (
                                                     <CarouselItem key={index}>
                                                         <div className="relative w-full aspect-[4/3]">
                                                             <Image
@@ -313,3 +313,4 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
+
