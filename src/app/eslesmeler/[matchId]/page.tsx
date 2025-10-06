@@ -114,8 +114,11 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    const [isActionLoading, setIsActionLoading] = useState(false);
-    const [cooldown, setCooldown] = useState(0);
+    const [buttonStates, setButtonStates] = useState({
+        gold: { loading: false, cooldown: 0 },
+        rules: { loading: false, cooldown: 0 },
+        clear: { loading: false },
+    });
 
     const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -139,13 +142,16 @@ export default function ChatPage() {
     
     // Cooldown timer effect
     useEffect(() => {
-        if (cooldown > 0) {
-            const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-            return () => clearTimeout(timer);
-        } else {
-            setIsActionLoading(false);
-        }
-    }, [cooldown]);
+        const interval = setInterval(() => {
+            setButtonStates(prev => ({
+                ...prev,
+                gold: { ...prev.gold, cooldown: Math.max(0, prev.gold.cooldown - 1) },
+                rules: { ...prev.rules, cooldown: Math.max(0, prev.rules.cooldown - 1) },
+            }));
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -679,18 +685,27 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
 
-    const triggerAction = (action: () => Promise<void>) => {
-        if (cooldown > 0) {
+    const triggerSystemAction = (action: 'gold' | 'rules', actionFn: () => Promise<void>) => {
+        if (buttonStates[action].cooldown > 0) {
             toast({
                 title: "Lütfen Bekleyin",
-                description: `Bu işlemi tekrar yapmak için ${cooldown} saniye beklemelisiniz.`,
+                description: `Bu işlemi tekrar yapmak için ${buttonStates[action].cooldown} saniye beklemelisiniz.`,
                 variant: 'destructive',
             });
             return;
         }
-        setIsActionLoading(true);
-        setCooldown(60);
-        action();
+
+        setButtonStates(prev => ({
+            ...prev,
+            [action]: { ...prev[action], loading: true }
+        }));
+        
+        actionFn().finally(() => {
+            setButtonStates(prev => ({
+                ...prev,
+                [action]: { loading: false, cooldown: 60 }
+            }));
+        });
     }
 
     const handleCheckGoldStatus = async () => {
@@ -735,6 +750,37 @@ export default function ChatPage() {
             isRead: true,
         });
     };
+
+    const handleClearSystemMessages = async () => {
+         if (!user) return;
+        setButtonStates(prev => ({...prev, clear: { loading: true }}));
+        try {
+            const response = await fetch('/api/clear-system-messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Sohbet temizlenemedi.');
+            }
+            
+            toast({
+                title: 'Sohbet Temizlendi',
+                description: 'Sistem mesajları geçmişiniz başarıyla silindi.',
+            });
+
+        } catch (error: any) {
+            toast({
+                title: 'Hata',
+                description: error.message,
+                variant: 'destructive',
+            });
+        } finally {
+            setButtonStates(prev => ({...prev, clear: { loading: false }}));
+        }
+    }
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched';
@@ -775,7 +821,27 @@ export default function ChatPage() {
                     )}
                 </div>
                  {isSystemChat ? (
-                    <div className='w-9'></div> // Placeholder for spacing
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={buttonStates.clear.loading}>
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Tüm Sistem Mesajlarını Sil</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Bu işlem geri alınamaz. Tüm sistem mesajları ve duyurular kalıcı olarak silinecektir. Emin misiniz?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleClearSystemMessages} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                                     {buttonStates.clear.loading ? <Icons.logo className="h-4 w-4 animate-pulse" /> : "Evet, Sil"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                  ) : (
                     <AlertDialog>
                         <DropdownMenu>
@@ -1015,14 +1081,24 @@ export default function ChatPage() {
               </footer>
             ) : isSystemChat ? (
                 <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button onClick={() => triggerAction(handleCheckGoldStatus)} variant="outline" disabled={isActionLoading}>
-                             {isActionLoading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <Gem className="mr-2 h-4 w-4" />}
-                             {isActionLoading ? `Lütfen Bekleyin (${cooldown})` : "Gold Durumunu Sorgula"}
+                    <div className="flex items-center gap-2 rounded-xl bg-muted p-2">
+                        <Button 
+                            onClick={() => triggerSystemAction('gold', handleCheckGoldStatus)} 
+                            variant="outline"
+                            className="flex-1 bg-background"
+                            disabled={buttonStates.gold.loading || buttonStates.gold.cooldown > 0}
+                        >
+                             {buttonStates.gold.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <Gem className="mr-2 h-4 w-4" />}
+                             {buttonStates.gold.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.gold.cooldown})` : "Gold Sorgula"}
                         </Button>
-                         <Button onClick={() => triggerAction(handleSendRulesMessage)} variant="outline" disabled={isActionLoading}>
-                             {isActionLoading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <FileText className="mr-2 h-4 w-4" />}
-                             {isActionLoading ? `Lütfen Bekleyin (${cooldown})` : "Kuralları Gönder"}
+                         <Button 
+                            onClick={() => triggerSystemAction('rules', handleSendRulesMessage)} 
+                            variant="outline" 
+                            className="flex-1 bg-background"
+                            disabled={buttonStates.rules.loading || buttonStates.rules.cooldown > 0}
+                        >
+                            {buttonStates.rules.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <FileText className="mr-2 h-4 w-4" />}
+                             {buttonStates.rules.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.rules.cooldown})` : "Kuralları Gönder"}
                         </Button>
                     </div>
                 </footer>
