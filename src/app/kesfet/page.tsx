@@ -8,10 +8,11 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
@@ -85,15 +86,28 @@ function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: Prof
             )}
 
             <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white">
-                <div className="space-y-1">
-                    <h3 className="text-2xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                    {profile.distance !== undefined && (
-                        <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="w-4 h-4" />
-                            <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                        </div>
-                    )}
-                    {profile.bio && <p className="text-base">{profile.bio}</p>}
+                 <div className="flex items-end justify-between">
+                    <div className="space-y-1 flex-1 min-w-0">
+                        <h3 className="text-2xl font-bold truncate">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
+                        {profile.distance !== undefined && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="w-4 h-4" />
+                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                            </div>
+                        )}
+                        {profile.bio && <p className="text-base">{profile.bio}</p>}
+                    </div>
+                     <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
+                                <ChevronUp className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card/80 text-card-foreground border-none p-0 backdrop-blur-sm'>
+                            <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
+                            <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
             
