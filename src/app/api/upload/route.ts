@@ -1,63 +1,75 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
+import multer from 'multer';
 import { Readable } from 'stream';
 
-// Configure Cloudinary at the top level to ensure env vars are loaded
+// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Configure Multer for temporary file storage
+const upload = multer({ dest: '/tmp' });
 
-// This is a workaround for a bug in Next.js where the body is not parsed correctly
-// See: https://github.com/vercel/next.js/discussions/54128
-async function getFileFromRequest(req: NextRequest) {
-    const formData = await req.formData();
-    const file = formData.get('file');
-    if (file instanceof File) {
-        return file;
-    }
-    return null;
-}
+// Helper to run middleware
+const runMiddleware = (req: NextRequest, fn: Function) => {
+  return new Promise((resolve, reject) => {
+    fn(req, new NextResponse(), (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
+};
 
-export async function POST(req: NextRequest) {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export async function POST(req: any) {
   try {
-    const file = await getFileFromRequest(req);
-    
+    // We need to use a custom middleware wrapper because Next.js 14 doesn't
+    // support Express middleware out of the box in Route Handlers.
+    await new Promise<void>((resolve, reject) => {
+      const multerUpload = upload.single('file');
+      // @ts-ignore
+      multerUpload(req, new NextResponse(), (err: any) => {
+        if (err) {
+          console.error("Multer error:", err);
+          return reject(new Error('File processing error: ' + err.message));
+        }
+        resolve();
+      });
+    });
+
+    const file = req.file;
+
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
     }
-
-    const fileBuffer = await file.arrayBuffer();
-    const isVideo = file.type.startsWith('video/');
     
-    const uploadPromise = new Promise((resolve, reject) => {
-      const uploadOptions: any = { folder: 'bematch_profiles' };
-      if (isVideo) {
-        uploadOptions.resource_type = 'video';
-      }
-      
-      const stream = cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, result) => {
-          if (error) {
-            return reject(error);
-          }
-          resolve(result);
-        }
-      );
+    const isVideo = file.mimetype.startsWith('video/');
+    
+    const uploadOptions: any = {
+      folder: 'bematch_profiles',
+      resource_type: isVideo ? 'video' : 'image',
+    };
 
-      const readableStream = new Readable();
-      readableStream.push(Buffer.from(fileBuffer));
-      readableStream.push(null);
-      readableStream.pipe(stream);
+    // Use the file path provided by multer for direct upload
+    const result = await cloudinary.uploader.upload(file.path, uploadOptions);
+
+    return NextResponse.json({
+      url: result.secure_url,
+      public_id: result.public_id,
+      resource_type: result.resource_type,
     });
 
-    const result: any = await uploadPromise;
-
-    return NextResponse.json({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type });
   } catch (error: any) {
     console.error("Cloudinary Upload Error:", error);
     return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
