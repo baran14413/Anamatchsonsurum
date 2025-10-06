@@ -9,7 +9,8 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 3
-const TOAST_REMOVE_DELAY = 5000 // 5 seconds
+const TOAST_REMOVE_DELAY = 500000; // This was too short before, now it's a very long time. Dismissal is handled by timers.
+const DISMISS_DELAY = 5000; // 5 seconds for a toast to be visible
 
 type ToasterToast = ToastProps & {
   id: string
@@ -141,17 +142,20 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
-  const id = genId()
+  const id = genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+    });
+
+  const dismiss = () => {
+    dispatch({ type: "DISMISS_TOAST", toastId: id });
+  };
 
   dispatch({
     type: "ADD_TOAST",
@@ -160,23 +164,24 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
-        if (!open) dismiss()
+        if (!open) {
+          // Trigger the dismiss action which will start the removal timer
+          dismiss();
+        }
       },
     },
-  })
-  
-  // This timeout was causing premature dismissal.
-  // The logic in DISMISS_TOAST already handles the removal queue.
-  // setTimeout(() => {
-  //   dismiss();
-  // }, TOAST_REMOVE_DELAY - 2000);
+  });
 
+  // Automatically dismiss the toast after the specified delay
+  setTimeout(() => {
+    dismiss();
+  }, DISMISS_DELAY);
 
   return {
     id: id,
     dismiss,
     update,
-  }
+  };
 }
 
 function useToast() {
