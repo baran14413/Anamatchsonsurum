@@ -189,7 +189,7 @@ export default function AnasayfaPage() {
             
             const [query1Snapshot, query2Snapshot] = await Promise.all([
                 getDocs(matchesQuery1),
-                getDocs(query2Snapshot)
+                getDocs(matchesQuery2)
             ]);
 
             query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
@@ -341,3 +341,4 @@ export default function AnasayfaPage() {
   );
 }
 
+    
