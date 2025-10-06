@@ -8,7 +8,7 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -92,20 +92,20 @@ function DiscoveryProfileItem({
 
     const handleNextImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveImageIndex((prev) => (prev + 1) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
     const handlePrevImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveImageIndex((prev) => (prev - 1 + profile.media.length) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
-    const currentImage = profile.images?.[activeImageIndex];
-    const hasMultipleImages = profile.images && profile.images.length > 1;
+    const currentImage = profile.media?.[activeImageIndex];
+    const hasMultipleImages = profile.media && profile.media.length > 1;
 
     return (
         <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
@@ -116,23 +116,36 @@ function DiscoveryProfileItem({
                 <X className="h-28 w-28" strokeWidth={3} />
             </motion.div>
             <div className="absolute inset-0">
-               {currentImage && (
-                    <Image
-                        src={currentImage.url}
-                        alt={profile.fullName || 'Profile'}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        priority={isPriority}
-                    />
+               {currentImage?.url && (
+                    currentImage.type === 'video' ? (
+                        <video
+                            key={currentImage.url}
+                            className="w-full h-full object-cover"
+                            src={currentImage.url}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                        />
+                    ) : (
+                        <Image
+                            src={currentImage.url}
+                            alt={profile.fullName || 'Profile'}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            priority={isPriority}
+                        />
+                    )
                 )}
             </div>
 
             {hasMultipleImages && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.images.map((img, index) => (
-                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                        {profile.media.map((media, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40 relative'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                                {media.type === 'video' && <Video className='absolute -top-0.5 -right-0.5 w-3 h-3 text-white'/>}
                             </div>
                         ))}
                     </div>
@@ -204,7 +217,7 @@ export default function KesfetPage() {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
     swipedProfilesRef.current.add(swipedProfile.uid);
-    removeTopProfile();
+    if(action !== 'disliked') removeTopProfile();
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -229,7 +242,7 @@ export default function KesfetPage() {
                 lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images?.[0]?.url || '',
+                profilePicture: swipedProfile.media?.[0]?.url || '',
                 isSuperLike: true,
                 status: 'superlike_pending',
                 superLikeInitiator: user1Id
@@ -305,7 +318,7 @@ export default function KesfetPage() {
                     lastMessage: langTr.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images?.[0].url || '',
+                    profilePicture: swipedProfile.media?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -356,7 +369,6 @@ export default function KesfetPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        // Only filter out interacted users if we are NOT resetting the feed.
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -390,7 +402,7 @@ export default function KesfetPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.fullName || !p.media || p.media.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
                 (p as ProfileWithAgeAndDistance).age = age ?? undefined;
