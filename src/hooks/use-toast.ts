@@ -165,9 +165,11 @@ function toast({ ...props }: Toast) {
     },
   })
   
-  setTimeout(() => {
-    dismiss();
-  }, TOAST_REMOVE_DELAY - 2000);
+  // This timeout was causing premature dismissal.
+  // The logic in DISMISS_TOAST already handles the removal queue.
+  // setTimeout(() => {
+  //   dismiss();
+  // }, TOAST_REMOVE_DELAY - 2000);
 
 
   return {
