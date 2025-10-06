@@ -75,6 +75,13 @@
                 "longitude": {"type": "number"}
             }
         },
+        "address": {
+          "type": "object",
+          "properties": {
+            "city": { "type": "string" },
+            "country": { "type": "string" }
+          }
+        },
         "distancePreference": {
             "type": "number",
             "description": "Maximum distance in kilometers for potential matches."
@@ -99,6 +106,11 @@
             "type": "string",
             "format": "date-time",
             "description": "The last time the user was seen online."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the user profile was created."
         },
         "rulesAgreed": {
             "type": "boolean",
@@ -246,7 +258,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["user", "system_superlike_prompt", "audio"],
+          "enum": ["user", "system_superlike_prompt", "audio", "view-once", "view-once-viewed"],
           "description": "The type of message."
         },
         "action": {

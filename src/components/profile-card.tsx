@@ -10,6 +10,7 @@ import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -81,6 +82,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   } : {};
 
   const currentImage = profile.images && profile.images.length > 0 ? profile.images[activeImageIndex] : null;
+
+  const isNewUser = profile.createdAt && (Date.now() - profile.createdAt.toDate().getTime()) < 7 * 24 * 60 * 60 * 1000;
+
 
   return (
     <motion.div 
@@ -155,13 +159,24 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             >
                <div className="flex items-end justify-between">
                     <div className="space-y-2 flex-1 min-w-0">
-                        <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                        {profile.distance !== undefined && (
-                            <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                            </div>
-                        )}
+                        <div className='flex items-center gap-4'>
+                          <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
+                          {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
+                        </div>
+                        <div className='flex flex-col gap-1.5'>
+                            {profile.distance !== undefined && (
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                </div>
+                            )}
+                            {profile.address?.city && (
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{profile.address.city}, {profile.address.country}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                      <Sheet>
                         <SheetTrigger asChild>

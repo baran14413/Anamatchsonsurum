@@ -50,6 +50,7 @@ export type UserProfile = {
   }
   isOnline?: boolean;
   lastSeen?: any;
+  createdAt?: any;
   rulesAgreed?: boolean;
   isAdmin?: boolean;
   superLikeBalance?: number;
@@ -93,6 +94,7 @@ export type ChatMessage = {
   text?: string;
   imageUrl?: string;
   imagePublicId?: string;
+  isViewOnce?: boolean;
   viewed?: boolean;
   audioUrl?: string;
   audioDuration?: number;

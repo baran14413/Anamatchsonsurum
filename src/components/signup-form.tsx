@@ -6,7 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +45,10 @@ const formSchema = z.object({
         latitude: z.number(),
         longitude: z.number(),
     }),
+    address: z.object({
+      city: z.string().optional(),
+      country: z.string().optional()
+    }).optional(),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
     images: z.array(z.object({
         url: z.string().url(),
@@ -227,9 +231,22 @@ export default function ProfileCompletionForm() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
         form.setValue('location', { latitude, longitude }, { shouldValidate: true });
+        
+        try {
+          const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+          if(response.ok) {
+            const data = await response.json();
+            if (data.address) {
+              form.setValue('address', data.address);
+            }
+          }
+        } catch (e) {
+          console.warn("Could not get address from geocode API, continuing without it.");
+        }
+
         setLocationStatus('success');
         setIsLocationLoading(false);
         toast({
@@ -271,6 +288,7 @@ export default function ProfileCompletionForm() {
         ...data,
         uid: user.uid,
         email: user.email,
+        createdAt: serverTimestamp(),
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
         images: data.images,
@@ -347,11 +365,13 @@ export default function ProfileCompletionForm() {
 
       if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
         try {
-            await fetch('/api/delete-image', {
+            const response = await fetch('/api/delete-image', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ public_id: slotToDelete.public_id }),
             });
+             if (!response.ok) {
+                console.error("Failed to delete from Cloudinary but proceeding in UI");
+            }
         } catch(err){
             console.error("Failed to delete from Cloudinary but proceeding in UI", err);
         }
