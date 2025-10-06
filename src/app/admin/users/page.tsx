@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import {
   Table,
@@ -20,7 +20,10 @@ import { tr } from 'date-fns/locale';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
-  const usersCollectionRef = collection(firestore, 'users');
+  const usersCollectionRef = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'users') : null),
+    [firestore]
+  );
   const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
 
   if (isLoading) {
