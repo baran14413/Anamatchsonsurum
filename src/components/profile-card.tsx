@@ -31,17 +31,27 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 }
 
 const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen?: any }) => {
+    let statusText: string;
     if (isOnline) {
-        return "Şu an aktif";
-    }
-    if (lastSeen?.toDate) {
+        statusText = "Şu an aktif";
+    } else if (lastSeen?.toDate) {
         const lastSeenDate = lastSeen.toDate();
         const hoursAgo = differenceInHours(new Date(), lastSeenDate);
         if (hoursAgo < 10) {
-            return `${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })} aktifti`;
+            statusText = `${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })} aktifti`;
+        } else {
+            statusText = "Yakınlarda aktifti";
         }
+    } else {
+        statusText = "Yakınlarda aktifti";
     }
-    return "Yakınlarda aktifti";
+
+    return (
+        <div className="flex items-center gap-2 text-sm text-white font-semibold mb-1">
+            <div className={cn("w-2 h-2 rounded-full", isOnline ? "bg-green-400" : "bg-gray-400")}></div>
+            <span>{statusText}</span>
+        </div>
+    );
 };
 
 
@@ -134,17 +144,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 )}
             </div>
             
-             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-30" />
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-full px-4 z-40">
-                <div className="h-10 px-4 rounded-full bg-gradient-to-r from-red-500/80 to-orange-400/80 backdrop-blur-sm flex items-center justify-center text-white font-semibold text-sm shadow-lg">
-                    <Clock className="w-4 h-4 mr-2" />
-                    <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
-                </div>
-            </div>
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
             {profile.images && profile.images.length > 1 && (
                 <>
-                    <div className='absolute top-[60px] left-2 right-2 flex gap-1 z-30'>
+                    <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
                         {profile.images.map((_, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40 group'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
@@ -159,7 +163,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             )}
 
             {isNewUser && (
-                <div className="absolute top-[80px] left-4 z-30">
+                <div className="absolute top-8 left-4 z-30">
                     <Badge className="bg-blue-500 text-white border-blue-500">Yeni Üye</Badge>
                 </div>
             )}
@@ -191,7 +195,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
                <div className="flex items-end justify-between">
-                    <div className="space-y-2 flex-1 min-w-0">
+                    <div className="space-y-1 flex-1 min-w-0">
+                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
                         <div className='flex items-center gap-4'>
                           <h3 className="text-4xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                         </div>
@@ -259,3 +264,4 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
+
