@@ -42,7 +42,8 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
               <Icon className={cn("h-6 w-6", 
                 isActive && item.href === '/anasayfa' ? 'fill-primary' : '', 
                 isActive && (item.href === '/begeniler' || item.href === '/profil') ? 'text-primary fill-primary' : '',
-                item.hasNotification && !isActive && 'animate-pulse'
+                item.hasNotification && !isActive && 'animate-pulse',
+                isActive && 'drop-shadow-[0_0_3px_hsl(var(--primary))]'
               )} />
               {item.hasNotification && (
                  <span className="absolute top-1.5 right-[calc(50%-1.25rem)] h-2 w-2 rounded-full bg-red-500"></span>
