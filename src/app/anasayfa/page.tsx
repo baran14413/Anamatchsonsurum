@@ -270,7 +270,7 @@ export default function AnasayfaPage() {
           fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle for non-global mode
         }
         
-        setProfiles(fetchedProfiles);
+        setProfiles(fetchedProfiles.slice(0, 20)); // Limit to 20 profiles to display
 
     } catch (error) {
       console.error("Error fetching profiles:", error);

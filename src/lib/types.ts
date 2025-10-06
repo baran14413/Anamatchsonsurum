@@ -78,7 +78,7 @@ export type LikerInfo = {
   profilePicture: string;
   age: number | null;
   matchId: string;
-  status?: 'pending' | 'matched';
+  status?: 'pending' | 'matched' | 'superlike_pending';
 };
 
 
