@@ -273,7 +273,7 @@ export default function KesfetPage() {
   }, [user, firestore, t, toast, userProfile, removeTopProfile]);
 
 
- const fetchProfiles = useCallback(async (reset = false) => {
+ const fetchProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
@@ -282,19 +282,17 @@ export default function KesfetPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-        
-        if (!reset) {
-            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-            
-            const [query1Snapshot, query2Snapshot] = await Promise.all([
-                getDocs(matchesQuery1),
-                getDocs(matchesQuery2)
-            ]);
 
-            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
-        }
+        const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+        
+        const [query1Snapshot, query2Snapshot] = await Promise.all([
+            getDocs(matchesQuery1),
+            getDocs(matchesQuery2)
+        ]);
+
+        query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+        query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -403,7 +401,7 @@ export default function KesfetPage() {
       ) : (
         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-4">
              <p>{t.outOfProfilesDescription}</p>
-             <Button onClick={() => fetchProfiles(true)} className="mt-4">
+             <Button onClick={() => fetchProfiles()} className="mt-4">
                  <RefreshCw className="mr-2 h-4 w-4" />
                  Tekrar Dene
              </Button>
