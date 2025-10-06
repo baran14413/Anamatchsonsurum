@@ -28,6 +28,10 @@ import { Icons } from "./icons";
 import { Slider } from "./ui/slider";
 import googleLogo from '@/img/googlelogin.png';
 import type { UserImage } from "@/lib/types";
+import { Badge } from "./ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import * as LucideIcons from 'lucide-react';
+
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -57,7 +61,8 @@ const formSchema = z.object({
     ageRange: z.object({
       min: z.number(),
       max: z.number()
-    })
+    }),
+    interests: z.array(z.string()).min(10, { message: "Devam etmek için en az 10 ilgi alanı seçmelisin." }),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -86,6 +91,9 @@ const lookingForOptions = [
     { id: 'not-sure', icon: Sparkles },
     { id: 'whatever', icon: Hand },
 ];
+
+type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
+const interestCategories = langTr.signup.step11.categories;
 
 
 const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean, t: any }) => {
@@ -175,6 +183,7 @@ export default function ProfileCompletionForm() {
       lookingFor: "",
       images: [],
       distancePreference: 80,
+      interests: [],
     },
     mode: "onChange",
   });
@@ -308,7 +317,7 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 6;
+  const totalSteps = 7;
   const progressValue = (step / totalSteps) * 100;
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
@@ -395,6 +404,25 @@ export default function ProfileCompletionForm() {
       setDistanceValue(newDistance);
       form.setValue('distancePreference', newDistance, { shouldValidate: true });
   };
+  
+  const handleInterestToggle = (interest: string, categoryOptions: string[]) => {
+    const currentInterests = form.getValues('interests') || [];
+    const interestsInCategory = currentInterests.filter(i => categoryOptions.includes(i));
+
+    if (currentInterests.includes(interest)) {
+      form.setValue('interests', currentInterests.filter(i => i !== interest), { shouldValidate: true });
+    } else {
+      if (interestsInCategory.length < 2) {
+        form.setValue('interests', [...currentInterests, interest], { shouldValidate: true });
+      } else {
+        toast({
+          title: "Limit Aşıldı",
+          description: `Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.`,
+          variant: 'destructive',
+        });
+      }
+    }
+  };
 
 
   const handleNextStep = async () => {
@@ -410,6 +438,7 @@ export default function ProfileCompletionForm() {
         'name',
         'location',
         'images',
+        'interests',
         'dateOfBirth',
         'gender',
         'lookingFor',
@@ -535,7 +564,58 @@ export default function ProfileCompletionForm() {
                   <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handleImageUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*" />
                 </div>
               )}
-              {step === 3 && (
+               {step === 3 && (
+                <div className="flex-1 flex flex-col min-h-0">
+                    <FormField
+                        control={form.control}
+                        name="interests"
+                        render={({ field }) => (
+                            <FormItem className="flex-1 flex flex-col min-h-0">
+                                <div className="shrink-0">
+                                    <h1 className="text-3xl font-bold">{t.step11.title}</h1>
+                                    <p className="text-muted-foreground">
+                                        {t.step11.description.replace('{count}', String(field.value.length))}
+                                    </p>
+                                    <FormMessage className="pt-2" />
+                                </div>
+                                <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
+                                    <Accordion type="multiple" defaultValue={interestCategories.map(c => c.title)} className="w-full">
+                                        {interestCategories.map((category) => {
+                                        const Icon = LucideIcons[category.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
+                                        return (
+                                            <AccordionItem value={category.title} key={category.title}>
+                                            <AccordionTrigger>
+                                                <div className="flex items-center gap-3">
+                                                <Icon className="h-5 w-5" />
+                                                <span>{category.title}</span>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="flex flex-wrap gap-2">
+                                                {category.options.map((interest) => (
+                                                    <Badge
+                                                    key={interest}
+                                                    variant={field.value.includes(interest) ? 'default' : 'secondary'}
+                                                    onClick={() => handleInterestToggle(interest, category.options)}
+                                                    className="cursor-pointer text-base py-1 px-3"
+                                                    >
+                                                    {interest}
+                                                    </Badge>
+                                                ))}
+                                                </div>
+                                            </AccordionContent>
+                                            </AccordionItem>
+                                        )
+                                        })}
+                                    </Accordion>
+                                </div>
+                                <p className="text-center text-sm text-muted-foreground pt-4">Bunu daha sonra ayarlarınızda değiştirebilirsiniz.</p>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+              )}
+              {step === 4 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step3.title}</h1>
                   <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
@@ -553,7 +633,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step4.title}</h1>
                   <FormField control={form.control} name="gender" render={({ field }) => (
@@ -570,7 +650,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step5.title}</h1>
@@ -600,7 +680,7 @@ export default function ProfileCompletionForm() {
                   </div>
                 </div>
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <div className="flex flex-col h-full">
                     <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.step7.title}</h1>
@@ -641,7 +721,8 @@ export default function ProfileCompletionForm() {
                 isSubmitting ||
                 (step === 1 && locationStatus !== 'success') ||
                 (step === 2 && uploadedImageCount < 2) ||
-                (step === 3 && ageStatus !== 'valid')
+                (step === 3 && (form.getValues('interests')?.length ?? 0) < 10) ||
+                (step === 4 && ageStatus !== 'valid')
               }
             >
               {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Profili Tamamla" : t.common.next)}
@@ -652,3 +733,5 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
+    

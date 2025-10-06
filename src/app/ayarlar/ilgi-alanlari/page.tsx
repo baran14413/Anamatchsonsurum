@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import * as LucideIcons from 'lucide-react';
 
-const MAX_INTERESTS = 10;
 const interestCategories = langTr.signup.step11.categories;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
@@ -34,18 +33,22 @@ export default function EditInterestsPage() {
     }
   }, [userProfile]);
 
-  const handleInterestToggle = (interest: string) => {
+  const handleInterestToggle = (interest: string, categoryOptions: string[]) => {
     setSelectedInterests((prev) => {
       if (prev.includes(interest)) {
         return prev.filter((i) => i !== interest);
       }
-      if (prev.length >= MAX_INTERESTS) {
+      
+      const interestsInCategory = prev.filter(i => categoryOptions.includes(i));
+      if (interestsInCategory.length >= 2) {
         toast({
-          title: `En fazla ${MAX_INTERESTS} ilgi alanı seçebilirsin.`,
+          title: `Limit Aşıldı`,
+          description: `Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.`,
           variant: 'destructive',
         });
         return prev;
       }
+
       return [...prev, interest];
     });
   };
@@ -99,7 +102,7 @@ export default function EditInterestsPage() {
           <div>
             <h2 className="text-2xl font-bold">İlgini çeken konular neler?</h2>
             <p className="text-muted-foreground">
-              Profilinde sergilemek için en fazla {MAX_INTERESTS} ilgi alanı seç. ({selectedInterests.length}/{MAX_INTERESTS})
+              Profilinde sergilemek için ilgi alanlarını seç. Her kategoriden en fazla 2 tane seçebilirsin.
             </p>
           </div>
 
@@ -120,7 +123,7 @@ export default function EditInterestsPage() {
                         <Badge
                           key={interest}
                           variant={selectedInterests.includes(interest) ? 'default' : 'secondary'}
-                          onClick={() => handleInterestToggle(interest)}
+                          onClick={() => handleInterestToggle(interest, category.options)}
                           className="cursor-pointer text-base py-1 px-3"
                         >
                           {interest}
@@ -137,3 +140,5 @@ export default function EditInterestsPage() {
     </div>
   );
 }
+
+    
