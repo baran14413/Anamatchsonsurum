@@ -283,9 +283,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                <div className="flex items-end justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
-                        <div className='flex items-center gap-2'>
-                          <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
-                           {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} />}
+                        <div className='flex flex-col items-start'>
+                           {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
+                           <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                         </div>
                         <div className='flex flex-col gap-1.5'>
                             {profile.distance !== undefined && (
@@ -341,12 +341,16 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                     
                                     <div className="p-6 space-y-6 !pt-2">
                                         <div className="text-left space-y-2">
-                                            <div className='flex items-center gap-3'>
+                                            <div className='flex flex-col items-start gap-1'>
+                                                {profile.membershipType === 'gold' && (
+                                                  <div className='flex items-center gap-2'>
+                                                    <Icons.beGold width={24} height={24} />
+                                                    <p className="font-semibold text-yellow-500">Gold Üye</p>
+                                                  </div>
+                                                )}
                                                 <h3 className="text-3xl font-bold">{profile.fullName}{age && `, ${age}`}</h3>
-                                                {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} />}
-                                                {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
                                             </div>
-                                             {profile.membershipType === 'gold' && <p className="font-semibold text-yellow-500 -mt-1">Gold Üye</p>}
+                                            {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                             
                                             {(profile.address?.city && profile.address?.country) && (
                                                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -423,3 +427,5 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
+
+    
