@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < usersSnapshot.docs.length; i++) {
             const userDoc = usersSnapshot.docs[i];
             const userId = userDoc.id;
+            // The collection should be under each user, e.g., /users/{userId}/system_messages
             const messageRef = db.collection('users').doc(userId).collection('system_messages').doc();
             currentBatch.set(messageRef, systemMessage);
             operationCount++;

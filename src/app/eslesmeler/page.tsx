@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Trash2, Check, Star, Info } from 'lucide-react';
@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import { DenormalizedMatch } from '@/lib/types';
+import { DenormalizedMatch, ChatMessage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,7 @@ export default function EslesmelerPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
+  const [systemMessage, setSystemMessage] = useState<ChatMessage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,21 +53,28 @@ export default function EslesmelerPage() {
         setIsLoading(false);
     });
 
-    // Ensure default system message exists
-     const systemMessageRef = collection(firestore, `users/${user.uid}/system_messages`);
-     getDocs(query(systemMessageRef, where('senderId', '==', 'system'))).then(snapshot => {
-         if (snapshot.empty) {
-             addDoc(systemMessageRef, {
+    const systemMessageQuery = query(
+        collection(firestore, `users/${user.uid}/system_messages`),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+    );
+
+    const unsubSystemMessages = onSnapshot(systemMessageQuery, (snapshot) => {
+        if (snapshot.empty) {
+             addDoc(collection(firestore, `users/${user.uid}/system_messages`), {
                  senderId: 'system',
                  text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
                  timestamp: serverTimestamp(),
                  isRead: true,
              });
-         }
-     });
+        } else {
+            setSystemMessage(snapshot.docs[0].data() as ChatMessage);
+        }
+    });
 
     return () => {
       unsubMatches();
+      unsubSystemMessages();
     };
 
   }, [user, firestore]);
@@ -122,18 +130,15 @@ export default function EslesmelerPage() {
     try {
         const batch = writeBatch(firestore);
 
-        // Update the main match document
         const matchDocRef = doc(firestore, 'matches', match.id);
         batch.update(matchDocRef, { status: 'matched', matchDate: serverTimestamp() });
 
-        // Update denormalized documents
         const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, match.id);
         batch.update(currentUserMatchRef, { status: 'matched', lastMessage: "Super Like'ı kabul ettin!" });
         
         const otherUserMatchRef = doc(firestore, `users/${match.matchedWith}/matches`, match.id);
         batch.update(otherUserMatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
 
-        // Update the system message
         const messagesColRef = collection(firestore, `matches/${match.id}/messages`);
         const q = query(messagesColRef, where('type', '==', 'system_superlike_prompt'));
         const querySnapshot = await getDocs(q);
@@ -158,13 +163,13 @@ export default function EslesmelerPage() {
     }
   };
 
-   const systemMatch: DenormalizedMatch = {
+   const systemMatchItem: DenormalizedMatch = {
         id: 'system',
         matchedWith: 'system',
-        lastMessage: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
-        timestamp: null, 
+        lastMessage: systemMessage?.text || "BeMatch'e hoş geldin!",
+        timestamp: systemMessage?.timestamp, 
         fullName: 'BeMatch - Sistem Mesajları',
-        profilePicture: '', // Use app logo
+        profilePicture: '', // Placeholder, will use bmIcon
     };
 
   if (isLoading) {
@@ -194,7 +199,7 @@ export default function EslesmelerPage() {
                 
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
-                            {[systemMatch, ...filteredMatches].map(match => {
+                            {[systemMatchItem, ...filteredMatches].map(match => {
                                 const isSuperLikePending = match.status === 'superlike_pending';
                                 const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
@@ -235,7 +240,14 @@ export default function EslesmelerPage() {
                                         key={match.id}
                                         onContextMenu={(e) => { 
                                             e.preventDefault(); 
-                                            setChatToInteract(match);
+                                            if (match.id === 'system') {
+                                                toast({
+                                                    title: 'Bilgi',
+                                                    description: 'Bu sistem sohbetidir ve silinemez.',
+                                                });
+                                            } else {
+                                                setChatToInteract(match);
+                                            }
                                         }}
                                     >
                                         {isClickable ? (
@@ -259,26 +271,20 @@ export default function EslesmelerPage() {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>
-                        {chatToInteract?.id === 'system' ? 'Bilgi' : 'Sohbeti Silmek İstediğinizden Emin misiniz?'}
+                        Sohbeti Silmek İstediğinizden Emin misiniz?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                         {chatToInteract?.id === 'system' 
-                            ? 'Bu sistem sohbetidir ve silinemez. Tüm önemli duyurular ve sistem mesajları burada görünür.'
-                            : `Bu işlem geri alınamaz. ${chatToInteract?.fullName} ile olan tüm sohbet geçmişiniz, gönderilen fotoğraflar dahil kalıcı olarak silinecektir.`}
+                        Bu işlem geri alınamaz. {chatToInteract?.fullName} ile olan tüm sohbet geçmişiniz, gönderilen fotoğraflar dahil kalıcı olarak silinecektir.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Kapat</AlertDialogCancel>
-                     {chatToInteract?.id !== 'system' && (
-                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                            {isDeleting ? <><Icons.logo width={16} height={16} className="mr-2 animate-pulse" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
-                        </AlertDialogAction>
-                     )}
+                    <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                        {isDeleting ? <><Icons.logo width={16} height={16} className="mr-2 animate-pulse" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     </div>
   );
 }
-
-    

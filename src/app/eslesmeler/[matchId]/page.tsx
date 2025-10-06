@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useUserProfile } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -919,7 +919,7 @@ export default function ChatPage() {
                  
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
-            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+            ) : isSystemChat ? null : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
                 </div>
@@ -1019,6 +1019,3 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
-    
-
-    
