@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
-const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
+const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
 const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/profilini-tamamla';
 const rulesRoute = '/kurallar';

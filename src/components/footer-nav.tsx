@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, MessageSquare, User, Flame, Compass } from 'lucide-react';
+import { Heart, MessageSquare, User, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 
@@ -17,26 +17,15 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
 
   const navItems = [
     { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
-    { href: '/kesfet', icon: Compass, label: langTr.footerNav.discover, hasNotification: false },
     { href: '/anasayfa', icon: Flame, label: langTr.footerNav.home, hasNotification: false },
     { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
     { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
   ];
 
-  // Reorder to put 'anasayfa' in the middle
-  const orderedNavItems = [
-      navItems.find(item => item.href === '/begeniler'),
-      navItems.find(item => item.href === '/kesfet'),
-      navItems.find(item => item.href === '/anasayfa'),
-      navItems.find(item => item.href === '/eslesmeler'),
-      navItems.find(item => item.href === '/profil'),
-  ].filter(Boolean) as typeof navItems;
-
-
   return (
     <footer className="sticky bottom-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm">
       <nav className="flex h-14 items-center justify-around">
-        {orderedNavItems.map((item, index) => {
+        {navItems.map((item, index) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
           const isCenterButton = item.href === '/anasayfa';
