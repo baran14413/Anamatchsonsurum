@@ -8,39 +8,42 @@ let adminApp: App | undefined;
 let db: Firestore | undefined;
 
 function getServiceAccount() {
-    // 1. Check for Base64 encoded environment variable (preferred method for deployment)
+    // 1. Check for Base64 encoded environment variable (preferred for deployment)
     if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
         try {
             const decodedKey = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8');
             return JSON.parse(decodedKey);
         } catch(e) {
             console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY_BASE64. Ensure it's a valid Base64 encoded JSON.", e);
+            // Fall through to try other methods
         }
     }
     
-    // 2. Check for file path environment variable (common for local/CI)
+    // 2. Check for file path from environment variable (common for local/CI)
     const keyPathFromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (keyPathFromEnv) {
-        try {
-            const resolvedPath = path.resolve(process.cwd(), keyPathFromEnv);
-            if (fs.existsSync(resolvedPath)) {
+        const resolvedPath = path.resolve(process.cwd(), keyPathFromEnv);
+        if (fs.existsSync(resolvedPath)) {
+            try {
                 const keyFileContent = fs.readFileSync(resolvedPath, 'utf-8');
                 return JSON.parse(keyFileContent);
+            } catch (e) {
+                console.error(`Failed to read or parse service account key from GOOGLE_APPLICATION_CREDENTIALS path: ${resolvedPath}.`, e);
+                // Fall through
             }
-        } catch (e) {
-            console.error(`Failed to read or parse service account key from GOOGLE_APPLICATION_CREDENTIALS path: ${keyPathFromEnv}.`, e);
         }
     }
 
     // 3. Check for a default file path in the project root (for local development)
     const defaultKeyPath = path.resolve(process.cwd(), 'service-account-key.json');
-     try {
-        if (fs.existsSync(defaultKeyPath)) {
+     if (fs.existsSync(defaultKeyPath)) {
+        try {
             const keyFileContent = fs.readFileSync(defaultKeyPath, 'utf-8');
             return JSON.parse(keyFileContent);
+        } catch (e) {
+            console.error(`Failed to read or parse service account key from default path: ${defaultKeyPath}.`, e);
+            // Fall through
         }
-    } catch (e) {
-        console.error(`Failed to read or parse service account key from default path: ${defaultKeyPath}.`, e);
     }
     
     // 4. If no key is found at all
