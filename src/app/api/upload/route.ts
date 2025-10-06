@@ -15,16 +15,16 @@ cloudinary.config({
 const upload = multer({ dest: '/tmp' });
 
 // Helper to run middleware
-const runMiddleware = (req: NextRequest, fn: Function) => {
+function runMiddleware(req: any, res: any, fn: any) {
   return new Promise((resolve, reject) => {
-    fn(req, new NextResponse(), (result: any) => {
+    fn(req, res, (result: any) => {
       if (result instanceof Error) {
         return reject(result);
       }
       return resolve(result);
     });
   });
-};
+}
 
 export const config = {
   api: {
@@ -34,20 +34,9 @@ export const config = {
 
 export async function POST(req: any) {
   try {
-    // We need to use a custom middleware wrapper because Next.js 14 doesn't
-    // support Express middleware out of the box in Route Handlers.
-    await new Promise<void>((resolve, reject) => {
-      const multerUpload = upload.single('file');
-      // @ts-ignore
-      multerUpload(req, new NextResponse(), (err: any) => {
-        if (err) {
-          console.error("Multer error:", err);
-          return reject(new Error('File processing error: ' + err.message));
-        }
-        resolve();
-      });
-    });
-
+    const res = new NextResponse();
+    await runMiddleware(req, res, upload.single('file'));
+    
     const file = req.file;
 
     if (!file) {
