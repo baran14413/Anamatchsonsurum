@@ -237,28 +237,16 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
-                                     <Carousel className="w-full max-w-xs mx-auto pt-6">
-                                        <CarouselContent>
-                                            {profile.images.map((image, index) => (
-                                                <CarouselItem key={index}>
-                                                    <div className="relative aspect-square">
-                                                        <Image
-                                                            src={image.url}
-                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
-                                                            fill
-                                                            className="object-cover rounded-lg"
-                                                        />
-                                                    </div>
-                                                </CarouselItem>
-                                            ))}
-                                        </CarouselContent>
-                                        {profile.images.length > 1 && (
-                                            <>
-                                                <CarouselPrevious className="left-2" />
-                                                <CarouselNext className="right-2" />
-                                            </>
+                                     <div className="relative w-full pt-[60%]">
+                                        {profile.images && profile.images.length > 0 && (
+                                            <Image
+                                                src={profile.images[0].url}
+                                                alt={`${profile.fullName} ana profil fotoğrafı`}
+                                                fill
+                                                className="object-cover"
+                                            />
                                         )}
-                                    </Carousel>
+                                    </div>
                                     
                                     <div className="p-6 space-y-6 !pt-2">
                                         <div className="text-left space-y-2">
@@ -267,28 +255,30 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                                 {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
                                             </div>
                                             
-                                            <div className="flex flex-col gap-2 text-muted-foreground">
-                                                {(profile.distance !== undefined || profile.address?.city) && (
-                                                    <div className="flex items-center gap-2">
-                                                        <MapPin className="w-4 h-4" />
-                                                        <span>
-                                                            {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {lookingForText && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Heart className="w-4 h-4" />
-                                                        <span>{lookingForText}</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            {(profile.distance !== undefined || profile.address?.city) && (
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                    <MapPin className="w-4 h-4" />
+                                                    <span>
+                                                        {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         
                                         {profile.bio && (
                                             <div>
                                                 <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
                                                 <p className='text-muted-foreground'>{profile.bio}</p>
+                                            </div>
+                                        )}
+                                        
+                                         {lookingForText && (
+                                            <div>
+                                                <h4 className='text-lg font-semibold mb-2'>Tercihler</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-sm">İlişki Tercihi:</span>
+                                                    <Badge variant="secondary" className='text-base py-1 px-3'>{lookingForText}</Badge>
+                                                </div>
                                             </div>
                                         )}
 
@@ -313,3 +303,4 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
+
