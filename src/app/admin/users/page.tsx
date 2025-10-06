@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -84,9 +84,20 @@ export default function AdminUsersPage() {
           membershipType: 'gold',
           goldMembershipExpiresAt: expiryDate
         });
+
+        // Send system message
+        const systemMessageText = `Tebrikler, artık BeMatch Gold üyesisin! Sınırsız beğeni, Super Like'lar ve daha birçok premium özelliğin keyfini çıkarabilirsin. Üyeliğin ${format(expiryDate, "d MMMM yyyy", { locale: tr })} tarihinde sona erecektir.`;
+        const systemMessagesColRef = collection(firestore, `users/${user.id}/system_messages`);
+        await addDoc(systemMessagesColRef, {
+            senderId: 'system',
+            text: systemMessageText,
+            timestamp: serverTimestamp(),
+            isRead: false
+        });
+
         toast({
           title: 'Başarılı',
-          description: `${user.fullName} kullanıcısı 1 aylık Gold üye yapıldı.`,
+          description: `${user.fullName} kullanıcısı 1 aylık Gold üye yapıldı ve bilgilendirme mesajı gönderildi.`,
         });
       }
     } catch (error: any) {
