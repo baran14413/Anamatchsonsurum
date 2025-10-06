@@ -248,62 +248,62 @@ export const langTr = {
             {
                 title: 'Müzik',
                 icon: 'Music',
-                options: [ 'Gospel', 'Bands', 'Rock', 'Soul', 'Pop', 'K-Pop', 'Punk', 'Rap', 'Folk', 'Latin', 'Alternative', 'Techno', 'Jazz', 'House', 'EDM', 'R&B', 'Indie', 'Opera', 'Heavy Metal', 'Funk', 'Reggaeton', 'Country', 'Hip Hop', 'J-Pop', 'Electronic', 'Grime', '90s Britpop', 'Trap', 'Music' ]
+                options: [ 'Gospel', 'Müzik Grupları', 'Rock', 'Soul', 'Pop', 'K-Pop', 'Punk', 'Rap', 'Folk', 'Latin', 'Alternatif', 'Tekno', 'Caz', 'House', 'EDM', 'R&B', 'Indie', 'Opera', 'Heavy Metal', 'Funk', 'Reggaeton', 'Country', 'Hip Hop', 'J-Pop', 'Elektronik', 'Grime', '90lar Britpop', 'Trap', 'Müzik' ]
             },
             {
                 title: 'Dışarı Çıkmak',
                 icon: 'DoorOpen',
-                options: [ 'Escape Rooms', 'Bars', 'Thrifting', 'Museums', 'Raves', 'Drive-in Movies', 'Musicals', 'Cafe Hopping', 'Aquarium', 'Clubbing', 'Exhibitions', 'Shopping', 'Cars', 'Pub Quiz', 'Festivals', 'Happy Hour', 'Stand-up Comedy', 'Karaoke', 'House Parties', 'Theatre', 'Hookah', 'Skating', 'Live Music', 'Bar Hopping', 'Bowling', 'Motorcycles', 'Parties' ]
+                options: [ 'Kaçış Odaları', 'Barlar', 'İkinci El Alışverişi', 'Müzeler', 'Partiler', 'Arabalı Sinemalar', 'Müzikaller', 'Kafe Gezintisi', 'Akvaryum', 'Kulüpler', 'Sergiler', 'Alışveriş', 'Arabalar', 'Pub Quiz', 'Festivaller', 'Happy Hour', 'Stand-up Komedi', 'Karaoke', 'Ev Partileri', 'Tiyatro', 'Nargile', 'Paten', 'Canlı Müzik', 'Bar Gezintisi', 'Bowling', 'Motosikletler' ]
             },
             {
                 title: 'Açık hava ve macera',
                 icon: 'Tent',
-                options: [ 'Paddling', 'Scuba Diving', 'Jet Skiing', 'Walking Tours', 'Nature', 'Hot Springs', 'Dog Walking', 'Skiing', 'Canoeing', 'Snowboarding', 'Road Trips', 'Couchsurfing', 'Freediving', 'Travel', 'Stand-up Paddle', 'Surfing', 'Beach Bars', 'Paragliding', 'Sailing', 'Hiking', 'Mountains', 'Backpacking', 'Rock Climbing', 'Fishing', 'Camping', 'Outdoors', 'Picnics' ]
+                options: [ 'Kürek Çekme', 'Tüplü Dalış', 'Jet Ski', 'Yürüyüş Turları', 'Doğa', 'Sıcak Su Kaynakları', 'Köpek Gezdirme', 'Kayak', 'Kano', 'Kar Kayağı', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Stand-up Paddle', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelken', 'Yürüyüş', 'Dağlar', 'Sırt Çantasıyla Gezme', 'Kaya Tırmanışı', 'Balık Tutma', 'Kamp', 'Açık Hava', 'Piknikler' ]
             },
             {
                 title: 'Değerler ve amaçlar',
                 icon: 'Globe',
-                options: [ 'Mental Health Awareness', 'Voter Rights', 'Climate Change', 'LGBTQIA+ Rights', 'Feminism', 'Black Lives Matter', 'Inclusivity', 'Human Rights', 'Social Development', 'Volunteering', 'Environmentalism', 'World Peace', 'Pride', 'Youth Empowerment', 'Equality', 'Politics', 'Activism', 'Disability Rights' ]
+                options: [ 'Ruh Sağlığı Farkındalığı', 'Seçmen Hakları', 'İklim Değişikliği', 'LGBTQIA+ Hakları', 'Feminizm', 'Black Lives Matter', 'Kapsayıcılık', 'İnsan Hakları', 'Sosyal Gelişim', 'Gönüllülük', 'Çevrecilik', 'Dünya Barışı', 'Onur Yürüyüşü', 'Gençlik Güçlendirmesi', 'Eşitlik', 'Politika', 'Aktivizm', 'Engelli Hakları' ]
             },
             {
                 title: 'Evde takılmak',
                 icon: 'Home',
-                options: [ 'Reading', 'Binge-watching', 'Home Workouts', 'Trivia', 'Cooking', 'Online Games', 'Online Shopping', 'Gardening', 'Board Games', 'Baking' ]
+                options: [ 'Okuma', 'Dizi/Film Maratonu', 'Evde Egzersiz', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online Alışveriş', 'Bahçe İşleri', 'Kutu Oyunları', 'Fırıncılık' ]
             },
             {
                 title: 'Kurmaca evrenler',
                 icon: 'Sparkles',
-                options: [ 'Comic Con', 'Harry Potter', '90s Kid', 'NBA', 'MLB', 'Dungeons & Dragons', 'Manga', 'Marvel', 'Disney' ]
+                options: [ 'Comic Con', 'Harry Potter', '90lar Çocuğu', 'NBA', 'MLB', 'Zindanlar ve Ejderhalar', 'Manga', 'Marvel', 'Disney' ]
             },
              {
                 title: 'TV ve filmler',
                 icon: 'Clapperboard',
-                options: [ 'Action Movies', 'Animated Movies', 'Crime Shows', 'Drama Shows', 'Fantasy Movies', 'Documentaries', 'Indie Movies', 'Reality Shows', 'Rom-Coms', 'Sports Shows', 'Thrillers', 'K-Dramas', 'Horror Movies', 'Bollywood', 'Cinema', 'Sci-Fi', 'Anime', 'Comedy' ]
+                options: [ 'Aksiyon Filmleri', 'Animasyon Filmleri', 'Suç Dizileri', 'Drama Dizileri', 'Fantastik Filmler', 'Belgeseller', 'Bağımsız Filmler', 'Reality Şovlar', 'Romantik Komediler', 'Spor Şovları', 'Gerilim Filmleri', 'K-Dramalar', 'Korku Filmleri', 'Bollywood', 'Sinema', 'Bilim Kurgu', 'Anime', 'Komedi' ]
             },
             {
                 title: 'Yaratıcılık',
                 icon: 'Paintbrush',
-                options: [ 'Crafts', 'Writing', 'Dancing', 'Painting', 'Design', 'Makeup' ]
+                options: [ 'El Sanatları', 'Yazarlık', 'Dans', 'Resim', 'Tasarım', 'Makyaj' ]
             },
             {
                 title: 'Oyun',
                 icon: 'Gamepad2',
-                options: [ 'PlayStation', 'Esports', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Arcade', 'Roblox' ]
+                options: [ 'PlayStation', 'E-spor', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Arcade', 'Roblox' ]
             },
             {
                 title: 'Sağlık ve yaşam tarzı',
                 icon: 'Sprout',
-                options: [ 'Self Love', 'Trying New Things', 'Tarot', 'Spa', 'Personal Growth', 'Meditation', 'Skincare', 'Astrology', 'Mindfulness', 'Sauna', 'Active Lifestyle', 'Yoga' ]
+                options: [ 'Kendini Sevme', 'Yeni Şeyler Deneme', 'Tarot', 'Spa', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Astroloji', 'Farkındalık', 'Sauna', 'Aktif Yaşam Tarzı', 'Yoga' ]
             },
              {
                 title: 'Sosyal medya içerikleri',
                 icon: 'MessageCircle',
-                options: [ 'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Social Media', 'Vlogging', 'YouTube', 'Virtual Reality', 'Memes', 'Metaverse', 'Podcasts', 'TikTok', 'Twitch', 'Netflix' ]
+                options: [ 'Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', 'Vlogging', 'YouTube', 'Sanal Gerçeklik', 'Memler', 'Metaverse', 'Podcastler', 'TikTok', 'Twitch', 'Netflix' ]
             },
             {
                 title: 'Spor ve fitness',
                 icon: 'Dumbbell',
-                options: [ 'Ice Hockey', 'Shooting', 'Track & Field', 'Sports', 'Walking', 'Beach Sports', 'Fitness Classes', 'Skateboarding', 'Rugby', 'Boxing' ]
+                options: [ 'Buz Hokeyi', 'Atıcılık', 'Atletizm', 'Spor', 'Yürüyüş', 'Plaj Sporları', 'Fitness Dersleri', 'Kaykay', 'Ragbi', 'Boks' ]
             }
         ]
     },

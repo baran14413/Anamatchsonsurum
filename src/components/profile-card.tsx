@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp, Star, Info, Clock } from 'lucide-react';
@@ -130,7 +130,45 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   const lookingForText = profile.lookingFor ? lookingForMap[profile.lookingFor] : null;
 
   const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
+  
+  const getDisplayedInterests = (interests?: string[]): string[] => {
+    if (!interests || interests.length === 0) {
+      return [];
+    }
 
+    const interestCategories = langTr.signup.step11.categories;
+    const categoryMap: { [key: string]: string[] } = {};
+    interestCategories.forEach(cat => {
+      cat.options.forEach(opt => {
+        categoryMap[opt] = cat.title;
+      });
+    });
+
+    const groupedInterests: { [key: string]: string[] } = {};
+    interests.forEach(interest => {
+      const category = categoryMap[interest] || 'Diğer';
+      if (!groupedInterests[category]) {
+        groupedInterests[category] = [];
+      }
+      groupedInterests[category].push(interest);
+    });
+
+    const displayed: string[] = [];
+    const categories = Object.keys(groupedInterests);
+    
+    // Pick one from each category until we have 5
+    for (const category of categories) {
+      if (displayed.length >= 5) break;
+      const randomInterestFromCategory = groupedInterests[category][Math.floor(Math.random() * groupedInterests[category].length)];
+      if (randomInterestFromCategory) {
+        displayed.push(randomInterestFromCategory);
+      }
+    }
+    
+    return displayed;
+  };
+  
+  const displayedInterests = useMemo(() => getDisplayedInterests(profile.interests), [profile.interests]);
 
   return (
     <motion.div 
@@ -225,6 +263,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                 </div>
                             )}
                         </div>
+                         {displayedInterests.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {displayedInterests.map(interest => (
+                                    <Badge key={interest} variant="secondary" className='bg-white/20 text-white border-transparent backdrop-blur-sm'>{interest}</Badge>
+                                ))}
+                            </div>
+                        )}
                     </div>
                      <Sheet>
                         <SheetTrigger asChild>
@@ -239,7 +284,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
-                                     {profile.images && profile.images.length > 0 && (
+                                    {profile.images && profile.images.length > 0 && (
                                         <Carousel className="w-full">
                                             <CarouselContent>
                                                 {profile.images
