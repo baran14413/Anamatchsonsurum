@@ -177,7 +177,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 </>
             )}
 
-            {isNewUser && (
+             {isNewUser && (
                  <div className="absolute top-8 left-4 z-30">
                     <Badge className="bg-blue-500 text-white border-blue-500">Yeni Üye</Badge>
                 </div>
@@ -237,16 +237,24 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
-                                     <div className="relative w-full pt-[60%]">
-                                        {profile.images && profile.images.length > 0 && (
-                                            <Image
-                                                src={profile.images[0].url}
-                                                alt={`${profile.fullName} ana profil fotoğrafı`}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        )}
-                                    </div>
+                                     <Carousel className="w-full">
+                                        <CarouselContent>
+                                            {(profile.images || []).map((image, index) => (
+                                                <CarouselItem key={index}>
+                                                    <div className="relative w-full aspect-[4/3]">
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                        <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                    </Carousel>
                                     
                                     <div className="p-6 space-y-6 !pt-2">
                                         <div className="text-left space-y-2">
@@ -255,11 +263,11 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                                 {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0">Yeni Üye</Badge>}
                                             </div>
                                             
-                                            {(profile.distance !== undefined || profile.address?.city) && (
+                                            {(profile.address?.city && profile.address?.country) && (
                                                 <div className="flex items-center gap-2 text-muted-foreground">
                                                     <MapPin className="w-4 h-4" />
                                                     <span>
-                                                        {profile.address?.city ? `${profile.address.city}, ${profile.address.country}` : langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}
+                                                        {profile.address.city}, {profile.address.country}
                                                     </span>
                                                 </div>
                                             )}
@@ -303,4 +311,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
-
