@@ -34,7 +34,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
 
   const usersCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -80,22 +80,22 @@ export default function AdminUsersPage() {
     }
   };
   
-  const handleDeleteUser = async () => {
-    if (!firestore || !userToDelete) return;
+  const handleBanUser = async () => {
+    if (!firestore || !userToBan) return;
     try {
-        await deleteDoc(doc(firestore, 'users', userToDelete.id));
+        await deleteDoc(doc(firestore, 'users', userToBan.id));
         toast({
-            title: 'Kullanıcı Silindi',
-            description: `${userToDelete.fullName} başarıyla silindi.`
+            title: 'Kullanıcı Yasaklandı',
+            description: `${userToBan.fullName} başarıyla sistemden yasaklandı.`
         });
     } catch(error: any) {
          toast({
             title: 'Hata',
-            description: `Kullanıcı silinirken bir hata oluştu: ${error.message}`,
+            description: `Kullanıcı yasaklanırken bir hata oluştu: ${error.message}`,
             variant: 'destructive',
         });
     } finally {
-        setUserToDelete(null);
+        setUserToBan(null);
     }
   }
 
@@ -162,9 +162,9 @@ export default function AdminUsersPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setUserToDelete(user)}>
+                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setUserToBan(user)}>
                                         <Trash2 className='mr-2 h-4 w-4'/>
-                                        <span>Kullanıcıyı Sil</span>
+                                        <span>Kullanıcıyı Yasakla</span>
                                     </DropdownMenuItem>
                                 </AlertDialogTrigger>
                             </DropdownMenuContent>
@@ -185,14 +185,14 @@ export default function AdminUsersPage() {
         </div>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle>Kullanıcıyı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+            <AlertDialogTitle>Kullanıcıyı Yasaklamak İstediğinizden Emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-                Bu işlem geri alınamaz. {userToDelete?.fullName} adlı kullanıcının hesabı ve tüm verileri kalıcı olarak silinecektir.
+                Bu işlem geri alınamaz. {userToBan?.fullName} adlı kullanıcının hesabı ve tüm verileri kalıcı olarak silinecek ve uygulamaya erişimi engellenecektir.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToDelete(null)}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setUserToBan(null)}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBanUser} className='bg-destructive hover:bg-destructive/90'>Yasakla</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
      </AlertDialog>
