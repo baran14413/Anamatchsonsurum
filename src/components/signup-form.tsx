@@ -74,12 +74,9 @@ type ImageSlot = {
     isUploading: boolean;
 };
 
-const getInitialImageSlots = (user: any): ImageSlot[] => {
-  const initialSlots: ImageSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
-  if (user?.photoURL) {
-    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false };
-  }
-  return initialSlots;
+const getInitialImageSlots = (user?: any): ImageSlot[] => {
+  // The user wants to remove automatic Google photo population.
+  return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 };
 
 
@@ -171,7 +168,6 @@ export default function ProfileCompletionForm() {
 
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [distanceValue, setDistanceValue] = useState(80);
 
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(user));
@@ -191,14 +187,9 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
-        const initialSlots = getInitialImageSlots(user);
-        setImageSlots(initialSlots);
-
-        const initialImages = initialSlots
-            .filter(slot => slot.preview) 
-            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '' }));
-
-        form.setValue('images', initialImages, { shouldValidate: true });
+        // Clear initial images to respect user's choice
+        setImageSlots(getInitialImageSlots());
+        form.setValue('images', [], { shouldValidate: true });
     }
   }, [user, form]);
   
@@ -347,8 +338,16 @@ export default function ProfileCompletionForm() {
             const newSlots = [...prev];
             newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
             
+            // Update react-hook-form state
             const currentImages = form.getValues('images') || [];
-            form.setValue('images', [...currentImages, { url: result.url, public_id: result.public_id }], { shouldValidate: true });
+            const updatedImages = [...currentImages];
+            const existingIndex = updatedImages.findIndex(img => img.url === newSlots[slotIndex].preview); // Should be -1 for new
+            if (existingIndex !== -1) {
+              updatedImages[existingIndex] = { url: result.url, public_id: result.public_id };
+            } else {
+              updatedImages[slotIndex] = { url: result.url, public_id: result.public_id };
+            }
+             form.setValue('images', updatedImages.filter(Boolean), { shouldValidate: true });
             
             return newSlots;
         });
@@ -359,10 +358,22 @@ export default function ProfileCompletionForm() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
+    const slotIndex = slotIndexStr ? parseInt(slotIndexStr, 10) : -1;
+
+    if (file && slotIndex !== -1) {
+        handleImageUpload(file, slotIndex);
+    }
+
+    // Reset file input to allow re-uploading the same file
+    if (e.target) e.target.value = '';
+  };
+  
   const openFilePicker = (index: number) => {
       if(isSubmitting) return;
-      const targetIndex = imageSlots[index].preview ? index : uploadedImageCount;
-      setActiveSlot(targetIndex);
+      fileInputRef.current?.setAttribute('data-slot-index', String(index));
       fileInputRef.current?.click();
   };
   
@@ -374,29 +385,33 @@ export default function ProfileCompletionForm() {
 
       if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
         try {
-            const response = await fetch('/api/delete-image', {
+            await fetch('/api/delete-image', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ public_id: slotToDelete.public_id }),
             });
-             if (!response.ok) {
-                console.error("Failed to delete from Cloudinary but proceeding in UI");
-            }
         } catch(err){
             console.error("Failed to delete from Cloudinary but proceeding in UI", err);
         }
       }
 
+      // Update UI state
       const newSlots = [...imageSlots];
-      if (slotToDelete.preview && slotToDelete.file) URL.revokeObjectURL(slotToDelete.preview);
-      newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
+      newSlots[index] = { file: null, preview: null, isUploading: false, public_id: null };
+
+      // Shift remaining items to fill the gap
+      const filledSlots = newSlots.filter(s => s.preview);
+      const emptySlots = Array.from({ length: 6 - filledSlots.length }, () => ({ file: null, preview: null, isUploading: false, public_id: null }));
       
-      setImageSlots(newSlots);
+      const finalSlots = [...filledSlots, ...emptySlots];
+      setImageSlots(finalSlots);
       
-      const newImages = newSlots
+      // Update form state
+      const newImagesForForm = finalSlots
         .filter(slot => slot.preview)
         .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
-      form.setValue('images', newImages, { shouldValidate: true });
+        
+      form.setValue('images', newImagesForForm, { shouldValidate: true });
   }
   
   const handleDistanceChange = (value: number[]) => {
@@ -561,7 +576,7 @@ export default function ProfileCompletionForm() {
                       ))}
                     </div>
                   </div>
-                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handleImageUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*" />
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                 </div>
               )}
                {step === 3 && (
@@ -733,5 +748,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
