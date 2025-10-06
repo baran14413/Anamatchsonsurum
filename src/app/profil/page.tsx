@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -120,15 +120,17 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Double Date Card */}
-        <Card className='shadow-md'>
+        {/* Gold Card */}
+        <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white'>
             <CardContent className='p-4 flex items-center gap-4'>
-                <Icons.logo className="h-8 w-8 text-pink-500" width={32} height={32}/>
+                <Gem className="h-8 w-8"/>
                 <div className='flex-1'>
-                    <h2 className='font-bold'>{t.profil.tryDoubleDate}</h2>
-                    <p className='text-sm text-muted-foreground'>{t.profil.tryDoubleDateDesc}</p>
+                    <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
+                    <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
                 </div>
-                <ChevronRight className='h-6 w-6 text-muted-foreground'/>
+                <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
+                    {t.profil.upgrade}
+                </Button>
             </CardContent>
         </Card>
 
