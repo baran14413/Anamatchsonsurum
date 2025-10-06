@@ -200,20 +200,30 @@ export default function KesfetPage() {
   const [lastAction, setLastAction] = useState<{ profile: ProfileWithAgeAndDistance, matchId: string } | null>(null);
 
 
- const removeTopProfile = useCallback(() => {
-    setProfiles(prev => prev.slice(1));
-  }, []);
+ const removeTopProfile = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
+    setProfiles(prev => {
+        const topProfile = prev[0];
+        if (topProfile && action === 'disliked') {
+            const user1Id = user!.uid;
+            const user2Id = topProfile.uid;
+            const matchId = [user1Id, user2Id].sort().join('_');
+            setLastAction({ profile: topProfile, matchId });
+        } else {
+            setLastAction(null);
+        }
+        return prev.slice(1);
+    });
+}, [user]);
 
  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
     swipedProfilesRef.current.add(swipedProfile.uid);
-    removeTopProfile();
+    removeTopProfile(action);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
     const matchId = [user1Id, user2Id].sort().join('_');
-    setLastAction({ profile: swipedProfile as ProfileWithAgeAndDistance, matchId });
     const matchDocRef = doc(firestore, 'matches', matchId);
 
     try {

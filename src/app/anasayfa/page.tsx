@@ -41,23 +41,25 @@ export default function AnasayfaPage() {
   const [lastSwipedProfile, setLastSwipedProfile] = useState<{ profile: ProfileWithDistance, matchId: string } | null>(null);
 
 
-  const removeTopCard = useCallback(() => {
+  const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     setProfiles(prev => {
         const topProfile = prev[0];
-        if (topProfile) {
+        if (topProfile && action === 'disliked') {
             const user1Id = user!.uid;
             const user2Id = topProfile.uid;
             const matchId = [user1Id, user2Id].sort().join('_');
             setLastSwipedProfile({ profile: topProfile, matchId });
+        } else {
+            setLastSwipedProfile(null);
         }
-        return prev.slice(1)
+        return prev.slice(1);
     });
   }, [user]);
   
   const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
     
-    removeTopCard();
+    removeTopCard(action);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
