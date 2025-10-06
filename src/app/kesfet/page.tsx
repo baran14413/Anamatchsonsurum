@@ -10,7 +10,7 @@ import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
 import { RefreshCw, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getDistance } from '@/lib/utils';
+import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
@@ -27,6 +27,79 @@ const calculateAge = (dateString?: string): number | null => {
     }
     return age;
 };
+
+// Component for a single profile in the discovery feed
+function DiscoveryProfileItem({ profile, isPriority }: { profile: ProfileWithAgeAndDistance, isPriority: boolean }) {
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    // Reset image index when profile changes
+    useEffect(() => {
+        setActiveImageIndex(0);
+    }, [profile.uid]);
+
+    const handleNextImage = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (profile.images && profile.images.length > 1) {
+            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
+        }
+    }, [profile.images]);
+
+    const handlePrevImage = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (profile.images && profile.images.length > 1) {
+            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
+        }
+    }, [profile.images]);
+
+    const currentImage = profile.images?.[activeImageIndex];
+    const hasMultipleImages = profile.images && profile.images.length > 1;
+
+    return (
+        <div className="h-full w-full snap-start flex-shrink-0 relative">
+            <div className="absolute inset-0">
+                {currentImage?.url && (
+                    <Image
+                        src={currentImage.url}
+                        alt={profile.fullName || 'Profile'}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        priority={isPriority}
+                    />
+                )}
+            </div>
+
+            {hasMultipleImages && (
+                <>
+                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
+                        {profile.images.map((_, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                            </div>
+                        ))}
+                    </div>
+                    <div className='absolute inset-0 flex z-0'>
+                        <div className='flex-1 h-full' onClick={handlePrevImage} />
+                        <div className='flex-1 h-full' onClick={handleNextImage} />
+                    </div>
+                </>
+            )}
+
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white">
+                <div className="space-y-1">
+                    <h3 className="text-2xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
+                    {profile.distance !== undefined && (
+                        <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="w-4 h-4" />
+                            <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                        </div>
+                    )}
+                    {profile.bio && <p className="text-base">{profile.bio}</p>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 export default function KesfetPage() {
   const { user, userProfile } = useUser();
@@ -156,29 +229,11 @@ export default function KesfetPage() {
     <div className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
       {profiles.length > 0 ? (
         profiles.map((profile, index) => (
-          <div key={profile.uid} className="h-full w-full snap-start flex-shrink-0 relative">
-            <div className="absolute inset-0">
-               {profile.images?.[0]?.url && (
-                 <Image
-                    src={profile.images[0].url}
-                    alt={profile.fullName || 'Profile'}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    priority={index < 2} // Prioritize loading for the first few images
-                />
-               )}
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white space-y-1">
-                <h3 className="text-2xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                {profile.distance !== undefined && (
-                    <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="w-4 h-4" />
-                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                    </div>
-                )}
-                {profile.bio && <p className="text-base">{profile.bio}</p>}
-            </div>
-          </div>
+          <DiscoveryProfileItem 
+              key={profile.uid} 
+              profile={profile} 
+              isPriority={index < 2} 
+          />
         ))
       ) : (
         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-4">
