@@ -111,6 +111,11 @@
         "superLikeBalance": {
             "type": "number",
             "description": "The number of Super Likes the user has available."
+        },
+        "membershipType": {
+          "type": "string",
+          "enum": ["free", "gold"],
+          "description": "The user's membership tier."
         }
       },
       "required": [

@@ -53,6 +53,7 @@ export type UserProfile = {
   rulesAgreed?: boolean;
   isAdmin?: boolean;
   superLikeBalance?: number;
+  membershipType?: 'free' | 'gold';
 };
 
 export type Match = {
