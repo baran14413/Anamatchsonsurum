@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
@@ -30,9 +31,39 @@ const calculateAge = (dateString?: string): number | null => {
 };
 
 // Component for a single profile in the discovery feed
-function DiscoveryProfileItem({ profile, isPriority, onAction, onVisible }: { profile: ProfileWithAgeAndDistance, isPriority: boolean, onAction: (action: 'liked' | 'disliked' | 'superliked') => void, onVisible: () => void }) {
+function DiscoveryProfileItem({ 
+    profile, 
+    isPriority, 
+    onAction, 
+    onVisible, 
+    index,
+    total,
+    scrollYProgress 
+}: { 
+    profile: ProfileWithAgeAndDistance, 
+    isPriority: boolean, 
+    onAction: (action: 'liked' | 'disliked' | 'superliked') => void, 
+    onVisible: () => void,
+    index: number,
+    total: number,
+    scrollYProgress: any 
+}) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const ref = useRef<HTMLDivElement>(null);
+    
+    // Calculate the start and end of the scroll progress for this specific item
+    const itemScrollStart = index / total;
+    const itemScrollEnd = (index + 1) / total;
+
+    // Transform scrollYProgress to a value between 0 and 1 for just this item's visibility
+    const itemProgress = useTransform(
+      scrollYProgress,
+      [itemScrollStart, itemScrollEnd],
+      [0, 1]
+    );
+    
+    const dislikeOpacity = useTransform(itemProgress, [0.5, 0.8], [0, 1]);
+    const dislikeRotate = useTransform(itemProgress, [0.5, 0.8], [-15, 0]);
 
      useEffect(() => {
         const observer = new IntersectionObserver(
@@ -61,39 +92,57 @@ function DiscoveryProfileItem({ profile, isPriority, onAction, onVisible }: { pr
 
     const handleNextImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveImageIndex((prev) => (prev + 1) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
     const handlePrevImage = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveImageIndex((prev) => (prev - 1 + profile.media.length) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
-    const currentImage = profile.images?.[activeImageIndex];
-    const hasMultipleImages = profile.images && profile.images.length > 1;
+    const currentMedia = profile.media?.[activeImageIndex];
+    const hasMultipleMedia = profile.media && profile.media.length > 1;
 
     return (
         <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
+             <motion.div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500 z-10 pointer-events-none"
+                style={{ opacity: dislikeOpacity, rotate: dislikeRotate }}
+            >
+                <X className="h-28 w-28" strokeWidth={3} />
+            </motion.div>
             <div className="absolute inset-0">
-                {currentImage?.url && (
-                    <Image
-                        src={currentImage.url}
-                        alt={profile.fullName || 'Profile'}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        priority={isPriority}
-                    />
+               {currentMedia && (
+                    currentMedia.type === 'video' ? (
+                        <video
+                            key={currentMedia.url}
+                            className="w-full h-full object-cover"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            src={currentMedia.url}
+                        />
+                    ) : (
+                        <Image
+                            src={currentMedia.url}
+                            alt={profile.fullName || 'Profile'}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            priority={isPriority}
+                        />
+                    )
                 )}
             </div>
 
-            {hasMultipleImages && (
+            {hasMultipleMedia && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.images.map((_, index) => (
+                        {profile.media.map((media, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                             </div>
@@ -156,10 +205,18 @@ export default function KesfetPage() {
   const [activeProfileUid, setActiveProfileUid] = useState<string | null>(null);
   const swipedProfilesRef = useRef(new Set<string>());
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+
+ const removeTopProfile = () => {
+    setProfiles(prev => prev.slice(1));
+  };
+
  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
     swipedProfilesRef.current.add(swipedProfile.uid);
+    removeTopProfile();
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -184,7 +241,7 @@ export default function KesfetPage() {
                 lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images?.[0]?.url || '',
+                profilePicture: swipedProfile.media?.[0]?.url || '',
                 isSuperLike: true,
                 status: 'superlike_pending',
                 superLikeInitiator: user1Id
@@ -260,7 +317,7 @@ export default function KesfetPage() {
                     lastMessage: langTr.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images?.[0].url || '',
+                    profilePicture: swipedProfile.media?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -311,7 +368,6 @@ export default function KesfetPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        // This is now correctly conditional
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -345,7 +401,7 @@ export default function KesfetPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.fullName || !p.media || p.media.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
                 (p as ProfileWithAgeAndDistance).age = age ?? undefined;
@@ -424,7 +480,7 @@ export default function KesfetPage() {
   }
 
   return (
-    <div className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
+    <div ref={scrollRef} className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
       {profiles.length > 0 ? (
         profiles.map((profile, index) => (
           <DiscoveryProfileItem 
@@ -433,6 +489,9 @@ export default function KesfetPage() {
               isPriority={index < 2} 
               onAction={(action) => handleAction(profile, action)}
               onVisible={() => setActiveProfileUid(profile.uid)}
+              index={index}
+              total={profiles.length}
+              scrollYProgress={scrollYProgress}
           />
         ))
       ) : (
@@ -447,5 +506,3 @@ export default function KesfetPage() {
     </div>
   );
 }
-
-    
