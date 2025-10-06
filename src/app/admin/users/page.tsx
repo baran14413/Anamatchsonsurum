@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
           </TableHeader>
           <TableBody>
             {users && users.map((user) => (
-              <TableRow key={user.uid}>
+              <TableRow key={user.id}>
                 <TableCell>
                   <Avatar>
                     <AvatarImage src={user.profilePicture} />
@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
                 <TableCell>
                   {/* Note: Firestore timestamp needs to be converted.
                       Assuming a 'createdAt' field exists. If not, this will be blank. */}
-                  {user.lastSeen ? format(user.lastSeen.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
+                  {user.lastSeen ? format(new Date(user.lastSeen.seconds * 1000), 'd MMMM yyyy', { locale: tr }) : '-'}
                 </TableCell>
               </TableRow>
             ))}
