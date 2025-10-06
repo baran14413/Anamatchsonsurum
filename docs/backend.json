@@ -99,6 +99,10 @@
             "type": "string",
             "format": "date-time",
             "description": "The last time the user was seen online."
+        },
+        "rulesAgreed": {
+            "type": "boolean",
+            "description": "Indicates if the user has agreed to the community rules."
         }
       },
       "required": [

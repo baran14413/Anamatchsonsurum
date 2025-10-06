@@ -15,6 +15,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 const protectedRoutes = ['/anasayfa', '/kesfet', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
 const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/profilini-tamamla';
+const rulesRoute = '/kurallar';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthFlowRoute = authFlowRoutes.includes(pathname);
   const isRegistrationRoute = pathname.startsWith(registrationRoute);
+  const isRulesRoute = pathname.startsWith(rulesRoute);
   
   // Specific check for the dynamic chat page
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
@@ -106,12 +108,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!isRegistrationRoute) {
           router.replace(registrationRoute);
         }
-        // If they are already on the registration page, do nothing.
+      } 
+      // 1b: Profile is complete, but they haven't seen the rules
+      else if (!userProfile.rulesAgreed) {
+          if (!isRulesRoute) {
+              router.replace(rulesRoute);
+          }
       }
-      // 1b: And profile is COMPLETE
+      // 1c: And profile is COMPLETE and rules are agreed
       else {
         // If they are on a public auth or registration page, redirect to the main app.
-        if (isAuthFlowRoute || isRegistrationRoute) {
+        if (isAuthFlowRoute || isRegistrationRoute || isRulesRoute) {
           router.replace('/anasayfa');
         }
       }
@@ -119,17 +126,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // SCENARIO 2: User is NOT logged in
     else {
       // If they are trying to access a protected route, redirect to welcome page.
-      if (isProtectedRoute || isRegistrationRoute) {
+      if (isProtectedRoute || isRegistrationRoute || isRulesRoute) {
         router.replace('/');
       }
       // If they are on a public or auth-flow page, do nothing.
     }
-  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute]);
+  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute, isRulesRoute]);
 
 
   // Show a global loader while resolving auth/profile state,
   // especially on protected routes to prevent content flashing.
-  if (isUserLoading && (isProtectedRoute || isRegistrationRoute)) {
+  if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute)) {
     return (
       <div className="flex h-dvh items-center justify-center">
         <Icons.logo width={48} height={48} className="animate-pulse" />
@@ -138,7 +145,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   // Determine if the header and footer should be shown
-  const showHeaderAndFooter = userProfile?.gender && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
+  const showHeaderAndFooter = userProfile?.gender && userProfile?.rulesAgreed && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
 
 
   if (showHeaderAndFooter) {
