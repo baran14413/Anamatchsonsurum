@@ -27,7 +27,7 @@ import Image from "next/image";
 import { Icons } from "./icons";
 import { Slider } from "./ui/slider";
 import googleLogo from '@/img/googlelogin.png';
-import type { UserImage } from "@/lib/types";
+import type { UserMedia } from "@/lib/types";
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -46,10 +46,11 @@ const formSchema = z.object({
         longitude: z.number(),
     }),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
-    photos: z.array(z.object({
+    media: z.array(z.object({
         url: z.string().url(),
         public_id: z.string(),
-    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
+        type: z.enum(['image', 'video']),
+    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(10),
     ageRange: z.object({
       min: z.number(),
       max: z.number()
@@ -58,18 +59,18 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-type PhotoSlot = {
+type MediaSlot = {
     file: File | null;
     preview: string | null;
     public_id?: string | null;
     isUploading: boolean;
+    type: 'image' | 'video';
 };
 
-const getInitialPhotoSlots = (user: any): PhotoSlot[] => {
-  const initialSlots: PhotoSlot[] = Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
+const getInitialMediaSlots = (user: any): MediaSlot[] => {
+  const initialSlots: MediaSlot[] = Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false, type: 'image' }));
   if (user?.photoURL) {
-    // Treat the Google photo as a non-file, already "uploaded" photo. It won't have a public_id from Cloudinary.
-    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false };
+    initialSlots[0] = { file: null, preview: user.photoURL, public_id: `google_${user.uid}`, isUploading: false, type: 'image' };
   }
   return initialSlots;
 };
@@ -163,14 +164,14 @@ export default function ProfileCompletionForm() {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [distanceValue, setDistanceValue] = useState(80);
 
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>(() => getInitialPhotoSlots(user));
+  const [mediaSlots, setMediaSlots] = useState<MediaSlot[]>(() => getInitialMediaSlots(user));
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       lookingFor: "",
-      photos: [],
+      media: [],
       distancePreference: 80,
     },
     mode: "onChange",
@@ -179,14 +180,14 @@ export default function ProfileCompletionForm() {
   useEffect(() => {
     if (user) {
         form.setValue('name', user.displayName || '');
-        const initialSlots = getInitialPhotoSlots(user);
-        setPhotoSlots(initialSlots);
+        const initialSlots = getInitialMediaSlots(user);
+        setMediaSlots(initialSlots);
 
-        const initialPhotos = initialSlots
-            .filter(slot => slot.preview) // Get only slots that have a photo (i.e., the Google one)
-            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '' }));
+        const initialMedia = initialSlots
+            .filter(slot => slot.preview) 
+            .map(slot => ({ url: slot.preview!, public_id: slot.public_id || '', type: slot.type }));
 
-        form.setValue('photos', initialPhotos, { shouldValidate: true });
+        form.setValue('media', initialMedia, { shouldValidate: true });
     }
   }, [user, form]);
   
@@ -206,7 +207,6 @@ export default function ProfileCompletionForm() {
 
     if (age >= 18) {
         setAgeStatus('valid');
-        // Set default age range
         const maxAge = age < 34 ? 34 : 80;
         form.setValue('ageRange', { min: age, max: maxAge });
     } else {
@@ -251,7 +251,7 @@ export default function ProfileCompletionForm() {
     );
   };
   
-  const uploadedPhotoCount = useMemo(() => photoSlots.filter(p => p.preview).length, [photoSlots]);
+  const uploadedMediaCount = useMemo(() => mediaSlots.filter(p => p.preview).length, [mediaSlots]);
 
 
   const nextStep = () => setStep((prev) => prev + 1);
@@ -275,8 +275,8 @@ export default function ProfileCompletionForm() {
         email: user.email,
         fullName: data.name,
         dateOfBirth: data.dateOfBirth.toISOString(),
-        images: data.photos,
-        profilePicture: data.photos.length > 0 ? data.photos[0].url : '',
+        media: data.media,
+        profilePicture: data.media.length > 0 ? data.media[0].url : '',
         globalModeEnabled: false, 
         expandAgeRange: true,
       };
@@ -295,12 +295,11 @@ export default function ProfileCompletionForm() {
   const totalSteps = 6;
   const progressValue = (step / totalSteps) * 100;
 
-  const handlePhotoUpload = async (file: File, slotIndex: number) => {
-    const tempId = `uploading-${slotIndex}`;
+  const handleMediaUpload = async (file: File, slotIndex: number) => {
     
-    setPhotoSlots(prev => {
+    setMediaSlots(prev => {
         const newSlots = [...prev];
-        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
+        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true, type: file.type.startsWith('video/') ? 'video' : 'image' };
         return newSlots;
     });
 
@@ -315,34 +314,35 @@ export default function ProfileCompletionForm() {
         }
         const result = await response.json();
 
-        setPhotoSlots(prev => {
+        setMediaSlots(prev => {
             const newSlots = [...prev];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
+            const type = result.resource_type === 'video' ? 'video' : 'image';
+            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null, type };
             
-            const currentPhotos = form.getValues('photos') || [];
-            form.setValue('photos', [...currentPhotos, { url: result.url, public_id: result.public_id }], { shouldValidate: true });
+            const currentMedia = form.getValues('media') || [];
+            form.setValue('media', [...currentMedia, { url: result.url, public_id: result.public_id, type }], { shouldValidate: true });
             
             return newSlots;
         });
 
     } catch (error: any) {
         toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
-        setPhotoSlots(prev => prev.map(s => s.file === file ? { file: null, preview: null, isUploading: false, public_id: null } : s));
+        setMediaSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null, type: 'image' } : s));
     }
   };
 
   const openFilePicker = (index: number) => {
       if(isSubmitting) return;
-      const targetIndex = photoSlots[index].preview ? index : uploadedPhotoCount;
+      const targetIndex = mediaSlots[index].preview ? index : uploadedMediaCount;
       setActiveSlot(targetIndex);
       fileInputRef.current?.click();
   };
   
-  const handleDeletePhoto = async (e: React.MouseEvent, index: number) => {
+  const handleDeleteMedia = async (e: React.MouseEvent, index: number) => {
       e.stopPropagation(); 
       if(isSubmitting) return;
       
-      const slotToDelete = photoSlots[index];
+      const slotToDelete = mediaSlots[index];
 
       if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
         try {
@@ -356,17 +356,17 @@ export default function ProfileCompletionForm() {
         }
       }
 
-      const newSlots = [...photoSlots];
+      const newSlots = [...mediaSlots];
       if (slotToDelete.preview && slotToDelete.file) URL.revokeObjectURL(slotToDelete.preview);
       newSlots.splice(index, 1);
-      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
+      newSlots.push({ file: null, preview: null, isUploading: false, public_id: null, type: 'image' });
       
-      setPhotoSlots(newSlots);
+      setMediaSlots(newSlots);
       
-      const newPhotos = newSlots
+      const newMedia = newSlots
         .filter(slot => slot.preview)
-        .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
-      form.setValue('photos', newPhotos, { shouldValidate: true });
+        .map(slot => ({ url: slot.preview!, public_id: slot.public_id!, type: slot.type }));
+      form.setValue('media', newMedia, { shouldValidate: true });
   }
   
   const handleDistanceChange = (value: number[]) => {
@@ -388,7 +388,7 @@ export default function ProfileCompletionForm() {
     const fieldsByStep: (keyof SignupFormValues | (keyof SignupFormValues)[])[] = [
         'name',
         'location',
-        'photos',
+        'media',
         'dateOfBirth',
         'gender',
         'lookingFor',
@@ -478,15 +478,15 @@ export default function ProfileCompletionForm() {
                         style={{ width: 40, height: 40 }}
                       >
                         <Icons.logo width={40} height={40} className="animate-pulse" style={{ animationDuration: '3s' }} />
-                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedPhotoCount / 6) * 100)}%</span>
+                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedMediaCount / 10) * 100)}%</span>
                       </div>
-                      <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedPhotoCount))}</p>
+                      <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedMediaCount))}</p>
                     </div>
-                     <FormMessage className="pt-2">{form.formState.errors.photos?.message}</FormMessage>
+                     <FormMessage className="pt-2">{form.formState.errors.media?.message}</FormMessage>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
                     <div className="grid grid-cols-3 gap-4">
-                      {photoSlots.map((slot, index) => (
+                      {mediaSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
                           <div onClick={() => openFilePicker(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
                             {slot.preview ? (
@@ -496,13 +496,13 @@ export default function ProfileCompletionForm() {
                                 {!isSubmitting && (
                                   <div className="absolute bottom-2 right-2 flex gap-2">
                                     <button type="button" onClick={(e) => {e.stopPropagation(); openFilePicker(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                    {uploadedPhotoCount > 2 && <button type="button" onClick={(e) => handleDeletePhoto(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
+                                    {uploadedMediaCount > 2 && <button type="button" onClick={(e) => handleDeleteMedia(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
                                   </div>
                                 )}
                               </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                  <span className="text-xs font-medium block">Fotoğraf ekle</span>
+                                  <span className="text-xs font-medium block">Medya ekle</span>
                                   <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
                                 </div>
                             )}
@@ -511,7 +511,7 @@ export default function ProfileCompletionForm() {
                       ))}
                     </div>
                   </div>
-                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handlePhotoUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*" />
+                  <input type="file" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0] && activeSlot !== null) handleMediaUpload(e.target.files[0], activeSlot); }} className="hidden" accept="image/*,video/*" />
                 </div>
               )}
               {step === 3 && (
@@ -619,7 +619,7 @@ export default function ProfileCompletionForm() {
               disabled={
                 isSubmitting ||
                 (step === 1 && locationStatus !== 'success') ||
-                (step === 2 && uploadedPhotoCount < 2) ||
+                (step === 2 && uploadedMediaCount < 2) ||
                 (step === 3 && ageStatus !== 'valid')
               }
             >
@@ -631,4 +631,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-

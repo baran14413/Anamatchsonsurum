@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { UserProfile } from '@/lib/types';
+import { useState, useEffect, useRef } from 'react';
+import type { UserProfile, UserMedia } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star, Video } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -28,10 +28,11 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 const SWIPE_THRESHOLD = 80;
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    setActiveImageIndex(0);
+    setActiveMediaIndex(0);
   }, [profile.uid]);
   
   const x = useMotionValue(0);
@@ -61,14 +62,14 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     onSwipe(action);
   };
 
-  const handleNextImage = (e: React.MouseEvent) => {
+  const handleNextMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
+    setActiveMediaIndex((prev) => (prev + 1) % (profile.media?.length || 1));
   };
   
-  const handlePrevImage = (e: React.MouseEvent) => {
+  const handlePrevMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
+    setActiveMediaIndex((prev) => (prev - 1 + (profile.media?.length || 1)) % (profile.media?.length || 1));
   };
   
   const motionProps = isDraggable ? {
@@ -80,8 +81,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     whileTap: { cursor: 'grabbing' as const },
   } : {};
 
-  const hasImages = profile.images && profile.images.length > 0 && profile.images[activeImageIndex] && profile.images[activeImageIndex].url;
-  
+  const currentMedia = profile.media && profile.media.length > 0 ? profile.media[activeMediaIndex] : null;
+
   return (
     <motion.div 
         className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
@@ -98,10 +99,10 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
         >
             <div className='absolute inset-0'>
-                {hasImages && (
+                {currentMedia?.url && currentMedia.type === 'image' && (
                     <Image
-                        src={profile.images[activeImageIndex].url}
-                        alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
+                        src={currentMedia.url}
+                        alt={`${profile.fullName} profile media ${activeMediaIndex + 1}`}
                         fill
                         sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                         style={{ objectFit: 'cover' }}
@@ -109,20 +110,33 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                         priority={isDraggable}
                     />
                 )}
+                 {currentMedia?.url && currentMedia.type === 'video' && (
+                    <video
+                        ref={videoRef}
+                        key={currentMedia.url}
+                        src={currentMedia.url}
+                        className="w-full h-full object-cover pointer-events-none"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                    />
+                )}
             </div>
             
-            {hasImages && profile.images.length > 1 && (
+            {profile.media && profile.media.length > 1 && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
-                        {profile.images.map((_, index) => (
-                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                        {profile.media.map((media, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40 group'>
+                                {media.type === 'video' && <Video className='absolute -top-1 -left-1 h-3 w-3 text-white/80'/>}
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeMediaIndex === index ? 'w-full' : 'w-0')} />
                             </div>
                         ))}
                     </div>
                     <div className='absolute inset-0 flex z-20'>
-                        <div className='flex-1 h-full' onClick={handlePrevImage} />
-                        <div className='flex-1 h-full' onClick={handleNextImage} />
+                        <div className='flex-1 h-full' onClick={handlePrevMedia} />
+                        <div className='flex-1 h-full' onClick={handleNextMedia} />
                     </div>
                 </>
             )}

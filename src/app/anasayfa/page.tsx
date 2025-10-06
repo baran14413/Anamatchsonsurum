@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { langTr } from '@/languages/tr';
-import type { UserProfile, UserImage } from '@/lib/types';
+import type { UserProfile, UserMedia } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, or, addDoc } from 'firebase/firestore';
@@ -72,7 +72,7 @@ export default function AnasayfaPage() {
                 lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images?.[0]?.url || '',
+                profilePicture: swipedProfile.media?.[0]?.url || '',
                 isSuperLike: true,
                 status: 'superlike_pending',
                 superLikeInitiator: user1Id
@@ -150,7 +150,7 @@ export default function AnasayfaPage() {
                     lastMessage: t.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images?.[0].url || '',
+                    profilePicture: swipedProfile.media?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -222,7 +222,7 @@ export default function AnasayfaPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.fullName || !p.media || p.media.length === 0) return false;
                 
                 // Age filter
                 if (ageRange) {

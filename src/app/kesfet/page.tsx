@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, UserMedia } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -30,56 +30,70 @@ const calculateAge = (dateString?: string): number | null => {
 
 // Component for a single profile in the discovery feed
 function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: ProfileWithAgeAndDistance, isPriority: boolean, onAction: (action: 'liked' | 'disliked' | 'superliked') => void }) {
-    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Reset image index when profile changes
+    // Reset media index when profile changes
     useEffect(() => {
-        setActiveImageIndex(0);
+        setActiveMediaIndex(0);
     }, [profile.uid]);
 
-    const handleNextImage = useCallback((e: React.MouseEvent) => {
+    const handleNextMedia = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveMediaIndex((prev) => (prev + 1) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
-    const handlePrevImage = useCallback((e: React.MouseEvent) => {
+    const handlePrevMedia = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
+        if (profile.media && profile.media.length > 1) {
+            setActiveMediaIndex((prev) => (prev - 1 + profile.media.length) % profile.media.length);
         }
-    }, [profile.images]);
+    }, [profile.media]);
 
-    const currentImage = profile.images?.[activeImageIndex];
-    const hasMultipleImages = profile.images && profile.images.length > 1;
+    const currentMedia = profile.media?.[activeMediaIndex];
+    const hasMultipleMedia = profile.media && profile.media.length > 1;
 
     return (
         <div className="h-full w-full snap-start flex-shrink-0 relative">
             <div className="absolute inset-0">
-                {currentImage?.url && (
+                {currentMedia?.url && currentMedia.type === 'image' && (
                     <Image
-                        src={currentImage.url}
+                        src={currentMedia.url}
                         alt={profile.fullName || 'Profile'}
                         fill
                         style={{ objectFit: 'cover' }}
                         priority={isPriority}
                     />
                 )}
+                 {currentMedia?.url && currentMedia.type === 'video' && (
+                    <video
+                        ref={videoRef}
+                        key={currentMedia.url}
+                        src={currentMedia.url}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                    />
+                )}
             </div>
 
-            {hasMultipleImages && (
+            {hasMultipleMedia && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.images.map((_, index) => (
+                        {profile.media.map((media, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                                {media.type === 'video' && <Video className='absolute -top-1 -left-1 h-3 w-3 text-white/80'/>}
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeMediaIndex === index ? 'w-full' : 'w-0')} />
                             </div>
                         ))}
                     </div>
                     <div className='absolute inset-0 flex z-0'>
-                        <div className='flex-1 h-full' onClick={handlePrevImage} />
-                        <div className='flex-1 h-full' onClick={handleNextImage} />
+                        <div className='flex-1 h-full' onClick={handlePrevMedia} />
+                        <div className='flex-1 h-full' onClick={handleNextMedia} />
                     </div>
                 </>
             )}
@@ -153,7 +167,7 @@ export default function KesfetPage() {
                 lastMessage: "Yanıt bekleniyor...",
                 timestamp: serverTimestamp(),
                 fullName: swipedProfile.fullName,
-                profilePicture: swipedProfile.images?.[0]?.url || '',
+                profilePicture: swipedProfile.media?.[0]?.url || '',
                 isSuperLike: true,
                 status: 'superlike_pending',
                 superLikeInitiator: user1Id
@@ -229,7 +243,7 @@ export default function KesfetPage() {
                     lastMessage: langTr.eslesmeler.defaultMessage,
                     timestamp: serverTimestamp(),
                     fullName: swipedProfile.fullName,
-                    profilePicture: swipedProfile.images?.[0].url || '',
+                    profilePicture: swipedProfile.media?.[0].url || '',
                     status: 'matched',
                 };
 
@@ -302,7 +316,7 @@ export default function KesfetPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.fullName || !p.media || p.media.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
                 (p as ProfileWithAgeAndDistance).age = age ?? undefined;

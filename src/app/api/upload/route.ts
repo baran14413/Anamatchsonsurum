@@ -31,12 +31,12 @@ export async function POST(req: NextRequest) {
     }
 
     const fileBuffer = await file.arrayBuffer();
-    const isAudio = file.type.startsWith('audio/');
+    const isVideo = file.type.startsWith('video/');
     
     const uploadPromise = new Promise((resolve, reject) => {
       const uploadOptions: any = { folder: 'bematch_profiles' };
-      if (isAudio) {
-        uploadOptions.resource_type = 'video'; // Cloudinary treats audio as video
+      if (isVideo) {
+        uploadOptions.resource_type = 'video';
       }
       
       const stream = cloudinary.uploader.upload_stream(
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const result: any = await uploadPromise;
 
-    return NextResponse.json({ url: result.secure_url, public_id: result.public_id });
+    return NextResponse.json({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type });
   } catch (error: any) {
     console.error("Cloudinary Upload Error:", error);
     return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
