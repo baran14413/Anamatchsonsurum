@@ -18,9 +18,15 @@ input, textarea {
 /* Experimental feature to prevent screen capture on "view once" media */
 @layer utilities {
     @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-        .screenshot-secure-backdrop::backdrop {
-            -webkit-backdrop-filter: blur(10px) !important;
-            backdrop-filter: blur(10px) !important;
+        /*
+          The [--protect-layer] selector is a custom property used to "tag" an element
+          for screen capture protection. The ::backdrop pseudo-element is then used
+          to apply a blur filter when the element is in a top-layer (like a fullscreen dialog).
+          This makes screenshots of the content blurry on supported browsers (like Safari).
+        */
+        .\[--protect-layer\]\:\:backdrop {
+            -webkit-backdrop-filter: blur(20px) !important;
+            backdrop-filter: blur(20px) !important;
             background-color: rgba(0, 0, 0, 0.9) !important;
         }
     }
@@ -48,6 +54,14 @@ input, textarea {
     --input: 240 5.9% 90%;
     --ring: 346.8 77.2% 49.8%;
     --radius: 0.5rem;
+
+    /* Sidebar Variables */
+    --sidebar-background: 0 0% 100%; /* White */
+    --sidebar-foreground: 240 10% 3.9%; /* Same as default foreground */
+    --sidebar-border: 240 5.9% 90%; /* Same as default border */
+    --sidebar-accent: 240 4.8% 95.9%; /* Same as default accent */
+    --sidebar-accent-foreground: 240 5.9% 10%; /* Same as default accent-foreground */
+    --sidebar-ring: 346.8 77.2% 49.8%; /* Same as default ring */
   }
   .dark {
     --background: 240 10% 3.9%;
@@ -69,6 +83,14 @@ input, textarea {
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 348 70.3% 47.5%;
+     
+    /* Dark Sidebar Variables */
+    --sidebar-background: 240 10% 3.9%; /* Dark */
+    --sidebar-foreground: 0 0% 98%; /* Same as dark foreground */
+    --sidebar-border: 240 3.7% 15.9%; /* Same as dark border */
+    --sidebar-accent: 240 3.7% 15.9%; /* Same as dark accent */
+    --sidebar-accent-foreground: 0 0% 98%; /* Same as dark accent-foreground */
+    --sidebar-ring: 348 70.3% 47.5%; /* Same as dark ring */
   }
 }
 

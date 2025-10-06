@@ -33,7 +33,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </SidebarGroup>
                      <SidebarGroup>
                         <SidebarGroupLabel>Sistem Yönetimi</SidebarGroupLabel>
-                        {/* Boş Kategori */}
+                         <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Kullanıcılar" asChild>
+                               <Link href="/admin/users">
+                                    <Users />
+                                    <span>Kullanıcılar</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
                     </SidebarGroup>
                     <SidebarSeparator />
                     <SidebarGroup>
@@ -43,17 +50,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Link href="/admin/dashboard">
                                     <Home />
                                     <span>Yönetim Paneli</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                    <SidebarGroup>
-                         <SidebarGroupLabel>Kullanıcı Etkileşim Menüsü</SidebarGroupLabel>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Users" asChild>
-                               <Link href="/admin/users">
-                                    <Users />
-                                    <span>Kullanıcılar</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

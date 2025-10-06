@@ -47,7 +47,6 @@ const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen
             iconColor = "bg-yellow-400";
         } else {
             statusText = "Yakınlarda aktifti";
-            iconColor = "bg-red-400";
         }
     } else {
         statusText = "Yakınlarda aktifti";
@@ -212,7 +211,10 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
         }}
     >
         <div
-            className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
+            className={cn(
+                "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+                profile.membershipType === 'gold' && "ring-4 ring-yellow-400"
+            )}
         >
             <div className='absolute inset-0'>
                 {currentImage?.url && (
