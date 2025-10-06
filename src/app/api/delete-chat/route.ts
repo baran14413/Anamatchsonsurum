@@ -1,43 +1,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, cert, credential } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { db } from '@/lib/firebase-admin';
 import { v2 as cloudinary } from 'cloudinary';
 
-// Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-            adminApp = initializeApp({
-                credential: cert(serviceAccount)
-            });
-        } catch (e) {
-            console.error("Firebase Admin initialization from service account key failed.", e);
-        }
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        adminApp = initializeApp({
-            credential: credential.applicationDefault()
-        });
-    } else {
-        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
-    }
-} else {
-    adminApp = getApps()[0];
+// Initialize Cloudinary
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
 }
 
-const db = getFirestore(adminApp);
-
-// Initialize Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 async function deleteCollection(collectionPath: string, batchSize: number) {
-    if (!db) throw new Error("Firestore not initialized");
+    if (!db) throw new Error("Veritabanı başlatılamadı.");
 
     const collectionRef = db.collection(collectionPath);
     let query = collectionRef.limit(batchSize);
@@ -59,11 +36,11 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
             batch.delete(doc.ref);
         });
 
-        if (publicIdsToDelete.length > 0) {
+        if (publicIdsToDelete.length > 0 && cloudinary.config().api_key) {
             try {
                 await cloudinary.api.delete_resources(publicIdsToDelete);
             } catch(cloudinaryError) {
-                console.error("Cloudinary deletion failed for some resources, but continuing Firestore deletion:", cloudinaryError);
+                console.error("Cloudinary silme işlemi bazı kaynaklar için başarısız oldu, ancak Firestore silme işlemine devam ediliyor:", cloudinaryError);
             }
         }
         
@@ -77,15 +54,15 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
 
 export async function POST(req: NextRequest) {
-    if (!adminApp || !db) {
-         return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
+    if (!db) {
+         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
     }
     
     try {
         const { matchId } = await req.json();
 
         if (!matchId) {
-            return NextResponse.json({ error: 'Match ID is required.' }, { status: 400 });
+            return NextResponse.json({ error: 'Eşleşme ID\'si gerekli.' }, { status: 400 });
         }
         
         const [user1Id, user2Id] = matchId.split('_');
@@ -110,10 +87,10 @@ export async function POST(req: NextRequest) {
         // Commit all batched writes
         await batch.commit();
 
-        return NextResponse.json({ message: 'Chat deleted successfully.' });
+        return NextResponse.json({ message: 'Sohbet başarıyla silindi.' });
 
     } catch (error: any) {
-        console.error("Chat Deletion Error:", error);
-        return NextResponse.json({ error: `Chat deletion failed: ${error.message}` }, { status: 500 });
+        console.error("Sohbet Silme Hatası:", error);
+        return NextResponse.json({ error: `Sohbet silinemedi: ${error.message}` }, { status: 500 });
     }
 }

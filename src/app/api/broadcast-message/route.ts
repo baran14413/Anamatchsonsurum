@@ -1,36 +1,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, cert, credential } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-// Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-            adminApp = initializeApp({
-                credential: cert(serviceAccount)
-            });
-        } catch (e) {
-            console.error("Firebase Admin initialization from service account key failed.", e);
-        }
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        adminApp = initializeApp({
-            credential: credential.applicationDefault()
-        });
-    } else {
-        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
-    }
-} else {
-    adminApp = getApps()[0];
-}
-
-const db = getFirestore(adminApp);
+import { db } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
-    if (!adminApp || !db) {
-         return NextResponse.json({ error: 'Sunucu bu eylem için yapılandırılmamış.' }, { status: 500 });
+    if (!db) {
+         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
     }
 
     try {
@@ -81,7 +55,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Duyuru tüm kullanıcılara gönderildi.', recipientCount: usersSnapshot.size });
 
     } catch (error: any) {
-        console.error("Broadcast message error:", error);
+        console.error("Duyuru gönderme hatası:", error);
         return NextResponse.json({ error: `Duyuru gönderilirken bir hata oluştu: ${error.message}` }, { status: 500 });
     }
 }

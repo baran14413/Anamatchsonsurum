@@ -1,35 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { credential } from 'firebase-admin';
-
-// Initialize Firebase Admin SDK
-let adminApp: App;
-if (!getApps().length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-            adminApp = initializeApp({
-                credential: cert(serviceAccount)
-            });
-        } catch (e) {
-            console.error("Firebase Admin initialization from service account key failed.", e);
-        }
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        adminApp = initializeApp({
-            credential: credential.applicationDefault()
-        });
-    } else {
-        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
-    }
-} else {
-    adminApp = getApps()[0];
-}
-
-const db = getFirestore(adminApp);
+import { db } from '@/lib/firebase-admin';
 
 async function deleteCollection(collectionPath: string, batchSize: number) {
+    if (!db) {
+        throw new Error("Veritabanı başlatılamadı.");
+    }
     const collectionRef = db.collection(collectionPath);
     let query = collectionRef.orderBy('__name__').limit(batchSize);
 
@@ -52,8 +28,8 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
 
 export async function POST(req: NextRequest) {
-    if (!adminApp) {
-        return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
+    if (!db) {
+        return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
     }
 
     try {
@@ -73,6 +49,8 @@ export async function POST(req: NextRequest) {
         usersSnapshot.forEach(userDoc => {
             const userMatchesPath = `users/${userDoc.id}/matches`;
             deleteSubcollectionPromises.push(deleteCollection(userMatchesPath, 100));
+            const systemMessagesPath = `users/${userDoc.id}/system_messages`;
+            deleteSubcollectionPromises.push(deleteCollection(systemMessagesPath, 100));
         });
 
         await Promise.all(deleteSubcollectionPromises);
@@ -80,10 +58,10 @@ export async function POST(req: NextRequest) {
         // --- 2. Delete all documents in main 'matches' collection ---
         await deleteCollection('matches', 100);
 
-        return NextResponse.json({ message: 'System reset successfully. All matches and chats have been deleted.' });
+        return NextResponse.json({ message: 'Sistem başarıyla sıfırlandı. Tüm eşleşmeler ve sohbetler silindi.' });
 
     } catch (error: any) {
-        console.error("System Reset Error:", error);
-        return NextResponse.json({ error: `System reset failed: ${error.message}` }, { status: 500 });
+        console.error("Sistem Sıfırlama Hatası:", error);
+        return NextResponse.json({ error: `Sistem sıfırlanamadı: ${error.message}` }, { status: 500 });
     }
 }

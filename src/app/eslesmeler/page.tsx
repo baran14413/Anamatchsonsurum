@@ -217,14 +217,14 @@ export default function EslesmelerPage() {
                                                 <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-background" />
                                             )}
                                         </div>
-                                        <div className="ml-4 flex-1">
+                                        <div className="ml-4 flex-1 overflow-hidden">
                                             <div className="flex justify-between items-center">
-                                                <h3 className={cn("font-semibold flex items-center gap-1.5", hasUnread && "text-foreground")}>
+                                                <h3 className={cn("font-semibold flex items-center gap-1.5 truncate", hasUnread && "text-foreground")}>
                                                   {match.fullName}
                                                   {!isSystemChat && match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
                                                 </h3>
                                                 {match.timestamp && (
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-xs text-muted-foreground shrink-0 pl-2">
                                                         {formatDistanceToNow(match.timestamp.toDate(), { addSuffix: true, locale: tr })}
                                                     </p>
                                                 )}
