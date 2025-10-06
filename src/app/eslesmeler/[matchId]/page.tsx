@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -666,6 +666,23 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
 
+    const handleCheckGoldStatus = () => {
+        if (!userProfile) return;
+
+        if (userProfile.membershipType === 'gold' && userProfile.goldMembershipExpiresAt) {
+            const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
+            toast({
+                title: "Tebrikler, siz bir Gold üyesiniz!",
+                description: `Üyeliğiniz ${format(expiryDate, 'd MMMM yyyy', { locale: tr })} tarihinde sona erecektir.`,
+            });
+        } else {
+            toast({
+                title: "Henüz Gold Üye Değilsiniz",
+                description: "Premium özelliklerden faydalanmak için üyeliğinizi yükseltin!",
+                variant: "destructive",
+            });
+        }
+    };
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched';
@@ -944,7 +961,16 @@ export default function ChatPage() {
                  
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
-            ) : isSystemChat ? null : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+            ) : isSystemChat ? (
+                <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
+                    <div className="flex flex-col gap-2">
+                        <Button onClick={handleCheckGoldStatus} variant="outline" className="w-full">
+                            <Gem className="mr-2 h-4 w-4" />
+                            Gold Üyelik Durumunu Sorgula
+                        </Button>
+                    </div>
+                </footer>
+            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
                 </div>
