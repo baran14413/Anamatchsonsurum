@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Annoyed, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, RefreshCw } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -602,36 +602,12 @@ export default function ChatPage() {
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {
-        if (!user || message.senderId === user.uid || message.type === 'view-once-viewed' || message.viewed) return;
-        setViewingOnceImage(message);
-        setViewOnceProgress(0);
-
-        let animationFrameId: number;
-        const timerDuration = 5000; // 5 seconds
-        let startTime: number | null = null;
+        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed) return;
         
-        const animateProgress = (timestamp: number) => {
-            if (startTime === null) startTime = timestamp;
-            const elapsed = timestamp - startTime;
-            const progress = Math.min((elapsed / timerDuration) * 100, 100);
-            setViewOnceProgress(progress);
-
-            if (progress < 100) {
-                animationFrameId = requestAnimationFrame(animateProgress);
-            } else {
-                handleCloseViewOnce(true); 
-            }
-        };
-
-        animationFrameId = requestAnimationFrame(animateProgress);
-    
-        return () => cancelAnimationFrame(animationFrameId);
-    };
-
-    const handleCloseViewOnce = useCallback(async (markAsViewed = false) => {
-        if (markAsViewed && viewingOnceImage && firestore && user) {
-            const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
-            const publicId = viewingOnceImage.imagePublicId;
+        // This function now IMMEDIATELY marks the photo as viewed and starts deletion process.
+        const markAsViewed = async () => {
+            const msgRef = doc(firestore, `matches/${matchId}/messages`, message.id);
+            const publicId = message.imagePublicId;
 
             const batch = writeBatch(firestore);
 
@@ -662,9 +638,33 @@ export default function ChatPage() {
                     console.error("Failed to delete 'view once' image from Cloudinary:", err);
                 }
             }
-        }
-        setViewingOnceImage(null);
-    }, [viewingOnceImage, firestore, matchId, user, otherUserId]);
+        };
+
+        markAsViewed();
+        setViewingOnceImage(message);
+        setViewOnceProgress(0);
+
+        let animationFrameId: number;
+        const timerDuration = 5000; // 5 seconds
+        let startTime: number | null = null;
+        
+        const animateProgress = (timestamp: number) => {
+            if (startTime === null) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+            const progress = Math.min((elapsed / timerDuration) * 100, 100);
+            setViewOnceProgress(progress);
+
+            if (progress < 100) {
+                animationFrameId = requestAnimationFrame(animateProgress);
+            } else {
+                setViewingOnceImage(null);
+            }
+        };
+
+        animationFrameId = requestAnimationFrame(animateProgress);
+    
+        return () => cancelAnimationFrame(animationFrameId);
+    };
 
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
@@ -1004,7 +1004,7 @@ export default function ChatPage() {
             </Dialog>
 
             {/* View Once Image Dialog */}
-             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
+             <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && setViewingOnceImage(null)}>
                 <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
                      <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
                      <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
@@ -1017,7 +1017,7 @@ export default function ChatPage() {
                            <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
                        </div>
                         <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white">
+                            <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white" onClick={() => setViewingOnceImage(null)}>
                                 <X className="h-5 w-5" />
                             </Button>
                         </DialogClose>
@@ -1042,3 +1042,5 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
+
+    
