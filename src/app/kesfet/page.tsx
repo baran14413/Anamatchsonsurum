@@ -5,15 +5,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
-import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, Compass, Sparkles } from 'lucide-react';
+import { RefreshCw, Compass, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ProfileCard from '@/components/profile-card';
+import { getDistance } from '@/lib/utils';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
@@ -372,5 +370,3 @@ export default function KesfetPage() {
     </div>
   );
 }
-
-    

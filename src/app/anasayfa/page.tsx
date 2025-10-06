@@ -43,7 +43,7 @@ export default function AnasayfaPage() {
     setProfiles(prev => prev.slice(1));
   }, []);
   
-  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+ const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
     
     removeTopCard();
@@ -360,5 +360,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
