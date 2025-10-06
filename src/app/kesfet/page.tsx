@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useMotionValue, PanInfo } from 'framer-motion';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
@@ -30,40 +30,27 @@ const calculateAge = (dateString?: string): number | null => {
     return age;
 };
 
+const SWIPE_THRESHOLD = -80;
+
 // Component for a single profile in the discovery feed
 function DiscoveryProfileItem({ 
     profile, 
     isPriority, 
     onAction, 
     onVisible, 
-    index,
-    total,
-    scrollYProgress 
 }: { 
     profile: ProfileWithAgeAndDistance, 
     isPriority: boolean, 
     onAction: (action: 'liked' | 'disliked' | 'superliked') => void, 
     onVisible: () => void,
-    index: number,
-    total: number,
-    scrollYProgress: any 
 }) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const ref = useRef<HTMLDivElement>(null);
     
-    // Calculate the start and end of the scroll progress for this specific item
-    const itemScrollStart = index / total;
-    const itemScrollEnd = (index + 1) / total;
-
-    // Transform scrollYProgress to a value between 0 and 1 for just this item's visibility
-    const itemProgress = useTransform(
-      scrollYProgress,
-      [itemScrollStart, itemScrollEnd],
-      [0, 1]
-    );
-    
-    const dislikeOpacity = useTransform(itemProgress, [0.5, 0.8], [0, 1]);
-    const dislikeRotate = useTransform(itemProgress, [0.5, 0.8], [-15, 0]);
+    const y = useMotionValue(0);
+    const opacity = useTransform(y, [0, SWIPE_THRESHOLD * 2], [1, 0]);
+    const dislikeOpacity = useTransform(y, [0, SWIPE_THRESHOLD], [0, 1]);
+    const dislikeRotate = useTransform(y, [0, SWIPE_THRESHOLD], [0, -15]);
 
      useEffect(() => {
         const observer = new IntersectionObserver(
@@ -85,6 +72,12 @@ function DiscoveryProfileItem({
             }
         };
     }, [onVisible]);
+
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        if (info.offset.y < SWIPE_THRESHOLD) {
+            onAction('disliked');
+        }
+    };
 
     useEffect(() => {
         setActiveImageIndex(0);
@@ -115,81 +108,91 @@ function DiscoveryProfileItem({
             >
                 <X className="h-28 w-28" strokeWidth={3} />
             </motion.div>
-            <div className="absolute inset-0">
-               {currentImage?.url && (
-                    currentImage.type === 'video' ? (
-                        <video
-                            key={currentImage.url}
-                            className="w-full h-full object-cover"
-                            src={currentImage.url}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                        />
-                    ) : (
-                        <Image
-                            src={currentImage.url}
-                            alt={profile.fullName || 'Profile'}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            priority={isPriority}
-                        />
-                    )
-                )}
-            </div>
-
-            {hasMultipleImages && (
-                <>
-                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.media.map((media, index) => (
-                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40 relative'>
-                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
-                                {media.type === 'video' && <Video className='absolute -top-0.5 -right-0.5 w-3 h-3 text-white'/>}
-                            </div>
-                        ))}
-                    </div>
-                    <div className='absolute inset-0 flex z-0'>
-                        <div className='flex-1 h-full' onClick={handlePrevImage} />
-                        <div className='flex-1 h-full' onClick={handleNextImage} />
-                    </div>
-                </>
-            )}
-
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white">
-                 <div className="flex items-end justify-between">
-                    <div className="space-y-1 flex-1 min-w-0">
-                        <h3 className="text-2xl font-bold truncate">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                         {profile.distance !== undefined && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                            </div>
-                        )}
-                        {profile.bio && <p className="text-base">{profile.bio}</p>}
-                    </div>
-                     <Sheet>
-                        <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
-                                <ChevronUp className="h-6 w-6" />
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card/80 text-card-foreground border-none p-0 backdrop-blur-sm'>
-                            <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
-                            <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
-                        </SheetContent>
-                    </Sheet>
-                </div>
-            </div>
             
-             <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-20">
-                 <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => onAction('liked')}>
-                    <Heart className="w-9 h-9 fill-current" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => onAction('superliked')}>
-                    <Star className="w-8 h-8 fill-current" />
-                </Button>
-            </div>
+            <motion.div 
+                className="w-full h-full" 
+                drag="y" 
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.5}
+                onDragEnd={handleDragEnd}
+                style={{ y, opacity }}
+            >
+                <div className="absolute inset-0">
+                   {currentImage?.url && (
+                        currentImage.type === 'video' ? (
+                            <video
+                                key={currentImage.url}
+                                className="w-full h-full object-cover"
+                                src={currentImage.url}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            />
+                        ) : (
+                            <Image
+                                src={currentImage.url}
+                                alt={profile.fullName || 'Profile'}
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                priority={isPriority}
+                            />
+                        )
+                    )}
+                </div>
+
+                {hasMultipleImages && (
+                    <>
+                        <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
+                            {profile.media.map((media, index) => (
+                                <div key={index} className='h-1 flex-1 rounded-full bg-white/40 relative'>
+                                    <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                                    {media.type === 'video' && <Video className='absolute -top-0.5 -right-0.5 w-3 h-3 text-white'/>}
+                                </div>
+                            ))}
+                        </div>
+                        <div className='absolute inset-0 flex z-0'>
+                            <div className='flex-1 h-full' onClick={handlePrevImage} />
+                            <div className='flex-1 h-full' onClick={handleNextImage} />
+                        </div>
+                    </>
+                )}
+
+                <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white">
+                     <div className="flex items-end justify-between">
+                        <div className="space-y-1 flex-1 min-w-0">
+                            <h3 className="text-2xl font-bold truncate">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
+                             {profile.distance !== undefined && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                </div>
+                            )}
+                            {profile.bio && <p className="text-base">{profile.bio}</p>}
+                        </div>
+                         <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
+                                    <ChevronUp className="h-6 w-6" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card/80 text-card-foreground border-none p-0 backdrop-blur-sm'>
+                                <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
+                                <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                </div>
+                
+                 <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-20">
+                     <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => onAction('liked')}>
+                        <Heart className="w-9 h-9 fill-current" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => onAction('superliked')}>
+                        <Star className="w-8 h-8 fill-current" />
+                    </Button>
+                </div>
+            </motion.div>
         </div>
     );
 }
@@ -217,7 +220,7 @@ export default function KesfetPage() {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
     swipedProfilesRef.current.add(swipedProfile.uid);
-    if(action !== 'disliked') removeTopProfile();
+    removeTopProfile();
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -364,11 +367,11 @@ export default function KesfetPage() {
         return;
     }
     setIsLoading(true);
-    swipedProfilesRef.current.clear();
 
     try {
         const interactedUids = new Set<string>([user.uid]);
         
+        // Only fetch interacted users if we are NOT resetting
         if (!options?.reset) {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
@@ -381,6 +384,8 @@ export default function KesfetPage() {
             query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
             query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
         }
+        
+        swipedProfilesRef.current.clear();
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -490,9 +495,6 @@ export default function KesfetPage() {
               isPriority={index < 2} 
               onAction={(action) => handleAction(profile, action)}
               onVisible={() => setActiveProfileUid(profile.uid)}
-              index={index}
-              total={profiles.length}
-              scrollYProgress={scrollYProgress}
           />
         ))
       ) : (
@@ -507,3 +509,6 @@ export default function KesfetPage() {
     </div>
   );
 }
+
+
+    
