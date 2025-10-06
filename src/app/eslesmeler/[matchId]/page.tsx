@@ -666,22 +666,25 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
 
-    const handleCheckGoldStatus = () => {
-        if (!userProfile) return;
+    const handleCheckGoldStatus = async () => {
+        if (!user || !firestore || !userProfile) return;
+
+        let systemMessageText = "";
 
         if (userProfile.membershipType === 'gold' && userProfile.goldMembershipExpiresAt) {
             const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
-            toast({
-                title: "Tebrikler, siz bir Gold üyesiniz!",
-                description: `Üyeliğiniz ${format(expiryDate, 'd MMMM yyyy', { locale: tr })} tarihinde sona erecektir.`,
-            });
+            systemMessageText = `Tebrikler, siz bir Gold üyesiniz! Üyeliğiniz ${format(expiryDate, 'd MMMM yyyy', { locale: tr })} tarihinde sona erecektir.`;
         } else {
-            toast({
-                title: "Henüz Gold Üye Değilsiniz",
-                description: "Premium özelliklerden faydalanmak için üyeliğinizi yükseltin!",
-                variant: "destructive",
-            });
+            systemMessageText = "Henüz Gold üye değilsiniz. Premium özelliklerden faydalanmak ve BeMatch deneyiminizi zirveye taşımak için üyeliğinizi şimdi yükseltebilirsiniz.";
         }
+        
+        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
+        await addDoc(systemMessagesColRef, {
+            senderId: 'system',
+            text: systemMessageText,
+            timestamp: serverTimestamp(),
+            isRead: true, // System-generated responses to user actions can be marked as read
+        });
     };
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
