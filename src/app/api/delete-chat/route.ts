@@ -8,22 +8,23 @@ import { v2 as cloudinary } from 'cloudinary';
 // Initialize Firebase Admin SDK
 let adminApp: App;
 if (!getApps().length) {
-    // Check if running in a Google Cloud environment
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        adminApp = initializeApp({
-            credential: credential.applicationDefault()
-        });
-    } else {
-        // Fallback for local development if service account key is available as env var
+    // Check if the service account key is available in environment variables
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
         try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
             adminApp = initializeApp({
                 credential: credential.cert(serviceAccount)
             });
         } catch (e) {
-            console.error("Firebase Admin initialization failed. Ensure GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY is set.", e);
-            // We'll let it fail downstream if the app is still unusable
+            console.error("Firebase Admin initialization from service account key failed.", e);
         }
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+         // Fallback for Google Cloud environment
+        adminApp = initializeApp({
+            credential: credential.applicationDefault()
+        });
+    } else {
+        console.error("Firebase Admin initialization failed. Ensure FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS is set.");
     }
 } else {
     adminApp = getApps()[0];
@@ -87,6 +88,9 @@ export async function POST(req: NextRequest) {
 
         if (!matchId) {
             return NextResponse.json({ error: 'Match ID is required.' }, { status: 400 });
+        }
+        if (!adminApp) {
+             return NextResponse.json({ error: 'Server not configured for this action.' }, { status: 500 });
         }
 
         const [user1Id, user2Id] = matchId.split('_');
