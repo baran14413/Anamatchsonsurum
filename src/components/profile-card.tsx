@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star, Info } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star, Info, Clock } from 'lucide-react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { ScrollArea } from './ui/scroll-area';
+import { formatDistanceToNow, differenceInHours } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -27,6 +29,21 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     const ageDate = new Date(Date.now() - birthday.getTime());
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
+
+const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen?: any }) => {
+    if (isOnline) {
+        return "Şu an aktif";
+    }
+    if (lastSeen?.toDate) {
+        const lastSeenDate = lastSeen.toDate();
+        const hoursAgo = differenceInHours(new Date(), lastSeenDate);
+        if (hoursAgo < 10) {
+            return `${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })} aktifti`;
+        }
+    }
+    return "Yakınlarda aktifti";
+};
+
 
 const SWIPE_THRESHOLD = 80;
 
@@ -117,9 +134,17 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                 )}
             </div>
             
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-30" />
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-full px-4 z-40">
+                <div className="h-10 px-4 rounded-full bg-gradient-to-r from-red-500/80 to-orange-400/80 backdrop-blur-sm flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
+                </div>
+            </div>
+
             {profile.images && profile.images.length > 1 && (
                 <>
-                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
+                    <div className='absolute top-[60px] left-2 right-2 flex gap-1 z-30'>
                         {profile.images.map((_, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40 group'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
@@ -134,7 +159,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             )}
 
             {isNewUser && (
-                <div className="absolute top-4 left-4 z-30">
+                <div className="absolute top-[80px] left-4 z-30">
                     <Badge className="bg-blue-500 text-white border-blue-500">Yeni Üye</Badge>
                 </div>
             )}
