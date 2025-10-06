@@ -8,12 +8,12 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, Compass, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import ProfileCard from '@/components/profile-card';
 
 type ProfileWithAgeAndDistance = UserProfile & { age?: number; distance?: number };
 
@@ -30,160 +30,35 @@ const calculateAge = (dateString?: string): number | null => {
     return age;
 };
 
-const SWIPE_THRESHOLD = -80;
-
-// Component for a single profile in the discovery feed
-function DiscoveryProfileItem({ 
-    profile, 
-    isPriority, 
-    onAction,
-}: { 
-    profile: ProfileWithAgeAndDistance, 
-    isPriority: boolean, 
-    onAction: (action: 'liked' | 'disliked' | 'superliked') => void, 
-}) {
-    const [activeImageIndex, setActiveImageIndex] = useState(0);
-    const ref = useRef<HTMLDivElement>(null);
-    const [actionFeedback, setActionFeedback] = useState<'liked' | 'superliked' | 'disliked' | null>(null);
-    
-    const y = useMotionValue(0);
-    const opacity = useTransform(y, [0, SWIPE_THRESHOLD * 2], [1, 0]);
-    const dislikeOpacity = useTransform(y, [0, SWIPE_THRESHOLD], [0, 1]);
-
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        if (info.offset.y < SWIPE_THRESHOLD) {
-             triggerAction('disliked');
-        }
-    };
-    
-    const triggerAction = (action: 'liked' | 'disliked' | 'superliked') => {
-        setActionFeedback(action);
-        setTimeout(() => {
-            onAction(action);
-        }, 300); // Wait for animation to be visible
-    };
-
-    useEffect(() => {
-        setActiveImageIndex(0);
-    }, [profile.uid]);
-
-    const handleNextImage = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev + 1) % profile.images.length);
-        }
-    }, [profile.images]);
-
-    const handlePrevImage = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (profile.images && profile.images.length > 1) {
-            setActiveImageIndex((prev) => (prev - 1 + profile.images.length) % profile.images.length);
-        }
-    }, [profile.images]);
-
-    const currentImage = profile.images?.[activeImageIndex];
-    const hasMultipleImages = profile.images && profile.images.length > 1;
-
+const DiscoveryIntro = ({ onDismiss }: { onDismiss: () => void }) => {
     return (
-        <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
-             <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500 z-10 pointer-events-none"
-                style={{ opacity: dislikeOpacity }}
-                animate={actionFeedback === 'disliked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: 0 } : {}}
-            >
-                <X className="h-28 w-28" strokeWidth={3} />
-            </motion.div>
-
-            <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-400 z-10 pointer-events-none"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={actionFeedback === 'liked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: 15 } : {}}
-            >
-                <Heart className="h-28 w-28 fill-current" strokeWidth={1} />
-            </motion.div>
-
-            <motion.div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10 pointer-events-none"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={actionFeedback === 'superliked' ? { opacity: 1, scale: [1, 1.2, 1] } : {}}
-            >
-                <Star className="h-28 w-28 fill-current" strokeWidth={1.5} />
-            </motion.div>
-            
-            <motion.div 
-                className="w-full h-full" 
-                drag="y" 
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.5}
-                onDragEnd={handleDragEnd}
-                style={{ y, opacity }}
-            >
-                <div className="absolute inset-0">
-                   {currentImage?.url && (
-                        <Image
-                            src={currentImage.url}
-                            alt={profile.fullName || 'Profile'}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            priority={isPriority}
-                        />
-                    )}
+        <div className="absolute inset-0 z-50 flex h-full w-full flex-col items-center justify-center bg-background/95 p-8 text-center backdrop-blur-sm">
+            <div className="space-y-6">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Compass className="h-12 w-12" />
                 </div>
-
-                {hasMultipleImages && (
-                    <>
-                        <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                            {profile.images.map((img, index) => (
-                                <div key={index} className='h-1 flex-1 rounded-full bg-white/40 relative'>
-                                    <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
-                                </div>
-                            ))}
-                        </div>
-                        <div className='absolute inset-0 flex z-0'>
-                            <div className='flex-1 h-full' onClick={handlePrevImage} />
-                            <div className='flex-1 h-full' onClick={handleNextImage} />
-                        </div>
-                    </>
-                )}
-
-                <div className="absolute bottom-0 left-0 right-0 p-4 pb-16 bg-gradient-to-t from-black/80 to-transparent text-white">
-                     <div className="flex items-end justify-between">
-                        <div className="space-y-1 flex-1 min-w-0">
-                            <h3 className="text-2xl font-bold truncate">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                             {profile.distance !== undefined && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                </div>
-                            )}
-                            {profile.bio && <p className="text-base">{profile.bio}</p>}
-                        </div>
-                         <Sheet>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
-                                    <ChevronUp className="h-6 w-6" />
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card/80 text-card-foreground border-none p-0 backdrop-blur-sm'>
-                                <SheetTitle className='sr-only'>Profil Detayları</SheetTitle>
-                                <SheetDescription className='sr-only'>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
-                            </SheetContent>
-                        </Sheet>
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold">Keşfet'e Hoş Geldin!</h1>
+                    <p className="text-muted-foreground">
+                        Burası profiller arasında dikey olarak kaydırarak gezebileceğin özgür bir alan.
+                    </p>
+                </div>
+                 <div className="flex items-start gap-4 rounded-lg border p-4 text-left">
+                    <Sparkles className="h-6 w-6 shrink-0 text-yellow-500" />
+                    <div>
+                        <h3 className="font-semibold">Sınırsız Beğeni</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Anasayfadan farklı olarak, burada günlük beğeni limitin olmadan sınırsızca keşfedebilirsin.
+                        </p>
                     </div>
                 </div>
-                
-                 <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-20">
-                     <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => triggerAction('liked')}>
-                        <Heart className="w-9 h-9 fill-current" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => triggerAction('superliked')}>
-                        <Star className="w-8 h-8 fill-current" />
-                    </Button>
-                </div>
-            </motion.div>
+                <Button size="lg" className="w-full rounded-full font-bold" onClick={onDismiss}>
+                    Anladım, Başla!
+                </Button>
+            </div>
         </div>
     );
-}
+};
 
 
 export default function KesfetPage() {
@@ -194,9 +69,22 @@ export default function KesfetPage() {
   const t = langTr.anasayfa;
   const { toast } = useToast();
   
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showIntro, setShowIntro] = useState(false);
 
- const removeTopProfile = useCallback(() => {
+  useEffect(() => {
+    // This effect runs only on the client.
+    const hasSeenIntro = localStorage.getItem('hasSeenKesfetIntro');
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+  }, []);
+
+  const handleDismissIntro = () => {
+    localStorage.setItem('hasSeenKesfetIntro', 'true');
+    setShowIntro(false);
+  };
+
+  const removeTopProfile = useCallback(() => {
     setProfiles(prev => prev.slice(1));
 }, []);
 
@@ -281,12 +169,6 @@ export default function KesfetPage() {
                 actionTaken: false,
             };
             await addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
-
-            toast({
-                title: 'Super Like Gönderildi!',
-                description: 'Şimdi eşleşme listeni kontrol et.',
-            });
-
 
         } else { // Handle normal like/dislike
             const isUser1 = user1Id < user2Id;
@@ -459,7 +341,6 @@ export default function KesfetPage() {
     }
   }, [fetchProfiles, userProfile]);
 
-
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -469,16 +350,16 @@ export default function KesfetPage() {
   }
 
   return (
-    <div ref={scrollRef} className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
+    <div className="relative h-full w-full">
+      {showIntro && <DiscoveryIntro onDismiss={handleDismissIntro} />}
       {profiles.length > 0 ? (
-        profiles.map((profile, index) => (
-          <DiscoveryProfileItem 
-              key={profile.uid} 
-              profile={profile} 
-              isPriority={index < 2} 
-              onAction={(action) => handleAction(profile, action)}
-          />
-        ))
+          <div className="h-full w-full">
+            <ProfileCard
+                profile={profiles[0]}
+                onSwipe={(action) => handleAction(profiles[0], action)}
+                isDraggable={true}
+            />
+          </div>
       ) : (
         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-4">
              <p>{t.outOfProfilesDescription}</p>
