@@ -129,6 +129,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
   };
   const lookingForText = profile.lookingFor ? lookingForMap[profile.lookingFor] : null;
 
+  const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
 
   return (
     <motion.div 
@@ -240,7 +242,9 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                      {profile.images && profile.images.length > 0 && (
                                         <Carousel className="w-full">
                                             <CarouselContent>
-                                                {profile.images.filter(image => image && image.url).map((image, index) => (
+                                                {profile.images
+                                                    .filter(image => image && image.url && validImageExtensions.some(ext => image.url.toLowerCase().endsWith(ext)))
+                                                    .map((image, index) => (
                                                     <CarouselItem key={index}>
                                                         <div className="relative w-full aspect-[4/3]">
                                                             <Image
@@ -313,4 +317,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
-
