@@ -44,6 +44,7 @@ function DiscoveryProfileItem({
 }) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const ref = useRef<HTMLDivElement>(null);
+    const [actionFeedback, setActionFeedback] = useState<'liked' | 'superliked' | 'disliked' | null>(null);
     
     const y = useMotionValue(0);
     const opacity = useTransform(y, [0, SWIPE_THRESHOLD * 2], [1, 0]);
@@ -52,8 +53,15 @@ function DiscoveryProfileItem({
 
     const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.y < SWIPE_THRESHOLD) {
-            onAction('disliked');
+             triggerAction('disliked');
         }
+    };
+    
+    const triggerAction = (action: 'liked' | 'disliked' | 'superliked') => {
+        setActionFeedback(action);
+        setTimeout(() => {
+            onAction(action);
+        }, 300); // Wait for animation to be visible
     };
 
     useEffect(() => {
@@ -81,9 +89,26 @@ function DiscoveryProfileItem({
         <div ref={ref} className="h-full w-full snap-start flex-shrink-0 relative">
              <motion.div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500 z-10 pointer-events-none"
-                style={{ opacity: dislikeOpacity, rotate: dislikeRotate }}
+                style={{ opacity: dislikeOpacity }}
+                animate={actionFeedback === 'disliked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: -15 } : {}}
             >
                 <X className="h-28 w-28" strokeWidth={3} />
+            </motion.div>
+
+            <motion.div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-400 z-10 pointer-events-none"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={actionFeedback === 'liked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: 15 } : {}}
+            >
+                <Heart className="h-28 w-28 fill-current" strokeWidth={1} />
+            </motion.div>
+
+            <motion.div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10 pointer-events-none"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={actionFeedback === 'superliked' ? { opacity: 1, scale: [1, 1.2, 1] } : {}}
+            >
+                <Star className="h-28 w-28 fill-current" strokeWidth={1.5} />
             </motion.div>
             
             <motion.div 
@@ -149,10 +174,10 @@ function DiscoveryProfileItem({
                 </div>
                 
                  <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-20">
-                     <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => onAction('liked')}>
+                     <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-black/40 backdrop-blur-sm text-green-400 hover:bg-black/50" onClick={() => triggerAction('liked')}>
                         <Heart className="w-9 h-9 fill-current" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => onAction('superliked')}>
+                    <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm text-blue-400 hover:bg-black/50" onClick={() => triggerAction('superliked')}>
                         <Star className="w-8 h-8 fill-current" />
                     </Button>
                 </div>
@@ -262,6 +287,13 @@ export default function KesfetPage() {
                 actionTaken: false,
             };
             await addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
+
+            toast({
+                title: 'Super Like Gönderildi!',
+                description: 'Şimdi eşleşme listeni kontrol et.',
+                icon: <Star className="h-6 w-6 text-blue-500 fill-current" />
+            });
+
 
         } else { // Handle normal like/dislike
             const isUser1 = user1Id < user2Id;
