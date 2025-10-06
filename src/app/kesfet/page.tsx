@@ -1,84 +1,126 @@
-
 'use client';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { mockPosts } from '@/lib/data';
-import { Heart, MessageCircle, Send, MoreHorizontal } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
+import { Icons } from '@/components/icons';
+import { AnimatePresence, motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
-import { Translation } from '@/components/translation';
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+type ProfileWithAge = UserProfile & { age?: number };
+
+const calculateAge = (dateString?: string): number | null => {
+    if (!dateString) return null;
+    const birthDate = new Date(dateString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+};
 
 export default function KesfetPage() {
-  const t = langTr.kesfet;
-  
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-md mx-auto py-4 space-y-6">
-        {mockPosts.map((post) => (
-          <Card key={post.id} className="rounded-xl overflow-hidden shadow-none border-0">
-            {/* Post Header */}
-            <div className="flex items-center p-3">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={post.userAvatar} alt={post.username} />
-                <AvatarFallback>{post.username.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span className="ml-3 font-semibold text-sm">{post.username}</span>
-              <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
-                <MoreHorizontal size={20} />
-              </Button>
-            </div>
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [profiles, setProfiles] = useState<ProfileWithAge[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const t = langTr.anasayfa;
 
-            {/* Post Content */}
-            {post.imageUrl ? (
-              <div className="relative aspect-[4/5] w-full">
-                <Image
-                  src={post.imageUrl}
-                  alt={post.caption}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  priority={post.id === 'post1'}
-                />
-              </div>
-            ) : (
-                <div className="px-4 pb-2">
-                     <p className="text-sm">
-                        <Translation text={post.caption} sourceLanguage={post.language} />
-                     </p>
-                </div>
-            )}
-            
+  const fetchProfiles = useCallback(async (reset = false) => {
+    if (!user || !firestore) {
+        setIsLoading(false);
+        return;
+    }
+    setIsLoading(true);
 
-            {/* Post Actions */}
-            <div className="flex items-center px-2 py-2">
-              <Button variant="ghost" size="icon">
-                <Heart size={24} />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <MessageCircle size={24} />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Send size={24} />
-              </Button>
-            </div>
+    try {
+        const interactedUids = new Set<string>([user.uid]);
+        
+        if (!reset) {
+            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
             
-            {/* Likes and Caption */}
-            <CardContent className="px-4 pt-0 pb-4">
-                <p className="text-sm font-semibold">{t.likes.replace('{count}', post.likes.toLocaleString('tr-TR'))}</p>
-                {post.imageUrl && (
-                     <p className="text-sm mt-1">
-                        <span className="font-semibold mr-1">{post.username}</span>
-                        <Translation text={post.caption} sourceLanguage={post.language} />
-                    </p>
-                )}
-                <p className="text-xs text-muted-foreground mt-2 cursor-pointer hover:underline">
-                    {t.viewAllComments.replace('{count}', post.comments.toString())}
-                </p>
-            </CardContent>
-          </Card>
-        ))}
+            const [query1Snapshot, query2Snapshot] = await Promise.all([
+                getDocs(matchesQuery1),
+                getDocs(matchesQuery2)
+            ]);
+
+            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+        }
+
+        const usersQuery = query(collection(firestore, 'users'), limit(50));
+        const usersSnapshot = await getDocs(usersQuery);
+
+        const fetchedProfiles = usersSnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            .filter(p => p.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0)
+            .map(p => ({
+                ...p,
+                age: calculateAge(p.dateOfBirth)
+            }));
+        
+        // Simple shuffle
+        setProfiles(fetchedProfiles.sort(() => Math.random() - 0.5));
+
+    } catch (error) {
+        console.error("Error fetching profiles for discovery:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [user, firestore]);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
+
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
+      {profiles.length > 0 ? (
+        profiles.map((profile, index) => (
+          <div key={profile.uid} className="h-full w-full snap-start flex-shrink-0 relative">
+            <div className="absolute inset-0">
+               {profile.images?.[0]?.url && (
+                 <Image
+                    src={profile.images[0].url}
+                    alt={profile.fullName || 'Profile'}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    priority={index < 2} // Prioritize loading for the first few images
+                />
+               )}
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/70 to-transparent text-white">
+                <h3 className="text-3xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
+                {profile.bio && <p className="mt-2 text-base">{profile.bio}</p>}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-4">
+             <p>{t.outOfProfilesDescription}</p>
+             <Button onClick={() => fetchProfiles(true)} className="mt-4">
+                 <RefreshCw className="mr-2 h-4 w-4" />
+                 Tekrar Dene
+             </Button>
+        </div>
+      )}
     </div>
   );
 }
