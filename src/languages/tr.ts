@@ -617,9 +617,3 @@ export const langTr = {
     profile: 'Profil',
   }
 };
-
-    
-
-    
-
-

@@ -18,15 +18,15 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
   const navItems = [
     { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
     { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
-    { href: '/anasayfa', icon: Flame, label: langTr.footerNav.home, hasNotification: false },
+    { href: '/kesfet', icon: Flame, label: langTr.footerNav.discover, hasNotification: false },
     { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
   ];
 
   // Reorder to put 'anasayfa' in the middle
   const orderedNavItems = [
       navItems.find(item => item.href === '/begeniler'),
+      navItems.find(item => item.href === '/kesfet'),
       navItems.find(item => item.href === '/eslesmeler'),
-      navItems.find(item => item.href === '/anasayfa'),
       navItems.find(item => item.href === '/profil'),
   ].filter(Boolean) as typeof navItems;
 
