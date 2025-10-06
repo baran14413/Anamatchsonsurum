@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Trash2, Check, Star } from 'lucide-react';
+import { Search, MessageSquare, Trash2, Check, Star, Info } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,7 +28,7 @@ export default function EslesmelerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [chatToDelete, setChatToDelete] = useState<DenormalizedMatch | null>(null);
+  const [chatToInteract, setChatToInteract] = useState<DenormalizedMatch | null>(null);
 
   useEffect(() => {
     if (!user || !firestore) {
@@ -58,7 +58,7 @@ export default function EslesmelerPage() {
          if (snapshot.empty) {
              addDoc(systemMessageRef, {
                  senderId: 'system',
-                 text: 'Yeni gelenlere hoşgeldiniz ve kisa bir uygulama tanitimimiz',
+                 text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
                  timestamp: serverTimestamp(),
                  isRead: true,
              });
@@ -81,14 +81,14 @@ export default function EslesmelerPage() {
   }, [matches, searchTerm]);
 
   const handleDeleteChat = async () => {
-    if (!chatToDelete) return;
+    if (!chatToInteract) return;
     setIsDeleting(true);
 
     try {
         const response = await fetch('/api/delete-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matchId: chatToDelete.id }),
+            body: JSON.stringify({ matchId: chatToInteract.id }),
         });
 
         if (!response.ok) {
@@ -96,10 +96,10 @@ export default function EslesmelerPage() {
             throw new Error(errorData.error || 'Sohbet silinemedi.');
         }
         
-        setChatToDelete(null);
+        setChatToInteract(null);
         toast({
             title: 'Sohbet Silindi',
-            description: `${chatToDelete.fullName} ile olan sohbetiniz kalıcı olarak silindi.`,
+            description: `${chatToInteract.fullName} ile olan sohbetiniz kalıcı olarak silindi.`,
         });
 
     } catch (error: any) {
@@ -161,7 +161,7 @@ export default function EslesmelerPage() {
    const systemMatch: DenormalizedMatch = {
         id: 'system',
         matchedWith: 'system',
-        lastMessage: 'Yeni gelenlere hoşgeldiniz ve kisa bir uygulama tanitimimiz',
+        lastMessage: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
         timestamp: null, 
         fullName: 'BeMatch - Sistem Mesajları',
         profilePicture: '', // Use app logo
@@ -203,8 +203,8 @@ export default function EslesmelerPage() {
                                 const MatchItemContent = () => (
                                     <div className="flex items-center p-4 hover:bg-muted/50">
                                         <Avatar className="h-12 w-12">
-                                            {isSystemChat ? <Icons.logo className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />}
-                                            <AvatarFallback>{match.fullName.charAt(0)}</AvatarFallback>
+                                            {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />}
+                                            <AvatarFallback>{isSystemChat ? 'BM' : match.fullName.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                         <div className="ml-4 flex-1">
                                             <div className="flex justify-between items-center">
@@ -234,10 +234,8 @@ export default function EslesmelerPage() {
                                     <motion.div
                                         key={match.id}
                                         onContextMenu={(e) => { 
-                                            if(!isSystemChat) {
-                                                e.preventDefault(); 
-                                                setChatToDelete(match);
-                                            }
+                                            e.preventDefault(); 
+                                            setChatToInteract(match);
                                         }}
                                     >
                                         {isClickable ? (
@@ -257,19 +255,25 @@ export default function EslesmelerPage() {
             </>
         )}
 
-        <AlertDialog open={!!chatToDelete} onOpenChange={(isOpen) => !isOpen && setChatToDelete(null)}>
+        <AlertDialog open={!!chatToInteract} onOpenChange={(isOpen) => !isOpen && setChatToInteract(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Sohbeti Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                        {chatToInteract?.id === 'system' ? 'Bilgi' : 'Sohbeti Silmek İstediğinizden Emin misiniz?'}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                        Bu işlem geri alınamaz. {chatToDelete?.fullName} ile olan tüm sohbet geçmişiniz, gönderilen fotoğraflar dahil kalıcı olarak silinecektir.
+                         {chatToInteract?.id === 'system' 
+                            ? 'Bu sistem sohbetidir ve silinemez. Tüm önemli duyurular ve sistem mesajları burada görünür.'
+                            : `Bu işlem geri alınamaz. ${chatToInteract?.fullName} ile olan tüm sohbet geçmişiniz, gönderilen fotoğraflar dahil kalıcı olarak silinecektir.`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                         {isDeleting ? <><Icons.logo width={16} height={16} className="mr-2 animate-pulse" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
-                    </AlertDialogAction>
+                    <AlertDialogCancel>Kapat</AlertDialogCancel>
+                     {chatToInteract?.id !== 'system' && (
+                        <AlertDialogAction onClick={handleDeleteChat} disabled={isDeleting} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                            {isDeleting ? <><Icons.logo width={16} height={16} className="mr-2 animate-pulse" /> Siliniyor...</> : <><Trash2 className='mr-2 h-4 w-4' />Sil</>}
+                        </AlertDialogAction>
+                     )}
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

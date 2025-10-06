@@ -661,7 +661,7 @@ export default function ChatPage() {
                     {isSystemChat ? (
                         <>
                            <Avatar className="h-9 w-9">
-                               <Icons.logo className="h-full w-full" />
+                               <Icons.bmIcon className="h-full w-full" />
                            </Avatar>
                            <div className="flex flex-col">
                                <span className="font-semibold">BeMatch - Sistem Mesajları</span>
@@ -740,11 +740,20 @@ export default function ChatPage() {
 
                         if (isSystem) {
                              return (
-                                <div key={message.id} className="my-4">
+                                <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
-                                    <div className="flex justify-center">
-                                        <div className="max-w-[80%] rounded-lg bg-blue-500/10 text-blue-800 dark:text-blue-200 p-3 text-sm text-center">
-                                            <p>{message.text}</p>
+                                     <div className={cn("flex items-end gap-2 group justify-start")}>
+                                         <Avatar className="h-8 w-8 self-end mb-1">
+                                            <Icons.bmIcon className="h-full w-full" />
+                                        </Avatar>
+                                        <div
+                                            className={cn(
+                                                "max-w-[70%] rounded-2xl flex flex-col items-end",
+                                                "bg-muted rounded-bl-none",
+                                                'px-3 py-2'
+                                            )}
+                                        >
+                                          <p className='break-words text-left w-full'>{message.text}</p>
                                         </div>
                                     </div>
                                 </div>
