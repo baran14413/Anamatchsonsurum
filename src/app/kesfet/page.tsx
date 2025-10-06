@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +8,7 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -167,9 +168,15 @@ export default function KesfetPage() {
                 />
                )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/80 to-transparent text-white">
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 bg-gradient-to-t from-black/80 to-transparent text-white space-y-2">
                 <h3 className="text-3xl font-bold">{profile.fullName}{profile.age && `, ${profile.age}`}</h3>
-                {profile.bio && <p className="mt-2 text-base">{profile.bio}</p>}
+                {profile.distance !== undefined && (
+                    <div className="flex items-center gap-2 text-base">
+                        <MapPin className="w-4 h-4" />
+                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                    </div>
+                )}
+                {profile.bio && <p className="text-base pt-2">{profile.bio}</p>}
             </div>
           </div>
         ))
