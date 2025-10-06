@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, MessageSquare, Search, User } from 'lucide-react';
+import { Heart, MessageSquare, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import { Icons } from './icons';
@@ -18,7 +18,6 @@ export default function FooterNav({ hasNewLikes, hasUnreadMessages }: FooterNavP
 
   const navItems = [
     { href: '/anasayfa', icon: Icons.tinderFlame, label: langTr.footerNav.home, hasNotification: false },
-    { href: '/kesfet', icon: Search, label: langTr.footerNav.discover, hasNotification: false },
     { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
     { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
     { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
