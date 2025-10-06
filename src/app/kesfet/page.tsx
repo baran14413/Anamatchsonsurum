@@ -8,7 +8,7 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -193,11 +193,25 @@ export default function KesfetPage() {
         if (action === 'superliked') {
             const matchSnap = await getDoc(matchDocRef);
             if (matchSnap.exists()) {
-                toast({
-                    title: "Tekrarlanan Eylem",
-                    description: "Bu kişiyle zaten bir etkileşiminiz var.",
-                    variant: "default"
-                });
+                const matchData = matchSnap.data();
+                if (matchData.status === 'matched') {
+                    toast({
+                        title: "Zaten Eşleştiniz!",
+                        description: `${swipedProfile.fullName} ile zaten bir eşleşmeniz bulunuyor.`,
+                        icon: <PartyPopper className="h-6 w-6 text-yellow-500" />,
+                    });
+                } else if (matchData.status === 'superlike_pending') {
+                     toast({
+                        title: "Super Like Yanıtı Bekleniyor",
+                        description: `Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.`,
+                        icon: <Hourglass className="h-6 w-6 text-blue-500" />,
+                    });
+                } else {
+                     toast({
+                        title: "Etkileşim Zaten Var",
+                        description: "Bu kişiyle aranızda zaten bir etkileşim mevcut.",
+                    });
+                }
                 return; 
             }
 
@@ -275,6 +289,7 @@ export default function KesfetPage() {
                 toast({
                     title: t.matchToastTitle,
                     description: `${swipedProfile.fullName} ${t.matchToastDescription}`,
+                    icon: <PartyPopper className="h-6 w-6 text-green-500" />,
                 });
 
                 const currentUserMatchData = {
@@ -357,7 +372,7 @@ export default function KesfetPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (!options?.reset && p.uid && interactedUids.has(p.uid)) return false;
+                 if (!p.uid || (!options?.reset && interactedUids.has(p.uid))) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
