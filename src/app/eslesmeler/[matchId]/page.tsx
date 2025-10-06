@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -113,6 +113,9 @@ export default function ChatPage() {
     const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
 
     const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -133,6 +136,16 @@ export default function ChatPage() {
     
     const isSystemChat = matchId === 'system';
     const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
+    
+    // Cooldown timer effect
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        } else {
+            setIsActionLoading(false);
+        }
+    }, [cooldown]);
 
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -666,9 +679,23 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
 
+    const triggerAction = (action: () => Promise<void>) => {
+        if (cooldown > 0) {
+            toast({
+                title: "Lütfen Bekleyin",
+                description: `Bu işlemi tekrar yapmak için ${cooldown} saniye beklemelisiniz.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+        setIsActionLoading(true);
+        setCooldown(60);
+        action();
+    }
+
     const handleCheckGoldStatus = async () => {
         if (!user || !firestore || !userProfile) return;
-
+        
         let systemMessageText = "";
 
         if (userProfile.membershipType === 'gold' && userProfile.goldMembershipExpiresAt) {
@@ -683,7 +710,29 @@ export default function ChatPage() {
             senderId: 'system',
             text: systemMessageText,
             timestamp: serverTimestamp(),
-            isRead: true, // System-generated responses to user actions can be marked as read
+            isRead: true, 
+        });
+    };
+    
+    const handleSendRulesMessage = async () => {
+        if (!user || !firestore) return;
+        
+        const rulesText = `
+        Topluluk Kurallarımız:
+        • 👤 **Kendin ol:** Fotoğraflarının, yaşının ve biyografinin gerçeği yansıttığından emin ol.
+        • ❤️ **Nazik ol:** Diğer kullanıcılara saygı göster ve sana nasıl davranılmasını istiyorsan onlara da öyle davran.
+        • 🛡️ **Dikkatli ol:** Kişisel bilgilerini paylaşmadan önce iyi düşün. Güvenliğin bizim için önemli.
+        • ✅ **Proaktif ol:** Topluluğumuzu güvende tutmak için uygunsuz davranışları mutlaka bize bildir.
+        
+        Kurallarımıza gösterdiğin özen için teşekkür ederiz. Keyifli eşleşmeler! ✨
+        `;
+        
+        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
+        await addDoc(systemMessagesColRef, {
+            senderId: 'system',
+            text: rulesText.trim(),
+            timestamp: serverTimestamp(),
+            isRead: true,
         });
     };
     
@@ -795,7 +844,7 @@ export default function ChatPage() {
                                                 'px-3 py-2'
                                             )}
                                         >
-                                          <p className='break-words text-left w-full'>{message.text}</p>
+                                          <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -966,10 +1015,14 @@ export default function ChatPage() {
               </footer>
             ) : isSystemChat ? (
                 <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                    <div className="flex flex-col gap-2">
-                        <Button onClick={handleCheckGoldStatus} variant="outline" className="w-full">
-                            <Gem className="mr-2 h-4 w-4" />
-                            Gold Üyelik Durumunu Sorgula
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button onClick={() => triggerAction(handleCheckGoldStatus)} variant="outline" disabled={isActionLoading}>
+                             {isActionLoading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <Gem className="mr-2 h-4 w-4" />}
+                             {isActionLoading ? `Lütfen Bekleyin (${cooldown})` : "Gold Durumunu Sorgula"}
+                        </Button>
+                         <Button onClick={() => triggerAction(handleSendRulesMessage)} variant="outline" disabled={isActionLoading}>
+                             {isActionLoading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <FileText className="mr-2 h-4 w-4" />}
+                             {isActionLoading ? `Lütfen Bekleyin (${cooldown})` : "Kuralları Gönder"}
                         </Button>
                     </div>
                 </footer>
