@@ -8,7 +8,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Annoyed } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Annoyed, RefreshCw } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -236,7 +236,7 @@ export default function ChatPage() {
 
     const handleSendMessage = async (
         e?: React.FormEvent,
-        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; isViewOnce?: boolean } = {}
+        content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
     ) => {
         e?.preventDefault();
         if (!user || !firestore || isSystemChat || !otherUserId) return;
@@ -264,20 +264,17 @@ export default function ChatPage() {
             senderId: user.uid,
             timestamp: serverTimestamp(),
             isRead: false,
+            type: content.type || 'user'
         };
     
         if (content.imageUrl) {
-            messageData.type = 'user';
-            messageData.text = content.text; // Caption for image
+            messageData.text = content.text;
             messageData.imageUrl = content.imageUrl;
             messageData.imagePublicId = content.imagePublicId;
-            messageData.isViewOnce = content.isViewOnce;
-            if(content.isViewOnce) messageData.viewed = false;
+            if(content.type === 'view-once') messageData.viewed = false;
         } else if (currentMessage) {
-            messageData.type = 'user';
             messageData.text = currentMessage;
         } else if (content.audioUrl) {
-            messageData.type = 'audio';
             messageData.audioUrl = content.audioUrl;
             messageData.audioDuration = content.audioDuration;
         }
@@ -285,7 +282,7 @@ export default function ChatPage() {
         await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
     
         let lastMessageText = "Mesaj";
-        if (messageData.isViewOnce) lastMessageText = "📷 Fotoğraf";
+        if (messageData.type === 'view-once') lastMessageText = "📷 Fotoğraf";
         else if (messageData.imageUrl) lastMessageText = "📷 Fotoğraf";
         else if (messageData.text) lastMessageText = messageData.text;
         else if (messageData.audioUrl) lastMessageText = "▶️ Sesli Mesaj";
@@ -342,11 +339,12 @@ export default function ChatPage() {
             }
 
             const { url, public_id } = await response.json();
+            
             await handleSendMessage(undefined, { 
                 text: caption, 
                 imageUrl: url, 
                 imagePublicId: public_id, 
-                isViewOnce 
+                type: isViewOnce ? 'view-once' : 'user'
             });
 
         } catch (error: any) {
@@ -437,7 +435,7 @@ export default function ChatPage() {
             }
 
             const { url } = await response.json();
-            await handleSendMessage(undefined, { audioUrl: url, audioDuration: recordingTime });
+            await handleSendMessage(undefined, { audioUrl: url, audioDuration: recordingTime, type: 'audio' });
             
         } catch (error: any) {
              toast({
@@ -604,16 +602,16 @@ export default function ChatPage() {
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {
-        if (!user || message.senderId === user.uid || message.viewed) return;
+        if (!user || message.senderId === user.uid || message.type === 'view-once-viewed' || message.viewed) return;
         setViewingOnceImage(message);
         setViewOnceProgress(0);
 
-        const timerDuration = 5000; // 5 seconds
-        let startTime: number;
         let animationFrameId: number;
-
+        const timerDuration = 5000; // 5 seconds
+        let startTime: number | null = null;
+        
         const animateProgress = (timestamp: number) => {
-            if (!startTime) startTime = timestamp;
+            if (startTime === null) startTime = timestamp;
             const elapsed = timestamp - startTime;
             const progress = Math.min((elapsed / timerDuration) * 100, 100);
             setViewOnceProgress(progress);
@@ -624,34 +622,35 @@ export default function ChatPage() {
                 handleCloseViewOnce(true); 
             }
         };
-        animationFrameId = requestAnimationFrame(animateProgress);
 
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-        };
+        animationFrameId = requestAnimationFrame(animateProgress);
+    
+        return () => cancelAnimationFrame(animationFrameId);
     };
 
-    const handleCloseViewOnce = async (markAsViewed = false) => {
-        if (markAsViewed && viewingOnceImage && firestore) {
+    const handleCloseViewOnce = useCallback(async (markAsViewed = false) => {
+        if (markAsViewed && viewingOnceImage && firestore && user) {
             const msgRef = doc(firestore, `matches/${matchId}/messages`, viewingOnceImage.id);
             const publicId = viewingOnceImage.imagePublicId;
 
-            // Update the document to remove image URL and mark as viewed
-            await updateDoc(msgRef, { 
+            const batch = writeBatch(firestore);
+
+            batch.update(msgRef, { 
                 viewed: true,
+                type: 'view-once-viewed',
                 imageUrl: null, 
                 imagePublicId: null,
-                text: "📷 Fotoğraf açıldı"
+                text: "📷 Fotoğraf açıldı",
             });
-
-            // Update last message in denormalized match docs
-            const user1Id = matchId.split('_')[0];
-            const user2Id = matchId.split('_')[1];
+            
             const lastMessageUpdate = { lastMessage: "📷 Fotoğraf açıldı", timestamp: serverTimestamp() };
-            await updateDoc(doc(firestore, `users/${user1Id}/matches`, matchId), lastMessageUpdate);
-            await updateDoc(doc(firestore, `users/${user2Id}/matches`, matchId), lastMessageUpdate);
+            const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+            batch.update(currentUserMatchRef, lastMessageUpdate);
+            batch.update(otherUserMatchRef, lastMessageUpdate);
+            
+            await batch.commit();
 
-            // Delete the image from Cloudinary
             if (publicId) {
                 try {
                     await fetch('/api/delete-image', {
@@ -665,7 +664,7 @@ export default function ChatPage() {
             }
         }
         setViewingOnceImage(null);
-    };
+    }, [viewingOnceImage, firestore, matchId, user, otherUserId]);
 
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
@@ -781,8 +780,8 @@ export default function ChatPage() {
                             );
                         }
 
-                        if (message.isViewOnce && message.viewed) {
-                            return (
+                         if (message.type === 'view-once-viewed') {
+                             return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
@@ -798,8 +797,12 @@ export default function ChatPage() {
                                                 isSender ? "bg-primary text-primary-foreground/80 rounded-br-none" : "bg-muted rounded-bl-none",
                                             )}
                                         >
-                                            <EyeOff className="w-4 h-4" />
-                                            <span>Fotoğraf açıldı</span>
+                                            <RefreshCw className="w-4 h-4 animate-spin animation-duration-1000" />
+                                            <span>Açıldı</span>
+                                        </div>
+                                         <div className="flex items-center gap-1.5 self-end">
+                                            <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
                                 </div>
@@ -827,28 +830,27 @@ export default function ChatPage() {
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            (message.imageUrl && !message.isViewOnce) || (message.isViewOnce && !message.viewed) ? 'p-1.5' : 'px-3 py-2',
+                                            message.type === 'view-once' ? 'p-0' : (message.imageUrl ? 'p-1.5' : 'px-3 py-2'),
                                             message.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
-                                        {message.isViewOnce && !message.viewed ? (
+                                        {message.type === 'view-once' ? (
                                              <button
                                                 className={cn(
                                                     "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                    (isSender) && "opacity-80 cursor-not-allowed"
+                                                    (isSender) && "cursor-not-allowed"
                                                 )}
-                                                onClick={() => handleOpenViewOnce(message)}
-                                                disabled={isSender}
+                                                onClick={() => isSender ? null : handleOpenViewOnce(message)}
                                             >
                                                 <History className="w-6 h-6 text-green-400" />
-                                                <span className="font-medium text-base">Fotoğraf</span>
+                                                <span className="font-medium text-base">{isSender ? "Fotoğraf Gönderildi" : "Fotoğraf"}</span>
                                             </button>
                                         ) : message.imageUrl ? (
                                             <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && !message.viewed && (
+                                        {message.text && message.type !== 'view-once' && (
                                           <p className={cn('break-words text-left w-full', 
                                             message.imageUrl && 'px-2 pb-1 pt-2'
                                           )}>
@@ -858,7 +860,7 @@ export default function ChatPage() {
                                         {message.audioUrl && (
                                             <AudioPlayer src={message.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && !(message.isViewOnce && !message.viewed) && '-mb-1', message.imageUrl && !message.isViewOnce && 'pr-1.5 pb-0.5')}>
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
                                             <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
@@ -1003,7 +1005,7 @@ export default function ChatPage() {
 
             {/* View Once Image Dialog */}
              <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && handleCloseViewOnce()}>
-                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col screenshot-secure-backdrop">
+                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
                      <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
                      <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
                      <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">

@@ -93,14 +93,13 @@ export type ChatMessage = {
   text?: string;
   imageUrl?: string;
   imagePublicId?: string;
-  isViewOnce?: boolean;
   viewed?: boolean;
   audioUrl?: string;
   audioDuration?: number;
   timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;
-  type?: 'user' | 'system_superlike_prompt' | 'audio';
+  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
   isEdited?: boolean;
