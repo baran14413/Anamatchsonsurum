@@ -3,12 +3,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, setDoc, getDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ const calculateAge = (dateString?: string): number | null => {
 };
 
 // Component for a single profile in the discovery feed
-function DiscoveryProfileItem({ profile, isPriority }: { profile: ProfileWithAgeAndDistance, isPriority: boolean }) {
+function DiscoveryProfileItem({ profile, isPriority, onAction }: { profile: ProfileWithAgeAndDistance, isPriority: boolean, onAction: (action: 'liked' | 'disliked' | 'superliked') => void }) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     // Reset image index when profile changes
@@ -96,6 +96,18 @@ function DiscoveryProfileItem({ profile, isPriority }: { profile: ProfileWithAge
                     {profile.bio && <p className="text-base">{profile.bio}</p>}
                 </div>
             </div>
+            
+            <div className="absolute right-4 bottom-20 flex flex-col gap-4 z-20">
+                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-sm text-red-500 hover:bg-white/30" onClick={() => onAction('disliked')}>
+                    <X className="w-8 h-8" />
+                </Button>
+                 <Button variant="ghost" size="icon" className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-sm text-green-400 hover:bg-white/30" onClick={() => onAction('liked')}>
+                    <Heart className="w-9 h-9 fill-current" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-sm text-blue-400 hover:bg-white/30" onClick={() => onAction('superliked')}>
+                    <Star className="w-8 h-8 fill-current" />
+                </Button>
+            </div>
         </div>
     );
 }
@@ -108,6 +120,144 @@ export default function KesfetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const t = langTr.anasayfa;
   const { toast } = useToast();
+
+  const removeTopProfile = useCallback(() => {
+    setProfiles(prev => prev.slice(1));
+  }, []);
+
+  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+    if (!user || !firestore || !userProfile) return;
+    
+    removeTopProfile();
+
+    const user1Id = user.uid;
+    const user2Id = swipedProfile.uid;
+    const matchId = [user1Id, user2Id].sort().join('_');
+    const matchDocRef = doc(firestore, 'matches', matchId);
+
+    try {
+        if (action === 'superliked') {
+            const matchSnap = await getDoc(matchDocRef);
+            if (matchSnap.exists()) {
+                toast({
+                    title: "Tekrarlanan Eylem",
+                    description: "Bu kişiyle zaten bir etkileşiminiz var.",
+                    variant: "default"
+                });
+                return; 
+            }
+
+            const currentUserMatchData = {
+                id: matchId,
+                matchedWith: user2Id,
+                lastMessage: "Yanıt bekleniyor...",
+                timestamp: serverTimestamp(),
+                fullName: swipedProfile.fullName,
+                profilePicture: swipedProfile.images?.[0]?.url || '',
+                isSuperLike: true,
+                status: 'superlike_pending',
+                superLikeInitiator: user1Id
+            };
+
+            const swipedUserMatchData = {
+                id: matchId,
+                matchedWith: user1Id,
+                lastMessage: `${userProfile.fullName} sana bir Super Like gönderdi!`,
+                timestamp: serverTimestamp(),
+                fullName: userProfile.fullName,
+                profilePicture: userProfile.profilePicture || '',
+                isSuperLike: true,
+                status: 'superlike_pending',
+                superLikeInitiator: user1Id
+            };
+            
+            await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+            await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            
+            await setDoc(matchDocRef, {
+                user1Id: [user1Id, user2Id].sort()[0],
+                user2Id: [user1Id, user2Id].sort()[1],
+                status: 'superlike_pending',
+                isSuperLike: true,
+                superLikeInitiator: user1Id,
+                [`${user1Id < user2Id ? 'user1' : 'user2'}_action`]: 'superliked',
+                [`${user1Id < user2Id ? 'user1' : 'user2'}_timestamp`]: serverTimestamp(),
+            }, { merge: true });
+
+            const systemMessage = {
+                matchId: matchId,
+                senderId: 'system',
+                text: `${swipedProfile.fullName} merhaba, benim adım ${userProfile.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`,
+                timestamp: serverTimestamp(),
+                isRead: false,
+                type: 'system_superlike_prompt',
+                actionTaken: false,
+            };
+            await addDoc(collection(firestore, `matches/${matchId}/messages`), systemMessage);
+
+        } else { // Handle normal like/dislike
+            const isUser1 = user1Id < user2Id;
+            const currentUserField = isUser1 ? 'user1' : 'user2';
+            const otherUserField = isUser1 ? 'user2' : 'user1';
+
+            const updateData: any = {
+                [`${currentUserField}_action`]: action,
+                [`${currentUserField}_timestamp`]: serverTimestamp(),
+                user1Id: [user1Id, user2Id].sort()[0],
+                user2Id: [user1Id, user2Id].sort()[1],
+                status: 'pending',
+            };
+
+            const theirInteractionSnap = await getDoc(matchDocRef);
+            let theirAction: string | undefined;
+            if(theirInteractionSnap.exists()) {
+                theirAction = theirInteractionSnap.data()?.[`${otherUserField}_action`];
+            }
+
+            if (action === 'liked' && theirAction === 'liked') {
+                updateData.status = 'matched';
+                updateData.matchDate = serverTimestamp();
+                
+                toast({
+                    title: t.matchToastTitle,
+                    description: `${swipedProfile.fullName} ${t.matchToastDescription}`,
+                });
+
+                const currentUserMatchData = {
+                    id: matchId,
+                    matchedWith: user2Id,
+                    lastMessage: langTr.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: swipedProfile.fullName,
+                    profilePicture: swipedProfile.images?.[0].url || '',
+                    status: 'matched',
+                };
+
+                const swipedUserMatchData = {
+                    id: matchId,
+                    matchedWith: user1Id,
+                    lastMessage: langTr.eslesmeler.defaultMessage,
+                    timestamp: serverTimestamp(),
+                    fullName: userProfile.fullName,
+                    profilePicture: userProfile.profilePicture || '',
+                    status: 'matched',
+                };
+                
+                await setDoc(doc(firestore, `users/${user1Id}/matches`, matchId), currentUserMatchData);
+                await setDoc(doc(firestore, `users/${user2Id}/matches`, matchId), swipedUserMatchData);
+            }
+            await setDoc(matchDocRef, updateData, { merge: true });
+        }
+    } catch (error) {
+        console.error(`Error handling ${action}:`, error);
+        toast({
+            title: langTr.common.error,
+            description: "Etkileşim kaydedilemedi.",
+            variant: "destructive",
+        });
+    }
+  }, [user, firestore, t, toast, userProfile, removeTopProfile]);
+
 
  const fetchProfiles = useCallback(async (reset = false) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
@@ -233,6 +383,7 @@ export default function KesfetPage() {
               key={profile.uid} 
               profile={profile} 
               isPriority={index < 2} 
+              onAction={(action) => handleAction(profile, action)}
           />
         ))
       ) : (
