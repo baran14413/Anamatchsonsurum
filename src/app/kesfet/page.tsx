@@ -8,7 +8,7 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import { langTr } from '@/languages/tr';
-import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass, RotateCcw } from 'lucide-react';
+import { RefreshCw, MapPin, Heart, X, Star, ChevronUp, PartyPopper, Hourglass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getDistance, cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +49,6 @@ function DiscoveryProfileItem({
     const y = useMotionValue(0);
     const opacity = useTransform(y, [0, SWIPE_THRESHOLD * 2], [1, 0]);
     const dislikeOpacity = useTransform(y, [0, SWIPE_THRESHOLD], [0, 1]);
-    const dislikeRotate = useTransform(y, [0, SWIPE_THRESHOLD], [0, -15]);
 
     const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (info.offset.y < SWIPE_THRESHOLD) {
@@ -90,7 +89,7 @@ function DiscoveryProfileItem({
              <motion.div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-500 z-10 pointer-events-none"
                 style={{ opacity: dislikeOpacity }}
-                animate={actionFeedback === 'disliked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: -15 } : {}}
+                animate={actionFeedback === 'disliked' ? { opacity: 1, scale: [1, 1.2, 1], rotate: 0 } : {}}
             >
                 <X className="h-28 w-28" strokeWidth={3} />
             </motion.div>
@@ -197,29 +196,16 @@ export default function KesfetPage() {
   
   const swipedProfilesRef = useRef(new Set<string>());
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [lastAction, setLastAction] = useState<{ profile: ProfileWithAgeAndDistance, matchId: string } | null>(null);
 
-
- const removeTopProfile = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
-    setProfiles(prev => {
-        const topProfile = prev[0];
-        if (topProfile && action === 'disliked') {
-            const user1Id = user!.uid;
-            const user2Id = topProfile.uid;
-            const matchId = [user1Id, user2Id].sort().join('_');
-            setLastAction({ profile: topProfile, matchId });
-        } else {
-            setLastAction(null);
-        }
-        return prev.slice(1);
-    });
-}, [user]);
+ const removeTopProfile = useCallback(() => {
+    setProfiles(prev => prev.slice(1));
+}, []);
 
  const handleAction = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || swipedProfilesRef.current.has(swipedProfile.uid)) return;
     
     swipedProfilesRef.current.add(swipedProfile.uid);
-    removeTopProfile(action);
+    removeTopProfile();
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -378,7 +364,6 @@ export default function KesfetPage() {
         return;
     }
     setIsLoading(true);
-    setLastAction(null);
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -417,7 +402,7 @@ export default function KesfetPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                 if (!p.uid || (!options?.reset && interactedUids.has(p.uid))) return false;
+                if (!p.uid || (!options?.reset && interactedUids.has(p.uid))) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
                 const age = calculateAge(p.dateOfBirth);
@@ -475,40 +460,6 @@ export default function KesfetPage() {
     }
   }, [user, firestore, userProfile, toast]);
 
-    const handleRewind = async () => {
-    if (!lastAction || !firestore) return;
-
-     try {
-        const response = await fetch('/api/rewind-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matchId: lastAction.matchId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Geri alma işlemi başarısız.');
-        }
-
-        setProfiles(prev => [lastAction.profile, ...prev]);
-        setLastAction(null);
-        swipedProfilesRef.current.delete(lastAction.profile.uid);
-
-        toast({
-            title: "Geri Alındı!",
-            description: "Bir önceki profil tekrar geldi, bir şansın daha var ♥️",
-            icon: <RotateCcw className="h-6 w-6 text-primary" />
-        });
-    } catch (error: any) {
-        console.error('Error rewinding action:', error);
-        toast({
-            title: 'Hata',
-            description: error.message,
-            variant: 'destructive',
-        });
-    }
-  };
-
 
   useEffect(() => {
     if(userProfile){
@@ -527,13 +478,6 @@ export default function KesfetPage() {
 
   return (
     <div ref={scrollRef} className="relative h-full w-full overflow-y-auto snap-y snap-mandatory">
-      {lastAction && (
-          <div className="absolute top-4 left-4 z-50">
-              <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm shadow-lg" onClick={handleRewind}>
-                  <RotateCcw className="h-6 w-6 text-primary" />
-              </Button>
-          </div>
-      )}
       {profiles.length > 0 ? (
         profiles.map((profile, index) => (
           <DiscoveryProfileItem 
