@@ -52,6 +52,7 @@ export type UserProfile = {
   lastSeen?: any;
   rulesAgreed?: boolean;
   isAdmin?: boolean;
+  superLikeBalance?: number;
 };
 
 export type Match = {

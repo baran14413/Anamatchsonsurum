@@ -103,6 +103,14 @@
         "rulesAgreed": {
             "type": "boolean",
             "description": "Indicates if the user has agreed to the community rules."
+        },
+        "isAdmin": {
+            "type": "boolean",
+            "description": "Indicates if the user has administrator privileges."
+        },
+        "superLikeBalance": {
+            "type": "number",
+            "description": "The number of Super Likes the user has available."
         }
       },
       "required": [
