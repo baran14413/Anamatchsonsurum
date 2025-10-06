@@ -15,6 +15,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ScrollArea } from './ui/scroll-area';
 import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import * as LucideIcons from 'lucide-react';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -61,6 +62,8 @@ const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen
 
 
 const SWIPE_THRESHOLD = 80;
+
+type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
 export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -131,13 +134,13 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
   
-  const getDisplayedInterests = (interests?: string[]): string[] => {
-    if (!interests || interests.length === 0) {
+  const displayedInterests = useMemo(() => {
+    if (!profile.interests || profile.interests.length === 0) {
       return [];
     }
 
     const interestCategories = langTr.signup.step11.categories;
-    const categoryMap: { [key: string]: string[] } = {};
+    const categoryMap: { [key: string]: string } = {};
     interestCategories.forEach(cat => {
       cat.options.forEach(opt => {
         categoryMap[opt] = cat.title;
@@ -145,7 +148,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     });
 
     const groupedInterests: { [key: string]: string[] } = {};
-    interests.forEach(interest => {
+    profile.interests.forEach(interest => {
       const category = categoryMap[interest] || 'Diğer';
       if (!groupedInterests[category]) {
         groupedInterests[category] = [];
@@ -166,31 +169,30 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     }
     
     return displayed;
-  };
-  
-  const displayedInterests = useMemo(() => getDisplayedInterests(profile.interests), [profile.interests]);
+  }, [profile.interests]);
 
   const groupedInterests = useMemo(() => {
     if (!profile.interests) return {};
 
     const interestCategories = langTr.signup.step11.categories;
-    const categoryMap: { [key: string]: string } = {};
+    const categoryMap: { [key: string]: { title: string; icon: IconName } } = {};
     interestCategories.forEach(cat => {
         cat.options.forEach(opt => {
-            categoryMap[opt] = cat.title;
+            categoryMap[opt] = { title: cat.title, icon: cat.icon as IconName };
         });
     });
 
-    const grouped: { [key: string]: string[] } = {};
+    const grouped: { [key: string]: { icon: IconName, interests: string[] } } = {};
     profile.interests.forEach(interest => {
-        const category = categoryMap[interest] || 'Diğer';
-        if (!grouped[category]) {
-            grouped[category] = [];
+        const categoryInfo = categoryMap[interest] || { title: 'Diğer', icon: 'Sparkles' };
+        if (!grouped[categoryInfo.title]) {
+            grouped[categoryInfo.title] = { icon: categoryInfo.icon, interests: [] };
         }
-        grouped[category].push(interest);
+        grouped[categoryInfo.title].interests.push(interest);
     });
     return grouped;
   }, [profile.interests]);
+
 
   return (
     <motion.div 
@@ -307,7 +309,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
                                     {profile.images && profile.images.length > 0 && (
-                                        <Carousel className="w-full">
+                                         <Carousel className="w-full">
                                             <CarouselContent>
                                                 {profile.images
                                                     .filter(image => image && image.url && validImageExtensions.some(ext => image.url.toLowerCase().includes(ext)))
@@ -353,26 +355,39 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
                                             </div>
                                         )}
                                         
-                                        {(lookingForText || (profile.interests && profile.interests.length > 0)) && (
+                                        {(lookingForText || Object.keys(groupedInterests).length > 0) && (
                                             <div>
-                                                <h4 className='text-lg font-semibold mb-2'>Tercihler</h4>
-                                                <div className="space-y-3">
+                                                <h4 className='text-lg font-semibold mb-4'>Tercihler</h4>
+                                                <div className="space-y-4">
                                                     {lookingForText && (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-sm w-32 shrink-0">İlişki Tercihi:</span>
-                                                            <Badge variant="secondary" className='text-base py-1 px-3'>{lookingForText}</Badge>
-                                                        </div>
-                                                    )}
-                                                    {Object.entries(groupedInterests).map(([category, interests]) => (
-                                                        <div key={category} className="flex items-start gap-2">
-                                                            <span className="font-medium text-sm w-32 shrink-0">{category}:</span>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {interests.map(interest => (
-                                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
-                                                                ))}
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                              <Heart className="w-6 h-6 text-primary" />
+                                                            </div>
+                                                            <div className='flex flex-col'>
+                                                                <span className="font-medium text-sm">İlişki Tercihi</span>
+                                                                <Badge variant="secondary" className='text-base py-1 px-3 mt-1 w-fit'>{lookingForText}</Badge>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                    )}
+                                                    {Object.entries(groupedInterests).map(([category, { icon, interests }]) => {
+                                                        const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
+                                                        return (
+                                                            <div key={category} className="flex items-start gap-3">
+                                                                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                                  <IconComponent className="w-6 h-6 text-primary" />
+                                                                </div>
+                                                                <div className='flex flex-col'>
+                                                                     <span className="font-medium text-sm">{category}</span>
+                                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                                        {interests.map(interest => (
+                                                                            <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
