@@ -3,10 +3,10 @@
 
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { Home, Users, Settings } from 'lucide-react';
+import { Home, Users, Settings, Smartphone, Server, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isUserLoading } = useUser();
@@ -27,22 +27,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
                 </SidebarHeader>
                 <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Dashboard" asChild>
-                            <Link href="/admin/dashboard">
-                                <Home />
-                                <span>Yönetim Paneli</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Users" asChild>
-                           <Link href="/admin/users">
-                                <Users />
-                                <span>Kullanıcılar</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Uygulama Ayarları</SidebarGroupLabel>
+                        {/* Boş Kategori */}
+                    </SidebarGroup>
+                     <SidebarGroup>
+                        <SidebarGroupLabel>Sistem Yönetimi</SidebarGroupLabel>
+                        {/* Boş Kategori */}
+                    </SidebarGroup>
+                    <SidebarSeparator />
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Sistem Kontrolü</SidebarGroupLabel>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Dashboard" asChild>
+                                <Link href="/admin/dashboard">
+                                    <Home />
+                                    <span>Yönetim Paneli</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarGroup>
+                    <SidebarGroup>
+                         <SidebarGroupLabel>Kullanıcı Etkileşim Menüsü</SidebarGroupLabel>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Users" asChild>
+                               <Link href="/admin/users">
+                                    <Users />
+                                    <span>Kullanıcılar</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarGroup>
                 </SidebarMenu>
             </SidebarContent>
         </Sidebar>
