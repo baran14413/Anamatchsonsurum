@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -166,46 +167,6 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
     
     await batch.commit();
 };
-
-const ProfileStackItem = memo(function ProfileStackItem({ profile, onSwipe }: { profile: ProfileWithDistance, onSwipe: (action: 'liked' | 'disliked' | 'superliked') => void }) {
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const SWIPE_THRESHOLD = 80;
-        if (info.offset.y < -SWIPE_THRESHOLD) {
-            onSwipe('superliked');
-        } else if (info.offset.x > SWIPE_THRESHOLD) {
-            onSwipe('liked');
-        } else if (info.offset.x < -SWIPE_THRESHOLD) {
-            onSwipe('disliked');
-        }
-    };
-
-    return (
-        <motion.div
-            drag
-            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-            dragElastic={0.3}
-            onDragEnd={handleDragEnd}
-            className="absolute w-full h-full"
-            style={{ x, y }}
-            exit={{
-                x: (info: any) => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
-                y: (info: any) => info.offset.y < -80 ? -400 : 0,
-                opacity: 0,
-                scale: 0.5,
-                transition: { duration: 0.3 }
-            }}
-        >
-            <ProfileCard
-                profile={profile}
-                x={x}
-                y={y}
-            />
-        </motion.div>
-    );
-});
 
 
 export default function AnasayfaPage() {
@@ -438,21 +399,25 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
   
   const CardStack = useCallback(() => {
-    return profiles.slice(0, 2).reverse().map((profile, i) => {
-        const index = profiles.length - 1 - i;
-        const isTopCard = index === profiles.length - 1;
+    // We only render the top 2 cards for performance reasons
+    const reversedProfiles = [...profiles].reverse();
+  
+    return reversedProfiles.slice(0, 2).map((profile, i) => {
+        const isTopCard = i === 0;
         const x = useMotionValue(0);
         const y = useMotionValue(0);
 
         const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
             if (!isTopCard) return;
             const SWIPE_THRESHOLD = 80;
+            const swipedIndex = profiles.findIndex(p => p.id === profile.id);
+
             if (info.offset.y < -SWIPE_THRESHOLD) {
-                handleSwipe(index, 'superliked');
+                handleSwipe(swipedIndex, 'superliked');
             } else if (info.offset.x > SWIPE_THRESHOLD) {
-                handleSwipe(index, 'liked');
+                handleSwipe(swipedIndex, 'liked');
             } else if (info.offset.x < -SWIPE_THRESHOLD) {
-                handleSwipe(index, 'disliked');
+                handleSwipe(swipedIndex, 'disliked');
             }
         };
 
@@ -464,12 +429,20 @@ export default function AnasayfaPage() {
                 dragElastic={0.3}
                 onDragEnd={onDragEnd}
                 className="absolute w-full h-full"
-                style={{ x, y, zIndex: i }}
-                initial={{ scale: 1 - (i * 0.05), y: i * -10, opacity: 1 }}
-                animate={{ 
-                  scale: 1 - (i * 0.05),
-                  y: i * -10, 
-                  opacity: 1 
+                style={{
+                  x,
+                  y,
+                  zIndex: profiles.length - i,
+                }}
+                initial={{
+                  scale: 1 - i * 0.05,
+                  y: i * 10,
+                  opacity: 1
+                }}
+                animate={{
+                  scale: 1 - i * 0.05,
+                  y: i * 10,
+                  opacity: 1
                 }}
                 transition={{ duration: 0.3 }}
                 exit={{
