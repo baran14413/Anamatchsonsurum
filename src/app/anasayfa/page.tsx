@@ -332,8 +332,8 @@ export default function AnasayfaPage() {
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
           {lastDislikedProfile && (
             <div className="absolute top-0 right-0 z-40">
-              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-12 w-12 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                  <Undo2 className="h-6 w-6" />
+              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                  <Undo2 className="h-5 w-5" />
               </Button>
             </div>
           )}
@@ -389,3 +389,5 @@ export default function AnasayfaPage() {
   );
 }
 
+
+    
