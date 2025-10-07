@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { BOT_GREETINGS } from '@/lib/bot-data';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -47,21 +48,6 @@ const createMatch = (batch: WriteBatch, db: Firestore, user1Id: string, user2Id:
     batch.set(doc(db, `users/${user1Id}/matches`, matchId), user1Data);
     batch.set(doc(db, `users/${user2Id}/matches`, matchId), user2Data);
 };
-
-const BOT_GREETINGS = [
-    "Merhaba, nasılsın? Profilin çok ilgimi çekti! 😊",
-    "Selam! Eşleştiğimize sevindim, sohbet etmek istersen buradayım. 😉",
-    "Merhaba! Ortak ilgi alanlarımız var gibi görünüyor. ✨",
-    "Hey! Enerjin harika görünüyor. Tanışalım mı?",
-    "Selam, günün nasıl geçiyor? ☀️",
-    "Profilindeki gülümsemen çok hoşuma gitti, merhaba demek istedim.",
-    "Sanırım birçok ortak noktamız var, ne dersin?",
-    "Eşleştiğimize göre bir kahve ısmarlarsın artık? ☕️",
-    "Vay canına, sonunda aradığım profili buldum galiba. 😄",
-    "İlk mesajı kim atacak diye beklemeyeyim dedim. Selam!",
-    "Fotoğrafların harika, özellikle de o macera dolu olan!",
-    "Beni beğendiğine emin misin? Sonra pişman olma. 😉 Şaka şaka, merhaba!",
-];
 
 
 const getRandomGreeting = () => BOT_GREETINGS[Math.floor(Math.random() * BOT_GREETINGS.length)];
