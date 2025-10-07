@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback, memo, useMemo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -15,7 +14,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useMotionValue } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -169,6 +168,60 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
 };
 
 
+// A dedicated component for a single card in the stack to properly manage hooks.
+const ProfileStackItem = ({ profile, index, onSwipe, isTopCard }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void, isTopCard: boolean }) => {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const SWIPE_THRESHOLD = 80;
+        if (info.offset.y < -SWIPE_THRESHOLD) {
+            onSwipe(index, 'superliked');
+        } else if (info.offset.x > SWIPE_THRESHOLD) {
+            onSwipe(index, 'liked');
+        } else if (info.offset.x < -SWIPE_THRESHOLD) {
+            onSwipe(index, 'disliked');
+        }
+    };
+
+    return (
+        <motion.div
+            key={profile.id}
+            style={{ 
+                zIndex: index,
+                x,
+                y,
+            }}
+            className="absolute w-full h-full"
+            drag={isTopCard}
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={0.3}
+            onDragEnd={handleDragEnd}
+            initial={{ scale: 1, y: 0, opacity: 1 }}
+            animate={{ 
+              scale: 1 - (isTopCard ? 0 : 0.05),
+              y: isTopCard ? 0 : -10, 
+              opacity: 1 
+            }}
+            transition={{ duration: 0.3 }}
+            exit={{
+                x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
+                y: info => info.offset.y < -80 ? -400 : 0,
+                opacity: 0,
+                scale: 0.5,
+                transition: { duration: 0.3 }
+            }}
+        >
+            <ProfileCard
+                profile={profile}
+                x={x}
+                y={y}
+            />
+        </motion.div>
+    );
+};
+
+
 export default function AnasayfaPage() {
   const t = langTr;
   const { user, userProfile } = useUser();
@@ -237,18 +290,6 @@ export default function AnasayfaPage() {
     })();
  }, [user, firestore, t, toast, userProfile, profiles]);
  
-  const handleDragEnd = (index: number, info: PanInfo) => {
-    const SWIPE_THRESHOLD = 80;
-    if (info.offset.y < -SWIPE_THRESHOLD) {
-      handleSwipe(index, 'superliked');
-    } else if (info.offset.x > SWIPE_THRESHOLD) {
-      handleSwipe(index, 'liked');
-    } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      handleSwipe(index, 'disliked');
-    }
-  };
-
-
   const handleUndo = async () => {
     if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
     
@@ -427,49 +468,21 @@ export default function AnasayfaPage() {
   const CardStack = () => {
     return profiles.map((profile, index) => {
       const isTopCard = index === profiles.length - 1;
-      const x = useMotionValue(0);
-      const y = useMotionValue(0);
-
+      
       // We only render the top 2 cards for performance reasons
       if (index < profiles.length - 2) return null;
 
       return (
-        <motion.div
+          <ProfileStackItem
             key={profile.id}
-            className="absolute w-full h-full"
-            style={{
-                zIndex: index,
-                x,
-                y,
-            }}
-            drag={isTopCard}
-            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-            dragElastic={0.3}
-            onDragEnd={(event, info) => handleDragEnd(index, info)}
-            initial={{ scale: 1, y: 0, opacity: 1 }}
-            animate={{ 
-              scale: 1 - ((profiles.length - 1 - index) * 0.05), 
-              y: (profiles.length - 1 - index) * -10, 
-              opacity: 1 
-            }}
-            transition={{ duration: 0.3 }}
-            exit={{
-                x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
-                y: info => info.offset.y < -80 ? -400 : 0,
-                opacity: 0,
-                scale: 0.5,
-                transition: { duration: 0.3 }
-            }}
-        >
-            <ProfileCard
-                profile={profile}
-                x={x}
-                y={y}
-            />
-        </motion.div>
+            profile={profile}
+            index={index}
+            onSwipe={handleSwipe}
+            isTopCard={isTopCard}
+           />
       );
-    })
-  }
+    });
+  };
 
 
   return (
@@ -554,3 +567,5 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
+
+    
