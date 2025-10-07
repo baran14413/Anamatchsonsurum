@@ -89,9 +89,9 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
+    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-blue-500 to-purple-600 text-white">
       <main className="flex flex-1 flex-col items-center p-8 text-center">
-        <div className="flex-1 flex flex-col justify-center items-center">
+        <div className="flex flex-1 flex-col justify-center items-center">
           <motion.div
             className="transform-gpu"
             animate={{
