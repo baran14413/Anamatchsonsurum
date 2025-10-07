@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Trash2, Check, Star, Info } from 'lucide-react';
@@ -25,7 +25,6 @@ export default function EslesmelerPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
-  const [systemMessage, setSystemMessage] = useState<ChatMessage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,15 +38,6 @@ export default function EslesmelerPage() {
     );
   }, [user, firestore]);
 
-  const systemMessageQuery = useMemoFirebase(() => {
-      if (!user || !firestore) return null;
-      return query(
-          collection(firestore, `users/${user.uid}/system_messages`),
-          orderBy('timestamp', 'desc'),
-          limit(1)
-      );
-  }, [user, firestore]);
-
   useEffect(() => {
     if (!matchesQuery) {
       setIsLoading(false);
@@ -57,7 +47,29 @@ export default function EslesmelerPage() {
     setIsLoading(true);
 
     const unsubMatches = onSnapshot(matchesQuery, (snapshot) => {
-      const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
+      const matchesData: DenormalizedMatch[] = [];
+      let systemMatchExists = false;
+      snapshot.forEach(doc => {
+          const data = doc.data() as DenormalizedMatch;
+          if (data.id === 'system') {
+              systemMatchExists = true;
+          }
+          matchesData.push(data);
+      });
+
+      // Ensure system match exists for the user
+      if (!snapshot.empty && !systemMatchExists && user && firestore) {
+          const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
+          setDoc(systemMatchRef, {
+              id: 'system',
+              matchedWith: 'system',
+              lastMessage: "BeMatch'e hoş geldin!",
+              timestamp: serverTimestamp(),
+              fullName: 'BeMatch - Sistem Mesajları',
+              profilePicture: '',
+          }, { merge: true });
+      }
+
       setMatches(matchesData);
       setIsLoading(false);
     }, (error) => {
@@ -69,34 +81,14 @@ export default function EslesmelerPage() {
       unsubMatches();
     };
 
-  }, [matchesQuery]);
+  }, [matchesQuery, user, firestore]);
 
-  useEffect(() => {
-      if (!systemMessageQuery || !user || !firestore) return;
-
-      const unsubSystemMessages = onSnapshot(systemMessageQuery, (snapshot) => {
-        if (snapshot.empty) {
-             addDoc(collection(firestore, `users/${user.uid}/system_messages`), {
-                 senderId: 'system',
-                 text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
-                 timestamp: serverTimestamp(),
-                 isRead: true,
-             });
-        } else {
-            setSystemMessage(snapshot.docs[0].data() as ChatMessage);
-        }
-    });
-
-    return () => unsubSystemMessages();
-  }, [systemMessageQuery, user, firestore])
 
   const filteredMatches = useMemo(() => {
-    if (!searchTerm) {
-      return matches;
-    }
-    return matches.filter(match =>
-        (match.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const systemMatch = matches.find(m => m.id === 'system');
+    const otherMatches = matches.filter(m => m.id !== 'system' && (!searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())));
+
+    return systemMatch ? [systemMatch, ...otherMatches] : otherMatches;
   }, [matches, searchTerm]);
 
   const handleDeleteChat = async () => {
@@ -184,14 +176,6 @@ export default function EslesmelerPage() {
     }
   };
 
-   const systemMatchItem: DenormalizedMatch = {
-        id: 'system',
-        matchedWith: 'system',
-        lastMessage: systemMessage?.text || "BeMatch'e hoş geldin!",
-        timestamp: systemMessage?.timestamp, 
-        fullName: 'BeMatch - Sistem Mesajları',
-        profilePicture: '', // Placeholder, will use bmIcon
-    };
 
   if (isLoading) {
       return (
@@ -220,7 +204,7 @@ export default function EslesmelerPage() {
                 
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
-                            {[systemMatchItem, ...filteredMatches].map(match => {
+                            {filteredMatches.map(match => {
                                 const isSuperLikePending = match.status === 'superlike_pending';
                                 const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;

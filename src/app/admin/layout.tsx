@@ -3,7 +3,7 @@
 
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot } from 'lucide-react';
+import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
@@ -50,6 +50,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                <Link href="/admin/bots">
                                     <Bot />
                                     <span>Botlar</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                         <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Sistem Mesajları" asChild>
+                               <Link href="/admin/system-messages">
+                                    <MessageSquare />
+                                    <span>Sistem Mesajları</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
