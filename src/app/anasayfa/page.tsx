@@ -210,7 +210,7 @@ export default function AnasayfaPage() {
   };
 
 
- const fetchProfiles = useCallback(async () => {
+ const fetchProfiles = useCallback(async (resetInteractions = false) => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
@@ -221,16 +221,18 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-        const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-        
-        const [query1Snapshot, query2Snapshot] = await Promise.all([
-            getDocs(matchesQuery1),
-            getDocs(matchesQuery2)
-        ]);
+        if (!resetInteractions) {
+            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+            
+            const [query1Snapshot, query2Snapshot] = await Promise.all([
+                getDocs(matchesQuery1),
+                getDocs(matchesQuery2)
+            ]);
 
-        query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-        query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+        }
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -376,7 +378,7 @@ export default function AnasayfaPage() {
         <div className="flex h-full items-center justify-center text-center">
             <div className='space-y-4'>
                 <p>{t.anasayfa.outOfProfilesDescription}</p>
-                <Button onClick={() => fetchProfiles()}>
+                <Button onClick={() => fetchProfiles(true)}>
                     <Undo2 className="mr-2 h-4 w-4" />
                     Tekrar Dene
                 </Button>
