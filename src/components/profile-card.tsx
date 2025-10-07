@@ -22,6 +22,7 @@ interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   onSwipe?: (action: 'liked' | 'disliked' | 'superliked') => void;
   isDraggable: boolean;
+  isSecondCard: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -65,7 +66,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isSecondCard }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -105,21 +106,21 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
   
-  const motionProps = isDraggable ? {
-    drag: true as const,
+  const motionProps = {
+    drag: isDraggable ? ("x" as const) : false,
     dragConstraints: { left: 0, right: 0, top: 0, bottom: 0 },
     dragElastic: 0.5,
     onDragEnd: handleDragEnd,
     style: { x, y, rotate },
-    whileTap: { cursor: 'grabbing' as const },
+    whileTap: isDraggable ? { cursor: 'grabbing' as const } : {},
     initial: { 
-        scale: 0.95, 
-        y: 10,
-        opacity: 0,
+        scale: isSecondCard ? 0.95 : 1, 
+        y: isSecondCard ? 10 : 0,
+        opacity: 1,
     },
     animate: { 
-        scale: 1, 
-        y: 0, 
+        scale: isDraggable ? 1 : 0.95, 
+        y: isDraggable ? 0 : 10,
         opacity: 1, 
         transition: { duration: 0.3, ease: 'easeOut' }
     },
@@ -130,7 +131,7 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
         scale: 0.8,
         transition: { duration: 0.4, ease: 'easeIn' }
     }
-  } : {};
+  };
 
   const currentImage = profile.images && profile.images.length > 0 ? profile.images[activeImageIndex] : null;
 

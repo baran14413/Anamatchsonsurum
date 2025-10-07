@@ -11,7 +11,6 @@ import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp,
 import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
@@ -68,28 +67,36 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         updateData.status = 'matched';
         updateData.matchDate = serverTimestamp();
         
-        const botGreeting = getRandomGreeting();
-
         const batch = writeBatch(db);
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched', unreadCount: 1 },
-            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched', unreadCount: 1 },
+            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
 
-        // Add the bot's greeting message
-        const greetingMessage = {
-            matchId: matchDocRef.id,
-            senderId: swipedUser.uid, // Bot is the sender
-            text: botGreeting,
-            timestamp: serverTimestamp(),
-            isRead: false,
-            type: 'user',
-        };
-        batch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), greetingMessage);
-        
         await batch.commit();
+
+        // Delayed message
+        setTimeout(() => {
+            const botGreeting = getRandomGreeting();
+            const messageRef = collection(db, `matches/${matchDocRef.id}/messages`);
+            addDoc(messageRef, {
+                matchId: matchDocRef.id,
+                senderId: swipedUser.uid,
+                text: botGreeting,
+                timestamp: serverTimestamp(),
+                isRead: false,
+                type: 'user',
+            });
+            // Update last message in match object
+            const userMatchRef = doc(db, `users/${currentUser.uid}/matches/${matchDocRef.id}`);
+            updateDoc(userMatchRef, { lastMessage: botGreeting });
+            const botMatchRef = doc(db, `users/${swipedUser.uid}/matches/${matchDocRef.id}`);
+            updateDoc(botMatchRef, { lastMessage: botGreeting });
+
+        }, 10000); // 10 seconds delay
+
 
         return { matched: true, swipedUserName: swipedUser.fullName };
     }
@@ -179,11 +186,12 @@ export default function AnasayfaPage() {
 
   const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     setProfiles(prevProfiles => {
+      if (prevProfiles.length === 0) return [];
       const swipedProfile = prevProfiles[prevProfiles.length - 1];
       const newProfiles = prevProfiles.slice(0, prevProfiles.length - 1);
       
       if (action === 'disliked') {
-        setLastDislikedProfile(swipedProfile as ProfileWithDistance);
+        setLastDislikedProfile(swipedProfile);
       } else {
         setLastDislikedProfile(null); // Clear undo on like or superlike
       }
@@ -437,22 +445,24 @@ export default function AnasayfaPage() {
                 </Button>
                 </div>
             )}
-            <AnimatePresence>
-                {profiles.map((profile, index) => {
-                const isTopCard = index === profiles.length - 1;
-                
-                if (index < profiles.length - 2) return null;
+            
+            {profiles.map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              const isSecondCard = index === profiles.length - 2;
 
-                return (
-                    <ProfileCard
-                        key={profile.uid}
-                        profile={profile}
-                        onSwipe={(action) => handleSwipe(profile, action)}
-                        isDraggable={isTopCard}
-                    />
-                );
-                })}
-            </AnimatePresence>
+              if (index < profiles.length - 2) return null;
+
+              return (
+                  <ProfileCard
+                      key={profile.uid}
+                      profile={profile}
+                      onSwipe={(action) => handleSwipe(profile, action)}
+                      isDraggable={isTopCard}
+                      isSecondCard={isSecondCard}
+                  />
+              );
+            })}
+
             </div>
         ) : (
             <div className="flex h-full items-center justify-center text-center">
@@ -511,4 +521,3 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
-
