@@ -20,7 +20,7 @@ import { Icons } from './icons';
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isDraggable?: boolean;
-  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, index: number) => void;
+  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
   zIndex: number;
   index: number;
 }
@@ -181,9 +181,8 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex,
         drag={isDraggable}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.3}
-        onDragEnd={(event, info) => onDragEnd(event, info, index)}
-        initial={{ scale: 0.95, y: -10, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
+        onDragEnd={onDragEnd}
+        animate={{ scale: 1 - (index * 0.05), y: index * -10, opacity: 1 }}
         transition={{ duration: 0.3 }}
         exit={{ x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: info => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
     >

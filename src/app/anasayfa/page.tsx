@@ -34,15 +34,6 @@ const calculateAge = (dateString?: string): number | null => {
 
 // --- Eşleşme Mantığı Optimizasyonu ---
 
-const updateMatchData = async (db: Firestore, ref: DocumentReference<DocumentData>, data: any, options: SetOptions = {}) => {
-    try {
-        await setDoc(ref, data, options);
-    } catch (error: any) {
-        const errorMessage = error.message || "Etkileşim kaydedilemedi.";
-        throw new Error(errorMessage);
-    }
-};
-
 const createMatch = (batch: WriteBatch, db: Firestore, user1Id: string, user2Id: string, user1Data: any, user2Data: any) => {
     const matchId = [user1Id, user2Id].sort().join('_');
     batch.set(doc(db, `users/${user1Id}/matches`, matchId), user1Data);
@@ -58,6 +49,8 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
     const currentUserField = isUser1 ? 'user1' : 'user2';
 
     let updateData: any = {
+        user1Id: [currentUser.uid, swipedUser.uid].sort()[0],
+        user2Id: [currentUser.uid, swipedUser.uid].sort()[1],
         [`${currentUserField}_action`]: 'liked',
         [`${currentUserField}_timestamp`]: serverTimestamp(),
     };
@@ -119,7 +112,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         return { matched: true, swipedUserName: swipedUser.fullName };
     } else {
         // --- BEKLEMEDE ---
-        await updateMatchData(db, matchDocRef, updateData, { merge: true });
+        await setDoc(db, matchDocRef, updateData, { merge: true });
         return { matched: false };
     }
 };
@@ -128,10 +121,12 @@ const handleDislikeAction = async (db: Firestore, currentUserUid: string, swiped
     const isUser1 = currentUserUid < swipedUserUid;
     const currentUserField = isUser1 ? 'user1' : 'user2';
     const updateData = {
+        user1Id: [currentUserUid, swipedUserUid].sort()[0],
+        user2Id: [currentUserUid, swipedUserUid].sort()[1],
         [`${currentUserField}_action`]: 'disliked',
         [`${currentUserField}_timestamp`]: serverTimestamp(),
     };
-    await updateMatchData(db, matchDocRef, updateData, { merge: true });
+    await setDoc(db, matchDocRef, updateData, { merge: true });
 };
 
 const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile, matchDocRef: DocumentReference<DocumentData>, existingMatchData: Match | undefined) => {
@@ -153,6 +148,8 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
     createMatch(batch, db, currentUser.uid, swipedUser.uid, currentUserMatchData, swipedUserMatchData);
     
     const updateData = {
+        user1Id: [currentUser.uid, swipedUser.uid].sort()[0],
+        user2Id: [currentUser.uid, swipedUser.uid].sort()[1],
         status: 'superlike_pending',
         isSuperLike: true,
         superLikeInitiator: currentUser.uid,
@@ -221,12 +218,6 @@ export default function AnasayfaPage() {
     try {
         const matchSnap = await getDoc(matchDocRef);
         const existingMatchData = matchSnap.data() as Match | undefined;
-        
-        const baseUpdateData = {
-             user1Id: [user1Id, user2Id].sort()[0],
-             user2Id: [user1Id, user2Id].sort()[1],
-        };
-        await updateMatchData(firestore, matchDocRef, baseUpdateData, { merge: true });
 
         if (action === 'liked') {
             const result = await handleLikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
@@ -443,7 +434,7 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative flex flex-col items-center justify-center p-4 pb-14">
+        <div className="relative flex-1 flex flex-col items-center justify-center p-4">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -466,7 +457,7 @@ export default function AnasayfaPage() {
                                 key={profile.uid}
                                 profile={profile}
                                 isDraggable={isTopCard}
-                                onDragEnd={handleDragEnd}
+                                onDragEnd={(event, info) => handleDragEnd(event, info, profile, index)}
                                 index={index}
                                 zIndex={index}
                             />
