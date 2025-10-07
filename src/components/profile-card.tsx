@@ -22,7 +22,6 @@ interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   onSwipe?: (action: 'liked' | 'disliked' | 'superliked') => void;
   isDraggable: boolean;
-  isTopCard: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -66,7 +65,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isTopCard }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -199,11 +198,10 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isTopCard }: Prof
         className={cn(
             "transform-gpu absolute w-full h-full",
             isDraggable ? 'cursor-grab' : 'cursor-default',
-            !isTopCard && "blur-sm"
         )}
         initial={{ 
-            scale: isTopCard ? 1 : 0.95, 
-            y: isTopCard ? 0 : 10,
+            scale: 1, 
+            y: 0,
         }}
         animate={{ 
             scale: 1, 

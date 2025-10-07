@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -73,24 +73,46 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         const batch = writeBatch(db);
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
-            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
+            // Initially set a placeholder message for the user
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Eşleştiniz! ✨", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
+            // Bot's side doesn't need a placeholder as it will be updated by the bot message
+            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: "", timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
         
-        // Add the bot's automatic greeting
-        const greetingMessage = {
-            matchId: matchDocRef.id,
-            senderId: swipedUser.uid, // Bot is the sender
-            text: botGreeting,
-            timestamp: serverTimestamp(),
-            isRead: false,
-            type: 'user',
-        };
-        batch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), greetingMessage);
-
+        // Commit the initial match creation
         await batch.commit();
-        
+
+        // Schedule the bot's greeting message with a delay
+        setTimeout(async () => {
+            try {
+                const delayedBatch = writeBatch(db);
+
+                // Add the bot's greeting message
+                const greetingMessage = {
+                    matchId: matchDocRef.id,
+                    senderId: swipedUser.uid, // Bot is the sender
+                    text: botGreeting,
+                    timestamp: serverTimestamp(),
+                    isRead: false,
+                    type: 'user',
+                };
+                delayedBatch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), greetingMessage);
+
+                // Update the lastMessage for both users' match documents with the actual bot greeting
+                const currentUserMatchRef = doc(db, `users/${currentUser.uid}/matches`, matchDocRef.id);
+                delayedBatch.update(currentUserMatchRef, { lastMessage: botGreeting, unreadCount: increment(1) });
+
+                const botUserMatchRef = doc(db, `users/${swipedUser.uid}/matches`, matchDocRef.id);
+                delayedBatch.update(botUserMatchRef, { lastMessage: botGreeting });
+
+                await delayedBatch.commit();
+            } catch (error) {
+                console.error("Error sending delayed bot message:", error);
+                // Handle error silently, as the match is already created.
+            }
+        }, 10000); // 10-second delay
+
         return { matched: true, swipedUserName: swipedUser.fullName };
     }
 
@@ -449,7 +471,6 @@ export default function AnasayfaPage() {
                         profile={profile}
                         onSwipe={(action) => handleSwipe(profile, action)}
                         isDraggable={isTopCard}
-                        isTopCard={isTopCard}
                     />
                 );
                 })}
