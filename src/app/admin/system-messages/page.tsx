@@ -120,7 +120,7 @@ export default function SystemMessagesPage() {
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
 
   const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '!=', true)) : null),
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', false)) : null),
     [firestore]
   );
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersCollectionRef);
