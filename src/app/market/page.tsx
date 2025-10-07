@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Gem, Star, Undo2, Zap, Heart, Wallet, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Gem, Star, Undo2, Zap, Heart, Wallet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
