@@ -72,6 +72,13 @@ export default function AdminDashboardPage() {
   );
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersCollectionRef);
 
+  const botsCollectionRef = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', true)) : null),
+    [firestore]
+  );
+  const { data: bots, isLoading: isLoadingBots } = useCollection(botsCollectionRef);
+
+
   const matchesCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'matches') : null),
     [firestore]
@@ -179,7 +186,7 @@ export default function AdminDashboardPage() {
   return (
         <div className="space-y-6">
         <h1 className="text-2xl font-bold">Genel Bakış</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -193,6 +200,22 @@ export default function AdminDashboardPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                 Sistemdeki toplam gerçek kullanıcı sayısı.
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                Toplam Bot
+                </CardTitle>
+                <Bot className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">
+                {isLoadingBots ? <Icons.logo className="h-6 w-6 animate-pulse" /> : bots?.length ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                Sistemdeki toplam bot kullanıcı sayısı.
                 </p>
             </CardContent>
             </Card>
