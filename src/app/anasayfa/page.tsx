@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
@@ -112,7 +112,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         return { matched: true, swipedUserName: swipedUser.fullName };
     } else {
         // --- BEKLEMEDE ---
-        await setDoc(db, matchDocRef, updateData, { merge: true });
+        await setDoc(matchDocRef, updateData, { merge: true });
         return { matched: false };
     }
 };
@@ -126,7 +126,7 @@ const handleDislikeAction = async (db: Firestore, currentUserUid: string, swiped
         [`${currentUserField}_action`]: 'disliked',
         [`${currentUserField}_timestamp`]: serverTimestamp(),
     };
-    await setDoc(db, matchDocRef, updateData, { merge: true });
+    await setDoc(matchDocRef, updateData, { merge: true });
 };
 
 const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile, matchDocRef: DocumentReference<DocumentData>, existingMatchData: Match | undefined) => {
@@ -181,24 +181,7 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked', swipedIndex: number) => {
-    setProfiles(prevProfiles => {
-      const swipedProfile = prevProfiles[swipedIndex];
-      if (!swipedProfile) return prevProfiles;
-      
-      const newProfiles = prevProfiles.filter((_, i) => i !== swipedIndex);
-      
-      if (action === 'disliked') {
-        setLastDislikedProfile(swipedProfile);
-      } else {
-        setLastDislikedProfile(null);
-      }
-      
-      return newProfiles;
-    });
-  }, []);
-  
- const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked', swipedIndex: number) => {
+  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
 
     if (action === 'superliked') {
@@ -207,8 +190,16 @@ export default function AnasayfaPage() {
             return;
         }
     }
-
-    removeTopCard(action, swipedIndex);
+    
+    setProfiles(currentProfiles => {
+      const newProfiles = currentProfiles.filter(p => p.uid !== swipedProfile.uid);
+      if (action === 'disliked') {
+        setLastDislikedProfile(swipedProfile as ProfileWithDistance);
+      } else {
+        setLastDislikedProfile(null);
+      }
+      return newProfiles;
+    });
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -238,16 +229,16 @@ export default function AnasayfaPage() {
             variant: "destructive",
         });
     }
- }, [user, firestore, t, toast, userProfile, removeTopCard]);
+ }, [user, firestore, t, toast, userProfile]);
  
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile, index: number) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'superliked', index);
+      handleSwipe(profile, 'superliked');
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'liked', index);
+      handleSwipe(profile, 'liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'disliked', index);
+      handleSwipe(profile, 'disliked');
     }
   };
 
@@ -456,6 +447,7 @@ export default function AnasayfaPage() {
                             <ProfileCard
                                 key={profile.uid}
                                 profile={profile}
+                                onSwipe={handleSwipe}
                                 isDraggable={isTopCard}
                                 onDragEnd={(event, info) => handleDragEnd(event, info, profile, index)}
                                 index={index}

@@ -21,6 +21,7 @@ interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isDraggable?: boolean;
   onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
+  onSwipe: (profile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => void;
   zIndex: number;
   index: number;
 }
@@ -64,7 +65,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex, index }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, onSwipe, zIndex }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -182,7 +183,7 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex,
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.3}
         onDragEnd={onDragEnd}
-        animate={{ scale: 1 - (index * 0.05), y: index * -10, opacity: 1 }}
+        animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
         transition={{ duration: 0.3 }}
         exit={{ x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: info => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
     >

@@ -1,6 +1,6 @@
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   DocumentReference,
   onSnapshot,
@@ -10,7 +10,6 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useMemoFirebase } from '../provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -42,7 +41,7 @@ export interface UseDocResult<T> {
 export function useDoc<T = any>(
   docRef: DocumentReference<DocumentData> | null | undefined,
 ): UseDocResult<T> {
-  const memoizedDocRef = useMemoFirebase(() => docRef, [docRef]);
+  const memoizedDocRef = useMemo(() => docRef, [docRef]);
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
@@ -90,5 +89,3 @@ export function useDoc<T = any>(
 
   return { data, isLoading, error };
 }
-
-    
