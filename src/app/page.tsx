@@ -93,6 +93,7 @@ export default function WelcomePage() {
       <main className="flex flex-1 flex-col items-center p-8 text-center">
         <div className="flex-1 flex flex-col justify-center items-center">
           <motion.div
+            className="transform-gpu"
             animate={{
               scale: [1, 1.05, 1],
             }}
@@ -102,7 +103,6 @@ export default function WelcomePage() {
               repeat: Infinity,
               repeatDelay: 0.5,
             }}
-            className="mb-8"
           >
             <Icons.logo width={256} height={256} />
           </motion.div>

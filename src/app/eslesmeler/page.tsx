@@ -100,20 +100,30 @@ export default function EslesmelerPage() {
   }, [matches, searchTerm]);
 
   const handleDeleteChat = async () => {
-    if (!chatToInteract) return;
+    if (!chatToInteract || !user || !firestore) return;
     setIsDeleting(true);
 
     try {
-        const response = await fetch('/api/delete-chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matchId: chatToInteract.id }),
-        });
+        const otherUserId = chatToInteract.matchedWith;
+        const matchId = chatToInteract.id;
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Sohbet silinemedi.');
-        }
+        const batch = writeBatch(firestore);
+
+        const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+        batch.delete(userMatchRef);
+
+        const otherUserMatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
+        batch.delete(otherUserMatchRef);
+
+        const mainMatchRef = doc(firestore, 'matches', matchId);
+        batch.delete(mainMatchRef);
+
+        // This part is optional but good for cleanup: delete all messages in the subcollection
+        const messagesRef = collection(firestore, `matches/${matchId}/messages`);
+        const messagesSnap = await getDocs(messagesRef);
+        messagesSnap.forEach(doc => batch.delete(doc.ref));
+
+        await batch.commit();
         
         setChatToInteract(null);
         toast({
@@ -260,6 +270,7 @@ export default function EslesmelerPage() {
                                 return (
                                     <motion.div
                                         key={match.id}
+                                        className="transform-gpu"
                                         onContextMenu={(e) => { 
                                             e.preventDefault(); 
                                             if (match.id === 'system') {

@@ -106,7 +106,6 @@ export default function ChatPage() {
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [newMessage, setNewMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -129,6 +128,7 @@ export default function ChatPage() {
 
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
     const [deletingMessage, setDeletingMessage] = useState<ChatMessage | null>(null);
+    const [newMessage, setNewMessage] = useState('');
     
     const [imagePreview, setImagePreview] = useState<{file: File, url: string} | null>(null);
     const [caption, setCaption] = useState('');
@@ -521,22 +521,18 @@ export default function ChatPage() {
         
         setIsBlocking(true);
         try {
-            // This now performs all operations on the client side
             const batch = writeBatch(firestore);
             
-            // 1. Delete messages subcollection
             const messagesRef = collection(firestore, `matches/${matchId}/messages`);
             const messagesSnap = await getDocs(messagesRef);
             messagesSnap.forEach(doc => batch.delete(doc.ref));
 
-            // 2. Delete denormalized match data from both users
-            const user1MatchRef = doc(firestore, `users/${user.uid}/matches/${matchId}`);
+            const user1MatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
             batch.delete(user1MatchRef);
 
-            const user2MatchRef = doc(firestore, `users/${otherUserId}/matches/${matchId}`);
+            const user2MatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
             batch.delete(user2MatchRef);
 
-            // 3. Delete the main match document
             const mainMatchDocRef = doc(firestore, 'matches', matchId);
             batch.delete(mainMatchDocRef);
 
@@ -547,7 +543,7 @@ export default function ChatPage() {
                 description: `${otherUser?.fullName} ile olan eşleşmeniz kaldırıldı.`,
             });
             
-            router.back();
+            router.push('/eslesmeler');
 
         } catch (error: any) {
             console.error("Error blocking user:", error);

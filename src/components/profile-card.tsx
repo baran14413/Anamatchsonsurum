@@ -200,7 +200,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 
   return (
     <motion.div 
-        className={`w-full h-full ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
+        className={`w-full h-full transform-gpu ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
         {...motionProps}
         exit={{ 
             x: x.get() > 0 ? 300 : -300,
@@ -257,19 +257,19 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             {isDraggable && (
                 <>
                 <motion.div
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10 transform-gpu"
                     style={{ opacity: opacitySuperLike }}
                 >
                     <Star className="h-24 w-24 fill-current" strokeWidth={1.5} />
                 </motion.div>
                 <motion.div
-                    className="absolute top-8 left-8 text-green-400 z-10"
+                    className="absolute top-8 left-8 text-green-400 z-10 transform-gpu"
                     style={{ opacity: opacityLike }}
                 >
                     <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
                 </motion.div>
                 <motion.div
-                    className="absolute top-8 right-8 text-red-500 z-10"
+                    className="absolute top-8 right-8 text-red-500 z-10 transform-gpu"
                     style={{ opacity: opacityDislike }}
                 >
                     <X className="h-20 w-20" strokeWidth={3} />
@@ -427,5 +427,3 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
 </motion.div>
   );
 }
-
-    

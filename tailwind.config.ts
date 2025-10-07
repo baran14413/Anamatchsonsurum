@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -9,6 +10,11 @@ export default {
   ],
   theme: {
     extend: {
+      utilities: {
+        'transform-gpu': {
+          transform: 'translateZ(0)',
+        },
+      },
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Inter', 'sans-serif'],
