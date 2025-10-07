@@ -59,6 +59,7 @@ export default function WelcomePage() {
                 fullName: signedInUser.displayName || '',
                 images: signedInUser.photoURL ? [{ url: signedInUser.photoURL, public_id: '' }] : [],
                 profilePicture: signedInUser.photoURL || '',
+                isBot: false, // Explicitly mark as not a bot
             };
             await setDoc(userDocRef, initialProfileData, { merge: true });
         }

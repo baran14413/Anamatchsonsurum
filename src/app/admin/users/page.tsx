@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
   const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
 
   const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', 'not-in', [true])) : null),
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', false)) : null),
     [firestore]
   );
   const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
