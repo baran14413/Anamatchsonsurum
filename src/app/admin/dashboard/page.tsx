@@ -1,10 +1,10 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Heart, MessageSquare, Trash2, AlertTriangle, Send, Bot } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { Users, Heart, MessageSquare, Bot } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase, useAuth } from '@/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -12,19 +12,52 @@ import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { langTr } from '@/languages/tr';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+
+// --- Data for Bot Generation ---
+const femaleNames = ["Aslı", "Beren", "Ceyda", "Deniz", "Elif", "Feyza", "Gizem", "Hazal", "Irmak", "Jale", "Lale", "Melis", "Narin", "Pelin", "Selin", "Tuğçe", "Zeynep"];
+const maleNames = ["Ahmet", "Berk", "Can", "Deniz", "Emre", "Fırat", "Giray", "Hakan", "İlker", "Kerem", "Levent", "Murat", "Ozan", "Polat", "Serkan", "Tarkan", "Umut"];
+const lastNames = ["Yılmaz", "Kaya", "Demir", "Çelik", "Arslan", "Doğan", "Kurt", "Öztürk", "Aydın", "Özdemir"];
+const bios = [
+    "Hayatı dolu dolu yaşamayı seven biriyim. Yeni yerler keşfetmek, yeni tatlar denemek en büyük tutkum.",
+    "İyi bir kahve ve güzel bir sohbet günümü güzelleştirir.",
+    "Sanat galerilerini gezmek, film eleştirileri okumak ve kedimle vakit geçirmek en büyük keyfim.",
+    "Müziğin ritmiyle yaşarım. Konserlere gitmek ve yeni gruplar keşfetmek vazgeçilmezim.",
+    "Sporsuz bir hayat düşünemiyorum. Doğa yürüyüşleri ve kamp yapmayı çok severim.",
+    "Yazılım geliştiriyorum ve teknolojiye dair her şeye meraklıyım.",
+    "Sakin bir akşamda iyi bir kitap okumak gibisi yok.",
+    "Hayvanları çok seviyorum, özellikle köpekleri. Sahilde uzun yürüyüşler favorim.",
+    "Yaratıcı bir ruhum var. Resim yapmak, en büyük hobim.",
+];
+
+const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomDob = (): Date => {
+    const today = new Date();
+    const maxAge = 40;
+    const minAge = 18;
+    const year = today.getFullYear() - (Math.floor(Math.random() * (maxAge - minAge + 1)) + minAge);
+    const month = Math.floor(Math.random() * 12);
+    const day = Math.floor(Math.random() * 28) + 1;
+    return new Date(year, month, day);
+};
+const getRandomLocation = () => {
+    const centerLat = 41.0082;
+    const centerLon = 28.9784;
+    const radius = 0.5;
+    return {
+        latitude: centerLat + (Math.random() - 0.5) * radius * 2,
+        longitude: centerLon + (Math.random() - 0.5) * radius * 2,
+    };
+};
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   const [isCreatingBots, setIsCreatingBots] = useState(false);
   const [botCount, setBotCount] = useState(10);
   const [botGender, setBotGender] = useState('mixed');
-  const [isResetting, setIsResetting] = useState(false);
-  const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-
 
   const usersCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -38,8 +71,15 @@ export default function AdminDashboardPage() {
   );
   const { data: matches, isLoading: isLoadingMatches } = useCollection(matchesCollectionRef);
 
-  
-    const handleCreateBots = async () => {
+  const handleCreateBots = async () => {
+    if (!auth || !firestore) {
+      toast({
+        title: 'Hata',
+        description: 'Firebase servisleri başlatılamadı.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (botCount <= 0) {
         toast({
             title: 'Hata',
@@ -49,97 +89,71 @@ export default function AdminDashboardPage() {
         return;
     }
     setIsCreatingBots(true);
-    try {
-        const response = await fetch('/api/create-bots', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ count: botCount, gender: botGender }),
-        });
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Botlar oluşturulamadı.');
+    let createdCount = 0;
+    const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
+
+    try {
+        for (let i = 0; i < botCount; i++) {
+            const gender: 'male' | 'female' = botGender === 'mixed'
+                ? (Math.random() > 0.5 ? 'female' : 'male')
+                : botGender as 'male' | 'female';
+
+            const fullName = `${getRandomItem(gender === 'female' ? femaleNames : maleNames)} ${getRandomItem(lastNames)}`;
+            const email = `bot_${fullName.toLowerCase().replace(/\s/g, '_')}_${Date.now()}@bematch.app`;
+            const password = Math.random().toString(36).slice(-8);
+            const randomImage = getRandomItem(PlaceHolderImages);
+
+            // 1. Create user in Firebase Auth
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            await updateProfile(user, {
+                displayName: fullName,
+                photoURL: randomImage.imageUrl,
+            });
+            
+            const botId = user.uid;
+            const docRef = doc(firestore, 'users', botId);
+            
+            const botProfile = {
+                uid: botId,
+                fullName,
+                email,
+                dateOfBirth: getRandomDob().toISOString(),
+                gender,
+                genderPreference: gender === 'female' ? 'male' : 'female',
+                bio: getRandomItem(bios),
+                interests: [...new Set(Array.from({ length: 10 }, () => getRandomItem(allInterests)))],
+                images: [{ url: randomImage.imageUrl, public_id: `bot_${randomImage.id}` }],
+                profilePicture: randomImage.imageUrl,
+                location: getRandomLocation(),
+                isBot: true,
+                createdAt: new Date(),
+                rulesAgreed: true,
+                lookingFor: 'whatever',
+                distancePreference: 50,
+                ageRange: { min: 18, max: 45 },
+            };
+
+            await setDoc(docRef, botProfile);
+            createdCount++;
         }
 
         toast({
             title: 'Botlar Oluşturuldu',
-            description: `${result.createdCount} adet yeni bot başarıyla oluşturuldu.`,
+            description: `${createdCount} adet yeni bot başarıyla oluşturuldu.`,
         });
 
     } catch (error: any) {
+        console.error("Bot oluşturma hatası:", error);
         toast({
             title: 'Hata',
-            description: error.message || 'Bilinmeyen bir hata oluştu.',
+            description: `Botlar oluşturulurken bir hata oluştu: ${error.message || 'Bilinmeyen bir hata oluştu.'}`,
             variant: 'destructive',
         });
     } finally {
         setIsCreatingBots(false);
-    }
-  };
-
-  const handleResetSystem = async () => {
-      setIsResetting(true);
-       try {
-        const response = await fetch('/api/reset-matches', {
-            method: 'POST',
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Sistem sıfırlanamadı.');
-        }
-
-        toast({
-            title: 'Sistem Sıfırlandı',
-            description: `Tüm eşleşmeler ve sohbetler başarıyla silindi.`,
-        });
-
-    } catch (error: any) {
-        toast({
-            title: 'Hata',
-            description: error.message || 'Bilinmeyen bir hata oluştu.',
-            variant: 'destructive',
-        });
-    } finally {
-        setIsResetting(false);
-    }
-  }
-
-  const handleBroadcastMessage = async () => {
-    if (!broadcastMessage.trim()) {
-      toast({
-        title: 'Hata',
-        description: 'Duyuru mesajı boş olamaz.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setIsBroadcasting(true);
-    try {
-      const response = await fetch('/api/broadcast-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: broadcastMessage }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Duyuru gönderilemedi.');
-      }
-
-      toast({
-        title: 'Duyuru Gönderildi',
-        description: `Mesajınız ${result.count} kullanıcıya başarıyla iletildi.`,
-      });
-      setBroadcastMessage('');
-    } catch (error: any) {
-      toast({
-        title: 'Hata',
-        description: error.message || 'Bilinmeyen bir hata oluştu.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsBroadcasting(false);
     }
   };
 
@@ -204,7 +218,7 @@ export default function AdminDashboardPage() {
                         Bot Yönetimi
                     </CardTitle>
                     <CardDescription>
-                        Uygulamaya test veya başlangıç amacıyla sahte kullanıcı profilleri (bot) ekleyin.
+                        Uygulamaya test veya başlangıç amacıyla sahte kullanıcı profilleri (bot) ekleyin. Bu işlem doğrudan tarayıcınız üzerinden yapılır.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -246,74 +260,6 @@ export default function AdminDashboardPage() {
                             <><Bot className='mr-2 h-4 w-4'/> Botları Oluştur</>
                         )}
                     </Button>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Send className="h-5 w-5" />
-                       Toplu Duyuru Gönder
-                    </CardTitle>
-                    <CardDescription>
-                        Tüm kullanıcılara sistem mesajı olarak bir duyuru gönderin.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                   <div className="space-y-2">
-                        <Label htmlFor="broadcast-message">Mesajınız</Label>
-                        <Textarea
-                            id="broadcast-message"
-                            placeholder="Duyurunuzu buraya yazın..."
-                            value={broadcastMessage}
-                            onChange={(e) => setBroadcastMessage(e.target.value)}
-                            disabled={isBroadcasting}
-                        />
-                   </div>
-                   <Button onClick={handleBroadcastMessage} disabled={isBroadcasting}>
-                        {isBroadcasting ? (
-                             <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Gönderiliyor...</>
-                        ) : (
-                             <><Send className='mr-2 h-4 w-4'/> Duyuruyu Gönder</>
-                        )}
-                    </Button>
-                </CardContent>
-            </Card>
-            <Card className="md:col-span-2 border-destructive">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                       <AlertTriangle className='h-5 w-5'/> Tehlikeli Bölge
-                    </CardTitle>
-                    <CardDescription>
-                        Bu işlemler geri alınamaz ve uygulamanın veritabanını kalıcı olarak etkiler.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                           <Button variant="destructive" disabled={isResetting}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Maçları ve Sohbetleri Sıfırla
-                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Bu işlem geri alınamaz. Tüm kullanıcı eşleşmeleri ve sohbet geçmişleri kalıcı olarak silinecektir. Bu, test amacıyla veya sistemi temizlemek için kullanılır.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleResetSystem} disabled={isResetting} className='bg-destructive hover:bg-destructive/90'>
-                                     {isResetting ? (
-                                        <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Sıfırlanıyor...</>
-                                    ) : (
-                                        "Evet, Sıfırla"
-                                    )}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
                 </CardContent>
             </Card>
         </div>
