@@ -113,8 +113,9 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
     style: { x, y, rotate },
     whileTap: { cursor: 'grabbing' as const },
     initial: { 
-        scale: 1, 
-        y: 0,
+        scale: 0.95, 
+        y: 10,
+        opacity: 0,
     },
     animate: { 
         scale: 1, 
@@ -289,7 +290,7 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
                <div className="flex items-end justify-between gap-4">
-                    <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                         <div className='flex flex-col items-start'>
                            {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
