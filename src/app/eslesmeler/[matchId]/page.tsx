@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useUserProfile, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -173,10 +173,15 @@ export default function ChatPage() {
 
     // Listener for other user's profile
     useEffect(() => {
-        if (!otherUserDocRef) return;
+        if (!otherUserDocRef) {
+            setOtherUser(null);
+            return;
+        }
         const unsub = onSnapshot(otherUserDocRef, (doc) => {
             if (doc.exists()) {
                 setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
+            } else {
+                setOtherUser(null); // User document deleted or doesn't exist
             }
         });
         return () => unsub();
@@ -607,7 +612,7 @@ export default function ChatPage() {
     };
     
     const renderOnlineStatus = () => {
-        if (!otherUser) return null;
+        if (!otherUser) return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
         if (otherUser.isOnline) {
             return <span className="text-xs text-green-500">Çevrimiçi</span>
         }
@@ -783,7 +788,7 @@ export default function ChatPage() {
     }
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
-    const canSendMessage = !isSystemChat && matchData?.status === 'matched';
+    const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
     const isOtherUserGold = otherUser?.membershipType === 'gold';
     
@@ -804,21 +809,31 @@ export default function ChatPage() {
                                <span className="text-xs text-green-500">Her zaman aktif</span>
                            </div>
                         </>
-                    ) : (
+                    ) : (otherUser ? (
                          <>
                              <Avatar className="h-9 w-9">
-                                <AvatarImage src={otherUser?.profilePicture} />
-                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={otherUser.profilePicture} />
+                                <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
                                 <div className="flex items-center gap-1.5">
-                                   <span className="font-semibold">{otherUser?.fullName}</span>
+                                   <span className="font-semibold">{otherUser.fullName}</span>
                                    {isOtherUserGold && <Icons.beGold width={20} height={20} />}
                                 </div>
                                 {renderOnlineStatus()}
                             </div>
                         </>
-                    )}
+                    ) : (
+                         <>
+                           <Avatar className="h-9 w-9">
+                               <Icons.bmIcon className="h-full w-full" />
+                           </Avatar>
+                           <div className="flex flex-col">
+                               <span className="font-semibold">Kullanıcı Bulunamadı</span>
+                               <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+                           </div>
+                        </>
+                    ))}
                 </div>
                  {isSystemChat ? (
                     <AlertDialog>
@@ -1102,9 +1117,13 @@ export default function ChatPage() {
                         </Button>
                     </div>
                 </footer>
-            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
+                </div>
+            ) : (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
+                    Bu kullanıcı artık mevcut değil.
                 </div>
             )}
             

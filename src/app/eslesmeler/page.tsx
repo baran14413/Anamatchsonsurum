@@ -95,7 +95,7 @@ export default function EslesmelerPage() {
       return matches;
     }
     return matches.filter(match =>
-        match.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+        (match.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [matches, searchTerm]);
 
@@ -216,13 +216,14 @@ export default function EslesmelerPage() {
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = match.unreadCount && match.unreadCount > 0;
+                                const isUserDeleted = !match.fullName;
 
                                 const MatchItemContent = () => (
                                     <div className="flex items-center p-4 hover:bg-muted/50">
                                         <div className='relative'>
                                             <Avatar className="h-12 w-12">
-                                                {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />}
-                                                <AvatarFallback>{isSystemChat ? 'BM' : match.fullName.charAt(0)}</AvatarFallback>
+                                                {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />)}
+                                                <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
                                             </Avatar>
                                             {hasUnread && (
                                                 <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-background" />
@@ -231,7 +232,7 @@ export default function EslesmelerPage() {
                                         <div className="ml-4 flex-1 overflow-hidden">
                                             <div className="flex justify-between items-center">
                                                 <h3 className={cn("font-semibold flex items-center gap-1.5 truncate", hasUnread && "text-foreground")}>
-                                                  {match.fullName}
+                                                  {isUserDeleted ? 'Kullanıcı Bulunamadı' : match.fullName}
                                                   {!isSystemChat && match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
                                                 </h3>
                                                 {match.timestamp && (
@@ -254,7 +255,7 @@ export default function EslesmelerPage() {
                                     </div>
                                 );
                                 
-                                const isClickable = !(isSuperLikePending && isSuperLikeInitiator) || isSystemChat;
+                                const isClickable = !isUserDeleted && (!(isSuperLikePending && isSuperLikeInitiator) || isSystemChat);
 
                                 return (
                                     <motion.div
