@@ -2,11 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
-async function deleteCollection(collectionPath: string, batchSize: number) {
+// This function now takes a CollectionReference directly.
+async function deleteCollection(collectionRef: FirebaseFirestore.CollectionReference, batchSize: number) {
     if (!db) {
         throw new Error("Veritabanı başlatılamadı.");
     }
-    const collectionRef = db.collection(collectionPath);
+    
     let query = collectionRef.orderBy('__name__').limit(batchSize);
 
     while (true) {
@@ -45,20 +46,20 @@ export async function POST(req: NextRequest) {
 
         // Delete all messages subcollections inside each match
         matchesSnapshot.forEach(matchDoc => {
-            const messagesPath = `matches/${matchDoc.id}/messages`;
-            deleteSubcollectionPromises.push(deleteCollection(messagesPath, 100));
+            const messagesRef = matchDoc.ref.collection('messages');
+            deleteSubcollectionPromises.push(deleteCollection(messagesRef, 100));
         });
 
         // Delete all denormalized matches subcollections inside each user
         usersSnapshot.forEach(userDoc => {
-            const userMatchesPath = `users/${userDoc.id}/matches`;
-            deleteSubcollectionPromises.push(deleteCollection(userMatchesPath, 100));
+            const userMatchesRef = userDoc.ref.collection('matches');
+            deleteSubcollectionPromises.push(deleteCollection(userMatchesRef, 100));
         });
 
         await Promise.all(deleteSubcollectionPromises);
         
         // --- 2. Delete all documents in main 'matches' collection ---
-        await deleteCollection('matches', 100);
+        await deleteCollection(db.collection('matches'), 100);
 
         return NextResponse.json({ message: 'Sistem başarıyla sıfırlandı. Tüm eşleşmeler ve sohbetler silindi.' });
 
