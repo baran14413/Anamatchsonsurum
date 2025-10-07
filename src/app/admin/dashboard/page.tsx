@@ -17,9 +17,9 @@ import { langTr } from '@/languages/tr';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // --- Data for Bot Generation ---
-const femaleNames = ["Aslı", "Beren", "Ceyda", "Deniz", "Elif", "Feyza", "Gizem", "Hazal", "Irmak", "Jale", "Lale", "Melis", "Narin", "Pelin", "Selin", "Tuğçe", "Zeynep"];
-const maleNames = ["Ahmet", "Berk", "Can", "Deniz", "Emre", "Fırat", "Giray", "Hakan", "İlker", "Kerem", "Levent", "Murat", "Ozan", "Polat", "Serkan", "Tarkan", "Umut"];
-const lastNames = ["Yılmaz", "Kaya", "Demir", "Çelik", "Arslan", "Doğan", "Kurt", "Öztürk", "Aydın", "Özdemir"];
+const femaleNames = ["Aslı", "Beren", "Ceyda", "Deniz", "Elif", "Feyza", "Gizem", "Hazal", "Irmak", "Jale", "Lale", "Melis", "Narin", "Pelin", "Selin", "Tuğçe", "Zeynep", "Bahar", "Damla", "Eylül", "Fulya", "Gamze"];
+const maleNames = ["Ahmet", "Berk", "Can", "Deniz", "Emre", "Fırat", "Giray", "Hakan", "İlker", "Kerem", "Levent", "Murat", "Ozan", "Polat", "Serkan", "Tarkan", "Umut", "Barış", "Cem", "Doruk", "Ege"];
+const lastNames = ["Yılmaz", "Kaya", "Demir", "Çelik", "Arslan", "Doğan", "Kurt", "Öztürk", "Aydın", "Özdemir", "Şahin", "Turan", "Güneş", "Aksoy"];
 const bios = [
     "Hayatı dolu dolu yaşamayı seven biriyim. Yeni yerler keşfetmek, yeni tatlar denemek en büyük tutkum.",
     "İyi bir kahve ve güzel bir sohbet günümü güzelleştirir.",
@@ -30,6 +30,11 @@ const bios = [
     "Sakin bir akşamda iyi bir kitap okumak gibisi yok.",
     "Hayvanları çok seviyorum, özellikle köpekleri. Sahilde uzun yürüyüşler favorim.",
     "Yaratıcı bir ruhum var. Resim yapmak, en büyük hobim.",
+    "Felsefe ve psikolojiye meraklıyım. Derin sohbetler tam benlik.",
+    "Yıldızları izlemeyi ve evren hakkında düşünmeyi severim.",
+    "Hafta sonları yeni tarifler denemeyi seviyorum. Mutfakta olmak beni rahatlatıyor.",
+    "Biraz adrenalin tutkunuyum, yamaç paraşütü favorim.",
+    "Sadece bir sırt çantası ve bir harita ile dünyayı dolaşmak hayalim.",
 ];
 
 const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];

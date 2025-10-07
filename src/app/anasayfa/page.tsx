@@ -54,7 +54,15 @@ const BOT_GREETINGS = [
     "Merhaba! Ortak ilgi alanlarımız var gibi görünüyor. ✨",
     "Hey! Enerjin harika görünüyor. Tanışalım mı?",
     "Selam, günün nasıl geçiyor? ☀️",
+    "Profilindeki gülümsemen çok hoşuma gitti, merhaba demek istedim.",
+    "Sanırım birçok ortak noktamız var, ne dersin?",
+    "Eşleştiğimize göre bir kahve ısmarlarsın artık? ☕️",
+    "Vay canına, sonunda aradığım profili buldum galiba. 😄",
+    "İlk mesajı kim atacak diye beklemeyeyim dedim. Selam!",
+    "Fotoğrafların harika, özellikle de o macera dolu olan!",
+    "Beni beğendiğine emin misin? Sonra pişman olma. 😉 Şaka şaka, merhaba!",
 ];
+
 
 const getRandomGreeting = () => BOT_GREETINGS[Math.floor(Math.random() * BOT_GREETINGS.length)];
 
@@ -108,7 +116,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         const batch = writeBatch(db);
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0] || '', status: 'matched' },
             { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
@@ -493,5 +501,3 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
-
-    
