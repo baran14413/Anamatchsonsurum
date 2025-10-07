@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -521,16 +521,26 @@ export default function ChatPage() {
         
         setIsBlocking(true);
         try {
-            const response = await fetch('/api/delete-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ matchId }),
-            });
+            // This now performs all operations on the client side
+            const batch = writeBatch(firestore);
             
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Kullanıcı engellenemedi.');
-            }
+            // 1. Delete messages subcollection
+            const messagesRef = collection(firestore, `matches/${matchId}/messages`);
+            const messagesSnap = await getDocs(messagesRef);
+            messagesSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 2. Delete denormalized match data from both users
+            const user1MatchRef = doc(firestore, `users/${user.uid}/matches/${matchId}`);
+            batch.delete(user1MatchRef);
+
+            const user2MatchRef = doc(firestore, `users/${otherUserId}/matches/${matchId}`);
+            batch.delete(user2MatchRef);
+
+            // 3. Delete the main match document
+            const mainMatchDocRef = doc(firestore, 'matches', matchId);
+            batch.delete(mainMatchDocRef);
+
+            await batch.commit();
 
             toast({
                 title: 'Kullanıcı Engellendi',
@@ -755,19 +765,25 @@ export default function ChatPage() {
     };
 
     const handleClearSystemMessages = async () => {
-         if (!user) return;
+         if (!user || !firestore) return;
         setButtonStates(prev => ({...prev, clear: { loading: true }}));
         try {
-            const response = await fetch('/api/clear-system-messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.uid }),
+            const systemMessagesRef = collection(firestore, `users/${user.uid}/system_messages`);
+            const messagesSnap = await getDocs(systemMessagesRef);
+            
+            const batch = writeBatch(firestore);
+            messagesSnap.forEach(doc => {
+                batch.delete(doc.ref);
             });
+            await batch.commit();
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Sohbet temizlenemedi.');
-            }
+            // Add the initial welcome message back
+            await addDoc(systemMessagesRef, {
+                senderId: 'system',
+                text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
+                timestamp: serverTimestamp(),
+                isRead: true,
+            });
             
             toast({
                 title: 'Sohbet Temizlendi',
@@ -777,7 +793,7 @@ export default function ChatPage() {
         } catch (error: any) {
             toast({
                 title: 'Hata',
-                description: error.message,
+                description: error.message || 'Sohbet temizlenemedi.',
                 variant: 'destructive',
             });
         } finally {
