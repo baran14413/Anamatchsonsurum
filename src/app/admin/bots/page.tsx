@@ -31,54 +31,35 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-export default function AdminUsersPage() {
+export default function AdminBotsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
+  const [botToDelete, setBotToDelete] = useState<UserProfile | null>(null);
 
-  const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '!=', true)) : null),
+  const botsCollectionRef = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', true)) : null),
     [firestore]
   );
-  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
+  const { data: bots, isLoading } = useCollection<UserProfile>(botsCollectionRef);
 
-  const handleToggleAdmin = async (user: UserProfile) => {
-    if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', user.id);
-    const newAdminStatus = !user.isAdmin;
-    try {
-      await updateDoc(userDocRef, { isAdmin: newAdminStatus });
-      toast({
-        title: 'Başarılı',
-        description: `${user.fullName} kullanıcısının admin yetkisi ${newAdminStatus ? 'verildi' : 'alındı'}.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Hata',
-        description: `İşlem sırasında bir hata oluştu: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  };
-  
-  const handleBanUser = async () => {
-    if (!firestore || !userToBan) return;
+  const handleDeleteBot = async () => {
+    if (!firestore || !botToDelete) return;
     try {
         // Here you would typically call a serverless function to delete the user from Firebase Auth
         // For now, we just delete their Firestore document.
-        await deleteDoc(doc(firestore, 'users', userToBan.id));
+        await deleteDoc(doc(firestore, 'users', botToDelete.id));
         toast({
-            title: 'Kullanıcı Yasaklandı',
-            description: `${userToBan.fullName} başarıyla sistemden yasaklandı.`
+            title: 'Bot Silindi',
+            description: `${botToDelete.fullName} adlı bot başarıyla sistemden silindi.`
         });
     } catch(error: any) {
          toast({
             title: 'Hata',
-            description: `Kullanıcı yasaklanırken bir hata oluştu: ${error.message}`,
+            description: `Bot silinirken bir hata oluştu: ${error.message}`,
             variant: 'destructive',
         });
     } finally {
-        setUserToBan(null);
+        setBotToDelete(null);
     }
   }
 
@@ -90,7 +71,7 @@ export default function AdminUsersPage() {
   return (
      <AlertDialog>
         <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Kullanıcılar</h1>
+        <h1 className="text-2xl font-bold">Botlar</h1>
         <div className="rounded-lg border">
             <Table>
             <TableHeader>
@@ -99,31 +80,31 @@ export default function AdminUsersPage() {
                 <TableHead>İsim</TableHead>
                 <TableHead>E-posta</TableHead>
                 <TableHead>Durum</TableHead>
-                <TableHead>Kayıt Tarihi</TableHead>
+                <TableHead>Oluşturulma Tarihi</TableHead>
                 <TableHead className='text-right'>Eylemler</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {users && users.map((user) => (
-                <TableRow key={user.id}>
+                {bots && bots.map((bot) => (
+                <TableRow key={bot.id}>
                     <TableCell>
                     <Avatar>
-                        <AvatarImage src={user.profilePicture} />
-                        <AvatarFallback>{user.fullName?.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={bot.profilePicture} />
+                        <AvatarFallback>{bot.fullName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     </TableCell>
-                    <TableCell className="font-medium">{user.fullName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="font-medium">{bot.fullName}</TableCell>
+                    <TableCell>{bot.email}</TableCell>
                     <TableCell>
                     <div className='flex items-center gap-2'>
-                        <Badge variant={user.isOnline ? 'default' : 'secondary'}>
-                        {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+                        <Badge variant={'default'}>
+                        Çevrimiçi
                         </Badge>
-                        {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
+                        <Badge variant='outline' className='gap-1'><Bot className='h-3 w-3'/> Bot</Badge>
                     </div>
                     </TableCell>
                     <TableCell>
-                    {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
+                    {bot.createdAt ? format(bot.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                     </TableCell>
                     <TableCell className='text-right'>
                          <DropdownMenu>
@@ -134,16 +115,11 @@ export default function AdminUsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Eylemler</DropdownMenuLabel>
-                                <DropdownMenuSeparator/>
-                                <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
-                                    <Shield className='mr-2 h-4 w-4' />
-                                    <span>{user.isAdmin ? 'Admin Yetkisini Al' : 'Admin Yap'}</span>
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setUserToBan(user)}>
+                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setBotToDelete(bot)}>
                                         <Trash2 className='mr-2 h-4 w-4'/>
-                                        <span>Kullanıcıyı Yasakla</span>
+                                        <span>Botu Sil</span>
                                     </DropdownMenuItem>
                                 </AlertDialogTrigger>
                             </DropdownMenuContent>
@@ -151,10 +127,10 @@ export default function AdminUsersPage() {
                     </TableCell>
                 </TableRow>
                 ))}
-                {(!users || users.length === 0) && (
+                {(!bots || bots.length === 0) && (
                     <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                        Gerçek kullanıcı bulunamadı.
+                        Bot bulunamadı.
                         </TableCell>
                     </TableRow>
                 )}
@@ -164,14 +140,14 @@ export default function AdminUsersPage() {
         </div>
         <AlertDialogContent>
             <AlertDialogHeader>
-            <AlertDialogTitle>Kullanıcıyı Yasaklamak İstediğinizden Emin misiniz?</AlertDialogTitle>
+            <AlertDialogTitle>Botu Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-                Bu işlem geri alınamaz. {userToBan?.fullName} adlı kullanıcının hesabı ve tüm verileri kalıcı olarak silinecek ve uygulamaya erişimi engellenecektir.
+                Bu işlem geri alınamaz. {botToDelete?.fullName} adlı botun hesabı ve tüm verileri kalıcı olarak silinecektir.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToBan(null)}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBanUser} className='bg-destructive hover:bg-destructive/90'>Yasakla</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setBotToDelete(null)}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBot} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
      </AlertDialog>

@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, Heart, MessageSquare, Bot } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
   const [botGender, setBotGender] = useState('mixed');
 
   const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'users') : null),
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '!=', true)) : null),
     [firestore]
   );
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersCollectionRef);
@@ -134,6 +135,7 @@ export default function AdminDashboardPage() {
                 lookingFor: 'whatever',
                 distancePreference: 50,
                 ageRange: { min: 18, max: 45 },
+                isOnline: true,
             };
 
             await setDoc(docRef, botProfile);
@@ -174,7 +176,7 @@ export default function AdminDashboardPage() {
                 {isLoadingUsers ? <Icons.logo className="h-6 w-6 animate-pulse" /> : users?.length ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                Sistemdeki toplam kayıtlı kullanıcı sayısı.
+                Sistemdeki toplam gerçek kullanıcı sayısı.
                 </p>
             </CardContent>
             </Card>

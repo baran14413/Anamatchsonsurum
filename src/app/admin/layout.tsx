@@ -45,6 +45,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
+                         <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Botlar" asChild>
+                               <Link href="/admin/bots">
+                                    <Bot />
+                                    <span>Botlar</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
                     </SidebarGroup>
                 </SidebarMenu>
             </SidebarContent>
