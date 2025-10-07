@@ -3,9 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
 async function deleteCollection(collectionPath: string, batchSize: number) {
-    if (!db) {
-        throw new Error("Veritabanı başlatılamadı.");
-    }
     const collectionRef = db.collection(collectionPath);
     let query = collectionRef.orderBy('__name__').limit(batchSize);
 
@@ -32,10 +29,6 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-        return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
-    }
-
     try {
         const { userId } = await req.json();
 
