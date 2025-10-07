@@ -53,8 +53,6 @@ export async function POST(req: NextRequest) {
         usersSnapshot.forEach(userDoc => {
             const userMatchesPath = `users/${userDoc.id}/matches`;
             deleteSubcollectionPromises.push(deleteCollection(userMatchesPath, 100));
-            const systemMessagesPath = `users/${userDoc.id}/system_messages`;
-            deleteSubcollectionPromises.push(deleteCollection(systemMessagesPath, 100));
         });
 
         await Promise.all(deleteSubcollectionPromises);
