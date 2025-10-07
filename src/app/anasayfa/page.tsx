@@ -135,19 +135,25 @@ export default function AnasayfaPage() {
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
 
-  const removeTopCard = useCallback((swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
-    if (action === 'disliked') {
-      setLastDislikedProfile(swipedProfile as ProfileWithDistance);
-    } else {
-      setLastDislikedProfile(null); // Clear undo on like or superlike
-    }
-    setProfiles(prev => prev.slice(0, prev.length - 1));
+  const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
+    setProfiles(prevProfiles => {
+      const swipedProfile = prevProfiles[prevProfiles.length - 1];
+      const newProfiles = prevProfiles.slice(0, prevProfiles.length - 1);
+      
+      if (action === 'disliked') {
+        setLastDislikedProfile(swipedProfile as ProfileWithDistance);
+      } else {
+        setLastDislikedProfile(null); // Clear undo on like or superlike
+      }
+      
+      return newProfiles;
+    });
   }, []);
   
  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
 
-    removeTopCard(swipedProfile, action);
+    removeTopCard(action);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -439,6 +445,8 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
+
+    
 
     
 
