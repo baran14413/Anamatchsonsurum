@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -20,7 +19,7 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  isBlurred?: boolean;
+  isDraggable?: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -62,7 +61,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isBlurred }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isDraggable = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -170,11 +169,15 @@ const ProfileCardComponent = ({ profile, isBlurred }: ProfileCardProps) => {
 
 
   return (
-    <div
+    <motion.div
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
+        style={{ x, y, rotate }}
+        drag={isDraggable}
+        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        dragElastic={0.5}
     >
         <div className='absolute inset-0'>
             {currentImage?.url && (
@@ -184,11 +187,8 @@ const ProfileCardComponent = ({ profile, isBlurred }: ProfileCardProps) => {
                     fill
                     sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                     style={{ objectFit: 'cover' }}
-                    className={cn(
-                        "pointer-events-none transition-all duration-300",
-                        isBlurred && "blur-xl scale-105"
-                    )}
-                    priority={!isBlurred}
+                    className="pointer-events-none"
+                    priority={isDraggable}
                 />
             )}
         </div>
@@ -382,7 +382,7 @@ const ProfileCardComponent = ({ profile, isBlurred }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </div>
+    </motion.div>
   );
 };
 

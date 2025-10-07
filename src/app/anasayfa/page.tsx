@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
@@ -15,7 +14,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -184,8 +183,7 @@ export default function AnasayfaPage() {
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
-  const [dragEnd, setDragEnd] = useState<{x:number, y:number}>({x:0, y:0});
-
+  
   const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     setProfiles(prevProfiles => {
       if (prevProfiles.length === 0) return [];
@@ -253,13 +251,10 @@ export default function AnasayfaPage() {
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      setDragEnd({ x: 0, y: -300 });
       handleSwipe(profile, 'superliked');
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      setDragEnd({ x: 300, y: 0 });
       handleSwipe(profile, 'liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      setDragEnd({ x: -300, y: 0 });
       handleSwipe(profile, 'disliked');
     }
   };
@@ -461,51 +456,44 @@ export default function AnasayfaPage() {
                             </Button>
                         </div>
                     )}
-                     <AnimatePresence>
-                        {profiles.map((profile, index) => {
-                            const isTopCard = index === profiles.length - 1;
+                    {profiles.map((profile, index) => {
+                        const isTopCard = index === profiles.length - 1;
+                        if (index < profiles.length - 2) return null;
 
-                            if (index < profiles.length - 2) return null;
+                        const y = isTopCard ? 0 : (profiles.length - 1 - index) * -10;
+                        const scale = isTopCard ? 1 : 1 - ((profiles.length - index -1) * 0.05);
 
-                            return (
-                                <motion.div
-                                    key={profile.uid}
-                                    className="absolute w-full h-full"
-                                    initial={{
-                                        scale: 1,
-                                        y: 0,
-                                        opacity: 1,
-                                    }}
-                                    animate={{
-                                        scale: isTopCard ? 1 : 0.95,
-                                        y: isTopCard ? 0 : -10, // Stacking effect
-                                        opacity: 1,
-                                    }}
-                                    transition={{
-                                        type: 'spring',
-                                        stiffness: 300,
-                                        damping: 30,
-                                    }}
-                                    drag={isTopCard}
-                                    dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                                    dragElastic={0.5}
-                                    onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
-                                    exit={{ 
-                                        x: dragEnd.x,
-                                        y: dragEnd.y,
-                                        opacity: 0,
-                                        scale: 0.8,
-                                        transition: { duration: 0.4, ease: 'easeIn' }
-                                    }}
-                                >
-                                    <ProfileCard
-                                        profile={profile}
-                                        isBlurred={!isTopCard}
-                                    />
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
+                        return (
+                            <motion.div
+                                key={profile.uid}
+                                className="absolute w-full h-full"
+                                style={{
+                                    scale: scale,
+                                    y: y,
+                                }}
+                                initial={{
+                                    scale: 0.95,
+                                    y: -10,
+                                }}
+                                animate={{
+                                    scale: 1,
+                                    y: (profiles.length - 1 - index) * -10, // Stacking effect
+                                }}
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 300,
+                                    damping: 30,
+                                }}
+                                drag={isTopCard}
+                                onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
+                            >
+                                <ProfileCard
+                                    profile={profile}
+                                    isDraggable={isTopCard}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="flex h-full items-center justify-center text-center">
