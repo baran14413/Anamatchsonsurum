@@ -180,21 +180,32 @@ export default function SystemMessagesPage() {
       const timestamp = serverTimestamp();
 
       const centralMessageRef = doc(collection(firestore, 'system_messages'));
-      const centralMessageData: Partial<SystemMessage> = {
+      
+      const centralMessageData: Omit<SystemMessage, 'id' | 'votedBy'> = {
           createdAt: timestamp,
           sentTo: users.map(u => u.uid),
           seenBy: [],
           type: isPoll ? 'poll' : 'text',
-          text: isPoll ? null : messageToSend,
-          pollQuestion: isPoll ? messageToSend : null,
-          pollOptions: isPoll ? pollOptions.map(o => o.trim()) : null,
-          pollResults: isPoll ? pollOptions.reduce((acc, opt) => ({...acc, [opt.trim()]: 0 }), {}) : null,
+          ...(isPoll 
+              ? { 
+                  text: null,
+                  pollQuestion: messageToSend,
+                  pollOptions: pollOptions.map(o => o.trim()),
+                  pollResults: pollOptions.reduce((acc, opt) => ({...acc, [opt.trim()]: 0 }), {})
+                } 
+              : { 
+                  text: messageToSend,
+                  pollQuestion: null,
+                  pollOptions: null,
+                  pollResults: null
+              })
       };
+
       batch.set(centralMessageRef, centralMessageData);
 
       users.forEach(user => {
         const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-        batch.set(systemMatchRef, {
+        const systemMatchData = {
             id: 'system',
             matchedWith: 'system',
             lastMessage: isPoll ? `Anket: ${messageToSend}` : messageToSend,
@@ -203,7 +214,8 @@ export default function SystemMessagesPage() {
             profilePicture: '',
             lastSystemMessageId: centralMessageRef.id,
             hasUnreadSystemMessage: true,
-        }, { merge: true });
+        };
+        batch.set(systemMatchRef, systemMatchData, { merge: true });
       });
 
       await batch.commit();
@@ -396,5 +408,3 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
-
-    
