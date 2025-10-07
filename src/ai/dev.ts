@@ -1,3 +1,5 @@
+
 'use client';
 // Flows will be imported for their side effects in this file.
 import '@/ai/flows/translate-text-flow';
+import '@/ai/flows/bot-chat-flow';
