@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
+import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown, HeartCrack } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
@@ -190,11 +190,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
             <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-400 text-blue-400 -translate-y-12">
                 <Star className="w-16 h-16 fill-blue-400" />
             </motion.div>
-            <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-400 text-green-400">
-                <Heart className="w-16 h-16 fill-green-400" />
+            <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
+                <Heart className="w-16 h-16 fill-transparent" />
             </motion.div>
             <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
-                <X className="w-16 h-16" />
+                <HeartCrack className="w-16 h-16 fill-transparent" />
             </motion.div>
         </div>
       
