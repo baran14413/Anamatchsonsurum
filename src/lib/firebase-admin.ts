@@ -3,27 +3,29 @@ import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 let adminApp: App | undefined;
-let db: Firestore | undefined;
+let db: Firestore;
 
-// Firebase App Hosting and other modern environments automatically provide
-// the necessary configuration via environment variables (process.env).
-// This simplified approach relies on that standard behavior, removing the need
-// for manual file path resolution and making the initialization more robust.
-// https://firebase.google.com/docs/hosting/app-hosting/build-run-sdks#initialize-sdks
 try {
     if (!getApps().length) {
+        // When running in a Google Cloud environment (like Firebase App Hosting),
+        // the Admin SDK can be initialized without any parameters. It will
+        // automatically discover the service account credentials.
         adminApp = initializeApp();
     } else {
         adminApp = getApps()[0];
     }
     db = getFirestore(adminApp);
-} catch (error) {
+} catch (error: any) {
     console.error(
-        "[Firebase Admin] SDK initialization failed.", 
-        "This is likely because the service account credentials are not configured correctly in the environment.",
-        "Error:", error
+        "[Firebase Admin] SDK initialization failed.",
+        "This is often due to missing or incorrect service account credentials in the server environment.",
+        "Ensure that the FIREBASE_CONFIG or GOOGLE_APPLICATION_CREDENTIALS environment variables are set correctly.",
+        "Error Details:", error.message
     );
-    // db remains undefined, and API routes using it will fail.
+    // In case of an initialization error, db will be undefined, and any API
+    // route trying to use it will fail, which is the desired behavior.
+    // We re-throw the error to make the server startup fail loudly.
+    throw new Error(`Firebase Admin initialization failed: ${error.message}`);
 }
 
 export { adminApp, db };

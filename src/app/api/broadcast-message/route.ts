@@ -3,10 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
-    }
-
     try {
         const { message } = await req.json();
 

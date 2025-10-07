@@ -4,10 +4,6 @@ import { db } from '@/lib/firebase-admin';
 
 // This function now takes a CollectionReference directly.
 async function deleteCollection(collectionRef: FirebaseFirestore.CollectionReference, batchSize: number) {
-    if (!db) {
-        throw new Error("Veritabanı başlatılamadı.");
-    }
-    
     let query = collectionRef.orderBy('__name__').limit(batchSize);
 
     while (true) {
@@ -33,10 +29,6 @@ async function deleteCollection(collectionRef: FirebaseFirestore.CollectionRefer
 
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-        return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
-    }
-
     try {
         const matchesSnapshot = await db.collection('matches').get();
         const usersSnapshot = await db.collection('users').get();

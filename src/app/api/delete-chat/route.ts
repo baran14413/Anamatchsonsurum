@@ -14,8 +14,6 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
 
 
 async function deleteCollection(collectionPath: string, batchSize: number) {
-    if (!db) throw new Error("Veritabanı başlatılamadı.");
-
     const collectionRef = db.collection(collectionPath);
     let query = collectionRef.orderBy('__name__').limit(batchSize);
 
@@ -61,10 +59,6 @@ async function deleteCollection(collectionPath: string, batchSize: number) {
 
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-         return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
-    }
-    
     try {
         const { matchId } = await req.json();
 

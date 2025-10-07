@@ -46,10 +46,6 @@ const getRandomLocation = () => {
 };
 
 export async function POST(req: NextRequest) {
-    if (!db) {
-        return NextResponse.json({ error: 'Sunucu hatası: Veritabanı başlatılamadı.' }, { status: 500 });
-    }
-
     try {
         const { count, gender: requestedGender } = await req.json();
 
