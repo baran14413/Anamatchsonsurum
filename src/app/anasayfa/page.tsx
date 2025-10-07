@@ -362,13 +362,13 @@ export default function AnasayfaPage() {
 
   return (
     <AlertDialog open={showUndoLimitModal} onOpenChange={setShowUndoLimitModal}>
-        <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="relative h-full w-full flex flex-col items-center justify-center overflow-hidden">
         {isLoading ? (
             <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
         ) : profiles.length > 0 ? (
             <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
             {lastDislikedProfile && (
-                <div className="absolute top-4 right-0 z-40">
+                <div className="absolute top-4 right-4 z-40">
                 <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
                     <Undo2 className="h-5 w-5" />
                 </Button>
