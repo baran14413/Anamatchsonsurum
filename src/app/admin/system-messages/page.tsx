@@ -181,25 +181,28 @@ export default function SystemMessagesPage() {
 
       const centralMessageRef = doc(collection(firestore, 'system_messages'));
       
-      const centralMessageData: Omit<SystemMessage, 'id' | 'votedBy'> = {
+      const baseMessageData = {
           createdAt: timestamp,
           sentTo: users.map(u => u.uid),
           seenBy: [],
-          type: isPoll ? 'poll' : 'text',
-          ...(isPoll 
-              ? { 
-                  text: null,
-                  pollQuestion: messageToSend,
-                  pollOptions: pollOptions.map(o => o.trim()),
-                  pollResults: pollOptions.reduce((acc, opt) => ({...acc, [opt.trim()]: 0 }), {})
-                } 
-              : { 
-                  text: messageToSend,
-                  pollQuestion: null,
-                  pollOptions: null,
-                  pollResults: null
-              })
       };
+
+      let centralMessageData;
+      if (isPoll) {
+          centralMessageData = {
+              ...baseMessageData,
+              type: 'poll',
+              pollQuestion: messageToSend,
+              pollOptions: pollOptions.map(o => o.trim()),
+              pollResults: pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {})
+          };
+      } else {
+          centralMessageData = {
+              ...baseMessageData,
+              type: 'text',
+              text: messageToSend,
+          };
+      }
 
       batch.set(centralMessageRef, centralMessageData);
 
@@ -408,3 +411,5 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
+
+    
