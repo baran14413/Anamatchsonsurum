@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Heart, Star, CheckCircle } from 'lucide-react';
-import type { UserProfile, LikerInfo } from '@/lib/types';
+import type { UserProfile, LikerInfo, DenormalizedMatch } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Icons } from '@/components/icons';
@@ -28,7 +28,7 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 export default function BegenilerPage() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
-    const [likers, setLikers] = useState<(LikerInfo & { profile: UserProfile })[]>([]);
+    const [likers, setLikers] = useState<(DenormalizedMatch & { profile?: UserProfile })[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr;
     const { toast } = useToast();
@@ -36,96 +36,85 @@ export default function BegenilerPage() {
 
     const isGoldMember = userProfile?.membershipType === 'gold';
     
-    const matchesQuery = useMemoFirebase(() => {
+    const superLikesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, 'matches'));
+        // Query for Super Likes where the current user is NOT the initiator
+        return query(
+            collection(firestore, `users/${user.uid}/matches`), 
+            where('status', '==', 'superlike_pending'),
+            where('superLikeInitiator', '!=', user.uid)
+        );
     }, [user, firestore]);
 
     useEffect(() => {
-        if (!matchesQuery || !firestore || !user) {
+        if (!superLikesQuery) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
-        const unsubscribe = onSnapshot(matchesQuery, async (snapshot) => {
-            const potentialLikerTasks: Promise<(LikerInfo & { profile: UserProfile }) | null>[] = [];
-            const seenLikerIds = new Set<string>();
+        const unsubscribe = onSnapshot(superLikesQuery, async (snapshot) => {
+            const potentialLikerTasks = snapshot.docs.map(async (matchDoc) => {
+                const matchData = matchDoc.data() as DenormalizedMatch;
+                const likerId = matchData.matchedWith;
 
-            snapshot.forEach(docSnap => {
-                const data = docSnap.data();
-                let likerId: string | null = null;
-                
-                // Case 1: user2 is me, user1 liked me
-                if (data.user2Id === user.uid && data.user1_action === 'liked') {
-                    likerId = data.user1Id;
-                }
-                // Case 2: user1 is me, user2 liked me
-                if (data.user1Id === user.uid && data.user2_action === 'liked') {
-                    likerId = data.user2Id;
-                }
+                if (!likerId) return null;
 
-                if (likerId && !seenLikerIds.has(likerId)) {
-                    seenLikerIds.add(likerId);
-                    const task = async (): Promise<(LikerInfo & { profile: UserProfile }) | null> => {
-                        const userDocSnap = await getDoc(doc(firestore, 'users', likerId!));
-                        if (userDocSnap.exists()) {
-                            const profileData = userDocSnap.data() as UserProfile;
-                             if (!profileData.images || profileData.images.length === 0) return null;
-                            return {
-                                uid: likerId!,
-                                fullName: profileData.fullName || 'BeMatch User',
-                                profilePicture: profileData.images?.[0]?.url || '',
-                                age: calculateAge(profileData.dateOfBirth),
-                                matchId: docSnap.id,
-                                status: data.status,
-                                profile: { ...profileData, uid: likerId!, id: likerId! }
-                            };
-                        }
-                        return null;
+                const userDocSnap = await getDoc(doc(firestore, 'users', likerId));
+                if (userDocSnap.exists()) {
+                    const profileData = userDocSnap.data() as UserProfile;
+                    if (!profileData.images || profileData.images.length === 0) return null;
+
+                    return {
+                        ...matchData,
+                        profile: { ...profileData, uid: likerId, id: likerId }
                     };
-                    potentialLikerTasks.push(task());
                 }
+                return null;
             });
             
             const likerProfiles = (await Promise.all(potentialLikerTasks))
-              .filter((p): p is (LikerInfo & { profile: UserProfile }) => p !== null && !!p.profilePicture)
-              .filter(p => p.status !== 'matched'); // Exclude already matched users from the main list.
+              .filter((p): p is (DenormalizedMatch & { profile: UserProfile }) => p !== null && !!p.profile?.profilePicture);
+              
             setLikers(likerProfiles);
             setIsLoading(false);
         }, (error) => {
-            console.error("Error fetching likers:", error);
+            console.error("Error fetching super likers:", error);
             setIsLoading(false);
+            toast({
+                title: "Hata",
+                description: "Seni beğenenleri getirirken bir sorun oluştu.",
+                variant: "destructive"
+            });
         });
 
         return () => unsubscribe();
-    }, [matchesQuery, firestore, user]);
+    }, [superLikesQuery, firestore, toast]);
 
-    const handleInstantMatch = async (liker: LikerInfo & { profile: UserProfile }) => {
+    const handleInstantMatch = async (liker: DenormalizedMatch & { profile: UserProfile }) => {
         if (!user || !firestore || !userProfile || liker.status === 'matched') return;
 
-        setIsMatching(liker.uid);
+        setIsMatching(liker.matchedWith);
         try {
             const batch = writeBatch(firestore);
 
-            const matchDocRef = doc(firestore, 'matches', liker.matchId);
-            batch.update(matchDocRef, {
+            const mainMatchDocRef = doc(firestore, 'matches', liker.id);
+            batch.update(mainMatchDocRef, {
                 status: 'matched',
                 matchDate: serverTimestamp(),
             });
 
-            const currentUserMatchData = { id: liker.matchId, matchedWith: liker.uid, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: liker.fullName, profilePicture: liker.profilePicture, status: 'matched' };
-            const likerMatchData = { id: liker.matchId, matchedWith: user.uid, lastMessage: t.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: userProfile.fullName, profilePicture: userProfile.profilePicture || '', status: 'matched' };
-
-            batch.set(doc(firestore, `users/${user.uid}/matches`, liker.matchId), currentUserMatchData);
-            batch.set(doc(firestore, `users/${liker.uid}/matches`, liker.matchId), likerMatchData);
+            const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
+            batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
             
+            const likerMatchRef = doc(firestore, `users/${liker.matchedWith}/matches`, liker.id);
+            batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
+
             await batch.commit();
 
             toast({ title: t.anasayfa.matchToastTitle, description: `${liker.fullName} ${t.anasayfa.matchToastDescription}` });
             
-            // Update local state to reflect the match
-            setLikers(prevLikers => prevLikers.map(l => l.uid === liker.uid ? { ...l, status: 'matched' } : l));
+            setLikers(prevLikers => prevLikers.filter(l => l.id !== liker.id));
 
         } catch (error) {
             console.error("Error creating instant match:", error);
@@ -148,30 +137,33 @@ export default function BegenilerPage() {
         );
     }
 
-    const LikerCard = ({ liker }: { liker: LikerInfo & { profile: UserProfile } }) => (
-        <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
-            <Avatar className="h-full w-full rounded-lg">
-                <AvatarImage src={liker.profilePicture} className={!isGoldMember ? "object-cover blur-md" : "object-cover"} />
-                <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
-            </Avatar>
-            {!isGoldMember && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <span className="text-4xl" role="img" aria-label="lock">🔒</span>
+    const LikerCard = ({ liker }: { liker: DenormalizedMatch & { profile?: UserProfile } }) => {
+        const age = liker.profile ? calculateAge(liker.profile.dateOfBirth) : null;
+        return (
+            <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
+                <Avatar className="h-full w-full rounded-lg">
+                    <AvatarImage src={liker.profilePicture} className={!isGoldMember ? "object-cover blur-md" : "object-cover"} />
+                    <AvatarFallback>{liker.fullName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                {!isGoldMember && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <span className="text-4xl" role="img" aria-label="lock">🔒</span>
+                    </div>
+                )}
+                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white">
+                    <p className="font-bold text-lg truncate">{liker.fullName}{age && `, ${age}`}</p>
                 </div>
-            )}
-             <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white">
-                <p className="font-bold text-lg truncate">{liker.fullName}{liker.age && `, ${liker.age}`}</p>
+                 {liker.status === 'matched' && (
+                     <div className="absolute inset-0 bg-green-900/40 flex items-center justify-center">
+                        <Badge className='bg-green-500 text-white text-base py-2 px-4'>
+                            <CheckCircle className='mr-2 h-5 w-5'/>
+                            Eşleştiniz
+                        </Badge>
+                    </div>
+                )}
             </div>
-             {liker.status === 'matched' && (
-                 <div className="absolute inset-0 bg-green-900/40 flex items-center justify-center">
-                    <Badge className='bg-green-500 text-white text-base py-2 px-4'>
-                        <CheckCircle className='mr-2 h-5 w-5'/>
-                        Eşleştiniz
-                    </Badge>
-                </div>
-            )}
-        </div>
-    );
+        );
+    }
     
     return (
         <AlertDialog>
@@ -183,9 +175,11 @@ export default function BegenilerPage() {
                 {likers.length > 0 ? (
                     <div className="flex-1 overflow-y-auto p-4">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {likers.map(liker => (
+                            {likers.map(liker => {
+                                if (!liker.profile) return null;
+                                return (
                                 isGoldMember ? (
-                                    <Sheet key={liker.uid}>
+                                    <Sheet key={liker.id}>
                                         <SheetTrigger disabled={liker.status === 'matched'}>
                                             <LikerCard liker={liker} />
                                         </SheetTrigger>
@@ -202,10 +196,10 @@ export default function BegenilerPage() {
                                                      {liker.status !== 'matched' && (
                                                          <Button 
                                                             className='w-full h-14 rounded-full bg-green-500 hover:bg-green-600 text-white' 
-                                                            onClick={() => handleInstantMatch(liker)}
-                                                            disabled={isMatching === liker.uid}
+                                                            onClick={() => handleInstantMatch(liker as DenormalizedMatch & { profile: UserProfile })}
+                                                            disabled={isMatching === liker.matchedWith}
                                                         >
-                                                            {isMatching === liker.uid ? (
+                                                            {isMatching === liker.matchedWith ? (
                                                                 <Icons.logo className='h-6 w-6 animate-pulse' />
                                                             ) : (
                                                                 <Heart className="mr-2 h-6 w-6 fill-white" />
@@ -218,13 +212,13 @@ export default function BegenilerPage() {
                                         </SheetContent>
                                     </Sheet>
                                 ) : (
-                                    <AlertDialogTrigger key={liker.uid} asChild>
+                                    <AlertDialogTrigger key={liker.id} asChild>
                                        <div>
                                             <LikerCard liker={liker} />
                                        </div>
                                     </AlertDialogTrigger>
                                 )
-                            ))}
+                            )})}
                         </div>
                     </div>
                 ) : (
@@ -258,3 +252,5 @@ export default function BegenilerPage() {
         </AlertDialog>
     );
 }
+
+    

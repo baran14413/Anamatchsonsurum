@@ -155,10 +155,8 @@ export default function ChatPage() {
 
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        if (isSystemChat) {
-            return query(collection(firestore, `users/${user.uid}/system_messages`), orderBy('timestamp', 'asc'));
-        }
-        return query(collection(firestore, `matches/${matchId}/messages`), orderBy('timestamp', 'asc'));
+        const collectionPath = isSystemChat ? `users/${user.uid}/system_messages` : `matches/${matchId}/messages`;
+        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
 
     const otherUserDocRef = useMemoFirebase(() => {
@@ -171,47 +169,46 @@ export default function ChatPage() {
         return doc(firestore, `users/${user.uid}/matches`, matchId);
     }, [user, firestore, isSystemChat, matchId]);
 
-    // Listener for other user's profile
+    // Combined listener for all data
     useEffect(() => {
-        if (!otherUserDocRef) {
+        const unsubs: (()=>void)[] = [];
+        
+        if (otherUserDocRef) {
+            const unsub = onSnapshot(otherUserDocRef, (doc) => {
+                setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id } as UserProfile : null);
+            });
+            unsubs.push(unsub);
+        } else {
             setOtherUser(null);
-            return;
         }
-        const unsub = onSnapshot(otherUserDocRef, (doc) => {
-            if (doc.exists()) {
-                setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
-            } else {
-                setOtherUser(null); // User document deleted or doesn't exist
-            }
-        });
-        return () => unsub();
-    }, [otherUserDocRef]);
 
-    // Listener for denormalized match data
-    useEffect(() => {
-        if (!matchDataDocRef) return;
-        const unsub = onSnapshot(matchDataDocRef, (doc) => {
-            if (doc.exists()) {
-                setMatchData(doc.data() as DenormalizedMatch);
-            }
-        });
-        return () => unsub();
-    }, [matchDataDocRef]);
+        if (matchDataDocRef) {
+            const unsub = onSnapshot(matchDataDocRef, (doc) => {
+                setMatchData(doc.exists() ? doc.data() as DenormalizedMatch : null);
+            });
+            unsubs.push(unsub);
+        } else {
+            setMatchData(null);
+        }
 
-    // Listener for messages
-    useEffect(() => {
-        if (!messagesQuery) return;
-        setIsLoading(true);
-        const unsub = onSnapshot(messagesQuery, (snapshot) => {
-            const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-            setMessages(fetchedMessages);
+        if (messagesQuery) {
+            setIsLoading(true);
+            const unsub = onSnapshot(messagesQuery, (snapshot) => {
+                const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+                setMessages(fetchedMessages);
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Error fetching messages:", error);
+                setIsLoading(false);
+            });
+            unsubs.push(unsub);
+        } else {
             setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching messages:", error);
-            setIsLoading(false);
-        });
-        return () => unsub();
-    }, [messagesQuery]);
+        }
+        
+        return () => unsubs.forEach(unsub => unsub());
+
+    }, [otherUserDocRef, matchDataDocRef, messagesQuery]);
 
 
     // Effect to mark messages as read and reset unread count
@@ -1221,3 +1218,5 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
+
+    

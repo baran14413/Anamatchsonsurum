@@ -3,12 +3,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -113,6 +113,12 @@ export default function ChatPage() {
     const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [buttonStates, setButtonStates] = useState({
+        gold: { loading: false, cooldown: 0 },
+        rules: { loading: false, cooldown: 0 },
+        clear: { loading: false },
+    });
 
     const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -133,56 +139,78 @@ export default function ChatPage() {
     
     const isSystemChat = matchId === 'system';
     const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
-
+    
+    // Cooldown timer effect
     useEffect(() => {
-        if (!firestore || !user || !matchId) return;
+        const interval = setInterval(() => {
+            setButtonStates(prev => ({
+                ...prev,
+                gold: { ...prev.gold, cooldown: Math.max(0, prev.gold.cooldown - 1) },
+                rules: { ...prev.rules, cooldown: Math.max(0, prev.rules.cooldown - 1) },
+            }));
+        }, 1000);
 
-        let unsubOtherUser: () => void = () => {};
-        let unsubMatchData: () => void = () => {};
+        return () => clearInterval(interval);
+    }, []);
+
+    const messagesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        const collectionPath = isSystemChat ? `users/${user.uid}/system_messages` : `matches/${matchId}/messages`;
+        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
+    }, [isSystemChat, matchId, user, firestore]);
+
+    const otherUserDocRef = useMemoFirebase(() => {
+        if (!otherUserId || !firestore) return null;
+        return doc(firestore, 'users', otherUserId);
+    }, [otherUserId, firestore]);
+
+    const matchDataDocRef = useMemoFirebase(() => {
+        if (!user || !firestore || isSystemChat) return null;
+        return doc(firestore, `users/${user.uid}/matches`, matchId);
+    }, [user, firestore, isSystemChat, matchId]);
+
+    // Combined listener for all data
+    useEffect(() => {
+        const unsubs: (()=>void)[] = [];
         
-        if (otherUserId) {
-            unsubOtherUser = onSnapshot(doc(firestore, 'users', otherUserId), (doc) => {
-                if (doc.exists()) {
-                    setOtherUser({ ...doc.data(), uid: doc.id } as UserProfile);
-                }
+        if (otherUserDocRef) {
+            const unsub = onSnapshot(otherUserDocRef, (doc) => {
+                setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id } as UserProfile : null);
             });
+            unsubs.push(unsub);
+        } else {
+            setOtherUser(null);
+        }
+
+        if (matchDataDocRef) {
+            const unsub = onSnapshot(matchDataDocRef, (doc) => {
+                setMatchData(doc.exists() ? doc.data() as DenormalizedMatch : null);
+            });
+            unsubs.push(unsub);
+        } else {
+            setMatchData(null);
+        }
+
+        if (messagesQuery) {
+            setIsLoading(true);
+            const unsub = onSnapshot(messagesQuery, (snapshot) => {
+                const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+                setMessages(fetchedMessages);
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Error fetching messages:", error);
+                setIsLoading(false);
+            });
+            unsubs.push(unsub);
+        } else {
+            setIsLoading(false);
         }
         
-        if (!isSystemChat) {
-            unsubMatchData = onSnapshot(doc(firestore, `users/${user.uid}/matches`, matchId), (doc) => {
-                if (doc.exists()) {
-                    setMatchData(doc.data() as DenormalizedMatch);
-                }
-            });
-        }
+        return () => unsubs.forEach(unsub => unsub());
 
-        const messagesQuery = query(
-            collection(firestore, isSystemChat ? `users/${user.uid}/system_messages` : `matches/${matchId}/messages`),
-            orderBy('timestamp', 'asc')
-        );
+    }, [otherUserDocRef, matchDataDocRef, messagesQuery]);
 
-        setIsLoading(true);
-        const unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-            const fetchedMessages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as ChatMessage));
-            setMessages(fetchedMessages);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching messages:", error);
-            setIsLoading(false);
-        });
-        
-        return () => {
-            unsubOtherUser();
-            unsubMessages();
-            unsubMatchData();
-        };
 
-    }, [matchId, user, firestore, otherUserId, isSystemChat]);
-    
-    
     // Effect to mark messages as read and reset unread count
     useEffect(() => {
         if (!firestore || !user || isSystemChat || !matchId) return;
@@ -581,7 +609,7 @@ export default function ChatPage() {
     };
     
     const renderOnlineStatus = () => {
-        if (!otherUser) return null;
+        if (!otherUser) return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
         if (otherUser.isOnline) {
             return <span className="text-xs text-green-500">Çevrimiçi</span>
         }
@@ -659,9 +687,105 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
 
+    const triggerSystemAction = (action: 'gold' | 'rules', actionFn: () => Promise<void>) => {
+        if (buttonStates[action].cooldown > 0) {
+            toast({
+                title: "Lütfen Bekleyin",
+                description: `Bu işlemi tekrar yapmak için ${buttonStates[action].cooldown} saniye beklemelisiniz.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setButtonStates(prev => ({
+            ...prev,
+            [action]: { ...prev[action], loading: true }
+        }));
+        
+        actionFn().finally(() => {
+            setButtonStates(prev => ({
+                ...prev,
+                [action]: { loading: false, cooldown: 60 }
+            }));
+        });
+    }
+
+    const handleCheckGoldStatus = async () => {
+        if (!user || !firestore || !userProfile) return;
+        
+        let systemMessageText = "";
+
+        if (userProfile.membershipType === 'gold' && userProfile.goldMembershipExpiresAt) {
+            const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
+            systemMessageText = `Tebrikler, siz bir Gold üyesiniz! Üyeliğiniz ${format(expiryDate, 'd MMMM yyyy', { locale: tr })} tarihinde sona erecektir.`;
+        } else {
+            systemMessageText = "Henüz Gold üye değilsiniz. Premium özelliklerden faydalanmak ve BeMatch deneyiminizi zirveye taşımak için üyeliğinizi şimdi yükseltebilirsiniz.";
+        }
+        
+        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
+        await addDoc(systemMessagesColRef, {
+            senderId: 'system',
+            text: systemMessageText,
+            timestamp: serverTimestamp(),
+            isRead: true, 
+        });
+    };
+    
+    const handleSendRulesMessage = async () => {
+        if (!user || !firestore) return;
+        
+        const rulesText = `
+        Topluluk Kurallarımız:
+        • 👤 **Kendin ol:** Fotoğraflarının, yaşının ve biyografinin gerçeği yansıttığından emin ol.
+        • ❤️ **Nazik ol:** Diğer kullanıcılara saygı göster ve sana nasıl davranılmasını istiyorsan onlara da öyle davran.
+        • 🛡️ **Dikkatli ol:** Kişisel bilgilerini paylaşmadan önce iyi düşün. Güvenliğin bizim için önemli.
+        • ✅ **Proaktif ol:** Topluluğumuzu güvende tutmak için uygunsuz davranışları mutlaka bize bildir.
+        
+        Kurallarımıza gösterdiğin özen için teşekkür ederiz. Keyifli eşleşmeler! ✨
+        `;
+        
+        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
+        await addDoc(systemMessagesColRef, {
+            senderId: 'system',
+            text: rulesText.trim(),
+            timestamp: serverTimestamp(),
+            isRead: true,
+        });
+    };
+
+    const handleClearSystemMessages = async () => {
+         if (!user) return;
+        setButtonStates(prev => ({...prev, clear: { loading: true }}));
+        try {
+            const response = await fetch('/api/clear-system-messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Sohbet temizlenemedi.');
+            }
+            
+            toast({
+                title: 'Sohbet Temizlendi',
+                description: 'Sistem mesajları geçmişiniz başarıyla silindi.',
+            });
+
+        } catch (error: any) {
+            toast({
+                title: 'Hata',
+                description: error.message,
+                variant: 'destructive',
+            });
+        } finally {
+            setButtonStates(prev => ({...prev, clear: { loading: false }}));
+        }
+    }
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
-    const canSendMessage = !isSystemChat && matchData?.status === 'matched';
+    const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
     const isOtherUserGold = otherUser?.membershipType === 'gold';
     
@@ -682,24 +806,54 @@ export default function ChatPage() {
                                <span className="text-xs text-green-500">Her zaman aktif</span>
                            </div>
                         </>
-                    ) : (
+                    ) : (otherUser ? (
                          <>
                              <Avatar className="h-9 w-9">
-                                <AvatarImage src={otherUser?.profilePicture} />
-                                <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={otherUser.profilePicture} />
+                                <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
                                 <div className="flex items-center gap-1.5">
-                                   <span className="font-semibold">{otherUser?.fullName}</span>
+                                   <span className="font-semibold">{otherUser.fullName}</span>
                                    {isOtherUserGold && <Icons.beGold width={20} height={20} />}
                                 </div>
                                 {renderOnlineStatus()}
                             </div>
                         </>
-                    )}
+                    ) : (
+                         <>
+                           <Avatar className="h-9 w-9">
+                               <Icons.bmIcon className="h-full w-full" />
+                           </Avatar>
+                           <div className="flex flex-col">
+                               <span className="font-semibold">Kullanıcı Bulunamadı</span>
+                               <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+                           </div>
+                        </>
+                    ))}
                 </div>
                  {isSystemChat ? (
-                    <div className='w-9'></div> // Placeholder for spacing
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={buttonStates.clear.loading}>
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Tüm Sistem Mesajlarını Sil</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Bu işlem geri alınamaz. Tüm sistem mesajları ve duyurular kalıcı olarak silinecektir. Emin misiniz?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleClearSystemMessages} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                                     {buttonStates.clear.loading ? <Icons.logo className="h-4 w-4 animate-pulse" /> : "Evet, Sil"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                  ) : (
                     <AlertDialog>
                         <DropdownMenu>
@@ -768,7 +922,7 @@ export default function ChatPage() {
                                                 'px-3 py-2'
                                             )}
                                         >
-                                          <p className='break-words text-left w-full'>{message.text}</p>
+                                          <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -937,9 +1091,36 @@ export default function ChatPage() {
                  
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
-            ) : isSystemChat ? null : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid && (
+            ) : isSystemChat ? (
+                <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
+                    <div className="flex items-center gap-2 rounded-xl bg-muted p-2">
+                        <Button 
+                            onClick={() => triggerSystemAction('gold', handleCheckGoldStatus)} 
+                            variant="outline"
+                            className="flex-1 bg-background"
+                            disabled={buttonStates.gold.loading || buttonStates.gold.cooldown > 0}
+                        >
+                             {buttonStates.gold.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <Gem className="mr-2 h-4 w-4" />}
+                             {buttonStates.gold.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.gold.cooldown})` : "Gold Sorgula"}
+                        </Button>
+                         <Button 
+                            onClick={() => triggerSystemAction('rules', handleSendRulesMessage)} 
+                            variant="outline" 
+                            className="flex-1 bg-background"
+                            disabled={buttonStates.rules.loading || buttonStates.rules.cooldown > 0}
+                        >
+                            {buttonStates.rules.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <FileText className="mr-2 h-4 w-4" />}
+                             {buttonStates.rules.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.rules.cooldown})` : "Kuralları Gönder"}
+                        </Button>
+                    </div>
+                </footer>
+            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
+                </div>
+            ) : (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
+                    Bu kullanıcı artık mevcut değil.
                 </div>
             )}
             
@@ -1037,3 +1218,5 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
+
+    
