@@ -12,6 +12,8 @@ import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
@@ -19,6 +21,9 @@ export default function AdminDashboardPage() {
   const [isCreatingBots, setIsCreatingBots] = useState(false);
   const [botCount, setBotCount] = useState(10);
   const [botGender, setBotGender] = useState('mixed');
+  const [isResetting, setIsResetting] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
 
 
   const usersCollectionRef = useMemoFirebase(
@@ -69,6 +74,72 @@ export default function AdminDashboardPage() {
         });
     } finally {
         setIsCreatingBots(false);
+    }
+  };
+
+  const handleResetSystem = async () => {
+      setIsResetting(true);
+       try {
+        const response = await fetch('/api/reset-matches', {
+            method: 'POST',
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Sistem sıfırlanamadı.');
+        }
+
+        toast({
+            title: 'Sistem Sıfırlandı',
+            description: `Tüm eşleşmeler ve sohbetler başarıyla silindi.`,
+        });
+
+    } catch (error: any) {
+        toast({
+            title: 'Hata',
+            description: error.message || 'Bilinmeyen bir hata oluştu.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsResetting(false);
+    }
+  }
+
+  const handleBroadcastMessage = async () => {
+    if (!broadcastMessage.trim()) {
+      toast({
+        title: 'Hata',
+        description: 'Duyuru mesajı boş olamaz.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsBroadcasting(true);
+    try {
+      const response = await fetch('/api/broadcast-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: broadcastMessage }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Duyuru gönderilemedi.');
+      }
+
+      toast({
+        title: 'Duyuru Gönderildi',
+        description: `Mesajınız ${result.count} kullanıcıya başarıyla iletildi.`,
+      });
+      setBroadcastMessage('');
+    } catch (error: any) {
+      toast({
+        title: 'Hata',
+        description: error.message || 'Bilinmeyen bir hata oluştu.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBroadcasting(false);
     }
   };
 
@@ -175,6 +246,74 @@ export default function AdminDashboardPage() {
                             <><Bot className='mr-2 h-4 w-4'/> Botları Oluştur</>
                         )}
                     </Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5" />
+                       Toplu Duyuru Gönder
+                    </CardTitle>
+                    <CardDescription>
+                        Tüm kullanıcılara sistem mesajı olarak bir duyuru gönderin.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                   <div className="space-y-2">
+                        <Label htmlFor="broadcast-message">Mesajınız</Label>
+                        <Textarea
+                            id="broadcast-message"
+                            placeholder="Duyurunuzu buraya yazın..."
+                            value={broadcastMessage}
+                            onChange={(e) => setBroadcastMessage(e.target.value)}
+                            disabled={isBroadcasting}
+                        />
+                   </div>
+                   <Button onClick={handleBroadcastMessage} disabled={isBroadcasting}>
+                        {isBroadcasting ? (
+                             <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Gönderiliyor...</>
+                        ) : (
+                             <><Send className='mr-2 h-4 w-4'/> Duyuruyu Gönder</>
+                        )}
+                    </Button>
+                </CardContent>
+            </Card>
+            <Card className="md:col-span-2 border-destructive">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                       <AlertTriangle className='h-5 w-5'/> Tehlikeli Bölge
+                    </CardTitle>
+                    <CardDescription>
+                        Bu işlemler geri alınamaz ve uygulamanın veritabanını kalıcı olarak etkiler.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="destructive" disabled={isResetting}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Maçları ve Sohbetleri Sıfırla
+                           </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Bu işlem geri alınamaz. Tüm kullanıcı eşleşmeleri ve sohbet geçmişleri kalıcı olarak silinecektir. Bu, test amacıyla veya sistemi temizlemek için kullanılır.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleResetSystem} disabled={isResetting} className='bg-destructive hover:bg-destructive/90'>
+                                     {isResetting ? (
+                                        <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Sıfırlanıyor...</>
+                                    ) : (
+                                        "Evet, Sıfırla"
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </CardContent>
             </Card>
         </div>
