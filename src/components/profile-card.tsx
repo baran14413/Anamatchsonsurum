@@ -32,11 +32,11 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
-const UserOnlineStatus = ({ isOnline, lastSeen }: { isOnline?: boolean; lastSeen?: any }) => {
+const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; lastSeen?: any, isBot?: boolean }) => {
     let statusText: string;
     let iconColor = "bg-gray-400";
 
-    if (isOnline) {
+    if (isBot || isOnline) {
         statusText = "Şu an aktif";
         iconColor = "bg-green-400";
     } else if (lastSeen?.toDate) {
@@ -282,7 +282,7 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
             >
                <div className="flex items-end justify-between">
                     <div className="space-y-1 flex-1 min-w-0">
-                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} />
+                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                         <div className='flex flex-col items-start'>
                            {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
                            <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>

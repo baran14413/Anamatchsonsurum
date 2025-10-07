@@ -48,6 +48,16 @@ const createMatch = (batch: WriteBatch, db: Firestore, user1Id: string, user2Id:
     batch.set(doc(db, `users/${user2Id}/matches`, matchId), user2Data);
 };
 
+const BOT_GREETINGS = [
+    "Merhaba, nasılsın? Profilin çok ilgimi çekti! 😊",
+    "Selam! Eşleştiğimize sevindim, sohbet etmek istersen buradayım. 😉",
+    "Merhaba! Ortak ilgi alanlarımız var gibi görünüyor. ✨",
+    "Hey! Enerjin harika görünüyor. Tanışalım mı?",
+    "Selam, günün nasıl geçiyor? ☀️",
+];
+
+const getRandomGreeting = () => BOT_GREETINGS[Math.floor(Math.random() * BOT_GREETINGS.length)];
+
 const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile, matchDocRef: DocumentReference<DocumentData>, existingMatchData: Match | undefined) => {
     const isUser1 = currentUser.uid < swipedUser.uid;
     const theirAction = isUser1 ? existingMatchData?.user2_action : existingMatchData?.user1_action;
@@ -57,9 +67,41 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         [`${currentUserField}_action`]: 'liked',
         [`${currentUserField}_timestamp`]: serverTimestamp(),
     };
+    
+    // --- BOT AUTO-MATCH LOGIC ---
+    if (swipedUser.isBot) {
+        updateData.status = 'matched';
+        updateData.matchDate = serverTimestamp();
+        
+        const botGreeting = getRandomGreeting();
+
+        const batch = writeBatch(db);
+        createMatch(
+            batch, db, currentUser.uid, swipedUser.uid,
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
+            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: botGreeting, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
+        );
+        batch.set(matchDocRef, updateData, { merge: true });
+        
+        // Add the bot's automatic greeting
+        const greetingMessage = {
+            matchId: matchDocRef.id,
+            senderId: swipedUser.uid, // Bot is the sender
+            text: botGreeting,
+            timestamp: serverTimestamp(),
+            isRead: false,
+            type: 'user',
+        };
+        batch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), greetingMessage);
+
+        await batch.commit();
+        
+        return { matched: true, swipedUserName: swipedUser.fullName };
+    }
+
 
     if (theirAction === 'liked') {
-        // --- EŞLEŞME OLDU ---
+        // --- EŞLEŞME OLDU (GERÇEK KULLANICI) ---
         updateData.status = 'matched';
         updateData.matchDate = serverTimestamp();
         
@@ -445,9 +487,3 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
-
-    
-
-    
-
-    
