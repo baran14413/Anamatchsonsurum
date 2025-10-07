@@ -20,8 +20,9 @@ import { Icons } from './icons';
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isDraggable?: boolean;
-  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
+  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, index: number) => void;
   zIndex: number;
+  index: number;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -63,7 +64,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex, index }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -179,8 +180,8 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex 
         style={{ x, y, rotate, zIndex }}
         drag={isDraggable}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-        dragElastic={0.5}
-        onDragEnd={onDragEnd}
+        dragElastic={0.3}
+        onDragEnd={(event, info) => onDragEnd(event, info, index)}
         initial={{ scale: 0.95, y: -10, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -397,5 +398,3 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
-
-    

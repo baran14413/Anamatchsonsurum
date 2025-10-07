@@ -184,23 +184,24 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
+  const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked', swipedIndex: number) => {
     setProfiles(prevProfiles => {
-      if (prevProfiles.length === 0) return [];
-      const swipedProfile = prevProfiles[prevProfiles.length - 1];
-      const newProfiles = prevProfiles.slice(0, prevProfiles.length - 1);
+      const swipedProfile = prevProfiles[swipedIndex];
+      if (!swipedProfile) return prevProfiles;
+      
+      const newProfiles = prevProfiles.filter((_, i) => i !== swipedIndex);
       
       if (action === 'disliked') {
         setLastDislikedProfile(swipedProfile);
       } else {
-        setLastDislikedProfile(null); // Clear undo on like or superlike
+        setLastDislikedProfile(null);
       }
       
       return newProfiles;
     });
   }, []);
   
- const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+ const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked', swipedIndex: number) => {
     if (!user || !firestore || !userProfile) return;
 
     if (action === 'superliked') {
@@ -210,7 +211,7 @@ export default function AnasayfaPage() {
         }
     }
 
-    removeTopCard(action);
+    removeTopCard(action, swipedIndex);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -251,11 +252,11 @@ export default function AnasayfaPage() {
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile, index: number) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'superliked');
+      handleSwipe(profile, 'superliked', index);
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'liked');
+      handleSwipe(profile, 'liked', index);
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'disliked');
+      handleSwipe(profile, 'disliked', index);
     }
   };
 
@@ -442,7 +443,7 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative flex flex-col items-center justify-center p-4">
+        <div className="relative flex flex-col items-center justify-center p-4 pb-14">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -465,7 +466,8 @@ export default function AnasayfaPage() {
                                 key={profile.uid}
                                 profile={profile}
                                 isDraggable={isTopCard}
-                                onDragEnd={(event, info) => handleDragEnd(event, info, profile, index)}
+                                onDragEnd={handleDragEnd}
+                                index={index}
                                 zIndex={index}
                             />
                         );
@@ -528,5 +530,3 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
-
-    
