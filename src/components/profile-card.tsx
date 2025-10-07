@@ -168,16 +168,14 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
 
   return (
-    <div
+    <motion.div
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
+        style={{ rotate }}
     >
-      <motion.div 
-          className='absolute inset-0'
-          style={{ rotate }}
-      >
+        
           {currentImage?.url && (
               <Image
                   src={currentImage.url}
@@ -189,8 +187,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                   priority={true}
               />
           )}
-      </motion.div>
-        
+      
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
         {profile.images && profile.images.length > 1 && (
@@ -380,7 +377,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </div>
+    </motion.div>
   );
 };
 

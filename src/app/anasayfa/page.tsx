@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
@@ -195,7 +196,7 @@ export default function AnasayfaPage() {
     }
     
     setProfiles(currentProfiles => {
-      const newProfiles = currentProfiles.filter(p => p.uid !== swipedProfile.uid);
+      const newProfiles = currentProfiles.filter((_, i) => i !== index);
       if (action === 'disliked') {
         setLastDislikedProfile(swipedProfile as ProfileWithDistance);
       } else {
@@ -429,11 +430,12 @@ export default function AnasayfaPage() {
       const x = useMotionValue(0);
       const y = useMotionValue(0);
 
+      // We only render the top 2 cards for performance reasons
       if (index < profiles.length - 2) return null;
 
       return (
         <motion.div
-            key={profile.uid}
+            key={profile.id}
             className="absolute w-full h-full"
             style={{
                 zIndex: index,
@@ -444,8 +446,12 @@ export default function AnasayfaPage() {
             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
             dragElastic={0.3}
             onDragEnd={(event, info) => handleDragEnd(index, info)}
-            initial={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
-            animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
+            initial={{ scale: 1, y: 0, opacity: 1 }}
+            animate={{ 
+              scale: 1 - ((profiles.length - 1 - index) * 0.05), 
+              y: (profiles.length - 1 - index) * -10, 
+              opacity: 1 
+            }}
             transition={{ duration: 0.3 }}
             exit={{
                 x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
@@ -488,7 +494,7 @@ export default function AnasayfaPage() {
                         </div>
                     )}
                     <AnimatePresence>
-                        <CardStack />
+                        {CardStack()}
                     </AnimatePresence>
                 </div>
             ) : (
