@@ -18,9 +18,9 @@ const goldPackages = [
 ];
 
 const superLikePackages = [
-  { id: 'sl_50', count: 50, price: 79.99, popular: true },
-  { id: 'sl_10', count: 10, price: 19.99, popular: false },
-  { id: 'sl_100', count: 100, price: 129.99, popular: false },
+  { id: 'sl_50', count: 50, price: 79.99, pricePer: 1.60, popular: true },
+  { id: 'sl_10', count: 10, price: 19.99, pricePer: 2.00, popular: false },
+  { id: 'sl_100', count: 100, price: 129.99, pricePer: 1.30, popular: false },
 ];
 
 const goldFeatures = [
@@ -125,7 +125,6 @@ export default function MarketPage() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {superLikePackages.map((pkg) => {
-                            const pricePerLike = pkg.price / pkg.count;
                             return (
                                 <div
                                     key={pkg.id}
@@ -140,7 +139,7 @@ export default function MarketPage() {
                                     )}
                                     <p className="text-lg font-bold">{pkg.count} Super Like</p>
                                     <p className="text-2xl font-extrabold text-foreground mt-1">{pkg.price.toFixed(2)} TL</p>
-                                    <p className="text-sm text-muted-foreground">({pricePerLike.toFixed(2)} TL / adet)</p>
+                                    <p className="text-sm text-muted-foreground">({pkg.pricePer.toFixed(2)} TL / adet)</p>
                                 </div>
                             )
                         })}
