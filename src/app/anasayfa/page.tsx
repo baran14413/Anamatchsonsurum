@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
@@ -231,7 +232,7 @@ export default function AnasayfaPage() {
     }
  }, [user, firestore, t, toast, userProfile]);
  
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile, index: number) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
       handleSwipe(profile, 'superliked');
@@ -439,22 +440,34 @@ export default function AnasayfaPage() {
                             </Button>
                         </div>
                     )}
+                    <AnimatePresence>
                     {profiles.map((profile, index) => {
                         const isTopCard = index === profiles.length - 1;
                         if (index < profiles.length - 2) return null;
 
                         return (
-                            <ProfileCard
+                            <motion.div
                                 key={profile.uid}
-                                profile={profile}
-                                onSwipe={handleSwipe}
-                                isDraggable={isTopCard}
-                                onDragEnd={(event, info) => handleDragEnd(event, info, profile, index)}
-                                index={index}
-                                zIndex={index}
-                            />
+                                className="absolute w-full h-full"
+                                style={{
+                                    zIndex: index,
+                                }}
+                                drag={isTopCard}
+                                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                                dragElastic={0.3}
+                                onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
+                                initial={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
+                                animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
+                                transition={{ duration: 0.3 }}
+                                exit={{ x: (info: PanInfo) => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: (info: PanInfo) => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
+                            >
+                                <ProfileCard
+                                    profile={profile}
+                                />
+                            </motion.div>
                         );
                     })}
+                    </AnimatePresence>
                 </div>
             ) : (
                 <div className="flex h-full items-center justify-center text-center">

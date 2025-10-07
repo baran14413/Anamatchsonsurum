@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -19,11 +20,6 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  isDraggable?: boolean;
-  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
-  onSwipe: (profile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => void;
-  zIndex: number;
-  index: number;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -65,7 +61,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, onSwipe, zIndex }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -173,21 +169,16 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, onSwipe
 
 
   return (
-    <motion.div
+    <div
         className={cn(
-            "absolute w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
-        style={{ x, y, rotate, zIndex }}
-        drag={isDraggable}
-        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-        dragElastic={0.3}
-        onDragEnd={onDragEnd}
-        animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        exit={{ x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: info => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
     >
-        <div className='absolute inset-0'>
+        <motion.div 
+            className='absolute inset-0'
+            style={{ x, y, rotate }}
+        >
             {currentImage?.url && (
                 <Image
                     src={currentImage.url}
@@ -196,10 +187,10 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, onSwipe
                     sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                     style={{ objectFit: 'cover' }}
                     className="pointer-events-none"
-                    priority={isDraggable}
+                    priority={true}
                 />
             )}
-        </div>
+        </motion.div>
         
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
@@ -390,7 +381,7 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, onSwipe
                 </Sheet>
             </div>
         </div>
-    </motion.div>
+    </div>
   );
 };
 
