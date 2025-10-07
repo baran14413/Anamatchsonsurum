@@ -103,7 +103,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         const batch = writeBatch(db);
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0?.url || '', status: 'matched' },
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
             { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
@@ -140,7 +140,7 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
     
     const batch = writeBatch(db);
 
-    const currentUserMatchData = { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
+    const currentUserMatchData = { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
     const swipedUserMatchData = { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: `${currentUser.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
     
     createMatch(batch, db, currentUser.uid, swipedUser.uid, currentUserMatchData, swipedUserMatchData);
@@ -445,7 +445,7 @@ export default function AnasayfaPage() {
                     <motion.div
                     key={profile.uid}
                     className={cn(
-                        "absolute w-full h-full transition-all transform-gpu",
+                        "absolute w-full h-full transform-gpu",
                         !isTopCard && "blur-sm"
                     )}
                     style={{
