@@ -53,6 +53,7 @@ export type UserProfile = {
   createdAt?: any;
   rulesAgreed?: boolean;
   isAdmin?: boolean;
+  isBot?: boolean;
   superLikeBalance?: number;
   membershipType?: 'free' | 'gold';
   goldMembershipExpiresAt?: any;

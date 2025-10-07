@@ -2,7 +2,7 @@
 'use client';
 
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -15,10 +15,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { UserProfile } from '@/lib/types';
-import { format, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Shield, Star, Trash2, Gem } from 'lucide-react';
+import { MoreHorizontal, Bot, Shield, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,78 +60,12 @@ export default function AdminUsersPage() {
       });
     }
   };
-
-  const handleToggleGold = async (user: UserProfile) => {
-    if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', user.id);
-    const isCurrentlyGold = user.membershipType === 'gold';
-
-    try {
-      if (isCurrentlyGold) {
-        // Remove Gold membership
-        await updateDoc(userDocRef, { 
-          membershipType: 'free',
-          goldMembershipExpiresAt: null
-        });
-        toast({
-          title: 'Başarılı',
-          description: `${user.fullName} kullanıcısının Gold üyeliği kaldırıldı.`,
-        });
-      } else {
-        // Add Gold membership for 1 month
-        const expiryDate = addMonths(new Date(), 1);
-        await updateDoc(userDocRef, { 
-          membershipType: 'gold',
-          goldMembershipExpiresAt: expiryDate
-        });
-
-        // Send system message
-        const systemMessageText = `Tebrikler, artık BeMatch Gold üyesisin! Sınırsız beğeni, Super Like'lar ve daha birçok premium özelliğin keyfini çıkarabilirsin. Üyeliğin ${format(expiryDate, "d MMMM yyyy", { locale: tr })} tarihinde sona erecektir.`;
-        const systemMessagesColRef = collection(firestore, `users/${user.id}/system_messages`);
-        await addDoc(systemMessagesColRef, {
-            senderId: 'system',
-            text: systemMessageText,
-            timestamp: serverTimestamp(),
-            isRead: false
-        });
-
-        toast({
-          title: 'Başarılı',
-          description: `${user.fullName} kullanıcısı 1 aylık Gold üye yapıldı ve bilgilendirme mesajı gönderildi.`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Hata',
-        description: `İşlem sırasında bir hata oluştu: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  };
-
-
-  const handleAddSuperLike = async (user: UserProfile) => {
-    if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', user.id);
-    const currentBalance = user.superLikeBalance || 0;
-    try {
-      await updateDoc(userDocRef, { superLikeBalance: currentBalance + 1 });
-      toast({
-        title: 'Başarılı',
-        description: `${user.fullName} kullanıcısına 1 Super Like kredisi eklendi.`,
-      });
-    } catch (error: any) {
-       toast({
-        title: 'Hata',
-        description: `İşlem sırasında bir hata oluştu: ${error.message}`,
-        variant: 'destructive',
-      });
-    }
-  };
   
   const handleBanUser = async () => {
     if (!firestore || !userToBan) return;
     try {
+        // Here you would typically call a serverless function to delete the user from Firebase Auth
+        // For now, we just delete their Firestore document.
         await deleteDoc(doc(firestore, 'users', userToBan.id));
         toast({
             title: 'Kullanıcı Yasaklandı',
@@ -185,12 +119,12 @@ export default function AdminUsersPage() {
                         <Badge variant={user.isOnline ? 'default' : 'secondary'}>
                         {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
                         </Badge>
-                         {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
-                         {user.membershipType === 'gold' && <Badge className='gap-1 bg-yellow-400 text-yellow-900 hover:bg-yellow-400/90'><Gem className='h-3 w-3'/> Gold</Badge>}
+                        {user.isBot && <Badge variant='outline' className='gap-1'><Bot className='h-3 w-3'/> Bot</Badge>}
+                        {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
                     </div>
                     </TableCell>
                     <TableCell>
-                    {user.lastSeen ? format(new Date(user.lastSeen.seconds * 1000), 'd MMMM yyyy', { locale: tr }) : '-'}
+                    {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                     </TableCell>
                     <TableCell className='text-right'>
                          <DropdownMenu>
@@ -205,14 +139,6 @@ export default function AdminUsersPage() {
                                 <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
                                     <Shield className='mr-2 h-4 w-4' />
                                     <span>{user.isAdmin ? 'Admin Yetkisini Al' : 'Admin Yap'}</span>
-                                </DropdownMenuItem>
-                                 <DropdownMenuItem onClick={() => handleToggleGold(user)}>
-                                    <Gem className='mr-2 h-4 w-4' />
-                                    <span>{user.membershipType === 'gold' ? "Gold'u Kaldır" : 'Gold Yap'}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleAddSuperLike(user)}>
-                                     <Star className='mr-2 h-4 w-4' />
-                                    <span>Super Like Ekle</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <AlertDialogTrigger asChild>

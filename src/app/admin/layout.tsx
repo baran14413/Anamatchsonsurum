@@ -3,7 +3,7 @@
 
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { Home, Users, Settings, Smartphone, Server, ShieldCheck } from 'lucide-react';
+import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
@@ -28,28 +28,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </SidebarHeader>
                 <SidebarMenu>
                     <SidebarGroup>
-                        <SidebarGroupLabel>Uygulama Ayarları</SidebarGroupLabel>
-                        {/* Boş Kategori */}
-                    </SidebarGroup>
-                     <SidebarGroup>
-                        <SidebarGroupLabel>Sistem Yönetimi</SidebarGroupLabel>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Kullanıcılar" asChild>
-                               <Link href="/admin/users">
-                                    <Users />
-                                    <span>Kullanıcılar</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                    <SidebarSeparator />
-                    <SidebarGroup>
                         <SidebarGroupLabel>Sistem Kontrolü</SidebarGroupLabel>
                         <SidebarMenuItem>
                             <SidebarMenuButton tooltip="Dashboard" asChild>
                                 <Link href="/admin/dashboard">
                                     <Home />
-                                    <span>Yönetim Paneli</span>
+                                    <span>Genel Bakış</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                         <SidebarMenuItem>
+                            <SidebarMenuButton tooltip="Kullanıcılar" asChild>
+                               <Link href="/admin/users">
+                                    <Users />
+                                    <span>Kullanıcılar</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
