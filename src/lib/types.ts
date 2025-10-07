@@ -100,7 +100,7 @@ export type Post = {
 
 export interface SystemMessage {
     id: string;
-    createdAt: any;
+    timestamp: any;
     sentTo: string[];
     seenBy: string[];
     type: 'text' | 'poll';
@@ -122,8 +122,7 @@ export type ChatMessage = {
   viewed?: boolean;
   audioUrl?: string;
   audioDuration?: number;
-  createdAt?: any; // Use createdAt to align with SystemMessage
-  timestamp?: any; // Keep for backward compatibility if needed
+  timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;
   type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed' | 'poll';
@@ -135,6 +134,7 @@ export type ChatMessage = {
   pollOptions?: string[];
   pollResults?: { [key: string]: number };
   votedBy?: string[];
+  createdAt?: any; // Kept for backward compatibility but should be migrated to timestamp
 };
 
 export interface DenormalizedMatch {

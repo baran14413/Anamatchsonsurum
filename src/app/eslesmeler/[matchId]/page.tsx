@@ -28,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -139,7 +138,7 @@ export default function ChatPage() {
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         const collectionPath = isSystemChat ? `system_messages` : `matches/${matchId}/messages`;
-        return query(collection(firestore, collectionPath), orderBy('createdAt', 'asc'));
+        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
 
@@ -303,7 +302,7 @@ export default function ChatPage() {
         const messageData: Partial<ChatMessage> = {
             matchId: matchId,
             senderId: user.uid,
-            createdAt: serverTimestamp(),
+            timestamp: serverTimestamp(),
             isRead: false,
             type: content.type || 'user'
         };
@@ -616,10 +615,10 @@ export default function ChatPage() {
         }
     };
     
-    const renderTimestampLabel = (timestamp: any, prevTimestamp: any) => {
-        if (!timestamp) return null;
+    const renderTimestampLabel = (currentTimestamp: any, prevTimestamp: any) => {
+        if (!currentTimestamp) return null;
 
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        const date = currentTimestamp.toDate ? currentTimestamp.toDate() : new Date(currentTimestamp);
         const prevDate = prevTimestamp?.toDate ? prevTimestamp.toDate() : (prevTimestamp ? new Date(prevTimestamp) : null);
         
         if (!prevDate || date.toDateString() !== prevDate.toDateString()) {
@@ -832,7 +831,7 @@ export default function ChatPage() {
                              
                              return (
                                 <div key={message.id}>
-                                    {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                      <div className={cn("flex items-end gap-2 group justify-start")}>
                                          <Avatar className="h-8 w-8 self-end mb-1">
                                             <Icons.bmIcon className="h-full w-full" />
@@ -872,7 +871,7 @@ export default function ChatPage() {
                          if (message.type === 'view-once-viewed') {
                              return (
                                 <div key={message.id}>
-                                    {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                         {!isSender && (
                                             <Avatar className="h-8 w-8 self-end mb-1">
@@ -890,7 +889,7 @@ export default function ChatPage() {
                                             <span>Açıldı</span>
                                         </div>
                                          <div className="flex items-center gap-1.5 self-end">
-                                            <span className="text-xs shrink-0">{message.createdAt?.toDate ? format(message.createdAt.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
@@ -901,7 +900,7 @@ export default function ChatPage() {
 
                         return (
                             <div key={message.id}>
-                                {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
+                                {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                 <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                      {!isSender && (
                                         <Avatar className="h-8 w-8 self-end mb-1">
@@ -951,7 +950,7 @@ export default function ChatPage() {
                                         )}
                                         <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
-                                            <span className="text-xs shrink-0">{message.createdAt?.toDate ? format(message.createdAt.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>

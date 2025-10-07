@@ -87,7 +87,7 @@ const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMes
             </CardContent>
             <CardFooter className='p-4 pt-0 flex items-center justify-between'>
                 <div className="text-xs text-muted-foreground">
-                    {message.createdAt?.toDate && formatDistanceToNow(message.createdAt.toDate(), { locale: tr, addSuffix: true })}
+                    {message.timestamp?.toDate && formatDistanceToNow(message.timestamp.toDate(), { locale: tr, addSuffix: true })}
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                      <div className='flex items-center gap-1.5' title={`${seenCount} kullanıcı tarafından görüldü`}>
@@ -127,11 +127,13 @@ export default function SystemMessagesPage() {
 
   const users = useMemo(() => {
     if (!allUsers) return [];
+    // This is the most reliable way to filter out bots,
+    // as it accounts for documents where `isBot` might be undefined or false.
     return allUsers.filter(user => user.isBot !== true);
   }, [allUsers]);
 
   const systemMessagesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'system_messages'), orderBy('createdAt', 'desc')) : null),
+    () => (firestore ? query(collection(firestore, 'system_messages'), orderBy('timestamp', 'desc')) : null),
     [firestore]
   );
   const { data: sentMessages, isLoading: isLoadingMessages } = useCollection<SystemMessage>(systemMessagesQuery);
@@ -180,8 +182,8 @@ export default function SystemMessagesPage() {
         const timestamp = serverTimestamp();
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
-        const baseMessageData = {
-            createdAt: timestamp,
+        const baseMessageData: Partial<SystemMessage> = {
+            timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
         };
@@ -194,16 +196,12 @@ export default function SystemMessagesPage() {
                 pollQuestion: messageToSend,
                 pollOptions: pollOptions.map(o => o.trim()),
                 pollResults: pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {}),
-                text: null,
             };
         } else {
             centralMessageData = {
                 ...baseMessageData,
                 type: 'text',
                 text: messageToSend,
-                pollQuestion: null,
-                pollOptions: null,
-                pollResults: null,
             };
         }
 
