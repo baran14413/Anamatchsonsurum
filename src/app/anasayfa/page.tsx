@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
@@ -169,13 +168,13 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
 };
 
 
-const ProfileStackItem = memo(({ profile, index, totalCards, onSwipe }: { profile: ProfileWithDistance, index: number, totalCards: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void }) => {
+const ProfileStackItem = memo(function ProfileStackItem({ profile, index, onSwipe }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void }) {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-20, 20]);
-    const isTopCard = index === totalCards - 1;
+    const isTopCard = index === 0;
 
-    const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         const SWIPE_THRESHOLD = 80;
         if (info.offset.y < -SWIPE_THRESHOLD) {
             onSwipe(index, 'superliked');
@@ -184,7 +183,7 @@ const ProfileStackItem = memo(({ profile, index, totalCards, onSwipe }: { profil
         } else if (info.offset.x < -SWIPE_THRESHOLD) {
             onSwipe(index, 'disliked');
         }
-    }, [index, onSwipe]);
+    };
 
     return (
         <motion.div
@@ -192,23 +191,22 @@ const ProfileStackItem = memo(({ profile, index, totalCards, onSwipe }: { profil
                 zIndex: index,
                 x,
                 y,
-                rotate
             }}
             className="absolute w-full h-full"
             drag={isTopCard}
             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
             dragElastic={0.3}
             onDragEnd={handleDragEnd}
-            initial={{ scale: 1 - ((totalCards - 1 - index) * 0.05), y: (totalCards - 1 - index) * -10, opacity: 1 }}
+            initial={{ scale: 1 - (index * 0.05), y: index * -10, opacity: 1 }}
             animate={{ 
-              scale: 1 - ((totalCards - 1 - index) * 0.05),
-              y: (totalCards - 1 - index) * -10, 
+              scale: 1 - (index * 0.05),
+              y: index * -10, 
               opacity: 1 
             }}
             transition={{ duration: 0.3 }}
             exit={{
-                x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
-                y: info => info.offset.y < -80 ? -400 : 0,
+                x: (info: any) => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
+                y: (info: any) => info.offset.y < -80 ? -400 : 0,
                 opacity: 0,
                 scale: 0.5,
                 transition: { duration: 0.3 }
@@ -222,7 +220,6 @@ const ProfileStackItem = memo(({ profile, index, totalCards, onSwipe }: { profil
         </motion.div>
     );
 });
-ProfileStackItem.displayName = 'ProfileStackItem';
 
 
 export default function AnasayfaPage() {
@@ -238,7 +235,7 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const handleSwipe = useCallback((index: number, action: 'liked' | 'disliked' | 'superliked') => {
+  const handleSwipe = (index: number, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
     
     const swipedProfile = profiles[index];
@@ -252,9 +249,10 @@ export default function AnasayfaPage() {
     }
     
     setProfiles(currentProfiles => {
-      const newProfiles = currentProfiles.filter((_, i) => i !== index);
+      const newProfiles = [...currentProfiles];
+      const swiped = newProfiles.splice(index, 1)[0];
       if (action === 'disliked') {
-        setLastDislikedProfile(swipedProfile as ProfileWithDistance);
+        setLastDislikedProfile(swiped as ProfileWithDistance);
       } else {
         setLastDislikedProfile(null);
       }
@@ -291,7 +289,7 @@ export default function AnasayfaPage() {
             });
         }
     })();
- }, [user, firestore, t, toast, userProfile, profiles]);
+ };
  
   const handleUndo = useCallback(async () => {
     if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
@@ -457,16 +455,12 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
   
   const CardStack = useCallback(() => {
-    return profiles.map((profile, index) => {
-      // We only render the top 2 cards for performance reasons
-      if (index < profiles.length - 2) return null;
-
+    return profiles.slice(0, 2).reverse().map((profile, index) => {
       return (
           <ProfileStackItem
             key={profile.id}
             profile={profile}
             index={index}
-            totalCards={profiles.length}
             onSwipe={handleSwipe}
            />
       );

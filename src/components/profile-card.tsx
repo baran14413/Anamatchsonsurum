@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -74,6 +73,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const likeOpacity = useTransform(x, [50, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, -50], [1, 0]);
   const superlikeOpacity = useTransform(y, [-100, -50], [1, 0]);
+  const rotate = useTransform(x, [-200, 200], [-20, 20]);
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -166,7 +166,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
 
   return (
-    <div
+    <motion.div
+        style={{ rotate }}
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
@@ -367,7 +368,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </div>
+    </motion.div>
   );
 };
 
