@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { adminAuth, db } from '@/lib/firebase-admin';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { langTr } from '@/languages/tr';
 
@@ -58,32 +58,39 @@ export async function POST(req: NextRequest) {
         let createdCount = 0;
 
         for (let i = 0; i < count; i++) {
-            const botId = db.collection('users').doc().id;
-            const docRef = db.collection('users').doc(botId);
-
-            let gender: 'male' | 'female';
-            if (requestedGender === 'mixed') {
-                gender = Math.random() > 0.5 ? 'female' : 'male';
-            } else {
-                gender = requestedGender;
-            }
+            const gender: 'male' | 'female' = requestedGender === 'mixed'
+                ? (Math.random() > 0.5 ? 'female' : 'male')
+                : requestedGender;
 
             const fullName = `${getRandomItem(gender === 'female' ? femaleNames : maleNames)} ${getRandomItem(lastNames)}`;
+            const email = `${fullName.toLowerCase().replace(/\s/g, '_')}.${Date.now()}@bot.bematch.app`;
+            const password = Math.random().toString(36).slice(-8);
             const randomImage = getRandomItem(PlaceHolderImages);
+
+            // 1. Create user in Firebase Auth
+            const userRecord = await adminAuth.createUser({
+                email,
+                password,
+                displayName: fullName,
+                photoURL: randomImage.imageUrl,
+            });
+
+            const botId = userRecord.uid;
+            const docRef = db.collection('users').doc(botId);
             
             const botProfile = {
                 uid: botId,
                 fullName,
-                email: `${fullName.toLowerCase().replace(/\s/g, '.')}@bot.bematch.app`,
+                email,
                 dateOfBirth: getRandomDob().toISOString(),
                 gender,
-                genderPreference: gender === 'female' ? 'male' : 'female', // Simple preference
+                genderPreference: gender === 'female' ? 'male' : 'female',
                 bio: getRandomItem(bios),
                 interests: [...new Set(Array.from({ length: 10 }, () => getRandomItem(allInterests)))],
                 images: [{ url: randomImage.imageUrl, public_id: `bot_${randomImage.id}` }],
                 profilePicture: randomImage.imageUrl,
                 location: getRandomLocation(),
-                isBot: true, // Flag to identify bot users
+                isBot: true,
                 createdAt: new Date(),
                 rulesAgreed: true,
                 lookingFor: 'whatever',
@@ -101,7 +108,7 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Bot oluşturma hatası:", error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = error.message || String(error);
         return NextResponse.json({ error: `Botlar oluşturulurken bir hata oluştu: ${errorMessage}` }, { status: 500 });
     }
 }
