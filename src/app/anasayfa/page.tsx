@@ -192,7 +192,8 @@ export default function AnasayfaPage() {
     const isGoldMember = userProfile.membershipType === 'gold';
     if (!isGoldMember) {
         const now = new Date();
-        const lastUndoDate = userProfile.lastUndoTimestamp?.toDate();
+        const lastUndoTimestamp = userProfile.lastUndoTimestamp;
+        const lastUndoDate = lastUndoTimestamp ? lastUndoTimestamp.toDate() : null;
         let currentUndoCount = userProfile.dailyUndoCount || 0;
 
         // Reset count if it's a new day (24 hours passed)
@@ -354,7 +355,7 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
 
   return (
-    <AlertDialog>
+    <AlertDialog open={showUndoLimitModal} onOpenChange={setShowUndoLimitModal}>
         <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
         {isLoading ? (
             <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -438,3 +439,5 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
+
+    
