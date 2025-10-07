@@ -144,9 +144,11 @@ export default function ProfilePage() {
                       <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
                       <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
                   </div>
-                  <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
-                      {t.profil.upgrade}
-                  </Button>
+                  <Link href="/satin-al/gold">
+                    <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
+                        {t.profil.upgrade}
+                    </Button>
+                  </Link>
               </CardContent>
           </Card>
         )}
@@ -195,3 +197,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

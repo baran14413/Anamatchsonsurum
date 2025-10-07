@@ -42,7 +42,7 @@ export default function WalletPage() {
     const superLikeBalance = userProfile?.superLikeBalance ?? 0;
     
     let expiryDate: Date | null = null;
-    if (userProfile?.goldMembershipExpiresAt) {
+    if (isGoldMember && userProfile?.goldMembershipExpiresAt) {
       try {
         expiryDate = userProfile.goldMembershipExpiresAt.toDate();
       } catch (e) {
@@ -62,27 +62,29 @@ export default function WalletPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto p-6 space-y-8">
-                <Card className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white shadow-lg">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-2xl">
-                                {membershipType}
-                            </CardTitle>
-                             <Gem className="h-8 w-8" />
-                        </div>
-                        <CardDescription className="text-white/80">
-                           {isGoldMember ? 'Tüm premium özelliklere erişiminiz var.' : 'Daha fazla özellik için Gold\'a yükseltin.'}
-                        </CardDescription>
-                    </CardHeader>
-                     {isGoldMember && expiryDate && (
-                        <CardFooter className='!pt-0 !pb-4'>
-                            <div className="flex items-center gap-2 text-sm text-white/90">
-                                <Info className="h-4 w-4" />
-                                <span>Gold üyeliğiniz {format(expiryDate, "d MMMM yyyy", { locale: tr })} tarihinde sona erecek.</span>
+                <Link href="/satin-al/gold">
+                    <Card className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white shadow-lg cursor-pointer hover:opacity-90 transition-opacity">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-2xl">
+                                    {membershipType}
+                                </CardTitle>
+                                <Gem className="h-8 w-8" />
                             </div>
-                        </CardFooter>
-                    )}
-                </Card>
+                            <CardDescription className="text-white/80">
+                            {isGoldMember ? 'Tüm premium özelliklere erişiminiz var.' : 'Daha fazla özellik için Gold\'a yükseltin.'}
+                            </CardDescription>
+                        </CardHeader>
+                        {isGoldMember && expiryDate && (
+                            <CardFooter className='!pt-0 !pb-4'>
+                                <div className="flex items-center gap-2 text-sm text-white/90">
+                                    <Info className="h-4 w-4" />
+                                    <span>Gold üyeliğiniz {format(expiryDate, "d MMMM yyyy", { locale: tr })} tarihinde sona erecek.</span>
+                                </div>
+                            </CardFooter>
+                        )}
+                    </Card>
+                </Link>
 
                 <div className="space-y-4">
                      <h2 className="text-xl font-bold">Bakiyelerin</h2>
@@ -102,3 +104,5 @@ export default function WalletPage() {
         </div>
     );
 }
+
+    

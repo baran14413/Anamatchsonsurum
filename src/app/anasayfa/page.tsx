@@ -7,7 +7,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
+import { useRouter } from 'next/navigation';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -94,7 +95,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
     }
 
 
-    if (theirAction === 'liked') {
+    if (theirAction === 'liked' || theirAction === 'superliked') {
         // --- EŞLEŞME OLDU (GERÇEK KULLANICI) ---
         updateData.status = 'matched';
         updateData.matchDate = serverTimestamp();
@@ -102,7 +103,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         const batch = writeBatch(db);
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0] || '', status: 'matched' },
+            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched' },
             { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
@@ -155,7 +156,10 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
     
     const systemMessage = { matchId: matchDocRef.id, senderId: 'system', text: `${swipedUser.fullName} merhaba, benim adım ${currentUser.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
     batch.set(doc(collection(db, `matches/${matchDocRef.id}/messages`)), systemMessage);
-
+    
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    batch.update(userDocRef, { superLikeBalance: increment(-1) });
+    
     await batch.commit();
 };
 
@@ -165,11 +169,13 @@ export default function AnasayfaPage() {
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
+  const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
 
   const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     setProfiles(prevProfiles => {
@@ -188,6 +194,13 @@ export default function AnasayfaPage() {
   
  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
+
+    if (action === 'superliked') {
+        if ((userProfile.superLikeBalance || 0) <= 0) {
+            setShowSuperlikeModal(true);
+            return;
+        }
+    }
 
     removeTopCard(action);
 
@@ -215,6 +228,7 @@ export default function AnasayfaPage() {
             await handleDislikeAction(firestore, user1Id, user2Id, matchDocRef);
         } else if (action === 'superliked') {
             await handleSuperlikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
+            toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
         }
 
     } catch (error: any) {
@@ -403,7 +417,12 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
 
   return (
-    <AlertDialog open={showUndoLimitModal} onOpenChange={setShowUndoLimitModal}>
+    <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
+        if (!open) {
+            setShowUndoLimitModal(false);
+            setShowSuperlikeModal(false);
+        }
+    }}>
         <div className="relative h-full w-full flex flex-col items-center justify-center overflow-hidden">
         {isLoading ? (
             <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -465,25 +484,50 @@ export default function AnasayfaPage() {
             </div>
         )}
         </div>
-         <AlertDialogContent>
-            <AlertDialogHeader className="items-center text-center">
-                 <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
-                    <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
-                 </div>
-                <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
-                <AlertDialogDescription>
-                   Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-                <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
-                <AlertDialogAction asChild>
-                    <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500'>
-                        <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
-                    </Button>
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
+         {showUndoLimitModal && (
+            <AlertDialogContent>
+                <AlertDialogHeader className="items-center text-center">
+                    <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
+                        <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
+                    </div>
+                    <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
+                    <AlertDialogDescription>
+                    Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                    <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/satin-al/gold')}>
+                            <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
+                        </Button>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+         )}
+         {showSuperlikeModal && (
+              <AlertDialogContent>
+                <AlertDialogHeader className="items-center text-center">
+                     <div className="w-16 h-16 rounded-full bg-blue-400/20 flex items-center justify-center mb-4">
+                        <Star className="w-10 h-10 text-blue-400 fill-blue-400" />
+                     </div>
+                    <AlertDialogTitle className="text-2xl">Super Like Bakiyen Bitti!</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       Super Like göndererek eşleşme şansını 3 katına çıkarabilirsin. Bakiyeni yenilemek için hemen bir paket seç!
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                    <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                        <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/satin-al/super-like')}>
+                            <Star className="mr-2 h-4 w-4" /> Super Like Satın Al
+                        </Button>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+         )}
     </AlertDialog>
   );
 }
+
+    
