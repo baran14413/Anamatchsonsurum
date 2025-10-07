@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -130,15 +130,21 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
 
-  const removeTopCard = useCallback(() => {
+  const removeTopCard = useCallback((swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+    if (action === 'disliked') {
+      setLastDislikedProfile(swipedProfile as ProfileWithDistance);
+    } else {
+      setLastDislikedProfile(null); // Clear undo on like or superlike
+    }
     setProfiles(prev => prev.slice(0, prev.length - 1));
   }, []);
   
  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
 
-    removeTopCard();
+    removeTopCard(swipedProfile, action);
 
     const user1Id = user.uid;
     const user2Id = swipedProfile.uid;
@@ -149,7 +155,6 @@ export default function AnasayfaPage() {
         const matchSnap = await getDoc(matchDocRef);
         const existingMatchData = matchSnap.data() as Match | undefined;
         
-        // Ortak verileri burada hazırla
         const baseUpdateData = {
              user1Id: [user1Id, user2Id].sort()[0],
              user2Id: [user1Id, user2Id].sort()[1],
@@ -177,28 +182,55 @@ export default function AnasayfaPage() {
  }, [user, firestore, t, toast, userProfile, removeTopCard]);
 
 
- const fetchProfiles = useCallback(async (options?: { reset?: boolean }) => {
+  const handleUndo = async () => {
+    if (!lastDislikedProfile || !user || !firestore) return;
+    
+    // Add the profile back to the stack
+    setProfiles(prev => [...prev, lastDislikedProfile]);
+
+    // Revert the database change
+    const matchId = [user.uid, lastDislikedProfile.uid].sort().join('_');
+    const matchDocRef = doc(firestore, 'matches', matchId);
+    
+    const isUser1 = user.uid < lastDislikedProfile.uid;
+    const currentUserField = isUser1 ? 'user1' : 'user2';
+
+    try {
+      await updateDoc(matchDocRef, {
+        [`${currentUserField}_action`]: deleteField(),
+        [`${currentUserField}_timestamp`]: deleteField(),
+      });
+    } catch (error) {
+      console.error("Error reverting dislike:", error);
+      // Even if DB fails, we proceed with UI change. It's not critical.
+    }
+    
+    // Clear the last disliked profile so it can't be undone again
+    setLastDislikedProfile(null);
+  };
+
+
+ const fetchProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
         setIsLoading(false);
         return;
     }
     setIsLoading(true);
+    setLastDislikedProfile(null); // Reset undo on new fetch
 
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        if (!options?.reset) {
-            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-            
-            const [query1Snapshot, query2Snapshot] = await Promise.all([
-                getDocs(matchesQuery1),
-                getDocs(matchesQuery2)
-            ]);
+        const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+        
+        const [query1Snapshot, query2Snapshot] = await Promise.all([
+            getDocs(matchesQuery1),
+            getDocs(matchesQuery2)
+        ]);
 
-            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
-        }
+        query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+        query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
 
         const qConstraints = [];
         const genderPref = userProfile?.genderPreference;
@@ -296,6 +328,13 @@ export default function AnasayfaPage() {
         <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       ) : profiles.length > 0 ? (
         <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
+          {lastDislikedProfile && (
+            <div className="absolute top-0 right-0 z-40">
+              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-12 w-12 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                  <Undo2 className="h-6 w-6" />
+              </Button>
+            </div>
+          )}
           <AnimatePresence>
             {profiles.map((profile, index) => {
               const isTopCard = index === profiles.length - 1;
@@ -337,8 +376,8 @@ export default function AnasayfaPage() {
         <div className="flex h-full items-center justify-center text-center">
             <div className='space-y-4'>
                 <p>{t.anasayfa.outOfProfilesDescription}</p>
-                <Button onClick={() => fetchProfiles({ reset: true })}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
+                <Button onClick={() => fetchProfiles()}>
+                    <Undo2 className="mr-2 h-4 w-4" />
                     Tekrar Dene
                 </Button>
             </div>
@@ -347,3 +386,4 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
