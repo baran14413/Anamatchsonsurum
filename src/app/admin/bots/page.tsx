@@ -18,7 +18,7 @@ import { UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Bot, Shield, Trash2, LogIn, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Bot, Shield, Trash2, LogIn, AlertCircle, Copy } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,6 +73,14 @@ export default function AdminBotsPage() {
       if (!auth) return;
       await signOut(auth);
       router.push('/');
+  }
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+        title: "Kopyalandı!",
+        description: "Giriş bilgileri panoya kopyalandı."
+    })
   }
 
   if (isLoading) {
@@ -175,12 +183,20 @@ export default function AdminBotsPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Bot Olarak Giriş Yap</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Aşağıdaki bilgilerle giriş yapabilmek için mevcut oturumunuz kapatılacaktır. Devam etmek istiyor musunuz?
-                    <div className="mt-4 rounded-md border bg-muted p-3 text-sm">
-                        <p><strong>E-posta:</strong> {botToLogin.email}</p>
-                        <p><strong>Şifre:</strong> {botToLogin.botPassword}</p>
-                    </div>
+                    Mevcut oturumunuz kapatılacak ve giriş sayfasına yönlendirileceksiniz. Aşağıdaki bilgileri kullanarak bot hesabına giriş yapabilirsiniz.
                 </AlertDialogDescription>
+                 <div className="mt-4 rounded-md border bg-muted p-3 text-sm relative group">
+                    <p><strong>E-posta:</strong> {botToLogin.email}</p>
+                    <p><strong>Şifre:</strong> {botToLogin.botPassword}</p>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => copyToClipboard(`E-posta: ${botToLogin.email}\nŞifre: ${botToLogin.botPassword}`)}
+                    >
+                        <Copy className="h-4 w-4" />
+                    </Button>
+                </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setBotToLogin(null)}>İptal</AlertDialogCancel>

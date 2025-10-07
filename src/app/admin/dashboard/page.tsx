@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
 
     let createdCount = 0;
     const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
-    let imageIndex = 0; // To cycle through images
+    let imageIndex = Math.floor(Math.random() * PlaceHolderImages.length); // Start from a random index
 
     try {
         for (let i = 0; i < botCount; i++) {
@@ -275,5 +275,3 @@ export default function AdminDashboardPage() {
         </div>
   );
 }
-
-    
