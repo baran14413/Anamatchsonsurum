@@ -107,8 +107,9 @@ export default function AdminDashboardPage() {
     let createdCount = 0;
     const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
     
-    const femaleImages = PlaceHolderImages.filter(img => img.gender === 'female');
-    const maleImages = PlaceHolderImages.filter(img => img.gender === 'male');
+    // Create shuffled, mutable copies of the image pools
+    const availableFemaleImages = [...PlaceHolderImages.filter(img => img.gender === 'female')].sort(() => Math.random() - 0.5);
+    const availableMaleImages = [...PlaceHolderImages.filter(img => img.gender === 'male')].sort(() => Math.random() - 0.5);
 
     try {
         for (let i = 0; i < botCount; i++) {
@@ -120,11 +121,16 @@ export default function AdminDashboardPage() {
             const email = `bot_${fullName.toLowerCase().replace(/\s/g, '_')}_${Date.now()}@bematch.app`;
             const password = Math.random().toString(36).slice(-8);
 
-            const imagePool = gender === 'female' ? femaleImages : maleImages;
-            if (imagePool.length === 0) {
-                 throw new Error(`Cinsiyet için uygun resim bulunamadı: ${gender}`);
+            let randomImage;
+            if (gender === 'female') {
+                randomImage = availableFemaleImages.pop();
+            } else {
+                randomImage = availableMaleImages.pop();
             }
-            const randomImage = getRandomItem(imagePool);
+            
+            if (!randomImage) {
+                 throw new Error(`${gender === 'female' ? 'Kadın' : 'Erkek'} cinsiyeti için kullanılabilir benzersiz resim kalmadı. Lütfen daha az bot oluşturmayı deneyin veya resim kütüphanesini genişletin.`);
+            }
 
 
             // 1. Create user in Firebase Auth
@@ -307,5 +313,7 @@ export default function AdminDashboardPage() {
         </div>
   );
 }
+
+    
 
     
