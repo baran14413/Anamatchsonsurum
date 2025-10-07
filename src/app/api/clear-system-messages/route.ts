@@ -58,6 +58,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Sistem Mesajlarını Temizleme Hatası:", error);
-        return NextResponse.json({ error: `Mesajlar temizlenemedi: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ error: `Mesajlar temizlenemedi: ${error.code || error.message}` }, { status: 500 });
     }
 }

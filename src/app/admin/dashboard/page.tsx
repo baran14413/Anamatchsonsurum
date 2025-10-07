@@ -45,21 +45,11 @@ export default function AdminDashboardPage() {
             method: 'POST',
         });
 
+        const result = await response.json();
         if (!response.ok) {
-            let errorMsg = 'Sistem sıfırlanamadı.';
-            try {
-                // Try to parse as JSON, but prepare for it to fail.
-                const errorData = await response.json();
-                errorMsg = errorData.error || errorMsg;
-            } catch (e) {
-                // If JSON parsing fails, it's likely an HTML error page.
-                console.error("Failed to parse error response as JSON:", await response.text());
-                errorMsg = 'Sunucudan beklenmeyen bir yanıt alındı.';
-            }
-            throw new Error(errorMsg);
+            throw new Error(result.error || 'Sistem sıfırlanamadı.');
         }
 
-        const result = await response.json();
         toast({
             title: 'Sistem Sıfırlandı',
             description: result.message || 'Tüm eşleşmeler ve sohbetler başarıyla silindi.',
@@ -93,12 +83,11 @@ export default function AdminDashboardPage() {
             body: JSON.stringify({ message: broadcastMessage }),
         });
 
+        const result = await response.json();
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Duyuru gönderilemedi.');
+            throw new Error(result.error || 'Duyuru gönderilemedi.');
         }
         
-        const result = await response.json();
         toast({
             title: 'Duyuru Gönderildi',
             description: `Mesajınız ${result.recipientCount} kullanıcıya başarıyla iletildi.`,
@@ -133,12 +122,11 @@ export default function AdminDashboardPage() {
             body: JSON.stringify({ count: botCount, gender: botGender }),
         });
 
+        const result = await response.json();
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Botlar oluşturulamadı.');
+            throw new Error(result.error || 'Botlar oluşturulamadı.');
         }
 
-        const result = await response.json();
         toast({
             title: 'Botlar Oluşturuldu',
             description: `${result.createdCount} adet yeni bot başarıyla oluşturuldu.`,

@@ -98,6 +98,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Sohbet Silme Hatası:", error);
-        return NextResponse.json({ error: `Sohbet silinemedi: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ error: `Sohbet silinemedi: ${error.code || error.message}` }, { status: 500 });
     }
 }

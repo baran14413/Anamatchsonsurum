@@ -65,6 +65,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Sistem Sıfırlama Hatası:", error);
-        return NextResponse.json({ error: `Sistem sıfırlanamadı: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ error: `Sistem sıfırlanamadı: ${error.code || error.message}` }, { status: 500 });
     }
 }
