@@ -108,7 +108,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Bot oluşturma hatası:", error);
-        const errorMessage = error.message || String(error);
-        return NextResponse.json({ error: `Botlar oluşturulurken bir hata oluştu: ${errorMessage}` }, { status: 500 });
+        return NextResponse.json({ error: `Botlar oluşturulurken bir hata oluştu: ${error.message || String(error)}` }, { status: 500 });
     }
 }

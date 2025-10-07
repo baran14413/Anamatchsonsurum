@@ -1,5 +1,5 @@
 
-import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { initializeApp, getApps, App, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 
@@ -7,13 +7,10 @@ let adminApp: App;
 let db: Firestore;
 let adminAuth: Auth;
 
-// This setup is simplified and assumes the environment is correctly configured.
-// It will throw an error on startup if credentials are not found,
-// making debugging clearer.
 try {
     if (!getApps().length) {
-        // When deployed to App Hosting, initializeApp() will automatically use the
-        // credentials of the underlying service account.
+        // When deployed to App Hosting, initializeApp() with no arguments 
+        // will automatically use the credentials of the underlying service account.
         adminApp = initializeApp();
     } else {
         adminApp = getApps()[0];
@@ -28,7 +25,7 @@ try {
         "Error Details:", error.message
     );
     // Re-throw to fail fast. The server process should not start if the admin SDK fails.
-    throw error;
+    throw new Error(`Firebase Admin SDK failed to initialize: ${error.message}`);
 }
 
 export { adminApp, db, adminAuth };
