@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -20,6 +20,8 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
+  x: MotionValue<number>;
+  y: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -61,7 +63,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -69,9 +71,6 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
     setActiveImageIndex(0);
   }, [profile.uid]);
   
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacityLike = useTransform(x, [10, 80], [0, 1]);
   const opacityDislike = useTransform(x, [-80, -10], [1, 0]);
@@ -175,22 +174,22 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
     >
-        <motion.div 
-            className='absolute inset-0'
-            style={{ x, y, rotate }}
-        >
-            {currentImage?.url && (
-                <Image
-                    src={currentImage.url}
-                    alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ objectFit: 'cover' }}
-                    className="pointer-events-none"
-                    priority={true}
-                />
-            )}
-        </motion.div>
+      <motion.div 
+          className='absolute inset-0'
+          style={{ rotate }}
+      >
+          {currentImage?.url && (
+              <Image
+                  src={currentImage.url}
+                  alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
+                  fill
+                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                  style={{ objectFit: 'cover' }}
+                  className="pointer-events-none"
+                  priority={true}
+              />
+          )}
+      </motion.div>
         
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 

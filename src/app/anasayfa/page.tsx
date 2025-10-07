@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useMemo } from 'react';
@@ -182,8 +181,11 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const handleSwipe = useCallback(async (swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
+  const handleSwipe = useCallback((index: number, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
+    
+    const swipedProfile = profiles[index];
+    if (!swipedProfile) return;
 
     if (action === 'superliked') {
         if ((userProfile.superLikeBalance || 0) <= 0) {
@@ -207,39 +209,41 @@ export default function AnasayfaPage() {
     const matchId = [user1Id, user2Id].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
-    try {
-        const matchSnap = await getDoc(matchDocRef);
-        const existingMatchData = matchSnap.data() as Match | undefined;
+    (async () => {
+        try {
+            const matchSnap = await getDoc(matchDocRef);
+            const existingMatchData = matchSnap.data() as Match | undefined;
 
-        if (action === 'liked') {
-            const result = await handleLikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
-            if(result.matched){
-                 toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
+            if (action === 'liked') {
+                const result = await handleLikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
+                if(result.matched){
+                     toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
+                }
+            } else if (action === 'disliked') {
+                await handleDislikeAction(firestore, user1Id, user2Id, matchDocRef);
+            } else if (action === 'superliked') {
+                await handleSuperlikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
+                toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
             }
-        } else if (action === 'disliked') {
-            await handleDislikeAction(firestore, user1Id, user2Id, matchDocRef);
-        } else if (action === 'superliked') {
-            await handleSuperlikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
-            toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
-        }
 
-    } catch (error: any) {
-        toast({
-            title: t.common.error,
-            description: error.message || "Etkileşim kaydedilemedi.",
-            variant: "destructive",
-        });
-    }
- }, [user, firestore, t, toast, userProfile]);
+        } catch (error: any) {
+            toast({
+                title: t.common.error,
+                description: error.message || "Etkileşim kaydedilemedi.",
+                variant: "destructive",
+            });
+        }
+    })();
+ }, [user, firestore, t, toast, userProfile, profiles]);
  
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile) => {
+  const handleDragEnd = (index: number, info: PanInfo) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'superliked');
+      handleSwipe(index, 'superliked');
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'liked');
+      handleSwipe(index, 'liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      handleSwipe(profile, 'disliked');
+      handleSwipe(index, 'disliked');
     }
   };
 
@@ -418,6 +422,49 @@ export default function AnasayfaPage() {
       fetchProfiles();
     }
   }, [user, firestore, userProfile, fetchProfiles]);
+  
+  const CardStack = () => {
+    return profiles.map((profile, index) => {
+      const isTopCard = index === profiles.length - 1;
+      const x = useMotionValue(0);
+      const y = useMotionValue(0);
+
+      if (index < profiles.length - 2) return null;
+
+      return (
+        <motion.div
+            key={profile.uid}
+            className="absolute w-full h-full"
+            style={{
+                zIndex: index,
+                x,
+                y,
+            }}
+            drag={isTopCard}
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={0.3}
+            onDragEnd={(event, info) => handleDragEnd(index, info)}
+            initial={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
+            animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            exit={{
+                x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
+                y: info => info.offset.y < -80 ? -400 : 0,
+                opacity: 0,
+                scale: 0.5,
+                transition: { duration: 0.3 }
+            }}
+        >
+            <ProfileCard
+                profile={profile}
+                x={x}
+                y={y}
+            />
+        </motion.div>
+      );
+    })
+  }
+
 
   return (
     <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -426,7 +473,7 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative flex-1 flex flex-col items-center justify-center p-4">
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -441,32 +488,7 @@ export default function AnasayfaPage() {
                         </div>
                     )}
                     <AnimatePresence>
-                    {profiles.map((profile, index) => {
-                        const isTopCard = index === profiles.length - 1;
-                        if (index < profiles.length - 2) return null;
-
-                        return (
-                            <motion.div
-                                key={profile.uid}
-                                className="absolute w-full h-full"
-                                style={{
-                                    zIndex: index,
-                                }}
-                                drag={isTopCard}
-                                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                                dragElastic={0.3}
-                                onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
-                                initial={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
-                                animate={{ scale: 1 - ((profiles.length - 1 - index) * 0.05), y: (profiles.length - 1 - index) * -10, opacity: 1 }}
-                                transition={{ duration: 0.3 }}
-                                exit={{ x: (info: PanInfo) => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: (info: PanInfo) => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
-                            >
-                                <ProfileCard
-                                    profile={profile}
-                                />
-                            </motion.div>
-                        );
-                    })}
+                        <CardStack />
                     </AnimatePresence>
                 </div>
             ) : (
