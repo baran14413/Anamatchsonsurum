@@ -131,5 +131,4 @@ export interface DenormalizedMatch {
     superLikeInitiator?: string;
     unreadCount?: number;
 }
-
     
