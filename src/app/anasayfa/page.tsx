@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -169,7 +169,7 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
 };
 
 
-const ProfileStackItem = memo(({ profile, index, onSwipe, isTopCard, zIndex }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void, isTopCard: boolean, zIndex: number }) => {
+const ProfileStackItem = memo(({ profile, index, onSwipe, isTopCard }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void, isTopCard: boolean }) => {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
@@ -187,7 +187,7 @@ const ProfileStackItem = memo(({ profile, index, onSwipe, isTopCard, zIndex }: {
     return (
         <motion.div
             style={{ 
-                zIndex,
+                zIndex: index,
                 x,
                 y,
             }}
@@ -322,7 +322,7 @@ export default function AnasayfaPage() {
         }
     }
     
-    setProfiles(prev => [...prev, lastDislikedProfile]);
+    setProfiles(prev => [lastDislikedProfile, ...prev]);
 
     const matchId = [user.uid, lastDislikedProfile.uid].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
@@ -469,7 +469,6 @@ export default function AnasayfaPage() {
             index={index}
             onSwipe={handleSwipe}
             isTopCard={isTopCard}
-            zIndex={index}
            />
       );
     });
@@ -483,13 +482,13 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
+        <div className="flex-1 flex flex-col items-center p-4 pb-14">
             {isLoading ? (
-                <div className="flex h-full items-center justify-center">
+                <div className="flex-1 flex items-center justify-center">
                     <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                 </div>
             ) : profiles.length > 0 ? (
-                 <div className="relative w-full h-full max-w-sm aspect-[9/14]">
+                 <div className="relative flex-1 w-full h-full max-w-sm">
                     {lastDislikedProfile && (
                         <div className="absolute top-4 right-4 z-40">
                             <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
@@ -502,7 +501,7 @@ export default function AnasayfaPage() {
                     </AnimatePresence>
                 </div>
             ) : (
-                <div className="flex h-full items-center justify-center text-center">
+                <div className="flex-1 flex items-center justify-center text-center">
                     <div className='space-y-4'>
                         <p>{t.anasayfa.outOfProfilesDescription}</p>
                         <Button onClick={() => fetchProfiles(true)}>
