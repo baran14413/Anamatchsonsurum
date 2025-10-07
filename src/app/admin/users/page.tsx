@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function AdminUsersPage() {
@@ -36,11 +36,16 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
   const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
 
-  const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', false)) : null),
+  const allUsersCollectionRef = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );
-  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
+  const { data: allUsers, isLoading } = useCollection<UserProfile>(allUsersCollectionRef);
+
+  const users = useMemo(() => {
+    if (!allUsers) return [];
+    return allUsers.filter(user => user.isBot !== true);
+  }, [allUsers]);
 
   const handleToggleAdmin = async (user: UserProfile) => {
     if (!firestore) return;
@@ -90,7 +95,7 @@ export default function AdminUsersPage() {
   return (
      <AlertDialog>
         <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Kullanıcılar</h1>
+        <h1 className="text-2xl font-bold">Kullanıcılar ({users.length})</h1>
         <div className="rounded-lg border">
             <Table>
             <TableHeader>

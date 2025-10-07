@@ -6,22 +6,23 @@ import { Users, Heart, MessageSquare, Bot } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
+import { useMemo } from 'react';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
 
-  const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', false)) : null),
+  const allUsersCollectionRef = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );
-  const { data: users, isLoading: isLoadingUsers } = useCollection(usersCollectionRef);
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection(allUsersCollectionRef);
 
-  const botsCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', true)) : null),
-    [firestore]
-  );
-  const { data: bots, isLoading: isLoadingBots } = useCollection(botsCollectionRef);
-
+  const { realUsers, bots } = useMemo(() => {
+    if (!allUsers) return { realUsers: [], bots: [] };
+    const realUsers = allUsers.filter(user => user.isBot !== true);
+    const bots = allUsers.filter(user => user.isBot === true);
+    return { realUsers, bots };
+  }, [allUsers]);
 
   const matchesCollectionRef = useMemoFirebase(
     () => (firestore ? collection(firestore, 'matches') : null),
@@ -42,7 +43,7 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
-                {isLoadingUsers ? <Icons.logo className="h-6 w-6 animate-pulse" /> : users?.length ?? 0}
+                {isLoadingUsers ? <Icons.logo className="h-6 w-6 animate-pulse" /> : realUsers?.length ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
                 Sistemdeki toplam gerçek kullanıcı sayısı.
@@ -58,7 +59,7 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
-                {isLoadingBots ? <Icons.logo className="h-6 w-6 animate-pulse" /> : bots?.length ?? 0}
+                {isLoadingUsers ? <Icons.logo className="h-6 w-6 animate-pulse" /> : bots?.length ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
                 Sistemdeki toplam bot kullanıcı sayısı.
