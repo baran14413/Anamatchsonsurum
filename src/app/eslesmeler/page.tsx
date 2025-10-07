@@ -67,6 +67,7 @@ export default function EslesmelerPage() {
               timestamp: serverTimestamp(),
               fullName: 'BeMatch - Sistem Mesajları',
               profilePicture: '',
+              hasUnreadSystemMessage: false,
           }, { merge: true });
       }
 
@@ -209,7 +210,7 @@ export default function EslesmelerPage() {
                                 const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
                                 const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
                                 const isSystemChat = match.id === 'system';
-                                const hasUnread = match.unreadCount && match.unreadCount > 0;
+                                const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
 
                                 const MatchItemContent = () => (

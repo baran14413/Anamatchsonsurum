@@ -98,6 +98,19 @@ export type Post = {
   timestamp: Date;
 };
 
+export interface SystemMessage {
+    id: string;
+    createdAt: any;
+    sentTo: string[];
+    seenBy: string[];
+    type: 'text' | 'poll';
+    text: string | null;
+    pollQuestion: string | null;
+    pollOptions: string[] | null;
+    pollResults: { [key: string]: number } | null;
+    votedBy?: string[]; // Tracks which UIDs have voted on this poll
+}
+
 export type ChatMessage = {
   id: string;
   matchId: string;
@@ -109,14 +122,19 @@ export type ChatMessage = {
   viewed?: boolean;
   audioUrl?: string;
   audioDuration?: number;
-  timestamp: any; 
+  createdAt?: any; // Use createdAt to align with SystemMessage
+  timestamp?: any; // Keep for backward compatibility if needed
   isRead: boolean;
   readTimestamp?: any;
-  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed';
+  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed' | 'poll';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
   isEdited?: boolean;
   editedAt?: any;
+  pollQuestion?: string;
+  pollOptions?: string[];
+  pollResults?: { [key: string]: number };
+  votedBy?: string[];
 };
 
 export interface DenormalizedMatch {
@@ -130,5 +148,7 @@ export interface DenormalizedMatch {
     status?: 'pending' | 'matched' | 'superlike_pending';
     superLikeInitiator?: string;
     unreadCount?: number;
+    lastSystemMessageId?: string;
+    hasUnreadSystemMessage?: boolean;
 }
     

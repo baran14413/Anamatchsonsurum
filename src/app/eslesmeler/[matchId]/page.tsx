@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup, arrayUnion } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, M
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { ChatMessage, UserProfile, DenormalizedMatch } from '@/lib/types';
+import type { ChatMessage, UserProfile, DenormalizedMatch, SystemMessage } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -113,11 +113,7 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    const [buttonStates, setButtonStates] = useState({
-        gold: { loading: false, cooldown: 0 },
-        rules: { loading: false, cooldown: 0 },
-        clear: { loading: false },
-    });
+    const [votedPolls, setVotedPolls] = useState<{[key: string]: string}>({});
 
     const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -140,37 +136,12 @@ export default function ChatPage() {
     const isSystemChat = matchId === 'system';
     const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
     
-    // Cooldown timer effect
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setButtonStates(prev => ({
-                ...prev,
-                gold: { ...prev.gold, cooldown: Math.max(0, prev.gold.cooldown - 1) },
-                rules: { ...prev.rules, cooldown: Math.max(0, prev.rules.cooldown - 1) },
-            }));
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
-
     const messagesQuery = useMemoFirebase(() => {
-        // For system chat, we don't query Firestore. Messages are handled in local state.
-        if (!user || !firestore || isSystemChat) return null;
-        const collectionPath = `matches/${matchId}/messages`;
-        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
+        if (!user || !firestore) return null;
+        const collectionPath = isSystemChat ? `system_messages` : `matches/${matchId}/messages`;
+        return query(collection(firestore, collectionPath), orderBy('createdAt', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
-    const initialSystemMessage: ChatMessage = {
-        id: 'welcome_message',
-        matchId: 'system',
-        senderId: 'system',
-        text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
-        timestamp: new Date(),
-        isRead: true,
-    };
-
-    // State for client-side system messages
-    const [systemMessages, setSystemMessages] = useState<ChatMessage[]>([initialSystemMessage]);
 
     const otherUserDocRef = useMemoFirebase(() => {
         if (!otherUserId || !firestore) return null;
@@ -181,35 +152,41 @@ export default function ChatPage() {
         if (!user || !firestore || isSystemChat) return null;
         return doc(firestore, `users/${user.uid}/matches`, matchId);
     }, [user, firestore, isSystemChat, matchId]);
+    
 
-    // Combined listener for all data
+    // Effect for reading chat/system messages and user data
     useEffect(() => {
         const unsubs: (()=>void)[] = [];
         
-        if (isSystemChat) {
-            setMessages(systemMessages);
-            setIsLoading(false);
-            return;
-        }
-
+        // Listen for the other user's profile if it's a normal chat
         if (otherUserDocRef) {
             const unsub = onSnapshot(otherUserDocRef, (doc) => {
                 setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id, id: doc.id } as UserProfile : null);
             });
             unsubs.push(unsub);
-        } else {
+        } else if (!isSystemChat) {
             setOtherUser(null);
         }
 
+        // Listen for the denormalized match data for this user
         if (matchDataDocRef) {
             const unsub = onSnapshot(matchDataDocRef, (doc) => {
-                setMatchData(doc.exists() ? doc.data() as DenormalizedMatch : null);
+                const data = doc.exists() ? doc.data() as DenormalizedMatch : null;
+                setMatchData(data);
+                // Mark message as seen when match data is loaded
+                if (data?.lastSystemMessageId && user?.uid) {
+                    const centralMessageRef = doc(firestore, 'system_messages', data.lastSystemMessageId);
+                    updateDoc(centralMessageRef, {
+                        seenBy: arrayUnion(user.uid)
+                    }).catch(err => console.log("Already marked as seen or error:", err)); // Silently fail
+                }
             });
             unsubs.push(unsub);
-        } else {
+        } else if (!isSystemChat) {
             setMatchData(null);
         }
 
+        // Listen for messages
         if (messagesQuery) {
             setIsLoading(true);
             const unsub = onSnapshot(messagesQuery, (snapshot) => {
@@ -227,7 +204,7 @@ export default function ChatPage() {
         
         return () => unsubs.forEach(unsub => unsub());
 
-    }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat, systemMessages]);
+    }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat, user, firestore]);
 
 
     // Effect to mark messages as read and reset unread count
@@ -238,37 +215,67 @@ export default function ChatPage() {
              // 1. Reset unread count on the user's denormalized match document
             const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
             getDoc(userMatchRef).then(userMatchSnap => {
-                if (userMatchSnap.exists() && userMatchSnap.data().unreadCount > 0) {
-                    updateDoc(userMatchRef, { unreadCount: 0 });
+                if (userMatchSnap.exists() && (userMatchSnap.data().unreadCount > 0 || userMatchSnap.data().hasUnreadSystemMessage)) {
+                    const updateData: {unreadCount?: number, hasUnreadSystemMessage?: boolean} = {};
+                    if (userMatchSnap.data().unreadCount > 0) updateData.unreadCount = 0;
+                    if (userMatchSnap.data().hasUnreadSystemMessage) updateData.hasUnreadSystemMessage = false;
+                    updateDoc(userMatchRef, updateData);
                 }
             });
 
-            // 2. Mark individual messages as read
-            const unreadMessagesQuery = query(
-                collection(firestore, `matches/${matchId}/messages`), 
-                where('senderId', '!=', user.uid), 
-                where('isRead', '==', false)
-            );
-            getDocs(unreadMessagesQuery).then(unreadSnapshot => {
-                if (unreadSnapshot.empty) return;
-                
-                const batch = writeBatch(firestore);
-                unreadSnapshot.forEach(msgDoc => {
-                    batch.update(msgDoc.ref, { 
-                        isRead: true,
-                        readTimestamp: serverTimestamp()
+            // 2. Mark individual messages as read (for user-to-user chat)
+            if (!isSystemChat) {
+                const unreadMessagesQuery = query(
+                    collection(firestore, `matches/${matchId}/messages`), 
+                    where('senderId', '!=', user.uid), 
+                    where('isRead', '==', false)
+                );
+                getDocs(unreadMessagesQuery).then(unreadSnapshot => {
+                    if (unreadSnapshot.empty) return;
+                    
+                    const batch = writeBatch(firestore);
+                    unreadSnapshot.forEach(msgDoc => {
+                        batch.update(msgDoc.ref, { 
+                            isRead: true,
+                            readTimestamp: serverTimestamp()
+                        });
                     });
+                    batch.commit();
                 });
-                batch.commit();
-            });
+            }
         };
 
         markAsRead();
-    }, [messages, firestore, user, matchId, isSystemChat]); // Reruns when messages change
+    }, [messages, firestore, user, matchId, isSystemChat]); 
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+    
+    const handleVoteOnPoll = async (messageId: string, option: string) => {
+      if (!user || !firestore || votedPolls[messageId]) return;
+
+      const messageRef = doc(firestore, 'system_messages', messageId);
+
+      try {
+          // Use dot notation to increment a specific field in a map
+          await updateDoc(messageRef, {
+              [`pollResults.${option}`]: increment(1),
+              // Also record that this user has voted on this poll
+              votedBy: arrayUnion(user.uid)
+          });
+          setVotedPolls(prev => ({...prev, [messageId]: option}));
+          toast({ title: 'Oyunuz Kaydedildi', description: `"${option}" seçeneğine oy verdiniz.` });
+      } catch (error: any) {
+          console.error("Error voting on poll:", error);
+          if (error.code === 'permission-denied') {
+              toast({ title: 'Hata', description: 'Bu ankete zaten oy vermiş olabilirsiniz.', variant: 'destructive' });
+          } else {
+              toast({ title: 'Hata', description: 'Oy verilirken bir sorun oluştu.', variant: 'destructive' });
+          }
+      }
+    };
+
 
     const handleSendMessage = useCallback(async (
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
@@ -296,7 +303,7 @@ export default function ChatPage() {
         const messageData: Partial<ChatMessage> = {
             matchId: matchId,
             senderId: user.uid,
-            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
             isRead: false,
             type: content.type || 'user'
         };
@@ -713,83 +720,6 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
     
-    const addSystemMessage = (text: string) => {
-        const newMessage: ChatMessage = {
-            id: `system_${Date.now()}`,
-            matchId: 'system',
-            senderId: 'system',
-            text,
-            timestamp: new Date(),
-            isRead: true,
-        };
-        setSystemMessages(prev => [...prev, newMessage]);
-    };
-
-    const triggerSystemAction = (action: 'gold' | 'rules', actionFn: () => void) => {
-        if (buttonStates[action].cooldown > 0) {
-            toast({
-                title: "Lütfen Bekleyin",
-                description: `Bu işlemi tekrar yapmak için ${buttonStates[action].cooldown} saniye beklemelisiniz.`,
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        setButtonStates(prev => ({
-            ...prev,
-            [action]: { ...prev[action], loading: true }
-        }));
-        
-        actionFn();
-
-        setTimeout(() => {
-            setButtonStates(prev => ({
-                ...prev,
-                [action]: { loading: false, cooldown: 60 }
-            }));
-        }, 1000);
-    }
-
-    const handleCheckGoldStatus = () => {
-        if (!userProfile) return;
-        
-        let systemMessageText = "";
-
-        if (userProfile.membershipType === 'gold' && userProfile.goldMembershipExpiresAt) {
-            const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
-            systemMessageText = `Tebrikler, siz bir Gold üyesiniz! Üyeliğiniz ${format(expiryDate, 'd MMMM yyyy', { locale: tr })} tarihinde sona erecektir.`;
-        } else {
-            systemMessageText = "Henüz Gold üye değilsiniz. Premium özelliklerden faydalanmak ve BeMatch deneyiminizi zirveye taşımak için üyeliğinizi şimdi yükseltebilirsiniz.";
-        }
-        
-        addSystemMessage(systemMessageText);
-    };
-    
-    const handleSendRulesMessage = () => {
-        const rulesText = `
-        Topluluk Kurallarımız:
-        • 👤 **Kendin ol:** Fotoğraflarının, yaşının ve biyografinin gerçeği yansıttığından emin ol.
-        • ❤️ **Nazik ol:** Diğer kullanıcılara saygı göster ve sana nasıl davranılmasını istiyorsan onlara da öyle davran.
-        • 🛡️ **Dikkatli ol:** Kişisel bilgilerini paylaşmadan önce iyi düşün. Güvenliğin bizim için önemli.
-        • ✅ **Proaktif ol:** Topluluğumuzu güvende tutmak için uygunsuz davranışları mutlaka bize bildir.
-        
-        Kurallarımıza gösterdiğin özen için teşekkür ederiz. Keyifli eşleşmeler! ✨
-        `;
-        
-        addSystemMessage(rulesText.trim());
-    };
-
-    const handleClearSystemMessages = () => {
-        setButtonStates(prev => ({...prev, clear: { loading: true }}));
-        setTimeout(() => {
-             setSystemMessages([initialSystemMessage]);
-             toast({
-                title: 'Sohbet Temizlendi',
-                description: 'Sistem mesajları geçmişiniz başarıyla silindi.',
-            });
-            setButtonStates(prev => ({...prev, clear: { loading: false }}));
-        }, 500);
-    }
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
@@ -840,27 +770,7 @@ export default function ChatPage() {
                     ))}
                 </div>
                  {isSystemChat ? (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" disabled={buttonStates.clear.loading}>
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Tüm Sistem Mesajlarını Sil</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Bu işlem geri alınamaz. Tüm sistem mesajları ve duyurular kalıcı olarak silinecektir. Emin misiniz?
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleClearSystemMessages} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                                     {buttonStates.clear.loading ? <Icons.logo className="h-4 w-4 animate-pulse" /> : "Evet, Sil"}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="w-9 h-9"></div>
                  ) : (
                     <AlertDialog>
                         <DropdownMenu>
@@ -900,7 +810,7 @@ export default function ChatPage() {
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
-                        const isSystem = message.senderId === 'system';
+                        const isSystem = message.senderId === 'system' || message.type === 'poll';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
                         if (message.type === 'system_superlike_prompt' && !message.actionTaken && isSuperLikePendingAndIsRecipient) {
@@ -915,21 +825,44 @@ export default function ChatPage() {
                         }
 
                         if (isSystem) {
+                             const poll = message as SystemMessage;
+                             const isVoted = poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id];
+                             const myVote = isVoted ? (votedPolls[poll.id] || 'voted') : null;
+                             const totalVotes = poll.pollResults ? Object.values(poll.pollResults).reduce((s, c) => s + c, 0) : 0;
+                             
                              return (
                                 <div key={message.id}>
-                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
                                      <div className={cn("flex items-end gap-2 group justify-start")}>
                                          <Avatar className="h-8 w-8 self-end mb-1">
                                             <Icons.bmIcon className="h-full w-full" />
                                         </Avatar>
-                                        <div
-                                            className={cn(
-                                                "max-w-[70%] rounded-2xl flex flex-col items-end",
-                                                "bg-muted rounded-bl-none",
-                                                'px-3 py-2'
-                                            )}
-                                        >
-                                          <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
+                                        <div className="max-w-[70%] rounded-2xl flex flex-col items-start bg-muted rounded-bl-none p-3 space-y-3">
+                                          {poll.type === 'poll' ? (
+                                              <>
+                                                  <p className='break-words font-semibold text-left w-full'>{poll.pollQuestion}</p>
+                                                  <div className='w-full space-y-2'>
+                                                      {poll.pollOptions?.map(option => {
+                                                        const votes = poll.pollResults?.[option] || 0;
+                                                        const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+                                                        return (
+                                                            <Button 
+                                                              key={option}
+                                                              variant={myVote === option ? 'default' : 'secondary'}
+                                                              className={cn("w-full justify-between h-auto text-wrap py-2", isVoted && "cursor-default")}
+                                                              onClick={() => !isVoted && handleVoteOnPoll(poll.id, option)}
+                                                              disabled={isVoted}
+                                                            >
+                                                                <span>{option}</span>
+                                                                {isVoted && <span className='font-bold'>{percentage.toFixed(0)}%</span>}
+                                                            </Button>
+                                                        )
+                                                      })}
+                                                  </div>
+                                              </>
+                                          ) : (
+                                            <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
+                                          )}
                                         </div>
                                     </div>
                                 </div>
@@ -939,7 +872,7 @@ export default function ChatPage() {
                          if (message.type === 'view-once-viewed') {
                              return (
                                 <div key={message.id}>
-                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
                                     <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                         {!isSender && (
                                             <Avatar className="h-8 w-8 self-end mb-1">
@@ -957,7 +890,7 @@ export default function ChatPage() {
                                             <span>Açıldı</span>
                                         </div>
                                          <div className="flex items-center gap-1.5 self-end">
-                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.createdAt?.toDate ? format(message.createdAt.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
@@ -968,7 +901,7 @@ export default function ChatPage() {
 
                         return (
                             <div key={message.id}>
-                                {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                {renderTimestampLabel(message.createdAt, prevMessage?.createdAt)}
                                 <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                      {!isSender && (
                                         <Avatar className="h-8 w-8 self-end mb-1">
@@ -1018,7 +951,7 @@ export default function ChatPage() {
                                         )}
                                         <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
-                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.createdAt?.toDate ? format(message.createdAt.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
@@ -1098,32 +1031,13 @@ export default function ChatPage() {
                  
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </footer>
-            ) : isSystemChat ? (
-                <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                    <div className="flex items-center gap-2 rounded-xl bg-muted p-2">
-                        <Button 
-                            onClick={() => triggerSystemAction('gold', handleCheckGoldStatus)} 
-                            variant="outline"
-                            className="flex-1 bg-background"
-                            disabled={buttonStates.gold.loading || buttonStates.gold.cooldown > 0}
-                        >
-                             {buttonStates.gold.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <Gem className="mr-2 h-4 w-4" />}
-                             {buttonStates.gold.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.gold.cooldown})` : "Gold Sorgula"}
-                        </Button>
-                         <Button 
-                            onClick={() => triggerSystemAction('rules', handleSendRulesMessage)} 
-                            variant="outline" 
-                            className="flex-1 bg-background"
-                            disabled={buttonStates.rules.loading || buttonStates.rules.cooldown > 0}
-                        >
-                            {buttonStates.rules.loading ? <Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> : <FileText className="mr-2 h-4 w-4" />}
-                             {buttonStates.rules.cooldown > 0 ? `Lütfen Bekleyin (${buttonStates.rules.cooldown})` : "Kuralları Gönder"}
-                        </Button>
-                    </div>
-                </footer>
             ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
+                </div>
+            ) : isSystemChat ? (
+                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
+                    Sistem mesajlarına yanıt veremezsiniz.
                 </div>
             ) : (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
