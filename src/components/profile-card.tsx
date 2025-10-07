@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
@@ -65,7 +65,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
+const ProfileCard = memo(function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -426,4 +426,8 @@ export default function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCa
     </div>
 </motion.div>
   );
-}
+});
+
+export default ProfileCard;
+
+    
