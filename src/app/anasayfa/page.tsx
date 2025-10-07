@@ -464,36 +464,12 @@ export default function AnasayfaPage() {
                         const scale = isTopCard ? 1 : 0.95;
 
                         return (
-                            <motion.div
+                            <ProfileCard
                                 key={profile.uid}
-                                className="absolute w-full h-full"
-                                style={{
-                                    scale: scale,
-                                    y: y,
-                                }}
-                                initial={{
-                                    opacity: 0,
-                                    scale: 0.95,
-                                    y: -10,
-                                }}
-                                animate={{
-                                    opacity: 1,
-                                    scale: scale,
-                                    y: y,
-                                }}
-                                transition={{
-                                    type: 'spring',
-                                    stiffness: 300,
-                                    damping: 30,
-                                }}
-                                drag={isTopCard}
+                                profile={profile}
+                                isDraggable={isTopCard}
                                 onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
-                            >
-                                <ProfileCard
-                                    profile={profile}
-                                    isDraggable={isTopCard}
-                                />
-                            </motion.div>
+                            />
                         );
                     })}
                 </div>

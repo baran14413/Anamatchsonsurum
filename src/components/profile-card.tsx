@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -20,6 +20,7 @@ import { Icons } from './icons';
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isDraggable?: boolean;
+  onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -61,7 +62,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isDraggable = false }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -171,13 +172,14 @@ const ProfileCardComponent = ({ profile, isDraggable = false }: ProfileCardProps
   return (
     <motion.div
         className={cn(
-            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+            "absolute w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
         style={{ x, y, rotate }}
         drag={isDraggable}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.5}
+        onDragEnd={onDragEnd}
     >
         <div className='absolute inset-0'>
             {currentImage?.url && (
