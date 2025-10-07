@@ -423,7 +423,7 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative h-full w-full flex flex-col items-center justify-start pt-4 overflow-hidden">
+        <div className="transform-gpu relative h-full w-full flex flex-col items-center justify-start overflow-hidden">
         {isLoading ? (
             <div className="flex h-full items-center justify-center">
                 <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -447,7 +447,7 @@ export default function AnasayfaPage() {
                     <motion.div
                     key={profile.uid}
                     className={cn(
-                        "absolute w-full h-full transform-gpu",
+                        "transform-gpu absolute w-full h-full",
                         !isTopCard && "blur-sm"
                     )}
                     style={{
