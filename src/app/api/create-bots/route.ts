@@ -46,6 +46,10 @@ const getRandomLocation = () => {
 };
 
 export async function POST(req: NextRequest) {
+    if (!db || !adminAuth) {
+        return NextResponse.json({ error: 'Veritabanı veya kimlik doğrulama hizmeti başlatılamadı.' }, { status: 500 });
+    }
+
     try {
         const { count, gender: requestedGender } = await req.json();
 
@@ -108,6 +112,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Bot oluşturma hatası:", error);
-        return NextResponse.json({ error: `Botlar oluşturulurken bir hata oluştu: ${error.message || String(error)}` }, { status: 500 });
+        return NextResponse.json({ error: `Botlar oluşturulurken bir hata oluştu: ${error.message || 'Bilinmeyen sunucu hatası.'}` }, { status: 500 });
     }
 }
