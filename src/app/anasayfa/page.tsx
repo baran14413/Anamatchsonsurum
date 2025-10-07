@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -69,10 +69,12 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         updateData.matchDate = serverTimestamp();
         
         const batch = writeBatch(db);
+        const matchId = matchDocRef.id;
+
         createMatch(
             batch, db, currentUser.uid, swipedUser.uid,
-            { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched', unreadCount: 1 },
-            { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
+            { id: matchId, matchedWith: swipedUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', status: 'matched', unreadCount: 1 },
+            { id: matchId, matchedWith: currentUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' }
         );
         batch.set(matchDocRef, updateData, { merge: true });
 
@@ -81,18 +83,18 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
         setTimeout(() => {
             if (!db) return;
             const botGreeting = getRandomGreeting();
-            const messageRef = collection(db, `matches/${matchDocRef.id}/messages`);
+            const messageRef = collection(db, `matches/${matchId}/messages`);
             addDoc(messageRef, {
-                matchId: matchDocRef.id,
+                matchId: matchId,
                 senderId: swipedUser.uid,
                 text: botGreeting,
                 timestamp: serverTimestamp(),
                 isRead: false,
                 type: 'user',
             });
-            const userMatchRef = doc(db, `users/${currentUser.uid}/matches/${matchDocRef.id}`);
+            const userMatchRef = doc(db, `users/${currentUser.uid}/matches/${matchId}`);
             updateDoc(userMatchRef, { lastMessage: botGreeting, unreadCount: increment(1) });
-            const botMatchRef = doc(db, `users/${swipedUser.uid}/matches/${matchDocRef.id}`);
+            const botMatchRef = doc(db, `users/${swipedUser.uid}/matches/${matchId}`);
             updateDoc(botMatchRef, { lastMessage: botGreeting });
         }, 10000); 
 
@@ -146,7 +148,7 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
     
     const batch = writeBatch(db);
 
-    const currentUserMatchData = { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0]?.url || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
+    const currentUserMatchData = { id: matchDocRef.id, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.images?.[0] || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
     const swipedUserMatchData = { id: matchDocRef.id, matchedWith: currentUser.uid, lastMessage: `${currentUser.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
     
     createMatch(batch, db, currentUser.uid, swipedUser.uid, currentUserMatchData, swipedUserMatchData);
@@ -182,6 +184,7 @@ export default function AnasayfaPage() {
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
+  const [dragEnd, setDragEnd] = useState<{x:number, y:number}>({x:0, y:0});
 
   const removeTopCard = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     setProfiles(prevProfiles => {
@@ -246,6 +249,20 @@ export default function AnasayfaPage() {
         });
     }
  }, [user, firestore, t, toast, userProfile, removeTopCard]);
+ 
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile) => {
+    const SWIPE_THRESHOLD = 80;
+    if (info.offset.y < -SWIPE_THRESHOLD) {
+      setDragEnd({ x: 0, y: -300 });
+      handleSwipe(profile, 'superliked');
+    } else if (info.offset.x > SWIPE_THRESHOLD) {
+      setDragEnd({ x: 300, y: 0 });
+      handleSwipe(profile, 'liked');
+    } else if (info.offset.x < -SWIPE_THRESHOLD) {
+      setDragEnd({ x: -300, y: 0 });
+      handleSwipe(profile, 'disliked');
+    }
+  };
 
 
   const handleUndo = async () => {
@@ -447,7 +464,6 @@ export default function AnasayfaPage() {
                      <AnimatePresence>
                         {profiles.map((profile, index) => {
                             const isTopCard = index === profiles.length - 1;
-                            const isSecondCard = index === profiles.length - 2;
 
                             if (index < profiles.length - 2) return null;
 
@@ -456,13 +472,13 @@ export default function AnasayfaPage() {
                                     key={profile.uid}
                                     className="absolute w-full h-full"
                                     initial={{
-                                        scale: isTopCard ? 1 : 0.95,
-                                        y: isTopCard ? 0 : -20,
-                                        opacity: isTopCard ? 1 : 0.8,
+                                        scale: 1,
+                                        y: 0,
+                                        opacity: 1,
                                     }}
                                     animate={{
-                                        scale: 1,
-                                        y: (profiles.length - 1 - index) * -10, // Stacking effect
+                                        scale: isTopCard ? 1 : 0.95,
+                                        y: isTopCard ? 0 : -10, // Stacking effect
                                         opacity: 1,
                                     }}
                                     transition={{
@@ -470,11 +486,21 @@ export default function AnasayfaPage() {
                                         stiffness: 300,
                                         damping: 30,
                                     }}
+                                    drag={isTopCard}
+                                    dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                                    dragElastic={0.5}
+                                    onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
+                                    exit={{ 
+                                        x: dragEnd.x,
+                                        y: dragEnd.y,
+                                        opacity: 0,
+                                        scale: 0.8,
+                                        transition: { duration: 0.4, ease: 'easeIn' }
+                                    }}
                                 >
                                     <ProfileCard
                                         profile={profile}
-                                        onSwipe={(action) => handleSwipe(profile, action)}
-                                        isDraggable={isTopCard}
+                                        isBlurred={!isTopCard}
                                     />
                                 </motion.div>
                             );
