@@ -259,7 +259,7 @@ export default function ChatPage() {
         if (editingMessage) {
             if (!newMessage.trim()) return;
             const messageRef = doc(firestore, `matches/${matchId}/messages`, editingMessage.id);
-            updateDoc(messageRef, {
+            await updateDoc(messageRef, {
                 text: newMessage.trim(),
                 isEdited: true,
                 editedAt: serverTimestamp()
@@ -319,21 +319,6 @@ export default function ChatPage() {
         
         await batch.commit();
 
-        if (otherUser.isBot) {
-            try {
-                const messageForWebhook = { id: messageDocRef.id, ...messageData, timestamp: new Date().toISOString() };
-                await fetch('/api/message-webhook', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
-                    },
-                    body: JSON.stringify({ matchId, message: messageForWebhook })
-                });
-            } catch (error) {
-                console.error("Error triggering bot reply webhook:", error);
-            }
-        }
     }, [user, firestore, isSystemChat, otherUserId, otherUser, matchId, newMessage, editingMessage]);
 
     const handleFormSubmit = useCallback((e: React.FormEvent) => {
