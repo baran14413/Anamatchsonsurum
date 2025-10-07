@@ -187,7 +187,7 @@ export default function EslesmelerPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden">
         {(matches.length === 0 && !isLoading) ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />

@@ -105,7 +105,7 @@ export default function ProfilePage() {
 
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
+    <div className="flex-1 overflow-y-auto">
       <div className="container mx-auto max-w-2xl p-4 space-y-6">
 
         {/* Profile Header */}

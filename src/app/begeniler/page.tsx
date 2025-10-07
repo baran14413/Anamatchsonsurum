@@ -169,7 +169,7 @@ export default function BegenilerPage() {
     
     return (
         <AlertDialog>
-            <div className="flex-1 flex flex-col bg-gray-50 dark:bg-black overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="sticky top-0 z-10 p-4 border-b flex items-center justify-center shrink-0 bg-background">
                     <h1 className="text-xl font-bold">{t.begeniler.title} ({likers.length})</h1>
                 </header>

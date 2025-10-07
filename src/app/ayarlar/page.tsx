@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/firebase';
@@ -50,7 +51,7 @@ export default function SettingsPage() {
     const t = langTr;
 
     return (
-        <div className="flex h-dvh flex-col bg-gray-50 dark:bg-black">
+        <div className="flex h-dvh flex-col">
              <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />

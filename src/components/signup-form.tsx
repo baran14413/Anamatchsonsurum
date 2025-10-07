@@ -762,5 +762,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
