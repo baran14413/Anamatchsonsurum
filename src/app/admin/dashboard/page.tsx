@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Heart, MessageSquare, Trash2, AlertTriangle, Send } from 'lucide-react';
+import { Users, Heart, MessageSquare, Trash2, AlertTriangle, Send, Bot } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
@@ -11,6 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
@@ -18,6 +21,9 @@ export default function AdminDashboardPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [isCreatingBots, setIsCreatingBots] = useState(false);
+  const [botCount, setBotCount] = useState(10);
+  const [botGender, setBotGender] = useState('mixed');
 
 
   const usersCollectionRef = useMemoFirebase(
@@ -109,6 +115,45 @@ export default function AdminDashboardPage() {
         setIsBroadcasting(false);
     }
   };
+  
+    const handleCreateBots = async () => {
+    if (botCount <= 0) {
+        toast({
+            title: 'Hata',
+            description: 'Bot sayısı 0\'dan büyük olmalıdır.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    setIsCreatingBots(true);
+    try {
+        const response = await fetch('/api/create-bots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count: botCount, gender: botGender }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Botlar oluşturulamadı.');
+        }
+
+        const result = await response.json();
+        toast({
+            title: 'Botlar Oluşturuldu',
+            description: `${result.createdCount} adet yeni bot başarıyla oluşturuldu.`,
+        });
+
+    } catch (error: any) {
+        toast({
+            title: 'Hata',
+            description: error.message,
+            variant: 'destructive',
+        });
+    } finally {
+        setIsCreatingBots(false);
+    }
+  };
 
 
   return (
@@ -164,8 +209,7 @@ export default function AdminDashboardPage() {
             </Card>
         </div>
 
-        <div className="pt-4">
-             <h2 className='text-xl font-bold mb-2'>Kullanıcı Yönetimi</h2>
+        <div className="pt-4 grid md:grid-cols-2 gap-6">
              <Card>
                  <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -192,6 +236,57 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardContent>
              </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Bot className="h-5 w-5" />
+                        Bot Yönetimi
+                    </CardTitle>
+                    <CardDescription>
+                        Uygulamaya test veya başlangıç amacıyla sahte kullanıcı profilleri (bot) ekleyin.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div className="flex items-center gap-4">
+                        <div className="space-y-2 flex-1">
+                            <Label htmlFor="bot-count">Bot Sayısı</Label>
+                            <Input 
+                                id="bot-count"
+                                type="number"
+                                value={botCount}
+                                onChange={(e) => setBotCount(parseInt(e.target.value))}
+                                min="1"
+                                max="100"
+                                disabled={isCreatingBots}
+                             />
+                        </div>
+                         <div className="space-y-2 flex-1">
+                            <Label htmlFor="bot-gender">Cinsiyet</Label>
+                            <Select 
+                                value={botGender}
+                                onValueChange={setBotGender}
+                                disabled={isCreatingBots}
+                            >
+                                <SelectTrigger id="bot-gender">
+                                    <SelectValue placeholder="Seçiniz..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="mixed">Karışık</SelectItem>
+                                    <SelectItem value="female">Kadın</SelectItem>
+                                    <SelectItem value="male">Erkek</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                     <Button onClick={handleCreateBots} disabled={isCreatingBots}>
+                        {isCreatingBots ? (
+                            <><Icons.logo className='h-4 w-4 animate-pulse mr-2'/> Oluşturuluyor...</>
+                        ) : (
+                            <><Bot className='mr-2 h-4 w-4'/> Botları Oluştur</>
+                        )}
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
 
         <div className="pt-8">
