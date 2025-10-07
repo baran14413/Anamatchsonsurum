@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
-import type { UserProfile, UserImage } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown, HeartCrack } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
@@ -69,7 +69,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   useEffect(() => {
     setActiveImageIndex(0);
   }, [profile.uid]);
-
+  
   const likeOpacity = useTransform(x, [50, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, -50], [1, 0]);
   const superlikeOpacity = useTransform(y, [-100, -50], [1, 0]);
