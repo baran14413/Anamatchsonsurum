@@ -11,7 +11,7 @@ export default function AdminDashboardPage() {
   const firestore = useFirestore();
 
   const usersCollectionRef = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'users'), where('isBot', '!=', true)) : null),
+    () => (firestore ? query(collection(firestore, 'users'), where('isBot', 'not-in', [true])) : null),
     [firestore]
   );
   const { data: users, isLoading: isLoadingUsers } = useCollection(usersCollectionRef);
