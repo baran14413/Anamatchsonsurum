@@ -65,7 +65,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = memo(function ProfileCard({ profile, onSwipe, isDraggable }: ProfileCardProps) {
+const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -426,7 +426,10 @@ const ProfileCard = memo(function ProfileCard({ profile, onSwipe, isDraggable }:
     </div>
 </motion.div>
   );
-});
+};
+
+const ProfileCard = memo(ProfileCardComponent);
+ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
 
