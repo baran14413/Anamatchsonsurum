@@ -54,14 +54,6 @@ input, textarea {
     --input: 240 5.9% 90%;
     --ring: 346.8 77.2% 49.8%;
     --radius: 0.5rem;
-
-    /* Sidebar Variables */
-    --sidebar-background: 0 0% 100%; /* White */
-    --sidebar-foreground: 240 10% 3.9%; /* Same as default foreground */
-    --sidebar-border: 240 5.9% 90%; /* Same as default border */
-    --sidebar-accent: 240 4.8% 95.9%; /* Same as default accent */
-    --sidebar-accent-foreground: 240 5.9% 10%; /* Same as default accent-foreground */
-    --sidebar-ring: 346.8 77.2% 49.8%; /* Same as default ring */
   }
   .dark {
     --background: 240 10% 3.9%;
@@ -83,14 +75,6 @@ input, textarea {
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 348 70.3% 47.5%;
-     
-    /* Dark Sidebar Variables */
-    --sidebar-background: 0 0% 100%; /* White */
-    --sidebar-foreground: 240 10% 3.9%; /* Same as default foreground */
-    --sidebar-border: 240 5.9% 90%; /* Same as default border */
-    --sidebar-accent: 240 4.8% 95.9%; /* Same as default accent */
-    --sidebar-accent-foreground: 240 5.9% 10%; /* Same as default accent-foreground */
-    --sidebar-ring: 346.8 77.2% 49.8%; /* Same as default ring */
   }
 }
 
@@ -101,17 +85,30 @@ input, textarea {
   body {
     @apply bg-background text-foreground;
   }
+}
 
-  @keyframes gold-shimmer {
-    0%, 100% {
-      box-shadow: 0 0 6px 2px rgba(250, 204, 21, 0.7);
-    }
-    50% {
-      box-shadow: 0 0 14px 5px rgba(250, 204, 21, 0.4);
-    }
+@layer utilities {
+  .animated-gradient-bg {
+    background: linear-gradient(
+      -45deg,
+      #000000,
+      #dc2626,
+      #000000,
+      #7f1d1d
+    );
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
   }
 
-  .animate-gold-shimmer {
-    animation: gold-shimmer 2.5s infinite ease-in-out;
+  @keyframes gradient-animation {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
   }
 }
