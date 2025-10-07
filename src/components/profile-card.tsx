@@ -22,6 +22,7 @@ interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   onSwipe?: (action: 'liked' | 'disliked' | 'superliked') => void;
   isDraggable: boolean;
+  isTopCard: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -65,7 +66,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isTopCard }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -87,17 +88,12 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
     if (!onSwipe || !isDraggable) return;
 
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      handleAction('superliked');
+      onSwipe('superliked');
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      handleAction('liked');
+      onSwipe('liked');
     } else if (info.offset.x < -SWIPE_THRESHOLD) {
-      handleAction('disliked');
+      onSwipe('disliked');
     }
-  };
-
-  const handleAction = (action: 'liked' | 'disliked' | 'superliked') => {
-    if (!onSwipe || !isDraggable) return;
-    onSwipe(action);
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
@@ -200,15 +196,29 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
 
   return (
     <motion.div 
-        className={`w-full h-full transform-gpu ${isDraggable ? 'cursor-grab' : 'cursor-default'}`}
-        {...motionProps}
+        className={cn(
+            "transform-gpu absolute w-full h-full",
+            isDraggable ? 'cursor-grab' : 'cursor-default',
+            !isTopCard && "blur-sm"
+        )}
+        initial={{ 
+            scale: isTopCard ? 1 : 0.95, 
+            y: isTopCard ? 0 : 10,
+        }}
+        animate={{ 
+            scale: 1, 
+            y: 0, 
+            opacity: 1, 
+            transition: { duration: 0.3, ease: 'easeOut' }
+        }}
         exit={{ 
             x: x.get() > 0 ? 300 : -300,
-            y: y.get() < 0 ? -300 : 0,
+            y: y.get() < -80 ? -300 : 0,
             opacity: 0,
             scale: 0.8,
-            transition: { duration: 0.3, ease: 'easeIn' }
+            transition: { duration: 0.4, ease: 'easeIn' }
         }}
+        {...motionProps}
     >
         <div
             className={cn(
@@ -432,5 +442,3 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
-
-    

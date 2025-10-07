@@ -11,7 +11,7 @@ import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp,
 import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
@@ -444,32 +444,13 @@ export default function AnasayfaPage() {
                 if (index < profiles.length - 2) return null;
 
                 return (
-                    <motion.div
-                    key={profile.uid}
-                    className={cn(
-                        "transform-gpu absolute w-full h-full",
-                        !isTopCard && "blur-sm"
-                    )}
-                    style={{
-                        zIndex: index,
-                    }}
-                    initial={{ 
-                        scale: isTopCard ? 1 : 0.95, 
-                        y: isTopCard ? 0 : 10,
-                    }}
-                    animate={{ 
-                        scale: 1, 
-                        y: 0, 
-                        opacity: 1, 
-                        transition: { duration: 0.3, ease: 'easeOut' }
-                    }}
-                    >
                     <ProfileCard
+                        key={profile.uid}
                         profile={profile}
                         onSwipe={(action) => handleSwipe(profile, action)}
                         isDraggable={isTopCard}
+                        isTopCard={isTopCard}
                     />
-                    </motion.div>
                 );
                 })}
             </AnimatePresence>
