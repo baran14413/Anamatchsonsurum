@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  env: {
+    NEXT_PUBLIC_WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+  },
   images: {
     remotePatterns: [
       {

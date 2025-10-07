@@ -175,7 +175,7 @@ export default function ChatPage() {
         
         if (otherUserDocRef) {
             const unsub = onSnapshot(otherUserDocRef, (doc) => {
-                setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id } as UserProfile : null);
+                setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id, id: doc.id } as UserProfile : null);
             });
             unsubs.push(unsub);
         } else {
@@ -251,10 +251,10 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const handleSendMessage = useCallback((
+    const handleSendMessage = useCallback(async (
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
     ) => {
-        if (!user || !firestore || isSystemChat || !otherUserId) return;
+        if (!user || !firestore || isSystemChat || !otherUserId || !otherUser) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
@@ -294,7 +294,7 @@ export default function ChatPage() {
             messageData.audioDuration = content.audioDuration;
         }
     
-        addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
+        const messageDocRef = await addDoc(collection(firestore, `matches/${matchId}/messages`), messageData);
     
         let lastMessageText = "Mesaj";
         if (messageData.type === 'view-once') lastMessageText = "📷 Fotoğraf";
@@ -317,8 +317,24 @@ export default function ChatPage() {
             unreadCount: increment(1)
         });
         
-        batch.commit();
-    }, [user, firestore, isSystemChat, otherUserId, matchId, newMessage, editingMessage]);
+        await batch.commit();
+
+        if (otherUser.isBot) {
+            try {
+                const messageForWebhook = { id: messageDocRef.id, ...messageData, timestamp: new Date().toISOString() };
+                await fetch('/api/message-webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
+                    },
+                    body: JSON.stringify({ matchId, message: messageForWebhook })
+                });
+            } catch (error) {
+                console.error("Error triggering bot reply webhook:", error);
+            }
+        }
+    }, [user, firestore, isSystemChat, otherUserId, otherUser, matchId, newMessage, editingMessage]);
 
     const handleFormSubmit = useCallback((e: React.FormEvent) => {
         e.preventDefault();
@@ -1218,5 +1234,3 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
-
-    
