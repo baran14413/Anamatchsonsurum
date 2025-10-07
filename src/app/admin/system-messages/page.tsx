@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -165,8 +165,8 @@ export default function SystemMessagesPage() {
         return;
     }
 
-    const messageToSend = isPoll ? pollQuestion.trim() : message.trim();
-    if (messageToSend === '') {
+    const messageContent = isPoll ? pollQuestion.trim() : message.trim();
+    if (!messageContent) {
         toast({ title: 'Hata', description: 'Mesaj veya anket sorusu boş olamaz.', variant: 'destructive' });
         return;
     }
@@ -182,43 +182,51 @@ export default function SystemMessagesPage() {
         const timestamp = serverTimestamp();
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
-        const baseMessageData: Partial<SystemMessage> = {
+        // Start with a base object that is always valid
+        const centralMessageData: Omit<SystemMessage, 'id'> = {
             timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
+            // Initialize all possible fields to null to avoid 'undefined'
+            text: null,
+            pollQuestion: null,
+            pollOptions: null,
+            pollResults: null,
+            type: 'text', // default type
         };
 
-        let centralMessageData: any;
         if (isPoll) {
-            centralMessageData = {
-                ...baseMessageData,
-                type: 'poll',
-                pollQuestion: messageToSend,
-                pollOptions: pollOptions.map(o => o.trim()),
-                pollResults: pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {}),
-            };
+            centralMessageData.type = 'poll';
+            centralMessageData.pollQuestion = messageContent;
+            centralMessageData.pollOptions = pollOptions.map(o => o.trim());
+            centralMessageData.pollResults = pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {});
         } else {
-            centralMessageData = {
-                ...baseMessageData,
-                type: 'text',
-                text: messageToSend,
-            };
+            centralMessageData.type = 'text';
+            centralMessageData.text = messageContent;
         }
+
+        // Clean the object: remove any keys that are null
+        Object.keys(centralMessageData).forEach(key => {
+          if ((centralMessageData as any)[key] === null) {
+            delete (centralMessageData as any)[key];
+          }
+        });
 
         batch.set(centralMessageRef, centralMessageData);
 
+        const systemMatchData = {
+            id: 'system',
+            matchedWith: 'system',
+            lastMessage: isPoll ? `Anket: ${messageContent}` : messageContent,
+            timestamp: timestamp,
+            fullName: 'BeMatch - Sistem Mesajları',
+            profilePicture: '',
+            lastSystemMessageId: centralMessageRef.id,
+            hasUnreadSystemMessage: true,
+        };
+        
         users.forEach(user => {
             const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-            const systemMatchData = {
-                id: 'system',
-                matchedWith: 'system',
-                lastMessage: isPoll ? `Anket: ${messageToSend}` : messageToSend,
-                timestamp: timestamp,
-                fullName: 'BeMatch - Sistem Mesajları',
-                profilePicture: '',
-                lastSystemMessageId: centralMessageRef.id,
-                hasUnreadSystemMessage: true,
-            };
             batch.set(systemMatchRef, systemMatchData, { merge: true });
         });
 
