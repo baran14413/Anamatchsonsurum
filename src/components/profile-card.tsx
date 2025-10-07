@@ -112,6 +112,23 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
     onDragEnd: handleDragEnd,
     style: { x, y, rotate },
     whileTap: { cursor: 'grabbing' as const },
+    initial: { 
+        scale: 1, 
+        y: 0,
+    },
+    animate: { 
+        scale: 1, 
+        y: 0, 
+        opacity: 1, 
+        transition: { duration: 0.3, ease: 'easeOut' }
+    },
+    exit: { 
+        x: x.get() > 0 ? 300 : -300,
+        y: y.get() < -80 ? -300 : 0,
+        opacity: 0,
+        scale: 0.8,
+        transition: { duration: 0.4, ease: 'easeIn' }
+    }
   } : {};
 
   const currentImage = profile.images && profile.images.length > 0 ? profile.images[activeImageIndex] : null;
@@ -199,23 +216,6 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
             "transform-gpu absolute w-full h-full",
             isDraggable ? 'cursor-grab' : 'cursor-default',
         )}
-        initial={{ 
-            scale: 1, 
-            y: 0,
-        }}
-        animate={{ 
-            scale: 1, 
-            y: 0, 
-            opacity: 1, 
-            transition: { duration: 0.3, ease: 'easeOut' }
-        }}
-        exit={{ 
-            x: x.get() > 0 ? 300 : -300,
-            y: y.get() < -80 ? -300 : 0,
-            opacity: 0,
-            scale: 0.8,
-            transition: { duration: 0.4, ease: 'easeIn' }
-        }}
         {...motionProps}
     >
         <div
@@ -288,7 +288,7 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
             <div
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
-               <div className="flex items-end justify-between">
+               <div className="flex items-end justify-between gap-4">
                     <div className="space-y-1 flex-1 min-w-0">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                         <div className='flex flex-col items-start'>
@@ -313,7 +313,7 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable }: ProfileCardProp
                     </div>
                      <Sheet onOpenChange={(open) => !open && setShowAllInterests(false)}>
                         <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0 ml-2">
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0">
                                 <ChevronUp className="h-6 w-6" />
                             </Button>
                         </SheetTrigger>
