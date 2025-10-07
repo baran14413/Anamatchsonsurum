@@ -1,84 +1,29 @@
 
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import * as fs from 'fs';
-import * as path from 'path';
 
 let adminApp: App | undefined;
 let db: Firestore | undefined;
 
-function getServiceAccount() {
-    // 1. Check for Base64 encoded environment variable (preferred for deployment)
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
-        try {
-            const decodedKey = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8');
-            return JSON.parse(decodedKey);
-        } catch(e) {
-            console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY_BASE64. Ensure it's a valid Base64 encoded JSON.", e);
-            // Fall through to try other methods
-        }
+// Firebase App Hosting and other modern environments automatically provide
+// the necessary configuration via environment variables (process.env).
+// This simplified approach relies on that standard behavior, removing the need
+// for manual file path resolution and making the initialization more robust.
+// https://firebase.google.com/docs/hosting/app-hosting/build-run-sdks#initialize-sdks
+try {
+    if (!getApps().length) {
+        adminApp = initializeApp();
+    } else {
+        adminApp = getApps()[0];
     }
-    
-    // 2. Check for file path from environment variable (common for local/CI)
-    const keyPathFromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    if (keyPathFromEnv) {
-        const resolvedPath = path.resolve(process.cwd(), keyPathFromEnv);
-        if (fs.existsSync(resolvedPath)) {
-            try {
-                const keyFileContent = fs.readFileSync(resolvedPath, 'utf-8');
-                return JSON.parse(keyFileContent);
-            } catch (e) {
-                console.error(`Failed to read or parse service account key from GOOGLE_APPLICATION_CREDENTIALS path: ${resolvedPath}.`, e);
-                // Fall through
-            }
-        }
-    }
-
-    // 3. Check for a default file path in the project root (for local development)
-    const defaultKeyPath = path.resolve(process.cwd(), 'service-account-key.json');
-     if (fs.existsSync(defaultKeyPath)) {
-        try {
-            const keyFileContent = fs.readFileSync(defaultKeyPath, 'utf-8');
-            return JSON.parse(keyFileContent);
-        } catch (e) {
-            console.error(`Failed to read or parse service account key from default path: ${defaultKeyPath}.`, e);
-            // Fall through
-        }
-    }
-    
-    // 4. If no key is found at all
-    console.warn(
-      `
-      [Firebase Admin] Service account key not found. Firebase Admin SDK will not be initialized.
-      This is expected if you are only using client-side features.
-      For server-side features (API routes), you need to provide credentials.
-      Checked for:
-      1. FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 environment variable.
-      2. GOOGLE_APPLICATION_CREDENTIALS environment variable.
-      3. 'service-account-key.json' file in the project root.
-      `
+    db = getFirestore(adminApp);
+} catch (error) {
+    console.error(
+        "[Firebase Admin] SDK initialization failed.", 
+        "This is likely because the service account credentials are not configured correctly in the environment.",
+        "Error:", error
     );
-    return null;
-}
-
-const serviceAccount = getServiceAccount();
-
-if (!getApps().length) {
-    if (serviceAccount) {
-         try {
-            adminApp = initializeApp({
-                credential: cert(serviceAccount),
-            });
-            db = getFirestore(adminApp);
-        } catch (e) {
-            console.error('Firebase Admin SDK initialization failed:', e);
-        }
-    }
-} else {
-    adminApp = getApps()[0];
-    if (adminApp) {
-        db = getFirestore(adminApp);
-    }
+    // db remains undefined, and API routes using it will fail.
 }
 
 export { adminApp, db };
