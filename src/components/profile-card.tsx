@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { UserProfile, UserImage } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X, ChevronUp, Star, Info, Clock, ChevronDown } from 'lucide-react';
-import { motion, useMotionValue, useTransform, PanInfo, MotionValue } from 'framer-motion';
+import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -19,6 +20,8 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
+  x: MotionValue<number>;
+  y: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -60,13 +63,18 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
   useEffect(() => {
     setActiveImageIndex(0);
   }, [profile.uid]);
+
+  const rotate = useTransform(x, [-200, 200], [-20, 20]);
+  const likeOpacity = useTransform(x, [50, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [-100, -50], [1, 0]);
+  const superlikeOpacity = useTransform(y, [-100, -50], [1, 0]);
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -121,7 +129,6 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
     const displayed: string[] = [];
     const categories = Object.keys(groupedInterests);
     
-    // Pick one from each category until we have 5
     for (const category of categories) {
       if (displayed.length >= 5) break;
       const randomInterestFromCategory = groupedInterests[category][Math.floor(Math.random() * groupedInterests[category].length)];
@@ -160,7 +167,8 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
 
 
   return (
-    <div
+    <motion.div
+        style={{ rotate }}
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
@@ -178,6 +186,18 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
                   priority={true}
               />
           )}
+
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-400 text-blue-400 -translate-y-12">
+                <Star className="w-16 h-16 fill-blue-400" />
+            </motion.div>
+            <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-400 text-green-400">
+                <Heart className="w-16 h-16 fill-green-400" />
+            </motion.div>
+            <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
+                <X className="w-16 h-16" />
+            </motion.div>
+        </div>
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
@@ -349,7 +369,7 @@ const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </div>
+    </motion.div>
   );
 };
 

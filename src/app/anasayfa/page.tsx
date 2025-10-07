@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -8,7 +9,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
-import { getDistance, cn } from '@/lib/utils';
+import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -168,12 +169,11 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
 };
 
 
-// A dedicated component for a single card in the stack to properly manage hooks.
-const ProfileStackItem = ({ profile, index, onSwipe, isTopCard }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void, isTopCard: boolean }) => {
+const ProfileStackItem = memo(({ profile, index, onSwipe, isTopCard, zIndex }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void, isTopCard: boolean, zIndex: number }) => {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
-    const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         const SWIPE_THRESHOLD = 80;
         if (info.offset.y < -SWIPE_THRESHOLD) {
             onSwipe(index, 'superliked');
@@ -182,13 +182,12 @@ const ProfileStackItem = ({ profile, index, onSwipe, isTopCard }: { profile: Pro
         } else if (info.offset.x < -SWIPE_THRESHOLD) {
             onSwipe(index, 'disliked');
         }
-    };
+    }, [index, onSwipe]);
 
     return (
         <motion.div
-            key={profile.id}
             style={{ 
-                zIndex: index,
+                zIndex,
                 x,
                 y,
             }}
@@ -199,8 +198,8 @@ const ProfileStackItem = ({ profile, index, onSwipe, isTopCard }: { profile: Pro
             onDragEnd={handleDragEnd}
             initial={{ scale: 1, y: 0, opacity: 1 }}
             animate={{ 
-              scale: 1 - (isTopCard ? 0 : 0.05),
-              y: isTopCard ? 0 : -10, 
+              scale: 1 - ((profiles.length - 1 - index) * 0.05),
+              y: (profiles.length - 1 - index) * -10, 
               opacity: 1 
             }}
             transition={{ duration: 0.3 }}
@@ -219,9 +218,11 @@ const ProfileStackItem = ({ profile, index, onSwipe, isTopCard }: { profile: Pro
             />
         </motion.div>
     );
-};
+});
+ProfileStackItem.displayName = 'ProfileStackItem';
 
 
+let profiles: ProfileWithDistance[] = [];
 export default function AnasayfaPage() {
   const t = langTr;
   const { user, userProfile } = useUser();
@@ -229,7 +230,8 @@ export default function AnasayfaPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
+  const [_profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
+  profiles = _profiles;
   const [isLoading, setIsLoading] = useState(true);
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
@@ -288,12 +290,11 @@ export default function AnasayfaPage() {
             });
         }
     })();
- }, [user, firestore, t, toast, userProfile, profiles]);
+ }, [user, firestore, t, toast, userProfile]);
  
-  const handleUndo = async () => {
+  const handleUndo = useCallback(async () => {
     if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
     
-    // Check user membership and undo limits
     const isGoldMember = userProfile.membershipType === 'gold';
     if (!isGoldMember) {
         const now = new Date();
@@ -301,7 +302,6 @@ export default function AnasayfaPage() {
         const lastUndoDate = lastUndoTimestamp ? lastUndoTimestamp.toDate() : null;
         let currentUndoCount = userProfile.dailyUndoCount || 0;
 
-        // Reset count if it's a new day (24 hours passed)
         if (lastUndoDate && (now.getTime() - lastUndoDate.getTime()) > 24 * 60 * 60 * 1000) {
             currentUndoCount = 0;
         }
@@ -311,7 +311,6 @@ export default function AnasayfaPage() {
             return;
         }
 
-        // Increment count and update timestamp
          try {
             const userDocRef = doc(firestore, 'users', user.uid);
             await updateDoc(userDocRef, {
@@ -320,14 +319,11 @@ export default function AnasayfaPage() {
             });
         } catch (error) {
             console.error("Error updating undo count:", error);
-            // Don't block the UI for this, just log it.
         }
     }
     
-    // UI: Add the profile back to the stack
     setProfiles(prev => [...prev, lastDislikedProfile]);
 
-    // DB: Revert the dislike action
     const matchId = [user.uid, lastDislikedProfile.uid].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
     const isUser1 = user.uid < lastDislikedProfile.uid;
@@ -342,7 +338,7 @@ export default function AnasayfaPage() {
     }
     
     setLastDislikedProfile(null);
-  };
+  }, [lastDislikedProfile, user, firestore, userProfile]);
 
 
  const fetchProfiles = useCallback(async (resetInteractions = false) => {
@@ -351,7 +347,7 @@ export default function AnasayfaPage() {
         return;
     }
     setIsLoading(true);
-    setLastDislikedProfile(null); // Reset undo on new fetch
+    setLastDislikedProfile(null);
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -391,7 +387,6 @@ export default function AnasayfaPage() {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
-                // Age filter
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
                     if (age === null) return false;
@@ -404,7 +399,6 @@ export default function AnasayfaPage() {
                     }
                 }
                 
-                // Location filter for non-bot users
                 if (!p.isBot && !isGlobalMode) {
                     if (!p.location?.latitude || !p.location?.longitude) return false;
                     const distance = getDistance(
@@ -419,7 +413,6 @@ export default function AnasayfaPage() {
                         return false;
                     }
                 } else {
-                     // For bots or global mode users, calculate distance for display but don't filter
                      if (p.location?.latitude && p.location?.longitude) {
                         const distance = getDistance(
                             userProfile.location!.latitude!,
@@ -427,7 +420,6 @@ export default function AnasayfaPage() {
                             p.location.latitude,
                             p.location.longitude
                         );
-                        // Make bots appear close
                         (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
                      }
                 }
@@ -435,17 +427,16 @@ export default function AnasayfaPage() {
                 return true;
             });
         
-        // Sort bots to appear first, then sort by distance if applicable
         fetchedProfiles.sort((a, b) => {
             if (a.isBot && !b.isBot) return -1;
             if (!a.isBot && b.isBot) return 1;
             if (isGlobalMode) {
               return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
             }
-            return Math.random() - 0.5; // Shuffle others
+            return Math.random() - 0.5;
         });
         
-        setProfiles(fetchedProfiles.slice(0, 20)); // Limit to 20 profiles to display
+        setProfiles(fetchedProfiles.slice(0, 20));
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -465,11 +456,10 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
-  const CardStack = () => {
+  const CardStack = useCallback(() => {
     return profiles.map((profile, index) => {
       const isTopCard = index === profiles.length - 1;
       
-      // We only render the top 2 cards for performance reasons
       if (index < profiles.length - 2) return null;
 
       return (
@@ -479,10 +469,11 @@ export default function AnasayfaPage() {
             index={index}
             onSwipe={handleSwipe}
             isTopCard={isTopCard}
+            zIndex={index}
            />
       );
     });
-  };
+  }, [profiles, handleSwipe]);
 
 
   return (
@@ -507,7 +498,7 @@ export default function AnasayfaPage() {
                         </div>
                     )}
                     <AnimatePresence>
-                        {CardStack()}
+                        <CardStack />
                     </AnimatePresence>
                 </div>
             ) : (
@@ -567,5 +558,3 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
-
-    
