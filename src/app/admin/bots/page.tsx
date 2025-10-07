@@ -101,7 +101,19 @@ export default function AdminBotsPage() {
   }
 
   const handleLoginAsBot = async () => {
-      if (!auth) return;
+      if (!auth || !botToLogin) return;
+      
+      const email = botToLogin.email;
+      const password = botToLogin.botPassword;
+
+      if (!email || !password) {
+        toast({
+            title: 'Hata',
+            description: 'Bu botun giriş bilgileri bulunamadı. Lütfen botu silip yeniden oluşturun.',
+            variant: 'destructive'
+        });
+        return;
+      }
       await signOut(auth);
       router.push('/');
   }
@@ -335,7 +347,7 @@ export default function AdminBotsPage() {
                             <TableRow>
                             <TableHead className="w-[80px]">Avatar</TableHead>
                             <TableHead>İsim</TableHead>
-                            <TableHead>E-posta</TableHead>
+                            <TableHead>E-posta & Şifre</TableHead>
                             <TableHead>Oluşturulma Tarihi</TableHead>
                             <TableHead className='text-right'>Eylemler</TableHead>
                             </TableRow>
@@ -350,7 +362,20 @@ export default function AdminBotsPage() {
                                 </Avatar>
                                 </TableCell>
                                 <TableCell className="font-medium">{bot.fullName}</TableCell>
-                                <TableCell>{bot.email}</TableCell>
+                                <TableCell>
+                                    <div className="text-sm relative group w-fit">
+                                        <p><strong>E:</strong> {bot.email}</p>
+                                        <p><strong>Ş:</strong> {bot.botPassword}</p>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="absolute -top-1 -right-8 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => copyToClipboard(`E-posta: ${bot.email}\nŞifre: ${bot.botPassword}`)}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
                                 <TableCell>
                                 {bot.createdAt ? format(bot.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                                 </TableCell>
@@ -414,27 +439,17 @@ export default function AdminBotsPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Bot Olarak Giriş Yap</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Mevcut oturumunuz kapatılacak ve giriş sayfasına yönlendirileceksiniz. Aşağıdaki bilgileri kullanarak bot hesabına giriş yapabilirsiniz.
+                    Mevcut oturumunuz kapatılacak ve giriş sayfasına yönlendirileceksiniz. Kopyalanan bilgileri kullanarak bot hesabına giriş yapabilirsiniz.
                 </AlertDialogDescription>
-                 <div className="mt-4 rounded-md border bg-muted p-3 text-sm relative group">
-                    <p><strong>E-posta:</strong> {botToLogin.email}</p>
-                    <p><strong>Şifre:</strong> {botToLogin.botPassword}</p>
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => copyToClipboard(`E-posta: ${botToLogin.email}\nŞifre: ${botToLogin.botPassword}`)}
-                    >
-                        <Copy className="h-4 w-4" />
-                    </Button>
-                </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setBotToLogin(null)}>İptal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleLoginAsBot}>Evet, Çıkış Yap ve Giriş Sayfasına Git</AlertDialogAction>
+                <AlertDialogAction onClick={handleLoginAsBot}>Evet, Çıkış Yap ve Yönlendir</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         )}
      </AlertDialog>
   );
 }
+
+    
