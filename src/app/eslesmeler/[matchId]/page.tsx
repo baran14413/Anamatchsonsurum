@@ -28,6 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -173,7 +174,7 @@ export default function ChatPage() {
                 const data = doc.exists() ? doc.data() as DenormalizedMatch : null;
                 setMatchData(data);
                 // Mark message as seen when match data is loaded
-                if (data?.lastSystemMessageId && user?.uid) {
+                if (data?.lastSystemMessageId && user?.uid && firestore) {
                     const centralMessageRef = doc(firestore, 'system_messages', data.lastSystemMessageId);
                     updateDoc(centralMessageRef, {
                         seenBy: arrayUnion(user.uid)
