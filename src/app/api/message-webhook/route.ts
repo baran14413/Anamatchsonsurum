@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/firebase/admin';
 import { generateBotReply, BotReplyInput } from '@/ai/flows/bot-chat-flow';
 import type { ChatMessage, UserProfile } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';

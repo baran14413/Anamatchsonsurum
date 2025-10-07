@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/firebase/admin';
 
 // Helper to delete a subcollection
 async function deleteCollection(collectionPath: string, batchSize: number) {
