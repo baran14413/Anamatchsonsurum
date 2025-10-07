@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
         const matchDoc = await matchDocRef.get();
 
         if (!matchDoc.exists) {
-            return NextResponse.json({ error: 'Eşleşme bulunamadı.' }, { status: 404 });
+            // If the main match doc is already gone, that's okay, we can still try to clean up.
+            // But we can't get user IDs from it. Let's assume the client knows best and proceed if possible,
+            // or just return success if we can't do anything else.
+             return NextResponse.json({ message: 'Eşleşme zaten silinmiş veya bulunamadı.' });
         }
         
         const { user1Id, user2Id } = matchDoc.data()!;
@@ -48,13 +51,16 @@ export async function POST(req: NextRequest) {
         // 1. Delete messages subcollection
         await deleteCollection(`matches/${matchId}/messages`, 100);
 
-        // 2. Delete denormalized match data from both users
+        // 2. Delete denormalized match data from both users (if they exist)
         const batch = db.batch();
-        const user1MatchRef = db.doc(`users/${user1Id}/matches/${matchId}`);
-        const user2MatchRef = db.doc(`users/${user2Id}/matches/${matchId}`);
-        
-        batch.delete(user1MatchRef);
-        batch.delete(user2MatchRef);
+        if(user1Id) {
+            const user1MatchRef = db.doc(`users/${user1Id}/matches/${matchId}`);
+            batch.delete(user1MatchRef);
+        }
+        if(user2Id) {
+            const user2MatchRef = db.doc(`users/${user2Id}/matches/${matchId}`);
+            batch.delete(user2MatchRef);
+        }
 
         // 3. Delete the main match document
         batch.delete(matchDocRef);
@@ -65,6 +71,9 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Sohbet Silme Hatası:", error);
-        return NextResponse.json({ error: `Sohbet silinemedi: ${error.message || String(error)}` }, { status: 500 });
+        // Ensure a valid JSON response even on failure
+        return NextResponse.json({ error: `Sunucu hatası: Sohbet silinemedi. ${error.message}` }, { status: 500 });
     }
 }
+
+    

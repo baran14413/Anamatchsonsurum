@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -295,6 +295,7 @@ export default function ProfileCompletionForm() {
         profilePicture: data.images.length > 0 ? data.images[0].url : '',
         globalModeEnabled: true, 
         expandAgeRange: true,
+        isBot: false,
       };
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
@@ -308,7 +309,7 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 7;
+  const totalSteps = 8;
   const progressValue = (step / totalSteps) * 100;
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
@@ -441,30 +442,32 @@ export default function ProfileCompletionForm() {
 
 
   const handleNextStep = async () => {
-    if (step === totalSteps) {
-      await form.trigger();
-      if(form.formState.isValid) {
-        onSubmit(form.getValues());
-      }
-      return;
-    }
+    let fieldsToValidate: (keyof SignupFormValues) | (keyof SignupFormValues)[] | undefined;
 
-    const fieldsByStep: (keyof SignupFormValues | (keyof SignupFormValues)[])[] = [
-        'name',
-        'location',
-        'images',
-        'interests',
-        'dateOfBirth',
-        'gender',
-        'lookingFor',
-        'distancePreference',
-    ];
+    switch (step) {
+      case 0: fieldsToValidate = 'name'; break;
+      case 1: fieldsToValidate = 'location'; break;
+      case 2: fieldsToValidate = 'images'; break;
+      case 3: fieldsToValidate = 'interests'; break;
+      case 4: fieldsToValidate = 'dateOfBirth'; break;
+      case 5: fieldsToValidate = 'gender'; break;
+      case 6: fieldsToValidate = 'lookingFor'; break;
+      case 7: fieldsToValidate = 'distancePreference'; break;
+      case totalSteps: // The final confirmation step
+        await form.trigger(); // Validate all fields before final submission
+        if(form.formState.isValid) {
+            onSubmit(form.getValues());
+        }
+        return; // Don't call nextStep()
+    }
     
-    const fieldsToValidate = fieldsByStep[step];
-    const isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
-    
-    if (isValid) {
-      nextStep();
+    if (fieldsToValidate) {
+        const isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
+        if (isValid) {
+          nextStep();
+        }
+    } else {
+        nextStep();
     }
   };
 
@@ -725,6 +728,17 @@ export default function ProfileCompletionForm() {
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
+              {step === 8 && (
+                 <div className="flex flex-col items-center justify-center text-center h-full gap-6">
+                    <Globe className="w-20 h-20 text-primary" />
+                    <div className="space-y-2">
+                      <h1 className="text-3xl font-bold">Hazırsın!</h1>
+                      <p className="text-muted-foreground max-w-sm">
+                        Küresel mod açık olarak başlayacaksın. Bu, dünyanın her yerinden insanları görmeni sağlar. Bu ayarı daha sonra Tercihler menüsünden istediğin zaman değiştirebilirsin.
+                      </p>
+                    </div>
+                 </div>
+              )}
             </div>
 
           <div className="shrink-0 pt-6">
@@ -740,7 +754,7 @@ export default function ProfileCompletionForm() {
                 (step === 4 && ageStatus !== 'valid')
               }
             >
-              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Profili Tamamla" : t.common.next)}
+              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}
             </Button>
           </div>
         </form>
@@ -748,3 +762,5 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
+    
