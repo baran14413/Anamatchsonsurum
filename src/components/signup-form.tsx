@@ -293,7 +293,7 @@ export default function ProfileCompletionForm() {
         dateOfBirth: data.dateOfBirth.toISOString(),
         images: data.images,
         profilePicture: data.images.length > 0 ? data.images[0].url : '',
-        globalModeEnabled: false, 
+        globalModeEnabled: true, 
         expandAgeRange: true,
       };
 
