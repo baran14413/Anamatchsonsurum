@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
     } catch (error: any) {
         toast({
             title: 'Hata',
-            description: typeof error.message === 'string' ? error.message : JSON.stringify(error.message),
+            description: error.message || 'Bilinmeyen bir hata oluştu.',
             variant: 'destructive',
         });
     } finally {
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
     } catch (error: any) {
          toast({
             title: 'Hata',
-            description: typeof error.message === 'string' ? error.message : JSON.stringify(error.message),
+            description: error.message || 'Bilinmeyen bir hata oluştu.',
             variant: 'destructive',
         });
     } finally {
@@ -124,11 +124,7 @@ export default function AdminDashboardPage() {
 
         const result = await response.json();
         if (!response.ok) {
-            const errorMessage = result.error;
-            if (typeof errorMessage === 'object' && errorMessage !== null && errorMessage.message) {
-                 throw new Error(`Botlar oluşturulurken bir hata oluştu: ${errorMessage.message}`);
-            }
-            throw new Error(errorMessage || 'Botlar oluşturulamadı.');
+            throw new Error(result.error || 'Botlar oluşturulamadı.');
         }
 
         toast({
@@ -139,7 +135,7 @@ export default function AdminDashboardPage() {
     } catch (error: any) {
         toast({
             title: 'Hata',
-            description: typeof error.message === 'string' ? error.message : JSON.stringify(error.message),
+            description: error.message || 'Bilinmeyen bir hata oluştu.',
             variant: 'destructive',
         });
     } finally {

@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Duyuru gönderme hatası:", error);
-        return NextResponse.json({ error: `Duyuru gönderilirken bir hata oluştu: ${error.code || error.message}` }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return NextResponse.json({ error: `Duyuru gönderilirken bir hata oluştu: ${errorMessage}` }, { status: 500 });
     }
 }

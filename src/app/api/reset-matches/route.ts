@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
 
         // Delete all denormalized matches subcollections inside each user
         usersSnapshot.forEach(userDoc => {
+            if (userDoc.data().isBot) return; // Do not delete subcollections of bots
             const userMatchesRef = userDoc.ref.collection('matches');
             deleteSubcollectionPromises.push(deleteCollection(userMatchesRef, 100));
         });
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Sistem Sıfırlama Hatası:", error);
-        return NextResponse.json({ error: `Sistem sıfırlanamadı: ${error.code || error.message}` }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return NextResponse.json({ error: `Sistem sıfırlanamadı: ${errorMessage}` }, { status: 500 });
     }
 }
