@@ -423,11 +423,13 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative h-full w-full flex flex-col items-center justify-center overflow-hidden">
+        <div className="relative h-full w-full flex flex-col items-center justify-start pt-4 overflow-hidden">
         {isLoading ? (
-            <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+            <div className="flex h-full items-center justify-center">
+                <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+            </div>
         ) : profiles.length > 0 ? (
-            <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
+            <div className="relative flex-1 flex flex-col items-center w-full max-w-sm h-full max-h-[85vh]">
             {lastDislikedProfile && (
                 <div className="absolute top-4 right-4 z-40">
                 <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
