@@ -99,7 +99,9 @@ export default function AdminDashboardPage() {
 
     let createdCount = 0;
     const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
-    let imageIndex = Math.floor(Math.random() * PlaceHolderImages.length); // Start from a random index
+    
+    const femaleImages = PlaceHolderImages.filter(img => img.gender === 'female');
+    const maleImages = PlaceHolderImages.filter(img => img.gender === 'male');
 
     try {
         for (let i = 0; i < botCount; i++) {
@@ -111,9 +113,11 @@ export default function AdminDashboardPage() {
             const email = `bot_${fullName.toLowerCase().replace(/\s/g, '_')}_${Date.now()}@bematch.app`;
             const password = Math.random().toString(36).slice(-8);
 
-            // Cycle through placeholder images
-            const randomImage = PlaceHolderImages[imageIndex % PlaceHolderImages.length];
-            imageIndex++;
+            const imagePool = gender === 'female' ? femaleImages : maleImages;
+            if (imagePool.length === 0) {
+                 throw new Error(`Cinsiyet için uygun resim bulunamadı: ${gender}`);
+            }
+            const randomImage = getRandomItem(imagePool);
 
 
             // 1. Create user in Firebase Auth
@@ -280,3 +284,5 @@ export default function AdminDashboardPage() {
         </div>
   );
 }
+
+    

@@ -5,6 +5,9 @@ export type ImagePlaceholder = {
   description: string;
   imageUrl: string;
   imageHint: string;
+  gender: 'male' | 'female';
 };
 
 export const PlaceHolderImages: ImagePlaceholder[] = data.placeholderImages;
+
+    
