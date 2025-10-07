@@ -71,7 +71,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     setActiveImageIndex(0);
   }, [profile.uid]);
 
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const likeOpacity = useTransform(x, [50, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, -50], [1, 0]);
   const superlikeOpacity = useTransform(y, [-100, -50], [1, 0]);
@@ -167,8 +166,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
 
   return (
-    <motion.div
-        style={{ rotate }}
+    <div
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
@@ -369,7 +367,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </motion.div>
+    </div>
   );
 };
 
