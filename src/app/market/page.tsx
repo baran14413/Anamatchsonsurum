@@ -12,14 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 
 const goldPackages = [
-  { id: 'gold_1m', duration: '1 Ay', price: 149.99, monthly_price: 149.99, popular: false, savings: null },
   { id: 'gold_6m', duration: '6 Ay', price: 449.99, monthly_price: 74.99, popular: true, savings: '50%' },
+  { id: 'gold_1m', duration: '1 Ay', price: 149.99, monthly_price: 149.99, popular: false, savings: null },
   { id: 'gold_1w', duration: '1 Hafta', price: 49.99, monthly_price: null, popular: false, savings: null },
 ];
 
 const superLikePackages = [
-  { id: 'sl_10', count: 10, price: 19.99, popular: false },
   { id: 'sl_50', count: 50, price: 79.99, popular: true },
+  { id: 'sl_10', count: 10, price: 19.99, popular: false },
   { id: 'sl_100', count: 100, price: 129.99, popular: false },
 ];
 
@@ -43,7 +43,7 @@ export default function MarketPage() {
       }
       const pkg = superLikePackages.find(p => p.id === selectedSuperLikePackage);
       return `${pkg?.count || ''} SUPER LIKE AL`;
-  }
+  };
 
   return (
     <div className="flex h-dvh flex-col">
