@@ -154,10 +154,23 @@ export default function ChatPage() {
     }, []);
 
     const messagesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        const collectionPath = isSystemChat ? `users/${user.uid}/system_messages` : `matches/${matchId}/messages`;
+        // For system chat, we don't query Firestore. Messages are handled in local state.
+        if (!user || !firestore || isSystemChat) return null;
+        const collectionPath = `matches/${matchId}/messages`;
         return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
+    
+    const initialSystemMessage: ChatMessage = {
+        id: 'welcome_message',
+        matchId: 'system',
+        senderId: 'system',
+        text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
+        timestamp: new Date(),
+        isRead: true,
+    };
+
+    // State for client-side system messages
+    const [systemMessages, setSystemMessages] = useState<ChatMessage[]>([initialSystemMessage]);
 
     const otherUserDocRef = useMemoFirebase(() => {
         if (!otherUserId || !firestore) return null;
@@ -173,6 +186,12 @@ export default function ChatPage() {
     useEffect(() => {
         const unsubs: (()=>void)[] = [];
         
+        if (isSystemChat) {
+            setMessages(systemMessages);
+            setIsLoading(false);
+            return;
+        }
+
         if (otherUserDocRef) {
             const unsub = onSnapshot(otherUserDocRef, (doc) => {
                 setOtherUser(doc.exists() ? { ...doc.data(), uid: doc.id, id: doc.id } as UserProfile : null);
@@ -208,7 +227,7 @@ export default function ChatPage() {
         
         return () => unsubs.forEach(unsub => unsub());
 
-    }, [otherUserDocRef, matchDataDocRef, messagesQuery]);
+    }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat, systemMessages]);
 
 
     // Effect to mark messages as read and reset unread count
@@ -593,8 +612,8 @@ export default function ChatPage() {
     const renderTimestampLabel = (timestamp: any, prevTimestamp: any) => {
         if (!timestamp) return null;
 
-        const date = timestamp.toDate();
-        const prevDate = prevTimestamp?.toDate();
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        const prevDate = prevTimestamp?.toDate ? prevTimestamp.toDate() : (prevTimestamp ? new Date(prevTimestamp) : null);
         
         if (!prevDate || date.toDateString() !== prevDate.toDateString()) {
              let label;
@@ -693,8 +712,20 @@ export default function ChatPage() {
     
         return () => cancelAnimationFrame(animationFrameId);
     };
+    
+    const addSystemMessage = (text: string) => {
+        const newMessage: ChatMessage = {
+            id: `system_${Date.now()}`,
+            matchId: 'system',
+            senderId: 'system',
+            text,
+            timestamp: new Date(),
+            isRead: true,
+        };
+        setSystemMessages(prev => [...prev, newMessage]);
+    };
 
-    const triggerSystemAction = (action: 'gold' | 'rules', actionFn: () => Promise<void>) => {
+    const triggerSystemAction = (action: 'gold' | 'rules', actionFn: () => void) => {
         if (buttonStates[action].cooldown > 0) {
             toast({
                 title: "Lütfen Bekleyin",
@@ -709,16 +740,18 @@ export default function ChatPage() {
             [action]: { ...prev[action], loading: true }
         }));
         
-        actionFn().finally(() => {
+        actionFn();
+
+        setTimeout(() => {
             setButtonStates(prev => ({
                 ...prev,
                 [action]: { loading: false, cooldown: 60 }
             }));
-        });
+        }, 1000);
     }
 
-    const handleCheckGoldStatus = async () => {
-        if (!user || !firestore || !userProfile) return;
+    const handleCheckGoldStatus = () => {
+        if (!userProfile) return;
         
         let systemMessageText = "";
 
@@ -729,18 +762,10 @@ export default function ChatPage() {
             systemMessageText = "Henüz Gold üye değilsiniz. Premium özelliklerden faydalanmak ve BeMatch deneyiminizi zirveye taşımak için üyeliğinizi şimdi yükseltebilirsiniz.";
         }
         
-        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
-        await addDoc(systemMessagesColRef, {
-            senderId: 'system',
-            text: systemMessageText,
-            timestamp: serverTimestamp(),
-            isRead: true, 
-        });
+        addSystemMessage(systemMessageText);
     };
     
-    const handleSendRulesMessage = async () => {
-        if (!user || !firestore) return;
-        
+    const handleSendRulesMessage = () => {
         const rulesText = `
         Topluluk Kurallarımız:
         • 👤 **Kendin ol:** Fotoğraflarının, yaşının ve biyografinin gerçeği yansıttığından emin ol.
@@ -751,50 +776,19 @@ export default function ChatPage() {
         Kurallarımıza gösterdiğin özen için teşekkür ederiz. Keyifli eşleşmeler! ✨
         `;
         
-        const systemMessagesColRef = collection(firestore, `users/${user.uid}/system_messages`);
-        await addDoc(systemMessagesColRef, {
-            senderId: 'system',
-            text: rulesText.trim(),
-            timestamp: serverTimestamp(),
-            isRead: true,
-        });
+        addSystemMessage(rulesText.trim());
     };
 
-    const handleClearSystemMessages = async () => {
-         if (!user || !firestore) return;
+    const handleClearSystemMessages = () => {
         setButtonStates(prev => ({...prev, clear: { loading: true }}));
-        try {
-            const systemMessagesRef = collection(firestore, `users/${user.uid}/system_messages`);
-            const messagesSnap = await getDocs(systemMessagesRef);
-            
-            const batch = writeBatch(firestore);
-            messagesSnap.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-
-            // Add the initial welcome message back
-            await addDoc(systemMessagesRef, {
-                senderId: 'system',
-                text: "BeMatch'e hoş geldin! Burası tüm duyuruları ve sistem mesajlarını görebileceğin kişisel kutun.",
-                timestamp: serverTimestamp(),
-                isRead: true,
-            });
-            
-            toast({
+        setTimeout(() => {
+             setSystemMessages([initialSystemMessage]);
+             toast({
                 title: 'Sohbet Temizlendi',
                 description: 'Sistem mesajları geçmişiniz başarıyla silindi.',
             });
-
-        } catch (error: any) {
-            toast({
-                title: 'Hata',
-                description: error.message || 'Sohbet temizlenemedi.',
-                variant: 'destructive',
-            });
-        } finally {
             setButtonStates(prev => ({...prev, clear: { loading: false }}));
-        }
+        }, 500);
     }
     
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
@@ -963,7 +957,7 @@ export default function ChatPage() {
                                             <span>Açıldı</span>
                                         </div>
                                          <div className="flex items-center gap-1.5 self-end">
-                                            <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
@@ -1024,7 +1018,7 @@ export default function ChatPage() {
                                         )}
                                         <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
                                             {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
-                                            <span className="text-xs shrink-0">{message.timestamp ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
                                             {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
