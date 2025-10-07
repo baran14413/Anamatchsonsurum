@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import {
@@ -29,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -75,7 +74,7 @@ export default function AdminBotsPage() {
   const [botCount, setBotCount] = useState(10);
   const [botGender, setBotGender] = useState('mixed');
 
-  const botsCollectionRef = useMemoFirebase(
+  const botsCollectionRef = useMemo(
     () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', true)) : null),
     [firestore]
   );
@@ -451,5 +450,3 @@ export default function AdminBotsPage() {
      </AlertDialog>
   );
 }
-
-    

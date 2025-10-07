@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,7 +118,7 @@ export default function SystemMessagesPage() {
 
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
 
-  const allUsersCollectionRef = useMemoFirebase(
+  const allUsersCollectionRef = useMemo(
     () => (firestore ? query(collection(firestore, 'users')) : null),
     [firestore]
   );
@@ -132,7 +131,7 @@ export default function SystemMessagesPage() {
     return allUsers.filter(user => user.isBot !== true);
   }, [allUsers]);
 
-  const systemMessagesQuery = useMemoFirebase(
+  const systemMessagesQuery = useMemo(
     () => (firestore ? query(collection(firestore, 'system_messages'), orderBy('timestamp', 'desc')) : null),
     [firestore]
   );

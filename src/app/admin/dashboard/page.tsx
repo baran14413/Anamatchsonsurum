@@ -1,9 +1,8 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, Heart, MessageSquare, Bot } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import { useMemo } from 'react';
@@ -12,7 +11,7 @@ import type { UserProfile } from '@/lib/types';
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
 
-  const allUsersCollectionRef = useMemoFirebase(
+  const allUsersCollectionRef = useMemo(
     () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );
@@ -25,13 +24,13 @@ export default function AdminDashboardPage() {
     return { realUsers, bots };
   }, [allUsers]);
 
-  const matchesCollectionRef = useMemoFirebase(
+  const matchesCollectionRef = useMemo(
     () => (firestore ? query(collection(firestore, 'matches'), where('status', '==', 'matched')) : null),
     [firestore]
   );
   const { data: matches, isLoading: isLoadingMatches } = useCollection(matchesCollectionRef);
 
-  const messagesQuery = useMemoFirebase(() => {
+  const messagesQuery = useMemo(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'system_messages'));
     }, [firestore]);

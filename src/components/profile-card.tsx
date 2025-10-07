@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -20,8 +19,6 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  x: MotionValue<number>;
-  y: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -63,18 +60,13 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
   useEffect(() => {
     setActiveImageIndex(0);
   }, [profile.uid]);
-  
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  const opacityLike = useTransform(x, [10, 80], [0, 1]);
-  const opacityDislike = useTransform(x, [-80, -10], [1, 0]);
-  const opacitySuperLike = useTransform(y, [-80, -10], [1, 0]);
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -168,12 +160,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
 
   return (
-    <motion.div
+    <div
         className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
-        style={{ rotate }}
     >
         
           {currentImage?.url && (
@@ -212,25 +203,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
             </div>
         )}
 
-        <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-400 z-10 transform-gpu"
-            style={{ opacity: opacitySuperLike }}
-        >
-            <Star className="h-24 w-24 fill-current" strokeWidth={1.5} />
-        </motion.div>
-        <motion.div
-            className="absolute top-8 left-8 text-green-400 z-10 transform-gpu"
-            style={{ opacity: opacityLike }}
-        >
-            <Heart className="h-20 w-20 fill-current" strokeWidth={1} />
-        </motion.div>
-        <motion.div
-            className="absolute top-8 right-8 text-red-500 z-10 transform-gpu"
-            style={{ opacity: opacityDislike }}
-        >
-            <X className="h-20 w-20" strokeWidth={3} />
-        </motion.div>
-        
         <div
             className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
         >
@@ -377,7 +349,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-    </motion.div>
+    </div>
   );
 };
 

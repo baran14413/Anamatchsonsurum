@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
 import {
   Table,
@@ -38,7 +37,7 @@ export default function AdminUsersPage() {
   const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
   const [userToManageGold, setUserToManageGold] = useState<UserProfile | null>(null);
 
-  const allUsersCollectionRef = useMemoFirebase(
+  const allUsersCollectionRef = useMemo(
     () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );

@@ -1,8 +1,7 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useState, useEffect, useMemo } from 'react';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Heart, Star, CheckCircle } from 'lucide-react';
 import type { UserProfile, LikerInfo, DenormalizedMatch } from '@/lib/types';
@@ -38,7 +37,7 @@ export default function BegenilerPage() {
 
     const isGoldMember = userProfile?.membershipType === 'gold';
     
-    const superLikesQuery = useMemoFirebase(() => {
+    const superLikesQuery = useMemo(() => {
         if (!user || !firestore) return null;
         // Query for Super Likes where the current user is NOT the initiator
         return query(
@@ -193,7 +192,7 @@ export default function BegenilerPage() {
                                                 </SheetDescription>
                                             </SheetHeader>
                                             <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                                                <ProfileCard profile={liker.profile} isDraggable={false} />
+                                                <ProfileCard profile={liker.profile} />
                                                 <div className='absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent z-30'>
                                                      {liker.status !== 'matched' && (
                                                          <Button 

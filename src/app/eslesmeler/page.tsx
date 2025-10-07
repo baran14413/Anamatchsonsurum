@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -30,7 +29,7 @@ export default function EslesmelerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [chatToInteract, setChatToInteract] = useState<DenormalizedMatch | null>(null);
 
-  const matchesQuery = useMemoFirebase(() => {
+  const matchesQuery = useMemo(() => {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, `users/${user.uid}/matches`),

@@ -1,11 +1,10 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { useAuth, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,7 +26,7 @@ export default function ProfilePage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
 
-  const matchesQuery = useMemoFirebase(() => {
+  const matchesQuery = useMemo(() => {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'users', user.uid, 'matches'),
