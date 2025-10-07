@@ -79,6 +79,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
 
         // Delayed message
         setTimeout(() => {
+            if (!db) return;
             const botGreeting = getRandomGreeting();
             const messageRef = collection(db, `matches/${matchDocRef.id}/messages`);
             addDoc(messageRef, {
@@ -91,7 +92,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
             });
             // Update last message in match object
             const userMatchRef = doc(db, `users/${currentUser.uid}/matches/${matchDocRef.id}`);
-            updateDoc(userMatchRef, { lastMessage: botGreeting });
+            updateDoc(userMatchRef, { lastMessage: botGreeting, unreadCount: increment(1) });
             const botMatchRef = doc(db, `users/${swipedUser.uid}/matches/${matchDocRef.id}`);
             updateDoc(botMatchRef, { lastMessage: botGreeting });
 
@@ -431,50 +432,49 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="transform-gpu relative h-full w-full flex flex-col items-center justify-start overflow-hidden">
-        {isLoading ? (
-            <div className="flex h-full items-center justify-center">
-                <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-            </div>
-        ) : profiles.length > 0 ? (
-            <div className="relative flex-1 flex flex-col items-center w-full max-w-sm h-full max-h-[85vh]">
-            {lastDislikedProfile && (
-                <div className="absolute top-4 right-4 z-40">
-                <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                    <Undo2 className="h-5 w-5" />
-                </Button>
+        <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+            {isLoading ? (
+                <div className="flex h-full items-center justify-center">
+                    <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+                </div>
+            ) : profiles.length > 0 ? (
+                 <div className="relative w-full h-full max-w-sm aspect-[9/14]">
+                    {lastDislikedProfile && (
+                        <div className="absolute top-4 right-4 z-40">
+                            <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                                <Undo2 className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    )}
+                    {profiles.map((profile, index) => {
+                        const isTopCard = index === profiles.length - 1;
+                        const isSecondCard = index === profiles.length - 2;
+
+                        if (index < profiles.length - 2) return null;
+
+                        return (
+                            <ProfileCard
+                                key={profile.uid}
+                                profile={profile}
+                                onSwipe={(action) => handleSwipe(profile, action)}
+                                isDraggable={isTopCard}
+                                isSecondCard={isSecondCard}
+                                index={index}
+                            />
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="flex h-full items-center justify-center text-center">
+                    <div className='space-y-4'>
+                        <p>{t.anasayfa.outOfProfilesDescription}</p>
+                        <Button onClick={() => fetchProfiles(true)}>
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Tekrar Dene
+                        </Button>
+                    </div>
                 </div>
             )}
-            
-            {profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              const isSecondCard = index === profiles.length - 2;
-
-              if (index < profiles.length - 2) return null;
-
-              return (
-                  <ProfileCard
-                      key={profile.uid}
-                      profile={profile}
-                      onSwipe={(action) => handleSwipe(profile, action)}
-                      isDraggable={isTopCard}
-                      isSecondCard={isSecondCard}
-                  />
-              );
-            })}
-
-            </div>
-        ) : (
-            <div className="flex h-full items-center justify-center text-center">
-                <div className='space-y-4'>
-                    <p>{t.anasayfa.outOfProfilesDescription}</p>
-                    <Button onClick={() => fetchProfiles(true)}>
-                        <Undo2 className="mr-2 h-4 w-4" />
-                        Tekrar Dene
-                    </Button>
-                </div>
-            </div>
-        )}
         </div>
          {showUndoLimitModal && (
             <AlertDialogContent>

@@ -23,6 +23,7 @@ interface ProfileCardProps {
   onSwipe?: (action: 'liked' | 'disliked' | 'superliked') => void;
   isDraggable: boolean;
   isSecondCard: boolean;
+  index: number;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -66,7 +67,7 @@ const SWIPE_THRESHOLD = 80;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isSecondCard }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isSecondCard, index }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -113,16 +114,21 @@ const ProfileCardComponent = ({ profile, onSwipe, isDraggable, isSecondCard }: P
     onDragEnd: handleDragEnd,
     style: { x, y, rotate },
     whileTap: isDraggable ? { cursor: 'grabbing' as const } : {},
-    initial: { 
-        scale: isSecondCard ? 0.95 : 1, 
-        y: isSecondCard ? 10 : 0,
+     initial: {
+        scale: isSecondCard ? 0.95 : 1,
+        y: isSecondCard ? 40 : 0,
+        opacity: isSecondCard ? 0.8 : 1,
+    },
+    animate: {
+        scale: 1,
+        y: (profiles.length - 1 - index) * -10, // Stacking effect
         opacity: 1,
     },
-    animate: { 
-        scale: isDraggable ? 1 : 0.95, 
-        y: isDraggable ? 0 : 10,
-        opacity: 1, 
-        transition: { duration: 0.3, ease: 'easeOut' }
+    transition: {
+        type: 'spring',
+        stiffness: 300,
+        damping: 30,
+        delay: (profiles.length - 1 - index) * 0.1,
     },
     exit: { 
         x: x.get() > 0 ? 300 : -300,
