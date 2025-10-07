@@ -12,9 +12,10 @@ import ProfileCard from '@/components/profile-card';
 import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -77,7 +78,6 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
 
         await batch.commit();
 
-        // Delayed message
         setTimeout(() => {
             if (!db) return;
             const botGreeting = getRandomGreeting();
@@ -90,13 +90,11 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
                 isRead: false,
                 type: 'user',
             });
-            // Update last message in match object
             const userMatchRef = doc(db, `users/${currentUser.uid}/matches/${matchDocRef.id}`);
             updateDoc(userMatchRef, { lastMessage: botGreeting, unreadCount: increment(1) });
             const botMatchRef = doc(db, `users/${swipedUser.uid}/matches/${matchDocRef.id}`);
             updateDoc(botMatchRef, { lastMessage: botGreeting });
-
-        }, 10000); // 10 seconds delay
+        }, 10000); 
 
 
         return { matched: true, swipedUserName: swipedUser.fullName };
@@ -446,23 +444,42 @@ export default function AnasayfaPage() {
                             </Button>
                         </div>
                     )}
-                    {profiles.map((profile, index) => {
-                        const isTopCard = index === profiles.length - 1;
-                        const isSecondCard = index === profiles.length - 2;
+                     <AnimatePresence>
+                        {profiles.map((profile, index) => {
+                            const isTopCard = index === profiles.length - 1;
+                            const isSecondCard = index === profiles.length - 2;
 
-                        if (index < profiles.length - 2) return null;
+                            if (index < profiles.length - 2) return null;
 
-                        return (
-                            <ProfileCard
-                                key={profile.uid}
-                                profile={profile}
-                                onSwipe={(action) => handleSwipe(profile, action)}
-                                isDraggable={isTopCard}
-                                isSecondCard={isSecondCard}
-                                index={index}
-                            />
-                        );
-                    })}
+                            return (
+                                <motion.div
+                                    key={profile.uid}
+                                    className="absolute w-full h-full"
+                                    initial={{
+                                        scale: isTopCard ? 1 : 0.95,
+                                        y: isTopCard ? 0 : -20,
+                                        opacity: isTopCard ? 1 : 0.8,
+                                    }}
+                                    animate={{
+                                        scale: 1,
+                                        y: (profiles.length - 1 - index) * -10, // Stacking effect
+                                        opacity: 1,
+                                    }}
+                                    transition={{
+                                        type: 'spring',
+                                        stiffness: 300,
+                                        damping: 30,
+                                    }}
+                                >
+                                    <ProfileCard
+                                        profile={profile}
+                                        onSwipe={(action) => handleSwipe(profile, action)}
+                                        isDraggable={isTopCard}
+                                    />
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
                 </div>
             ) : (
                 <div className="flex h-full items-center justify-center text-center">
