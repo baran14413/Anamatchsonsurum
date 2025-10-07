@@ -21,6 +21,7 @@ interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isDraggable?: boolean;
   onDragEnd: (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
+  zIndex: number;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -62,7 +63,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd, zIndex }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
 
@@ -175,11 +176,15 @@ const ProfileCardComponent = ({ profile, isDraggable = false, onDragEnd }: Profi
             "absolute w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             profile.membershipType === 'gold' && "ring-4 ring-yellow-400 animate-gold-shimmer"
         )}
-        style={{ x, y, rotate }}
+        style={{ x, y, rotate, zIndex }}
         drag={isDraggable}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0.5}
         onDragEnd={onDragEnd}
+        initial={{ scale: 0.95, y: -10, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        exit={{ x: info => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0), y: info => info.offset.y < -80 ? -400 : 0, opacity: 0, scale: 0.5, transition: { duration: 0.3 } }}
     >
         <div className='absolute inset-0'>
             {currentImage?.url && (
@@ -392,3 +397,5 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
+
+    

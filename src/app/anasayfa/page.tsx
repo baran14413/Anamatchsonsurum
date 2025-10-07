@@ -248,7 +248,7 @@ export default function AnasayfaPage() {
     }
  }, [user, firestore, t, toast, userProfile, removeTopCard]);
  
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, profile: UserProfile, index: number) => {
     const SWIPE_THRESHOLD = 80;
     if (info.offset.y < -SWIPE_THRESHOLD) {
       handleSwipe(profile, 'superliked');
@@ -460,15 +460,13 @@ export default function AnasayfaPage() {
                         const isTopCard = index === profiles.length - 1;
                         if (index < profiles.length - 2) return null;
 
-                        const y = isTopCard ? 0 : -10;
-                        const scale = isTopCard ? 1 : 0.95;
-
                         return (
                             <ProfileCard
                                 key={profile.uid}
                                 profile={profile}
                                 isDraggable={isTopCard}
-                                onDragEnd={(event, info) => handleDragEnd(event, info, profile)}
+                                onDragEnd={(event, info) => handleDragEnd(event, info, profile, index)}
+                                zIndex={index}
                             />
                         );
                     })}
@@ -530,3 +528,5 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
+
+    
