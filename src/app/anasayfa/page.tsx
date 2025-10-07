@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
@@ -171,7 +171,6 @@ const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, sw
 const ProfileStackItem = memo(function ProfileStackItem({ profile, index, onSwipe }: { profile: ProfileWithDistance, index: number, onSwipe: (index: number, action: 'liked' | 'disliked' | 'superliked') => void }) {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
-    const rotate = useTransform(x, [-200, 200], [-20, 20]);
     const isTopCard = index === 0;
 
     const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -469,84 +468,86 @@ export default function AnasayfaPage() {
 
 
   return (
-    <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
-        if (!open) {
-            setShowUndoLimitModal(false);
-            setShowSuperlikeModal(false);
-        }
-    }}>
-        <div className="flex-1 flex flex-col items-center p-4 pb-14">
-            {isLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                    <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-                </div>
-            ) : profiles.length > 0 ? (
-                 <div className="relative flex-1 w-full h-full max-w-sm">
-                    {lastDislikedProfile && (
-                        <div className="absolute top-4 right-4 z-40">
-                            <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                                <Undo2 className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    )}
-                    <AnimatePresence>
-                        <CardStack />
-                    </AnimatePresence>
-                </div>
-            ) : (
-                <div className="flex-1 flex items-center justify-center text-center">
-                    <div className='space-y-4'>
-                        <p>{t.anasayfa.outOfProfilesDescription}</p>
-                        <Button onClick={() => fetchProfiles(true)}>
-                            <Undo2 className="mr-2 h-4 w-4" />
-                            Tekrar Dene
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </div>
-         {showUndoLimitModal && (
-            <AlertDialogContent>
-                <AlertDialogHeader className="items-center text-center">
-                    <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
-                        <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
-                    </div>
-                    <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
-                    <AlertDialogDescription>
-                    Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-                    <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
-                    <AlertDialogAction asChild>
-                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/market')}>
-                            <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
-                        </Button>
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-         )}
-         {showSuperlikeModal && (
+    <div className="flex flex-col h-full items-center justify-center p-4">
+      <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
+          if (!open) {
+              setShowUndoLimitModal(false);
+              setShowSuperlikeModal(false);
+          }
+      }}>
+          <div className="relative w-full max-w-sm h-full">
+              {isLoading ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                      <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+                  </div>
+              ) : profiles.length > 0 ? (
+                  <>
+                      {lastDislikedProfile && (
+                          <div className="absolute top-4 right-4 z-40">
+                              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                                  <Undo2 className="h-5 w-5" />
+                              </Button>
+                          </div>
+                      )}
+                      <AnimatePresence>
+                          <CardStack />
+                      </AnimatePresence>
+                  </>
+              ) : (
+                  <div className="flex-1 flex items-center justify-center text-center h-full">
+                      <div className='space-y-4'>
+                          <p>{t.anasayfa.outOfProfilesDescription}</p>
+                          <Button onClick={() => fetchProfiles(true)}>
+                              <Undo2 className="mr-2 h-4 w-4" />
+                              Tekrar Dene
+                          </Button>
+                      </div>
+                  </div>
+              )}
+          </div>
+           {showUndoLimitModal && (
               <AlertDialogContent>
-                <AlertDialogHeader className="items-center text-center">
-                     <div className="w-16 h-16 rounded-full bg-blue-400/20 flex items-center justify-center mb-4">
-                        <Star className="w-10 h-10 text-blue-400 fill-blue-400" />
-                     </div>
-                    <AlertDialogTitle className="text-2xl">Super Like Bakiyen Bitti!</AlertDialogTitle>
-                    <AlertDialogDescription>
-                       Super Like göndererek eşleşme şansını 3 katına çıkarabilirsin. Bakiyeni yenilemek için hemen bir paket seç!
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-                    <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
-                    <AlertDialogAction asChild>
-                        <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/market')}>
-                            <Star className="mr-2 h-4 w-4" /> Super Like Satın Al
-                        </Button>
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-         )}
-    </AlertDialog>
+                  <AlertDialogHeader className="items-center text-center">
+                      <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
+                          <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
+                      </div>
+                      <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
+                      <AlertDialogDescription>
+                      Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                      <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                          <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/market')}>
+                              <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
+                          </Button>
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+           )}
+           {showSuperlikeModal && (
+                <AlertDialogContent>
+                  <AlertDialogHeader className="items-center text-center">
+                       <div className="w-16 h-16 rounded-full bg-blue-400/20 flex items-center justify-center mb-4">
+                          <Star className="w-10 h-10 text-blue-400 fill-blue-400" />
+                       </div>
+                      <AlertDialogTitle className="text-2xl">Super Like Bakiyen Bitti!</AlertDialogTitle>
+                      <AlertDialogDescription>
+                         Super Like göndererek eşleşme şansını 3 katına çıkarabilirsin. Bakiyeni yenilemek için hemen bir paket seç!
+                      </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                      <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                          <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/market')}>
+                              <Star className="mr-2 h-4 w-4" /> Super Like Satın Al
+                          </Button>
+                      </AlertDialogAction>
+                  </AlertDialogFooter>
+              </AlertDialogContent>
+           )}
+      </AlertDialog>
+    </div>
   );
 }
