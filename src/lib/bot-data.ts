@@ -1,4 +1,5 @@
 
+
 export const femaleNames = ["Aslı", "Beren", "Ceyda", "Deniz", "Elif", "Feyza", "Gizem", "Hazal", "Irmak", "Jale", "Lale", "Melis", "Narin", "Pelin", "Selin", "Tuğçe", "Zeynep", "Bahar", "Damla", "Eylül", "Fulya", "Gamze"];
 export const maleNames = ["Ahmet", "Berk", "Can", "Deniz", "Emre", "Fırat", "Giray", "Hakan", "İlker", "Kerem", "Levent", "Murat", "Ozan", "Polat", "Serkan", "Tarkan", "Umut", "Barış", "Cem", "Doruk", "Ege"];
 export const lastNames = ["Yılmaz", "Kaya", "Demir", "Çelik", "Arslan", "Doğan", "Kurt", "Öztürk", "Aydın", "Özdemir", "Şahin", "Turan", "Güneş", "Aksoy"];
@@ -44,4 +45,37 @@ export const BOT_GREETINGS = [
     "Merhaba! Beğenin için teşekkürler, ben de senin profiline kayıtsız kalamadım.",
     "Biraz klişe olacak ama... Merhaba! 😊",
     "Sohbet başlatma konusunda çok iyi değilimdir ama denemeye değer bir profilin var."
+];
+
+/**
+ * Bu liste, bir kullanıcı bir bota mesaj gönderdiğinde botun vereceği rastgele cevapları içerir.
+ * Bu sistem, Gemini gibi harici bir yapay zeka servisine çağrı yapmayı engeller ve maliyeti sıfırlar.
+ * Cevaplar daha doğal ve "insansı" bir his vermek için kasıtlı olarak basit ve bazen belirsizdir.
+ */
+export const BOT_REPLIES = [
+    "Selam, naber?",
+    "Aynen, ben de öyle düşünüyorum.",
+    "Hahaha evet ya 😂",
+    "Hmm, ilginç bir bakış açısı.",
+    "Bugün hava çok sıcak ya, bunaldım. 🥵",
+    "Of, biraz sıkıldım galiba.",
+    "Napıyorsun?",
+    "Daha sonra konuşalım mı? Şu an pek modumda değilim.",
+    "Anladım.",
+    "Olabilir.",
+    "Bilmem, hiç düşünmedim.",
+    "Kesinlikle!",
+    "Günün nasıl geçiyor?",
+    "Biraz yoğunum da, sonra yazsam olur mu?",
+    "Ne dinliyorsun bu aralar?",
+    "En son hangi filmi izledin?",
+    "Kahve içmeye gidelim mi bir ara? ☕️",
+    "Profilindeki o fotoğraf nerede çekildi?",
+    "Biliyor musun, tam da bunu düşünüyordum.",
+    "Bu konu hakkında pek bir fikrim yok aslında. 🤷‍♀️",
+    "Evet, mantıklı.",
+    "Peki sence?",
+    "İyiymiş.",
+    "Tam benlik bir konu.",
+    "Buna gerçekten güldüm. 😄"
 ];

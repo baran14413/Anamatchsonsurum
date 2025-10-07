@@ -1,34 +1,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase/admin';
-import { generateBotReply, BotReplyInput } from '@/ai/flows/bot-chat-flow';
-import type { ChatMessage, UserProfile } from '@/lib/types';
+import { BOT_REPLIES } from '@/lib/bot-data';
+import type { ChatMessage } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 
 // Güvenlik için, webhook çağrısının yetkili bir kaynaktan geldiğini doğrulamak amacıyla kullanılır.
-// Basit bir güvenlik önlemi olarak ayarlanmıştır.
 const SHARED_SECRET = process.env.WEBHOOK_SECRET || 'your-very-secret-key';
 
-
-// calculateAge fonksiyonu admin-sdk `firebase-admin` kullanılan bir dosyada
-// 'use client' olmadan kullanılabileceği için burada tanımlanmıştır.
-const calculateAge = (dateString?: string): number | null => {
-    if (!dateString) return null;
-    const birthDate = new Date(dateString);
-    if (isNaN(birthDate.getTime())) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    return age;
+// Basit, önceden tanımlanmış bir cevap havuzundan rastgele bir cevap seçer.
+const getRandomBotReply = () => {
+    return BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
 };
-
 
 /**
  * Bu API rotası, Firestore'a yeni bir mesaj eklendiğinde (bir Cloud Function tarafından) tetiklenir.
- * Gelen mesaj bir bot'a gönderilmişse, yapay zeka akışını kullanarak bir cevap üretir ve sohbeti devam ettirir.
+ * Gelen mesaj bir bot'a gönderilmişse, yapay zeka yerine önceden tanımlanmış cevap havuzundan
+ * rastgele bir cevap seçer ve sohbeti devam ettirir.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -50,43 +38,20 @@ export async function POST(req: NextRequest) {
     const botId = message.senderId === user1Id ? user2Id : user1Id;
     const userId = message.senderId;
 
-    // 3. Bot ve Kullanıcı Profillerini Veritabanından Alma
+    // 3. Bot varlığını kontrol et
     const botDoc = await db.collection('users').doc(botId).get();
-    const userDoc = await db.collection('users').doc(userId).get();
-    
-    // Eğer bot değilse veya profiller bulunamazsa işlemi sonlandır
-    if (!botDoc.exists || !botDoc.data()?.isBot || !userDoc.exists) {
-      return NextResponse.json({ message: 'Alıcı bir bot değil veya profiller bulunamadı.' });
+    if (!botDoc.exists || !botDoc.data()?.isBot) {
+      // Alıcı bir bot değilse, işlem yapma.
+      return NextResponse.json({ message: 'Alıcı bir bot değil.' });
     }
     
-    const botProfile = botDoc.data() as UserProfile;
-    const userProfile = userDoc.data() as UserProfile;
-
-    // 4. Sohbet Geçmişini Alma
-    const messagesSnap = await db.collection(`matches/${matchId}/messages`).orderBy('timestamp', 'asc').limit(20).get();
-    const conversationHistory = messagesSnap.docs.map(doc => {
-        const msg = doc.data();
-        return {
-            isUser: msg.senderId === userId,
-            message: msg.text || '',
-        };
-    });
-
-    // 5. Yapay Zeka Akışını Çağırma
-    const aiInput: BotReplyInput = {
-      botProfile: {
-          fullName: botProfile.fullName || 'BeMatch Kullanıcısı',
-          age: calculateAge(botProfile.dateOfBirth) || 25,
-          bio: botProfile.bio || '',
-          interests: botProfile.interests || [],
-      },
-      userName: userProfile.fullName || 'Kullanıcı',
-      conversationHistory: conversationHistory,
-    };
+    // 4. Rastgele bir cevap seç
+    const reply = getRandomBotReply();
     
-    const { reply } = await generateBotReply(aiInput);
+    // Küçük bir gecikme ekleyerek cevabın daha doğal görünmesini sağla
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
 
-    // 6. Üretilen Cevabı Veritabanına Yazma
+    // 5. Seçilen Cevabı Veritabanına Yazma
     const botReplyMessage: Partial<ChatMessage> = {
       matchId: matchId,
       senderId: botId,
@@ -97,14 +62,13 @@ export async function POST(req: NextRequest) {
     };
     await db.collection(`matches/${matchId}/messages`).add(botReplyMessage);
     
-    // 7. Eşleşme listesindeki son mesajı güncelle
+    // 6. Eşleşme listesindeki son mesajı güncelle
     const batch = db.batch();
     const currentUserMatchRef = db.doc(`users/${userId}/matches/${matchId}`);
     batch.update(currentUserMatchRef, { lastMessage: reply, timestamp: FieldValue.serverTimestamp(), unreadCount: FieldValue.increment(1) });
     const botUserMatchRef = db.doc(`users/${botId}/matches/${matchId}`);
     batch.update(botUserMatchRef, { lastMessage: reply, timestamp: FieldValue.serverTimestamp() });
     await batch.commit();
-
 
     return NextResponse.json({ success: true, reply });
 
