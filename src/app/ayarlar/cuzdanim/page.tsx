@@ -4,7 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Star, Gem, ChevronRight, Info } from 'lucide-react';
+import { ArrowLeft, Star, Gem, ChevronRight, Info, ShoppingCart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -58,11 +58,16 @@ export default function WalletPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
                 <h1 className="text-lg font-semibold">Cüzdanım</h1>
-                <div className="w-9"></div>
+                 <Link href="/market">
+                    <Button variant="outline" className="rounded-full">
+                        <ShoppingCart className="mr-2 h-4 w-4"/>
+                        Market
+                    </Button>
+                </Link>
             </header>
 
             <main className="flex-1 overflow-y-auto p-6 space-y-8">
-                <Link href="/satin-al/gold">
+                <Link href="/market">
                     <Card className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white shadow-lg cursor-pointer hover:opacity-90 transition-opacity">
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -94,7 +99,7 @@ export default function WalletPage() {
                             title="Super Like Bakiyesi"
                             value={String(superLikeBalance)}
                             actionText="Daha Fazla Al"
-                            actionLink="/satin-al/super-like"
+                            actionLink="/market"
                             iconColor="blue"
                         />
                      </div>
@@ -104,5 +109,3 @@ export default function WalletPage() {
         </div>
     );
 }
-
-    

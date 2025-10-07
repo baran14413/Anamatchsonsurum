@@ -498,7 +498,7 @@ export default function AnasayfaPage() {
                 <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
                     <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
                     <AlertDialogAction asChild>
-                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/satin-al/gold')}>
+                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/market')}>
                             <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
                         </Button>
                     </AlertDialogAction>
@@ -519,7 +519,7 @@ export default function AnasayfaPage() {
                 <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
                     <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
                     <AlertDialogAction asChild>
-                        <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/satin-al/super-like')}>
+                        <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/market')}>
                             <Star className="mr-2 h-4 w-4" /> Super Like Satın Al
                         </Button>
                     </AlertDialogAction>

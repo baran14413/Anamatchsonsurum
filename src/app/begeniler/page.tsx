@@ -16,6 +16,7 @@ import ProfileCard from '@/components/profile-card';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
@@ -32,6 +33,7 @@ export default function BegenilerPage() {
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr;
     const { toast } = useToast();
+    const router = useRouter();
     const [isMatching, setIsMatching] = useState<string | null>(null);
 
     const isGoldMember = userProfile?.membershipType === 'gold';
@@ -243,7 +245,7 @@ export default function BegenilerPage() {
                 <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
                     <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
                     <AlertDialogAction asChild>
-                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500'>
+                        <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/market')}>
                             <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
                         </Button>
                     </AlertDialogAction>
@@ -252,5 +254,3 @@ export default function BegenilerPage() {
         </AlertDialog>
     );
 }
-
-    

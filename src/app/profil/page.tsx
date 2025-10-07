@@ -144,7 +144,7 @@ export default function ProfilePage() {
                       <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
                       <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
                   </div>
-                  <Link href="/satin-al/gold">
+                  <Link href="/market">
                     <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
                         {t.profil.upgrade}
                     </Button>
@@ -163,7 +163,7 @@ export default function ProfilePage() {
            <Card className="p-3 shadow-md">
               <Star className="h-6 w-6 text-blue-400 mx-auto mb-1 fill-blue-400" />
               <p className="font-semibold">Toplam {superLikeBalance} Super Like</p>
-               <Link href="/satin-al/super-like">
+               <Link href="/market">
                 <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
               </Link>
           </Card>
@@ -197,5 +197,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
