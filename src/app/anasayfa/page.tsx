@@ -442,7 +442,7 @@ export default function AnasayfaPage() {
             setShowSuperlikeModal(false);
         }
     }}>
-        <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="relative flex flex-col items-center justify-center p-4">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -460,8 +460,8 @@ export default function AnasayfaPage() {
                         const isTopCard = index === profiles.length - 1;
                         if (index < profiles.length - 2) return null;
 
-                        const y = isTopCard ? 0 : (profiles.length - 1 - index) * -10;
-                        const scale = isTopCard ? 1 : 1 - ((profiles.length - index -1) * 0.05);
+                        const y = isTopCard ? 0 : -10;
+                        const scale = isTopCard ? 1 : 0.95;
 
                         return (
                             <motion.div
@@ -472,12 +472,14 @@ export default function AnasayfaPage() {
                                     y: y,
                                 }}
                                 initial={{
+                                    opacity: 0,
                                     scale: 0.95,
                                     y: -10,
                                 }}
                                 animate={{
-                                    scale: 1,
-                                    y: (profiles.length - 1 - index) * -10, // Stacking effect
+                                    opacity: 1,
+                                    scale: scale,
+                                    y: y,
                                 }}
                                 transition={{
                                     type: 'spring',
