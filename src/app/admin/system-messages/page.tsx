@@ -38,7 +38,7 @@ import {
 
 const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMessage, totalUsers: number, onDelete: (messageId: string) => void }) => {
     const isPoll = message.type === 'poll';
-    const totalVotes = isPoll ? Object.values(message.pollResults || {}).reduce((sum, count) => sum + count, 0) : 0;
+    const totalVotes = isPoll && message.pollResults ? Object.values(message.pollResults).reduce((sum, count) => sum + count, 0) : 0;
     const seenCount = message.seenBy?.length || 0;
 
     return (
@@ -159,91 +159,95 @@ export default function SystemMessagesPage() {
 
   const handleSendMessage = async () => {
     if (!firestore || !users || users.length === 0) {
-      toast({ title: 'Hata', description: 'Kullanıcılar bulunamadı.', variant: 'destructive' });
-      return;
+        toast({ title: 'Hata', description: 'Mesaj gönderilecek kullanıcı bulunamadı.', variant: 'destructive' });
+        return;
     }
 
     const messageToSend = isPoll ? pollQuestion.trim() : message.trim();
     if (messageToSend === '') {
-      toast({ title: 'Hata', description: 'Mesaj veya anket sorusu boş olamaz.', variant: 'destructive' });
-      return;
+        toast({ title: 'Hata', description: 'Mesaj veya anket sorusu boş olamaz.', variant: 'destructive' });
+        return;
     }
 
     if (isPoll && (pollOptions.some(opt => opt.trim() === '') || pollOptions.length < 2)) {
-      toast({ title: 'Hata', description: 'Tüm anket seçenekleri dolu olmalı ve en az 2 seçenek bulunmalıdır.', variant: 'destructive' });
-      return;
+        toast({ title: 'Hata', description: 'Tüm anket seçenekleri dolu olmalı ve en az 2 seçenek bulunmalıdır.', variant: 'destructive' });
+        return;
     }
 
     setIsSending(true);
     try {
-      const batch = writeBatch(firestore);
-      const timestamp = serverTimestamp();
+        const batch = writeBatch(firestore);
+        const timestamp = serverTimestamp();
+        const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
-      const centralMessageRef = doc(collection(firestore, 'system_messages'));
-      
-      const baseMessageData = {
-          createdAt: timestamp,
-          sentTo: users.map(u => u.uid),
-          seenBy: [],
-      };
-
-      let centralMessageData;
-      if (isPoll) {
-          centralMessageData = {
-              ...baseMessageData,
-              type: 'poll',
-              pollQuestion: messageToSend,
-              pollOptions: pollOptions.map(o => o.trim()),
-              pollResults: pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {})
-          };
-      } else {
-          centralMessageData = {
-              ...baseMessageData,
-              type: 'text',
-              text: messageToSend,
-          };
-      }
-
-      batch.set(centralMessageRef, centralMessageData);
-
-      users.forEach(user => {
-        const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-        const systemMatchData = {
-            id: 'system',
-            matchedWith: 'system',
-            lastMessage: isPoll ? `Anket: ${messageToSend}` : messageToSend,
-            timestamp: timestamp,
-            fullName: 'BeMatch - Sistem Mesajları',
-            profilePicture: '',
-            lastSystemMessageId: centralMessageRef.id,
-            hasUnreadSystemMessage: true,
+        const baseMessageData = {
+            createdAt: timestamp,
+            sentTo: users.map(u => u.uid),
+            seenBy: [],
         };
-        batch.set(systemMatchRef, systemMatchData, { merge: true });
-      });
 
-      await batch.commit();
+        let centralMessageData: any;
+        if (isPoll) {
+            centralMessageData = {
+                ...baseMessageData,
+                type: 'poll',
+                pollQuestion: messageToSend,
+                pollOptions: pollOptions.map(o => o.trim()),
+                pollResults: pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {}),
+                text: null,
+            };
+        } else {
+            centralMessageData = {
+                ...baseMessageData,
+                type: 'text',
+                text: messageToSend,
+                pollQuestion: null,
+                pollOptions: null,
+                pollResults: null,
+            };
+        }
 
-      toast({
-        title: 'Mesaj Gönderildi',
-        description: `${users.length} kullanıcıya ${isPoll ? 'anket' : 'mesaj'} başarıyla gönderildi.`,
-      });
-      
-      setMessage('');
-      setPollQuestion('');
-      setPollOptions(['', '']);
-      setIsPoll(false);
+        batch.set(centralMessageRef, centralMessageData);
+
+        users.forEach(user => {
+            const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
+            const systemMatchData = {
+                id: 'system',
+                matchedWith: 'system',
+                lastMessage: isPoll ? `Anket: ${messageToSend}` : messageToSend,
+                timestamp: timestamp,
+                fullName: 'BeMatch - Sistem Mesajları',
+                profilePicture: '',
+                lastSystemMessageId: centralMessageRef.id,
+                hasUnreadSystemMessage: true,
+            };
+            batch.set(systemMatchRef, systemMatchData, { merge: true });
+        });
+
+        await batch.commit();
+
+        toast({
+            title: 'Mesaj Gönderildi',
+            description: `${users.length} kullanıcıya ${isPoll ? 'anket' : 'mesaj'} başarıyla gönderildi.`,
+        });
+
+        setMessage('');
+        setPollQuestion('');
+        setPollOptions(['', '']);
+        setIsPoll(false);
 
     } catch (error: any) {
-      console.error("Error sending system message:", error);
-      toast({
-        title: 'Gönderme Başarısız',
-        description: `Mesajlar gönderilirken bir hata oluştu: ${error.message}`,
-        variant: 'destructive',
-      });
+        console.error("Error sending system message:", error);
+        toast({
+            title: 'Gönderme Başarısız',
+            description: `Mesajlar gönderilirken bir hata oluştu: ${error.message}`,
+            variant: 'destructive',
+        });
     } finally {
-      setIsSending(false);
+        setIsSending(false);
     }
-  };
+};
+
 
   const handleDeleteMessage = async () => {
     if (!firestore || !messageToDelete || !users) return;
@@ -356,7 +360,7 @@ export default function SystemMessagesPage() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
-                    disabled={isSending || isPoll}
+                    disabled={isSending}
                     />
                 )}
                 </div>
@@ -411,5 +415,3 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
-
-    
