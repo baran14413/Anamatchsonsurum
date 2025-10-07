@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, Heart, MessageSquare, Bot } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { collection, doc, setDoc, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -43,9 +43,10 @@ const getRandomDob = (): Date => {
     return new Date(year, month, day);
 };
 const getRandomLocation = () => {
-    const centerLat = 41.0082;
-    const centerLon = 28.9784;
-    const radius = 0.5;
+    // Spread bots across a wider area in Turkey
+    const centerLat = 39.9255; // Ankara
+    const centerLon = 32.8663;
+    const radius = 5.0; // ~500km radius
     return {
         latitude: centerLat + (Math.random() - 0.5) * radius * 2,
         longitude: centerLon + (Math.random() - 0.5) * radius * 2,
@@ -93,6 +94,7 @@ export default function AdminDashboardPage() {
 
     let createdCount = 0;
     const allInterests = langTr.signup.step11.categories.flatMap(c => c.options);
+    let imageIndex = 0; // To cycle through images
 
     try {
         for (let i = 0; i < botCount; i++) {
@@ -103,7 +105,11 @@ export default function AdminDashboardPage() {
             const fullName = `${getRandomItem(gender === 'female' ? femaleNames : maleNames)} ${getRandomItem(lastNames)}`;
             const email = `bot_${fullName.toLowerCase().replace(/\s/g, '_')}_${Date.now()}@bematch.app`;
             const password = Math.random().toString(36).slice(-8);
-            const randomImage = getRandomItem(PlaceHolderImages);
+
+            // Cycle through placeholder images
+            const randomImage = PlaceHolderImages[imageIndex % PlaceHolderImages.length];
+            imageIndex++;
+
 
             // 1. Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -121,6 +127,7 @@ export default function AdminDashboardPage() {
                 uid: botId,
                 fullName,
                 email,
+                botPassword: password, // Store password for admin login
                 dateOfBirth: getRandomDob().toISOString(),
                 gender,
                 genderPreference: gender === 'female' ? 'male' : 'female',
@@ -130,11 +137,11 @@ export default function AdminDashboardPage() {
                 profilePicture: randomImage.imageUrl,
                 location: getRandomLocation(),
                 isBot: true,
-                createdAt: new Date(),
+                createdAt: serverTimestamp(),
                 rulesAgreed: true,
                 lookingFor: 'whatever',
-                distancePreference: 50,
-                ageRange: { min: 18, max: 45 },
+                distancePreference: 160,
+                ageRange: { min: 18, max: 80 },
                 isOnline: true,
             };
 
@@ -268,3 +275,5 @@ export default function AdminDashboardPage() {
         </div>
   );
 }
+
+    

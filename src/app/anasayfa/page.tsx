@@ -347,8 +347,8 @@ export default function AnasayfaPage() {
                     }
                 }
                 
-                // Location filter
-                if (!isGlobalMode) {
+                // Location filter for non-bot users
+                if (!p.isBot && !isGlobalMode) {
                     if (!p.location?.latitude || !p.location?.longitude) return false;
                     const distance = getDistance(
                         userProfile.location!.latitude!,
@@ -362,6 +362,7 @@ export default function AnasayfaPage() {
                         return false;
                     }
                 } else {
+                     // For bots or global mode users, calculate distance for display but don't filter
                      if (p.location?.latitude && p.location?.longitude) {
                         const distance = getDistance(
                             userProfile.location!.latitude!,
@@ -369,18 +370,23 @@ export default function AnasayfaPage() {
                             p.location.latitude,
                             p.location.longitude
                         );
-                        (p as ProfileWithDistance).distance = distance;
+                        // Make bots appear close
+                        (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
                      }
                 }
                 
                 return true;
             });
         
-        if (isGlobalMode) {
-          fetchedProfiles.sort((a, b) => ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity));
-        } else {
-          fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle for non-global mode
-        }
+        // Sort bots to appear first, then sort by distance if applicable
+        fetchedProfiles.sort((a, b) => {
+            if (a.isBot && !b.isBot) return -1;
+            if (!a.isBot && b.isBot) return 1;
+            if (isGlobalMode) {
+              return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
+            }
+            return Math.random() - 0.5; // Shuffle others
+        });
         
         setProfiles(fetchedProfiles.slice(0, 20)); // Limit to 20 profiles to display
 
@@ -487,3 +493,5 @@ export default function AnasayfaPage() {
     </AlertDialog>
   );
 }
+
+    

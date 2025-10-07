@@ -18,7 +18,7 @@ import { UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Bot, Shield, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Bot, Shield, Trash2, LogIn, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,11 +30,17 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function AdminBotsPage() {
   const firestore = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [botToDelete, setBotToDelete] = useState<UserProfile | null>(null);
+  const [botToLogin, setBotToLogin] = useState<UserProfile | null>(null);
 
   const botsCollectionRef = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'users'), where('isBot', '==', true)) : null),
@@ -63,6 +69,11 @@ export default function AdminBotsPage() {
     }
   }
 
+  const handleLoginAsBot = async () => {
+      if (!auth) return;
+      await signOut(auth);
+      router.push('/');
+  }
 
   if (isLoading) {
     return <div className="flex h-full items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
@@ -117,7 +128,14 @@ export default function AdminBotsPage() {
                                 <DropdownMenuLabel>Eylemler</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setBotToDelete(bot)}>
+                                    <DropdownMenuItem onClick={() => setBotToLogin(bot)}>
+                                        <LogIn className='mr-2 h-4 w-4'/>
+                                        <span>Giriş Yap</span>
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <DropdownMenuSeparator />
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => { setBotToDelete(bot); setBotToLogin(null); }}>
                                         <Trash2 className='mr-2 h-4 w-4'/>
                                         <span>Botu Sil</span>
                                     </DropdownMenuItem>
@@ -138,18 +156,40 @@ export default function AdminBotsPage() {
             </Table>
         </div>
         </div>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-            <AlertDialogTitle>Botu Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-                Bu işlem geri alınamaz. {botToDelete?.fullName} adlı botun hesabı ve tüm verileri kalıcı olarak silinecektir.
-            </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setBotToDelete(null)}>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBot} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
+        {botToDelete && (
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Botu Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Bu işlem geri alınamaz. {botToDelete?.fullName} adlı botun hesabı ve tüm verileri kalıcı olarak silinecektir.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setBotToDelete(null)}>İptal</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteBot} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        )}
+         {botToLogin && (
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Bot Olarak Giriş Yap</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Aşağıdaki bilgilerle giriş yapabilmek için mevcut oturumunuz kapatılacaktır. Devam etmek istiyor musunuz?
+                    <div className="mt-4 rounded-md border bg-muted p-3 text-sm">
+                        <p><strong>E-posta:</strong> {botToLogin.email}</p>
+                        <p><strong>Şifre:</strong> {botToLogin.botPassword}</p>
+                    </div>
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setBotToLogin(null)}>İptal</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLoginAsBot}>Evet, Çıkış Yap ve Giriş Sayfasına Git</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        )}
      </AlertDialog>
   );
 }
+
+    

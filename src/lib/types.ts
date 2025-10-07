@@ -10,6 +10,7 @@ export type UserProfile = {
   uid: string;
   fullName?: string;
   email?: string;
+  botPassword?: string;
   dateOfBirth?: string;
   profilePicture?: string;
   images: UserImage[];
@@ -130,3 +131,5 @@ export interface DenormalizedMatch {
     superLikeInitiator?: string;
     unreadCount?: number;
 }
+
+    
