@@ -3,14 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import { Send, Users, X, Plus, BarChart2, Eye } from 'lucide-react';
+import { Send, Users, X, Plus, BarChart2, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import { UserProfile, SystemMessage } from '@/lib/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -18,25 +18,56 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const SentMessageCard = ({ message, totalUsers }: { message: SystemMessage, totalUsers: number }) => {
+
+const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMessage, totalUsers: number, onDelete: (messageId: string) => void }) => {
     const isPoll = message.type === 'poll';
     const totalVotes = isPoll ? Object.values(message.pollResults || {}).reduce((sum, count) => sum + count, 0) : 0;
     const seenCount = message.seenBy?.length || 0;
 
     return (
         <Card>
-            <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                    <p className="text-sm text-muted-foreground pr-4 break-words">
-                        {isPoll ? <strong>Anket: {message.pollQuestion}</strong> : message.text}
+            <CardHeader className='p-4 flex-row items-start justify-between'>
+                 <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground break-words font-semibold">
+                        {isPoll ? <><strong>Anket:</strong> {message.pollQuestion}</> : <>{message.text}</>}
                     </p>
-                    <div className="text-xs text-muted-foreground text-right shrink-0">
-                        {message.createdAt?.toDate && formatDistanceToNow(message.createdAt.toDate(), { locale: tr, addSuffix: true })}
-                    </div>
                 </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                         <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => onDelete(message.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Bu Mesajı Sil</span>
+                            </DropdownMenuItem>
+                         </AlertDialogTrigger>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </CardHeader>
 
-                {isPoll && message.pollOptions && (
+            <CardContent className="p-4 pt-0 space-y-3">
+                 {isPoll && message.pollOptions && (
                     <div className="space-y-2">
                         {message.pollOptions.map((option, index) => {
                             const votes = message.pollResults?.[option] || 0;
@@ -53,8 +84,12 @@ const SentMessageCard = ({ message, totalUsers }: { message: SystemMessage, tota
                         })}
                     </div>
                 )}
-                
-                <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground pt-2">
+            </CardContent>
+            <CardFooter className='p-4 pt-0 flex items-center justify-between'>
+                <div className="text-xs text-muted-foreground">
+                    {message.createdAt?.toDate && formatDistanceToNow(message.createdAt.toDate(), { locale: tr, addSuffix: true })}
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                      <div className='flex items-center gap-1.5' title={`${seenCount} kullanıcı tarafından görüldü`}>
                         <Eye className="h-4 w-4" />
                         <span>{seenCount} / {totalUsers}</span>
@@ -66,8 +101,7 @@ const SentMessageCard = ({ message, totalUsers }: { message: SystemMessage, tota
                         </div>
                     )}
                 </div>
-
-            </CardContent>
+            </CardFooter>
         </Card>
     );
 };
@@ -82,6 +116,8 @@ export default function SystemMessagesPage() {
   const [isPoll, setIsPoll] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
 
   const usersCollectionRef = useMemoFirebase(
     () => (firestore ? query(collection(firestore, 'users'), where('isBot', '!=', true)) : null),
@@ -138,7 +174,6 @@ export default function SystemMessagesPage() {
       const batch = writeBatch(firestore);
       const timestamp = serverTimestamp();
 
-      // 1. Create the central system message document
       const centralMessageRef = doc(collection(firestore, 'system_messages'));
       const centralMessageData: Partial<SystemMessage> = {
           createdAt: timestamp,
@@ -152,8 +187,6 @@ export default function SystemMessagesPage() {
       };
       batch.set(centralMessageRef, centralMessageData);
 
-
-      // 2. Update the denormalized match object for each user to show the new message
       users.forEach(user => {
         const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
         batch.set(systemMatchRef, {
@@ -162,8 +195,7 @@ export default function SystemMessagesPage() {
             lastMessage: isPoll ? `Anket: ${messageToSend}` : messageToSend,
             timestamp: timestamp,
             fullName: 'BeMatch - Sistem Mesajları',
-            profilePicture: '', // Placeholder, client will use icon
-            // We add the central message ID here for the client to reference
+            profilePicture: '',
             lastSystemMessageId: centralMessageRef.id,
             hasUnreadSystemMessage: true,
         }, { merge: true });
@@ -176,7 +208,6 @@ export default function SystemMessagesPage() {
         description: `${users.length} kullanıcıya ${isPoll ? 'anket' : 'mesaj'} başarıyla gönderildi.`,
       });
       
-      // Reset form
       setMessage('');
       setPollQuestion('');
       setPollOptions(['', '']);
@@ -194,117 +225,169 @@ export default function SystemMessagesPage() {
     }
   };
 
+  const handleDeleteMessage = async () => {
+    if (!firestore || !messageToDelete || !users) return;
+
+    try {
+        const batch = writeBatch(firestore);
+        
+        // 1. Delete the central message document
+        const centralMessageRef = doc(firestore, 'system_messages', messageToDelete);
+        batch.delete(centralMessageRef);
+
+        // 2. Clear the last message preview for all users
+        users.forEach(user => {
+            const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
+            batch.update(systemMatchRef, {
+                lastMessage: "Sistem mesajı silindi.",
+                hasUnreadSystemMessage: false,
+            });
+        });
+
+        await batch.commit();
+
+        toast({
+            title: 'Mesaj Silindi',
+            description: 'Mesaj tüm kullanıcılardan başarıyla kaldırıldı.',
+        });
+    } catch (error: any) {
+        console.error("Error deleting system message:", error);
+        toast({
+            title: 'Silme Başarısız',
+            description: `Mesaj silinirken bir hata oluştu: ${error.message}`,
+            variant: 'destructive',
+        });
+    } finally {
+        setMessageToDelete(null);
+    }
+  }
+
+
   const isLoading = isLoadingUsers || isLoadingMessages;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Sistem Mesajları ve Anketler</h1>
+    <AlertDialog>
+        <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Sistem Mesajları ve Anketler</h1>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Toplu Mesaj Paneli</CardTitle>
-            <CardDescription>
-              Buradan tüm aktif (bot olmayan) kullanıcılara bir sistem mesajı veya anket gönderebilirsiniz.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-                <Users className="h-4 w-4" />
-                <AlertDescription>
-                  {isLoadingUsers ? (
-                    <Icons.logo className="h-4 w-4 animate-pulse" />
-                  ) : (
-                    `Bu mesaj toplam ${users?.length || 0} kullanıcıya gönderilecek.`
-                  )}
-                </AlertDescription>
-            </Alert>
-            
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="system-message">{isPoll ? "Anket Sorusu" : "Mesajınız"}</Label>
-                <Button variant="link" onClick={() => setIsPoll(!isPoll)}>
-                  {isPoll ? "Normal Mesaja Dön" : "Anket Oluştur"}
-                </Button>
-              </div>
+        <div className="grid md:grid-cols-2 gap-8">
+            <Card>
+            <CardHeader>
+                <CardTitle>Toplu Mesaj Paneli</CardTitle>
+                <CardDescription>
+                Buradan tüm aktif (bot olmayan) kullanıcılara bir sistem mesajı veya anket gönderebilirsiniz.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Alert>
+                    <Users className="h-4 w-4" />
+                    <AlertDescription>
+                    {isLoadingUsers ? (
+                        <Icons.logo className="h-4 w-4 animate-pulse" />
+                    ) : (
+                        `Bu mesaj toplam ${users?.length || 0} kullanıcıya gönderilecek.`
+                    )}
+                    </AlertDescription>
+                </Alert>
+                
+                <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="system-message">{isPoll ? "Anket Sorusu" : "Mesajınız"}</Label>
+                    <Button variant="link" onClick={() => setIsPoll(!isPoll)}>
+                    {isPoll ? "Normal Mesaja Dön" : "Anket Oluştur"}
+                    </Button>
+                </div>
 
-              {isPoll ? (
-                <div className="space-y-3">
-                    <Input 
-                        id="poll-question"
-                        placeholder="Anket sorusunu buraya yazın..."
-                        value={pollQuestion}
-                        onChange={(e) => setPollQuestion(e.target.value)}
-                        disabled={isSending}
-                    />
-                    <Label>Seçenekler</Label>
-                    {pollOptions.map((option, index) => (
-                      <div key={index} className="flex items-center gap-2">
+                {isPoll ? (
+                    <div className="space-y-3">
                         <Input 
-                            placeholder={`Seçenek ${index + 1}`}
-                            value={option}
-                            onChange={(e) => handleOptionChange(index, e.target.value)}
+                            id="poll-question"
+                            placeholder="Anket sorusunu buraya yazın..."
+                            value={pollQuestion}
+                            onChange={(e) => setPollQuestion(e.target.value)}
                             disabled={isSending}
                         />
-                        {pollOptions.length > 2 && (
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(index)} disabled={isSending}>
-                              <X className="h-4 w-4 text-red-500"/>
-                          </Button>
+                        <Label>Seçenekler</Label>
+                        {pollOptions.map((option, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <Input 
+                                placeholder={`Seçenek ${index + 1}`}
+                                value={option}
+                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                disabled={isSending}
+                            />
+                            {pollOptions.length > 2 && (
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(index)} disabled={isSending}>
+                                <X className="h-4 w-4 text-red-500"/>
+                            </Button>
+                            )}
+                        </div>
+                        ))}
+                        {pollOptions.length < 4 && (
+                        <Button variant="outline" size="sm" onClick={handleAddOption} disabled={isSending}>
+                            <Plus className="mr-2 h-4 w-4"/> Seçenek Ekle
+                        </Button>
                         )}
-                      </div>
-                    ))}
-                    {pollOptions.length < 4 && (
-                      <Button variant="outline" size="sm" onClick={handleAddOption} disabled={isSending}>
-                        <Plus className="mr-2 h-4 w-4"/> Seçenek Ekle
-                      </Button>
-                    )}
+                    </div>
+                ) : (
+                    <Textarea
+                    id="system-message"
+                    placeholder="Tüm kullanıcılara göndermek istediğiniz mesajı buraya yazın..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={5}
+                    disabled={isSending || isPoll}
+                    />
+                )}
                 </div>
-              ) : (
-                <Textarea
-                  id="system-message"
-                  placeholder="Tüm kullanıcılara göndermek istediğiniz mesajı buraya yazın..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={5}
-                  disabled={isSending || isPoll}
-                />
-              )}
-            </div>
 
-            <Button onClick={handleSendMessage} disabled={isSending || isLoadingUsers}>
-              {isSending ? (
-                <><Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> Gönderiliyor...</>
-              ) : (
-                <><Send className="mr-2 h-4 w-4" /> {isPoll ? "Anketi Gönder" : "Mesajı Gönder"}</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+                <Button onClick={handleSendMessage} disabled={isSending || isLoadingUsers}>
+                {isSending ? (
+                    <><Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> Gönderiliyor...</>
+                ) : (
+                    <><Send className="mr-2 h-4 w-4" /> {isPoll ? "Anketi Gönder" : "Mesajı Gönder"}</>
+                )}
+                </Button>
+            </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Gönderilmiş Mesajlar</CardTitle>
-            <CardDescription>Daha önce gönderilen sistem mesajları ve anketlerin durumu.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                <Icons.logo className="h-8 w-8 animate-pulse mx-auto" />
-                <p className='text-center text-sm text-muted-foreground'>Mesajlar yükleniyor...</p>
-              </div>
-            ) : sentMessages && sentMessages.length > 0 ? (
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {sentMessages.map(msg => (
-                        <SentMessageCard key={msg.id} message={msg} totalUsers={users?.length || 0} />
-                    ))}
+            <Card>
+            <CardHeader>
+                <CardTitle>Gönderilmiş Mesajlar</CardTitle>
+                <CardDescription>Daha önce gönderilen sistem mesajları ve anketlerin durumu.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                <div className="space-y-4">
+                    <Icons.logo className="h-8 w-8 animate-pulse mx-auto" />
+                    <p className='text-center text-sm text-muted-foreground'>Mesajlar yükleniyor...</p>
                 </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Henüz hiç sistem mesajı gönderilmemiş.</p>
-            )}
-          </CardContent>
-        </Card>
+                ) : sentMessages && sentMessages.length > 0 ? (
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        {sentMessages.map(msg => (
+                            <SentMessageCard key={msg.id} message={msg} totalUsers={users?.length || 0} onDelete={() => setMessageToDelete(msg.id)} />
+                        ))}
+                    </div>
+                ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">Henüz hiç sistem mesajı gönderilmemiş.</p>
+                )}
+            </CardContent>
+            </Card>
 
-      </div>
-    </div>
+        </div>
+        </div>
+         <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Mesajı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Bu işlem geri alınamaz. Mesaj tüm kullanıcılardan silinecek ve istatistikleri kaybolacaktır.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMessageToDelete(null)}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMessage} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
   );
 }
