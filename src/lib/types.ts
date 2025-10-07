@@ -56,6 +56,8 @@ export type UserProfile = {
   superLikeBalance?: number;
   membershipType?: 'free' | 'gold';
   goldMembershipExpiresAt?: any;
+  dailyUndoCount?: number;
+  lastUndoTimestamp?: any;
 };
 
 export type Match = {

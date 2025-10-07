@@ -133,6 +133,15 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the user's Gold membership expires."
+        },
+        "dailyUndoCount": {
+          "type": "number",
+          "description": "The number of times a free user has used the undo feature today."
+        },
+        "lastUndoTimestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of the last undo action."
         }
       },
       "required": [

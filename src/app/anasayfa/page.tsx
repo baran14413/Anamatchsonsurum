@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Undo2 } from 'lucide-react';
+import { Undo2, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase';
@@ -13,6 +13,8 @@ import { getDistance, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from '@/components/icons';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
@@ -131,6 +133,7 @@ export default function AnasayfaPage() {
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
+  const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
 
   const removeTopCard = useCallback((swipedProfile: UserProfile, action: 'liked' | 'disliked' | 'superliked') => {
     if (action === 'disliked') {
@@ -183,18 +186,46 @@ export default function AnasayfaPage() {
 
 
   const handleUndo = async () => {
-    if (!lastDislikedProfile || !user || !firestore) return;
+    if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
     
-    // Add the profile back to the stack
+    // Check user membership and undo limits
+    const isGoldMember = userProfile.membershipType === 'gold';
+    if (!isGoldMember) {
+        const now = new Date();
+        const lastUndoDate = userProfile.lastUndoTimestamp?.toDate();
+        let currentUndoCount = userProfile.dailyUndoCount || 0;
+
+        // Reset count if it's a new day (24 hours passed)
+        if (lastUndoDate && (now.getTime() - lastUndoDate.getTime()) > 24 * 60 * 60 * 1000) {
+            currentUndoCount = 0;
+        }
+        
+        if (currentUndoCount >= 3) {
+            setShowUndoLimitModal(true);
+            return;
+        }
+
+        // Increment count and update timestamp
+         try {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userDocRef, {
+                dailyUndoCount: currentUndoCount + 1,
+                lastUndoTimestamp: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error updating undo count:", error);
+            // Don't block the UI for this, just log it.
+        }
+    }
+    
+    // UI: Add the profile back to the stack
     setProfiles(prev => [...prev, lastDislikedProfile]);
 
-    // Revert the database change
+    // DB: Revert the dislike action
     const matchId = [user.uid, lastDislikedProfile.uid].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
-    
     const isUser1 = user.uid < lastDislikedProfile.uid;
     const currentUserField = isUser1 ? 'user1' : 'user2';
-
     try {
       await updateDoc(matchDocRef, {
         [`${currentUserField}_action`]: deleteField(),
@@ -202,10 +233,8 @@ export default function AnasayfaPage() {
       });
     } catch (error) {
       console.error("Error reverting dislike:", error);
-      // Even if DB fails, we proceed with UI change. It's not critical.
     }
     
-    // Clear the last disliked profile so it can't be undone again
     setLastDislikedProfile(null);
   };
 
@@ -325,69 +354,87 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
 
   return (
-    <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
-      {isLoading ? (
-        <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-      ) : profiles.length > 0 ? (
-        <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
-          {lastDislikedProfile && (
-            <div className="absolute top-0 right-0 z-40">
-              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                  <Undo2 className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
-          <AnimatePresence>
-            {profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              
-              if (index < profiles.length - 2) return null;
-
-              return (
-                <motion.div
-                  key={profile.uid}
-                  className={cn(
-                    "absolute w-full h-full transition-all",
-                    !isTopCard && "blur-sm"
-                  )}
-                  style={{
-                    zIndex: index,
-                  }}
-                  initial={{ 
-                    scale: isTopCard ? 1 : 0.95, 
-                    y: isTopCard ? 0 : 10,
-                  }}
-                  animate={{ 
-                    scale: 1, 
-                    y: 0, 
-                    opacity: 1, 
-                    transition: { duration: 0.3, ease: 'easeOut' }
-                  }}
-                >
-                  <ProfileCard
-                    profile={profile}
-                    onSwipe={(action) => handleSwipe(profile, action)}
-                    isDraggable={isTopCard}
-                  />
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <div className="flex h-full items-center justify-center text-center">
-            <div className='space-y-4'>
-                <p>{t.anasayfa.outOfProfilesDescription}</p>
-                <Button onClick={() => fetchProfiles(true)}>
-                    <Undo2 className="mr-2 h-4 w-4" />
-                    Tekrar Dene
+    <AlertDialog>
+        <div className="relative h-full w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+        {isLoading ? (
+            <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+        ) : profiles.length > 0 ? (
+            <div className="relative flex-1 flex flex-col items-center justify-center w-full max-w-sm h-full max-h-[80vh]">
+            {lastDislikedProfile && (
+                <div className="absolute top-0 right-0 z-40">
+                <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                    <Undo2 className="h-5 w-5" />
                 </Button>
+                </div>
+            )}
+            <AnimatePresence>
+                {profiles.map((profile, index) => {
+                const isTopCard = index === profiles.length - 1;
+                
+                if (index < profiles.length - 2) return null;
+
+                return (
+                    <motion.div
+                    key={profile.uid}
+                    className={cn(
+                        "absolute w-full h-full transition-all",
+                        !isTopCard && "blur-sm"
+                    )}
+                    style={{
+                        zIndex: index,
+                    }}
+                    initial={{ 
+                        scale: isTopCard ? 1 : 0.95, 
+                        y: isTopCard ? 0 : 10,
+                    }}
+                    animate={{ 
+                        scale: 1, 
+                        y: 0, 
+                        opacity: 1, 
+                        transition: { duration: 0.3, ease: 'easeOut' }
+                    }}
+                    >
+                    <ProfileCard
+                        profile={profile}
+                        onSwipe={(action) => handleSwipe(profile, action)}
+                        isDraggable={isTopCard}
+                    />
+                    </motion.div>
+                );
+                })}
+            </AnimatePresence>
             </div>
+        ) : (
+            <div className="flex h-full items-center justify-center text-center">
+                <div className='space-y-4'>
+                    <p>{t.anasayfa.outOfProfilesDescription}</p>
+                    <Button onClick={() => fetchProfiles(true)}>
+                        <Undo2 className="mr-2 h-4 w-4" />
+                        Tekrar Dene
+                    </Button>
+                </div>
+            </div>
+        )}
         </div>
-      )}
-    </div>
+         <AlertDialogContent>
+            <AlertDialogHeader className="items-center text-center">
+                 <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
+                    <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
+                 </div>
+                <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
+                <AlertDialogDescription>
+                   Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
+                <AlertDialogAction asChild>
+                    <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500'>
+                        <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
+                    </Button>
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
   );
 }
-
-
-    
