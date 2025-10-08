@@ -73,6 +73,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   
   const likeOpacity = useTransform(x, [0, 50], [0, 1]);
   const dislikeOpacity = useTransform(x, [-50, 0], [1, 0]);
+  const superlikeOpacity = useTransform(y, [-50, 0], [1, 0]);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   
   const age = calculateAge(profile.dateOfBirth);
@@ -126,11 +127,16 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     const displayed: string[] = [];
     const categories = Object.keys(groupedInterests);
     
+    // Pick one interest from the first 5 categories that have interests
+    let count = 0;
     for (const category of categories) {
-      if (displayed.length >= 5) break;
-      const randomInterestFromCategory = groupedInterests[category][Math.floor(Math.random() * groupedInterests[category].length)];
-      if (randomInterestFromCategory) {
-        displayed.push(randomInterestFromCategory);
+      if (count >= 5) break;
+      if (groupedInterests[category].length > 0) {
+        const randomInterestFromCategory = groupedInterests[category][Math.floor(Math.random() * groupedInterests[category].length)];
+        if (randomInterestFromCategory) {
+          displayed.push(randomInterestFromCategory);
+          count++;
+        }
       }
     }
     
@@ -172,7 +178,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
       style={{ rotate }}
       className={cn(
         "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
-        profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
+        profile.membershipType === 'gold' && "p-1 gold-member-card-wrapper"
       )}
     >
         <div className="relative w-full h-full rounded-[14px] overflow-hidden">
@@ -202,6 +208,9 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
             </motion.div>
             <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
                 <HeartCrack className="w-16 h-16 fill-transparent" />
+            </motion.div>
+             <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-500 text-blue-500">
+                <Star className="w-16 h-16 fill-transparent" />
             </motion.div>
         </div>
       
@@ -314,7 +323,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                         )}
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
+                                     <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
                                         <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
                                         <div className='flex-1'>
                                             <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
