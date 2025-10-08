@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Undo2, Star } from 'lucide-react';
+import { Undo2, Star, Heart, HeartCrack } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
@@ -461,7 +461,7 @@ export default function AnasayfaPage() {
 
 
   return (
-    <div className="flex flex-col h-full items-center justify-center p-4">
+    <div className="flex flex-col h-full items-center justify-center py-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) {
               setShowUndoLimitModal(false);
