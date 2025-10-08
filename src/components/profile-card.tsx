@@ -278,9 +278,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                             <SheetTitle>Profil Detayları</SheetTitle>
                             <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                         </SheetHeader>
-                        <SheetClose className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-                            <X className="h-5 w-5" />
-                            <span className="sr-only">Close</span>
+                        <SheetClose asChild className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                            <Button variant="ghost" size="icon">
+                                <X className="h-5 w-5" />
+                                <span className="sr-only">Close</span>
+                            </Button>
                         </SheetClose>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
@@ -398,7 +400,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 </div>
                             </div>
                         </ScrollArea>
-                        <SheetClose>
+                         <SheetClose asChild>
                              <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
                                 <ChevronDown className="h-6 w-6" />
                             </Button>
@@ -431,5 +433,3 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
-
-    
