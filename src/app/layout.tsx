@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
+import { FirebaseProvider } from "@/firebase/provider";
 import { Inter } from 'next/font/google';
 import AppShell from "@/components/app-shell";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -26,11 +26,11 @@ export default function RootLayout({
           defaultTheme="dark"
           enableSystem
         >
-          <FirebaseClientProvider>
+          <FirebaseProvider>
             <AppShell>
               {children}
             </AppShell>
-          </FirebaseClientProvider>
+          </FirebaseProvider>
           <Toaster />
         </ThemeProvider>
       </body>

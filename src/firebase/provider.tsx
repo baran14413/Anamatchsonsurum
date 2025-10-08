@@ -7,12 +7,10 @@ import { Firestore, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/fi
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
+import { initializeFirebase } from '@/firebase'; // Import initializeFirebase
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
 }
 
 // Combined state for the Firebase context
@@ -40,21 +38,28 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
-  firebaseApp,
-  firestore,
-  auth,
 }) => {
+  const [services, setServices] = useState<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; } | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [userError, setUserError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!auth || !firestore) {
-      setIsUserLoading(false);
-      setUserError(new Error("Auth or Firestore service not provided."));
+    // Initialize Firebase on the client side, once per component mount.
+    const firebaseServices = initializeFirebase();
+    if (firebaseServices.firebaseApp && firebaseServices.auth && firebaseServices.firestore) {
+      setServices(firebaseServices as { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!services) {
+      // Still waiting for services to initialize
       return;
     }
+    
+    const { auth, firestore } = services;
 
     let profileUnsubscribe: (() => void) | undefined;
     let visibilityChangeHandler: (() => void) | undefined;
@@ -151,21 +156,25 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           updateUserPresence(user.uid, false);
        }
     };
-  }, [auth, firestore, user]); // Added user to dependency array to get its latest value in cleanup
+  }, [services, user]); // Rerun when services are initialized or user changes
 
   const contextValue = useMemo((): FirebaseContextState => {
-    const servicesAvailable = !!(firebaseApp && firestore && auth);
+    const areServicesAvailable = !!services;
     return {
-      areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
+      areServicesAvailable,
+      firebaseApp: services?.firebaseApp || null,
+      firestore: services?.firestore || null,
+      auth: services?.auth || null,
       user,
       userProfile,
-      isUserLoading,
+      isUserLoading: !services || isUserLoading, // Still loading if services aren't ready
       userError,
     };
-  }, [firebaseApp, firestore, auth, user, userProfile, isUserLoading, userError]);
+  }, [services, user, userProfile, isUserLoading, userError]);
+
+  if (!services) {
+    return null;
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -197,6 +206,10 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, userProfile, isUserLoading, userError } = useFirebase();
+  const context = useContext(FirebaseContext);
+   if (context === undefined) {
+    throw new Error('useUser must be used within a FirebaseProvider.');
+  }
+  const { user, userProfile, isUserLoading, userError } = context;
   return { user, userProfile, isUserLoading, userError };
 };
