@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -180,7 +181,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            {profile.images && profile.images.length > 0 && profile.images.map((image, index) => (
              image.url && (
                 <Image
-                    key={image.url}
+                    key={`${image.url}-${index}`}
                     src={image.url}
                     alt={`${profile.fullName} profile image ${index + 1}`}
                     fill
