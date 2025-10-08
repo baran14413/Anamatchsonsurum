@@ -149,29 +149,29 @@ export default function ProfilePage() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 text-center text-sm">
-           <Card className="p-3 shadow-md">
-              <Heart className="h-6 w-6 text-red-500 mx-auto mb-1 fill-red-500" />
-              <p className="font-semibold">{matchCount} Eşleşme</p>
-              <span className="text-xs text-muted-foreground">yakaladınız</span>
+        <div className="grid grid-cols-3 gap-3 text-center">
+           <Card className="p-4 flex flex-col items-center justify-center space-y-1">
+              <Heart className="h-8 w-8 text-red-500 fill-red-500" />
+              <p className="text-lg font-bold">{matchCount}</p>
+              <span className="text-xs text-muted-foreground">Eşleşme</span>
           </Card>
            <Card className="p-4 flex flex-col items-center justify-center space-y-1">
               <Star className="h-8 w-8 text-blue-400 fill-blue-400" />
-              <p className="text-lg font-bold">{superLikeBalance} Super Like</p>
+              <p className="text-lg font-bold">{superLikeBalance}</p>
                <Link href="/market">
                 <span className="text-xs font-semibold text-blue-500 cursor-pointer">{t.profil.getMore}</span>
               </Link>
           </Card>
-          <Card className="p-3 shadow-md">
-              <Heart className="h-6 w-6 text-pink-400 mx-auto mb-1 fill-pink-400" />
-              <p className="font-semibold">% {likeRatio} Beğeni</p>
-               <span className="text-xs text-muted-foreground">oranına sahipsin</span>
+          <Card className="p-4 flex flex-col items-center justify-center space-y-1">
+              <Heart className="h-8 w-8 text-pink-400 fill-pink-400" />
+              <p className="text-lg font-bold">% {likeRatio}</p>
+               <span className="text-xs text-muted-foreground">Beğeni Oranı</span>
           </Card>
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <Link href="/profil/galeri">
+           <Link href="/profil/galeri">
             <Button className="w-full h-14 rounded-full font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white">
                 Galerini Düzenle
             </Button>
