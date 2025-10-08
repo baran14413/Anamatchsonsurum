@@ -202,19 +202,19 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 text-center">
-           <Card className="p-3 flex flex-col items-center justify-center space-y-1">
+           <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
               <Heart className="h-6 w-6 text-red-500 fill-red-500" />
               <p className="text-base font-bold">{matchCount}</p>
               <span className="text-xs text-muted-foreground">Eşleşme</span>
           </Card>
-           <Card className="p-3 flex flex-col items-center justify-center space-y-1">
+           <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
               <Star className="h-6 w-6 text-blue-400 fill-blue-400" />
               <p className="text-base font-bold">{superLikeBalance}</p>
                <Link href="/market">
                 <span className="text-xs font-semibold text-blue-500 cursor-pointer">{t.profil.getMore}</span>
               </Link>
           </Card>
-          <Card className="p-3 flex flex-col items-center justify-center space-y-1">
+          <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
               <Heart className="h-6 w-6 text-pink-400 fill-pink-400" />
               <p className="text-base font-bold">% {likeRatio}</p>
                <span className="text-xs text-muted-foreground">Beğeni Oranı</span>
