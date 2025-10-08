@@ -168,9 +168,11 @@ export default function ProfilePage() {
               <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
               <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
-             <div className="absolute -bottom-1 -right-1">
-                 <CircularProgress progress={profileCompletionPercentage} size={44} />
-             </div>
+             {profileCompletionPercentage < 100 && (
+                <div className="absolute -bottom-1 -right-1">
+                    <CircularProgress progress={profileCompletionPercentage} size={44} />
+                </div>
+            )}
           </div>
           
           <div className="text-center space-y-1">
