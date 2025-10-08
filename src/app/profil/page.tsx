@@ -159,12 +159,6 @@ export default function ProfilePage() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <Link href="/ayarlar">
-            <Button variant="outline" className="w-full h-14 justify-between text-base">
-                <span>Ayarlar</span>
-                <ChevronRight className='w-5 h-5 text-muted-foreground'/>
-            </Button>
-          </Link>
           <Link href="/profil/galeri">
             <Button className="w-full h-14 rounded-full font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white">
                 Galerini Düzenle
