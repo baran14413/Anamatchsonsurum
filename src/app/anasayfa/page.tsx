@@ -409,7 +409,7 @@ export default function AnasayfaPage() {
 
         const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
             if (!isTopCard) return;
-            const SWIPE_THRESHOLD = 80;
+            const SWIPE_THRESHOLD = 50;
             const swipedIndex = profiles.findIndex(p => p.id === profile.id);
 
             if (info.offset.y < -SWIPE_THRESHOLD) {
@@ -426,7 +426,7 @@ export default function AnasayfaPage() {
                 key={profile.id}
                 drag={isTopCard}
                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                dragElastic={0.3}
+                dragElastic={0.2}
                 onDragEnd={onDragEnd}
                 className="absolute w-full h-full"
                 style={{
