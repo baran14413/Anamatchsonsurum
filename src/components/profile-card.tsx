@@ -246,7 +246,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                     <div className='flex flex-col items-start'>
                        {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
-                       <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && <span className="font-semibold text-white/80"> {age}</span>}</h3>
+                        <h3 className="text-3xl font-bold truncate">
+                            {profile.fullName}
+                            {age && <span className="font-semibold text-white/80"> {age}</span>}
+                        </h3>
                     </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
                         {profile.distance !== undefined && (
@@ -309,7 +312,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                                 <p className="font-semibold text-yellow-500">Gold Üye</p>
                                               </div>
                                             )}
-                                            <h3 className="text-3xl font-bold">{profile.fullName}{age && <span className="font-semibold text-foreground/80"> {age}</span>}</h3>
+                                            <h3 className="text-3xl font-bold">
+                                                {profile.fullName}
+                                                {age && <span className="font-semibold text-foreground/80"> {age}</span>}
+                                            </h3>
                                         </div>
                                         {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                         
