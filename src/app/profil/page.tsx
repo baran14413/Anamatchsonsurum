@@ -15,7 +15,9 @@ import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import type { Match } from '@/lib/types';
+
 
 export default function ProfilePage() {
   const t = langTr;
@@ -26,6 +28,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
+  const [likeRatio, setLikeRatio] = useState(75); // Default encouraging value
 
   const matchesQuery = useMemo(() => {
     if (!user || !firestore) return null;
@@ -35,6 +38,7 @@ export default function ProfilePage() {
     );
   }, [user, firestore]);
 
+  // Effect for match count
   useEffect(() => {
     if (!matchesQuery) return;
 
@@ -46,6 +50,61 @@ export default function ProfilePage() {
 
     return () => unsubscribe();
   }, [matchesQuery]);
+
+  // Effect for calculating real like ratio
+   useEffect(() => {
+    if (!user || !firestore) return;
+
+    const fetchInteractions = async () => {
+        const userUid = user.uid;
+        
+        // Query where the user is user1 and was rated by user2
+        const query1 = query(collection(firestore, 'matches'), where('user1Id', '==', userUid), where('user2_action', '!=', null));
+        // Query where the user is user2 and was rated by user1
+        const query2 = query(collection(firestore, 'matches'), where('user2Id', '==', userUid), where('user1_action', '!=', null));
+
+        try {
+            const [snapshot1, snapshot2] = await Promise.all([getDocs(query1), getDocs(query2)]);
+            
+            let totalLikes = 0;
+            let totalDislikes = 0;
+
+            snapshot1.forEach(doc => {
+                const data = doc.data() as Match;
+                if (data.user2_action === 'liked' || data.user2_action === 'superliked') {
+                    totalLikes++;
+                } else if (data.user2_action === 'disliked') {
+                    totalDislikes++;
+                }
+            });
+
+            snapshot2.forEach(doc => {
+                const data = doc.data() as Match;
+                 if (data.user1_action === 'liked' || data.user1_action === 'superliked') {
+                    totalLikes++;
+                } else if (data.user1_action === 'disliked') {
+                    totalDislikes++;
+                }
+            });
+            
+            const totalInteractions = totalLikes + totalDislikes;
+            
+            if (totalInteractions > 0) {
+                const ratio = Math.round((totalLikes / totalInteractions) * 100);
+                setLikeRatio(ratio);
+            }
+            // If no interactions, keep the default encouraging value
+            
+        } catch (error) {
+            console.error("Error fetching like ratio data:", error);
+            // In case of error, fallback to the default value
+        }
+    };
+    
+    fetchInteractions();
+
+  }, [user, firestore]);
+
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -90,13 +149,6 @@ export default function ProfilePage() {
   const profileCompletionPercentage = calculateProfileCompletion();
   const superLikeBalance = userProfile?.superLikeBalance ?? 0;
   
-   const likeRatio = useMemo(() => {
-    if (!user?.uid) return 75;
-    // Simple hash to get a consistent "random" number for the user
-    const charCodeSum = user.uid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return 70 + (charCodeSum % 29); // 70-98 range
-  }, [user?.uid]);
-
   let isGoldMember = userProfile?.membershipType === 'gold';
   if (isGoldMember && userProfile?.goldMembershipExpiresAt) {
     const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
@@ -206,4 +258,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
