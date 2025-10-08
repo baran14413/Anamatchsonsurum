@@ -169,8 +169,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     <motion.div
         style={{ rotate }}
         className={cn(
-            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 p-1",
-            profile.membershipType === 'gold' && "bg-gradient-to-r from-yellow-300 via-yellow-500 to-amber-300 animate-gold-shimmer"
+            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+            profile.membershipType === 'gold' && "p-1 gold-member-card-wrapper"
         )}
     >
         <div className="relative w-full h-full rounded-[14px] overflow-hidden">
