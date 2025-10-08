@@ -29,6 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -1166,11 +1167,11 @@ export default function ChatPage() {
                             <SheetDescription>{renderOnlineStatus()}</SheetDescription>
                           </div>
                        </div>
-                       <SheetClose asChild>
-                           <Button variant="ghost" size="icon" className='rounded-full'>
+                        <DialogClose asChild>
+                            <Button variant="ghost" size="icon" className='rounded-full bg-background/50 backdrop-blur-sm'>
                                <X className="h-5 w-5" />
                            </Button>
-                       </SheetClose>
+                        </DialogClose>
                     </SheetHeader>
                     <ScrollArea className='flex-1'>
                        <div className='relative w-full aspect-[9/16]'>
