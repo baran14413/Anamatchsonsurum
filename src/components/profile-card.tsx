@@ -87,8 +87,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
 
-  const currentImage = profile.images && profile.images.length > 0 ? profile.images[activeImageIndex] : null;
-
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
   const lookingForMap: { [key: string]: string } = {
@@ -167,24 +165,32 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
   return (
     <motion.div
-        style={{ rotate }}
-        className={cn(
-            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
-            profile.membershipType === 'gold' && "p-1 gold-member-card-wrapper"
-        )}
+      style={{ rotate }}
+      className={cn(
+        "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+        profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
+      )}
     >
         <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-          {currentImage?.url && (
-              <Image
-                  src={currentImage.url}
-                  alt={`${profile.fullName} profile image ${activeImageIndex + 1}`}
-                  fill
-                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                  style={{ objectFit: 'cover' }}
-                  className="pointer-events-none"
-                  priority={true}
-              />
-          )}
+          
+           {profile.images && profile.images.length > 0 && profile.images.map((image, index) => (
+             image.url && (
+                <Image
+                    key={image.url}
+                    src={image.url}
+                    alt={`${profile.fullName} profile image ${index + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                    style={{ objectFit: 'cover' }}
+                    className={cn(
+                        "pointer-events-none absolute inset-0 transition-opacity duration-300",
+                        index === activeImageIndex ? "opacity-100" : "opacity-0"
+                    )}
+                    priority={index === 0}
+                />
+             )
+           ))}
+
 
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-400 text-blue-400 -translate-y-12">
