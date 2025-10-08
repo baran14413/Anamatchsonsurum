@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useCollection } from '@/firebase/provider';
-import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Search, MessageSquare, Trash2, Check, Star, Info } from 'lucide-react';
@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import { DenormalizedMatch, ChatMessage } from '@/lib/types';
+import { DenormalizedMatch, ChatMessage, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +23,7 @@ export default function EslesmelerPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
+  const [matches, setMatches] = useState<(DenormalizedMatch & { userProfile?: UserProfile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,28 +38,37 @@ export default function EslesmelerPage() {
   }, [user, firestore]);
 
   useEffect(() => {
-    if (!matchesQuery) {
+    if (!matchesQuery || !firestore) {
       setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
 
-    const unsubMatches = onSnapshot(matchesQuery, (snapshot) => {
-      const matchesData: DenormalizedMatch[] = [];
-      let systemMatchExists = false;
-      snapshot.forEach(doc => {
+    const unsubMatches = onSnapshot(matchesQuery, async (snapshot) => {
+      const matchesDataPromises = snapshot.docs.map(async (doc) => {
           const data = doc.data() as DenormalizedMatch;
-          if (data.id === 'system') {
-              systemMatchExists = true;
+          
+          if(data.id !== 'system' && data.matchedWith) {
+             const userDoc = await getDoc(firestore.doc(`users/${data.matchedWith}`));
+             if (userDoc.exists()) {
+                (data as any).userProfile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
+             }
           }
-          matchesData.push(data);
+          return data;
+      });
+      
+      const resolvedMatches = await Promise.all(matchesDataPromises);
+
+      let systemMatchExists = false;
+      resolvedMatches.forEach(match => {
+          if (match.id === 'system') systemMatchExists = true;
       });
 
       // Ensure system match exists for the user
-      if (!snapshot.empty && !systemMatchExists && user && firestore) {
+      if (resolvedMatches.length > 0 && !systemMatchExists && user) {
           const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-          setDoc(systemMatchRef, {
+          await setDoc(systemMatchRef, {
               id: 'system',
               matchedWith: 'system',
               lastMessage: "BeMatch'e hoş geldin!",
@@ -70,7 +79,7 @@ export default function EslesmelerPage() {
           }, { merge: true });
       }
 
-      setMatches(matchesData);
+      setMatches(resolvedMatches);
       setIsLoading(false);
     }, (error) => {
         console.error("Error fetching matches:", error);
@@ -211,12 +220,14 @@ export default function EslesmelerPage() {
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
+                                const profilePictureUrl = (match as any).userProfile?.profilePicture || match.profilePicture;
+
 
                                 const MatchItemContent = () => (
                                     <div className="flex items-center p-4 hover:bg-muted/50">
                                         <div className='relative'>
                                             <Avatar className="h-12 w-12">
-                                                {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />)}
+                                                {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={profilePictureUrl} />)}
                                                 <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
                                             </Avatar>
                                             {hasUnread && (
