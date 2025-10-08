@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useUser, useFirestore } from '@/firebase';
+import { useUser } from '@/firebase/provider';
+import { useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import FooterNav from './footer-nav';

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
 import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare } from 'lucide-react';
 import Link from 'next/link';

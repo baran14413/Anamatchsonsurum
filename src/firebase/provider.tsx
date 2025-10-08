@@ -175,7 +175,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-const useFirebase = (): Omit<FirebaseContextState, 'areServicesAvailable'> => {
+export const useFirebase = (): Omit<FirebaseContextState, 'areServicesAvailable'> => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup, arrayUnion } from 'firebase/firestore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -968,7 +968,7 @@ export default function ChatPage() {
                  {recordingStatus === 'idle' && (
                     <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
                         {editingMessage && (
-                             <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
+                            <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
                                 <X className="h-5 w-5" />
                             </Button>
                         )}

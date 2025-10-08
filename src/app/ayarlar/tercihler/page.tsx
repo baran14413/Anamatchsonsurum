@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

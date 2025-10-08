@@ -4,7 +4,7 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';

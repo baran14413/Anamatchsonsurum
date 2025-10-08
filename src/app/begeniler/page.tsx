@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Heart, Star, CheckCircle } from 'lucide-react';
 import type { UserProfile, LikerInfo, DenormalizedMatch } from '@/lib/types';
