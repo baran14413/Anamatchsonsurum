@@ -19,9 +19,9 @@ import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
 
 interface ProfileCardProps {
-  profile: UserProfile & { distance?: number };
-  x: MotionValue<number>;
-  y: MotionValue<number>;
+  profile: UserProfile;
+  x?: MotionValue<number>;
+  y?: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -71,10 +71,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     setActiveImageIndex(0);
   }, [profile.uid]);
   
-  const likeOpacity = useTransform(x, [0, 50], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -50], [0, 1]);
-  const superlikeOpacity = useTransform(y, [-3, -50], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
+  const likeOpacity = x ? useTransform(x, [0, 50], [0, 1]) : 0;
+  const dislikeOpacity = x ? useTransform(x, [0, -50], [0, 1]) : 0;
+  const superlikeOpacity = y ? useTransform(y, [-3, -50], [0, 1]) : 0;
+  const rotate = x ? useTransform(x, [-200, 200], [-20, 20]) : 0;
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -173,8 +173,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   }, [profile.uid]);
 
 
-  return (
-    <motion.div
+  const CardContent = (
+      <motion.div
       style={{ rotate }}
       className={cn(
         "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 gold-member-card-wrapper",
@@ -244,18 +244,18 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            <div className="flex items-end justify-between gap-4">
                 <div className="flex-1 min-w-0 space-y-1">
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                    <div className='flex flex-col items-start'>
-                       {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
+                     <div className='flex flex-col items-start'>
+                        {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
                         <h3 className="text-3xl font-bold truncate">
                             {profile.fullName}
                             {age && <span className="font-semibold text-white/80"> {age}</span>}
                         </h3>
                     </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
-                        {profile.distance !== undefined && (
+                        {(profile.distance || (profile as any).distance === 0) && (
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                <span>{langTr.anasayfa.distance.replace('{distance}', String((profile as any).distance))}</span>
                             </div>
                         )}
                     </div>
@@ -395,7 +395,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                             </div>
                         </ScrollArea>
                         <SheetClose asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+                             <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
                                 <ChevronDown className="h-6 w-6" />
                             </Button>
                         </SheetClose>
@@ -406,6 +406,21 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
         </div>
     </motion.div>
   );
+
+  // If x and y are not provided, it means we are in a non-draggable context (e.g., inside another Sheet).
+  // Render just the static content without the motion wrapper.
+  if (!x || !y) {
+      return (
+        <div className={cn(
+            "relative w-full h-full rounded-2xl overflow-hidden bg-gray-200 gold-member-card-wrapper",
+             profile.membershipType === 'gold' && "p-1"
+        )}>
+             {CardContent}
+        </div>
+      );
+  }
+
+  return CardContent;
 };
 
 const ProfileCard = memo(ProfileCardComponent);
