@@ -266,7 +266,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </div>
                  <Sheet onOpenChange={(open) => !open && setShowAllInterests(false)}>
                     <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                         <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
                             <ChevronUp className="h-6 w-6" />
                         </Button>
                     </SheetTrigger>
@@ -388,13 +388,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 </div>
                             </div>
                         </ScrollArea>
-                        <div className='p-4 border-t flex justify-center'>
-                           <SheetClose asChild>
-                               <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                  <ChevronDown className="h-6 w-6" />
-                               </Button>
-                           </SheetClose>
-                        </div>
+                        <SheetClose asChild>
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+                                <ChevronDown className="h-6 w-6" />
+                            </Button>
+                        </SheetClose>
                     </SheetContent>
                 </Sheet>
             </div>
