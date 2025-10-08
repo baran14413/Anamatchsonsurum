@@ -1155,50 +1155,10 @@ export default function ChatPage() {
                 </Dialog>
                 
                 {otherUser && (
-                 <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-card flex flex-col'>
-                    <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
-                       <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                              <AvatarImage src={otherUser.profilePicture} />
-                              <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <SheetTitle>{otherUser.fullName}</SheetTitle>
-                            <SheetDescription>{renderOnlineStatus()}</SheetDescription>
-                          </div>
-                       </div>
-                        <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className='rounded-full bg-background/50 backdrop-blur-sm'>
-                               <X className="h-5 w-5" />
-                           </Button>
-                        </DialogClose>
-                    </SheetHeader>
-                    <ScrollArea className='flex-1'>
-                       <div className='relative w-full aspect-[9/16]'>
-                           <Image src={otherUser.profilePicture || ''} alt={otherUser.fullName || ''} fill className='object-cover'/>
-                       </div>
-                       <div className="p-6 space-y-6">
-                            <div className="text-left space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-3xl font-bold">{otherUser.fullName}</h3>
-                                    <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
-                                </div>
-                                {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
-                                {(otherUser.address?.city && otherUser.address?.country) && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <MapPin className="w-4 h-4" />
-                                        <span>{otherUser.address.city}, {otherUser.address.country}</span>
-                                    </div>
-                                )}
-                            </div>
-                             {otherUser.bio && (
-                                <div>
-                                    <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
-                                    <p className='text-muted-foreground'>{otherUser.bio}</p>
-                                </div>
-                            )}
-                       </div>
-                    </ScrollArea>
+                 <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent flex flex-col'>
+                    <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
+                        <ProfileCard profile={otherUser} />
+                    </div>
                  </SheetContent>
                 )}
             </div>

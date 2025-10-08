@@ -71,7 +71,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
   useEffect(() => {
     setActiveImageIndex(0);
-    // This effect runs only once when the component mounts with a new profile.
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
@@ -174,35 +173,26 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const CardContent = (
-      <motion.div
-      style={{ rotate }}
-      className={cn(
-        "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 gold-member-card-wrapper",
-        profile.membershipType === 'gold' && "p-1"
-      )}
-    >
-        <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-          
-           {profile.images && profile.images.length > 0 && profile.images.map((image, index) => (
-             image.url && (
-                <Image
-                    key={`${image.url}-${index}`}
-                    src={image.url}
-                    alt={`${profile.fullName} profile image ${index + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ objectFit: 'cover' }}
-                    className={cn(
-                        "pointer-events-none absolute inset-0 transition-opacity duration-300",
-                        index === activeImageIndex ? "opacity-100" : "opacity-0"
-                    )}
-                    priority={index === 0}
-                />
-             )
-           ))}
-
-
+  const CardView = (
+    <>
+      <div className="relative w-full h-full rounded-[14px] overflow-hidden">
+        {profile.images && profile.images.length > 0 && profile.images.map((image, index) => (
+          image.url && (
+              <Image
+                  key={`${image.url}-${index}`}
+                  src={image.url}
+                  alt={`${profile.fullName} profile image ${index + 1}`}
+                  fill
+                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                  style={{ objectFit: 'cover' }}
+                  className={cn(
+                      "pointer-events-none absolute inset-0 transition-opacity duration-300",
+                      index === activeImageIndex ? "opacity-100" : "opacity-0"
+                  )}
+                  priority={index === 0}
+              />
+          )
+        ))}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
                 <Heart className="w-16 h-16 fill-transparent" />
@@ -272,18 +262,15 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 <ChevronUp className="h-6 w-6" />
                             </Button>
                         </SheetTrigger>
-                        {isSheetOpen && (
-                           <SheetClose asChild>
-                               <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                   <X className="h-6 w-6" />
-                               </Button>
-                           </SheetClose>
-                        )}
                     </div>
                     <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                        <SheetHeader className='sr-only'>
-                            <SheetTitle>Profil Detayları</SheetTitle>
-                            <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                        <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                             <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
+                             <SheetClose asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full">
+                                    <X className="w-5 h-5"/>
+                                </Button>
+                            </SheetClose>
                         </SheetHeader>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
@@ -409,24 +396,31 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-        </div>
-    </motion.div>
+      </div>
+    </>
   );
 
-  // If x and y are not provided, it means we are in a non-draggable context (e.g., inside another Sheet).
-  // Render just the static content without the motion wrapper.
+  const cardWrapperClass = cn(
+    "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+    profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
+  );
+
   if (!x || !y) {
       return (
-        <div className={cn(
-            "relative w-full h-full rounded-2xl overflow-hidden bg-gray-200 gold-member-card-wrapper",
-             profile.membershipType === 'gold' && "p-1"
-        )}>
-             {CardContent}
+        <div className={cardWrapperClass}>
+             {CardView}
         </div>
       );
   }
 
-  return CardContent;
+  return (
+    <motion.div
+      style={{ rotate }}
+      className={cardWrapperClass}
+    >
+      {CardView}
+    </motion.div>
+  );
 };
 
 const ProfileCard = memo(ProfileCardComponent);
