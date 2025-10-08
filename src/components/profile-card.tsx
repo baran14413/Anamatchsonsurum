@@ -243,10 +243,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                        {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
                        <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                     </div>
-                     <div className="inline-flex items-center gap-2 text-xs font-semibold rounded-full px-2 py-1 bg-black/30 backdrop-blur-sm mt-1">
-                        <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                        <span>Beğenilme Oranı: %{likeRatio}</span>
-                    </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
                         {profile.distance !== undefined && (
                             <div className="flex items-center gap-2">
@@ -320,6 +316,14 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                                 </span>
                                             </div>
                                         )}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
+                                        <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
+                                        <div className='flex-1'>
+                                            <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
+                                            <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
+                                        </div>
                                     </div>
                                     
                                     {profile.bio && (
