@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -556,6 +556,12 @@ export default function ProfileCompletionForm() {
                     <div className="grid grid-cols-3 gap-4">
                       {imageSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
+                          {index === 0 && slot.preview && (
+                              <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5">
+                                <Star className="w-3 h-3"/>
+                                Profil Fotoğrafı
+                              </Badge>
+                          )}
                           <div onClick={() => openFilePicker(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
                             {slot.preview ? (
                               <>
@@ -570,8 +576,17 @@ export default function ProfileCompletionForm() {
                               </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                  <span className="text-xs font-medium block">Fotoğraf ekle</span>
-                                  <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
+                                  {index === 0 ? (
+                                      <>
+                                          <span className="text-xs font-bold block">Profil Fotoğrafı</span>
+                                          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
+                                      </>
+                                  ) : (
+                                       <>
+                                          <span className="text-xs font-medium block">Fotoğraf ekle</span>
+                                          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
+                                       </>
+                                  )}
                                 </div>
                             )}
                           </div>
