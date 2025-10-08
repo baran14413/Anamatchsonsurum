@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
@@ -244,7 +244,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            <div className="flex items-end justify-between gap-4">
                 <div className="flex-1 min-w-0 space-y-1">
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                     <div className='flex flex-col items-start'>
+                    <div className='flex flex-col items-start'>
                         {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
                         <h3 className="text-3xl font-bold truncate">
                             {profile.fullName}
@@ -278,6 +278,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                             <SheetTitle>Profil Detayları</SheetTitle>
                             <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                         </SheetHeader>
+                        <SheetClose className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                            <X className="h-5 w-5" />
+                            <span className="sr-only">Close</span>
+                        </SheetClose>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
                                 {profile.images && profile.images.length > 0 && (
@@ -394,7 +398,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 </div>
                             </div>
                         </ScrollArea>
-                        <SheetClose asChild>
+                        <SheetClose>
                              <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
                                 <ChevronDown className="h-6 w-6" />
                             </Button>
@@ -427,3 +431,5 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
+
+    
