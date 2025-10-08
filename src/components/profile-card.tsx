@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
@@ -266,7 +266,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </div>
                  <Sheet onOpenChange={(open) => !open && setShowAllInterests(false)}>
                     <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm shrink-0">
+                        <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
                             <ChevronUp className="h-6 w-6" />
                         </Button>
                     </SheetTrigger>
@@ -388,6 +388,13 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 </div>
                             </div>
                         </ScrollArea>
+                        <div className='p-4 border-t flex justify-center'>
+                           <SheetClose asChild>
+                               <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                  <ChevronDown className="h-6 w-6" />
+                               </Button>
+                           </SheetClose>
+                        </div>
                     </SheetContent>
                 </Sheet>
             </div>
