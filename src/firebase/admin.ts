@@ -1,21 +1,31 @@
 import * as admin from 'firebase-admin';
 
-// App Hosting provides the GOOGLE_APPLICATION_CREDENTIALS environment variable
-// which is a path to a service account key file.
-const serviceAccount = process.env.FIREBASE_PRIVATE_KEY
-  ? {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    }
-  : undefined;
+const projectId = process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-if (!admin.apps.length) {
+// Only initialize if all credentials are provided
+if (projectId && clientEmail && privateKey && !admin.apps.length) {
+  const serviceAccount = {
+    projectId: projectId,
+    clientEmail: clientEmail,
+    privateKey: privateKey.replace(/\\n/g, '\n'),
+  };
+
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`,
+    databaseURL: `https://${projectId}.firebaseio.com`,
   });
 }
 
-export const db = admin.firestore();
-export const auth = admin.auth();
+// Conditionally export db and auth to avoid errors when not initialized
+let db: admin.firestore.Firestore;
+let auth: admin.auth.Auth;
+
+if (admin.apps.length) {
+  db = admin.firestore();
+  auth = admin.auth();
+}
+
+// @ts-ignore
+export { db, auth };

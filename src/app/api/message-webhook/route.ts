@@ -20,6 +20,9 @@ const getRandomBotReply = () => {
  */
 export async function POST(req: NextRequest) {
   try {
+    if (!db) {
+        return NextResponse.json({ error: 'Veritabanı bağlantısı kurulamadı. Yönetici ile iletişime geçin.' }, { status: 500 });
+    }
     // 1. Yetkilendirme Kontrolü
     const token = req.headers.get('authorization')?.split('Bearer ')[1];
     if (token !== SHARED_SECRET) {
