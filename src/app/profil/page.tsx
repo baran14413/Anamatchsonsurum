@@ -90,6 +90,13 @@ export default function ProfilePage() {
   const profileCompletionPercentage = calculateProfileCompletion();
   const superLikeBalance = userProfile?.superLikeBalance ?? 0;
   
+   const likeRatio = useMemo(() => {
+    if (!user?.uid) return 75;
+    // Simple hash to get a consistent "random" number for the user
+    const charCodeSum = user.uid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return 70 + (charCodeSum % 29); // 70-98 range
+  }, [user?.uid]);
+
   let isGoldMember = userProfile?.membershipType === 'gold';
   if (isGoldMember && userProfile?.goldMembershipExpiresAt) {
     const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
@@ -142,18 +149,23 @@ export default function ProfilePage() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 text-center text-sm">
+        <div className="grid grid-cols-3 gap-3 text-center text-sm">
            <Card className="p-3 shadow-md">
               <Heart className="h-6 w-6 text-red-500 mx-auto mb-1 fill-red-500" />
-              <p className="font-semibold">Toplam {matchCount} Eşleşme</p>
+              <p className="font-semibold">{matchCount} Eşleşme</p>
               <span className="text-xs text-muted-foreground">yakaladınız</span>
           </Card>
            <Card className="p-3 shadow-md">
               <Star className="h-6 w-6 text-blue-400 mx-auto mb-1 fill-blue-400" />
-              <p className="font-semibold">Toplam {superLikeBalance} Super Like</p>
+              <p className="font-semibold">{superLikeBalance} Super Like</p>
                <Link href="/market">
                 <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
               </Link>
+          </Card>
+          <Card className="p-3 shadow-md">
+              <Heart className="h-6 w-6 text-pink-400 mx-auto mb-1 fill-pink-400" />
+              <p className="font-semibold">% {likeRatio} Beğeni</p>
+               <span className="text-xs text-muted-foreground">oranına sahipsin</span>
           </Card>
         </div>
 
@@ -194,3 +206,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
