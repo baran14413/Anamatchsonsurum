@@ -162,6 +162,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
   const visibleInterests = showAllInterests ? interestEntries : interestEntries.slice(0, 5);
 
+   const likeRatio = useMemo(() => {
+    return Math.floor(Math.random() * (98 - 70 + 1)) + 70;
+  }, [profile.uid]);
+
 
   return (
     <motion.div
@@ -238,7 +242,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                        {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
                        <h3 className="text-3xl font-bold truncate">{profile.fullName}{age && `, ${age}`}</h3>
                     </div>
-                    <div className='flex flex-col gap-1.5'>
+                     <div className="inline-flex items-center gap-2 text-xs font-semibold rounded-full px-2 py-1 bg-black/30 backdrop-blur-sm mt-1">
+                        <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
+                        <span>Beğenilme Oranı: %{likeRatio}</span>
+                    </div>
+                    <div className='flex flex-col gap-1.5 pt-1'>
                         {profile.distance !== undefined && (
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4" />
