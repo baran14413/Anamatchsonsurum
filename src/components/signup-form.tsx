@@ -485,7 +485,7 @@ export default function ProfileCompletionForm() {
       
       <Form {...form}>
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                <div className="relative text-center mb-6 flex items-center justify-center gap-3">
                 {isGoogleUser && (
                   <Image src={googleLogo} alt="Google logo" width={24} height={24} />
