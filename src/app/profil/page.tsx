@@ -59,9 +59,9 @@ export default function ProfilePage() {
         const userUid = user.uid;
         
         // Query where the user is user1 and was rated by user2
-        const query1 = query(collection(firestore, 'matches'), where('user1Id', '==', userUid), where('user2_action', '!=', null));
+        const query1 = query(collection(firestore, 'matches'), where('user1Id', '==', userUid));
         // Query where the user is user2 and was rated by user1
-        const query2 = query(collection(firestore, 'matches'), where('user2Id', '==', userUid), where('user1_action', '!=', null));
+        const query2 = query(collection(firestore, 'matches'), where('user2Id', '==', userUid));
 
         try {
             const [snapshot1, snapshot2] = await Promise.all([getDocs(query1), getDocs(query2)]);
