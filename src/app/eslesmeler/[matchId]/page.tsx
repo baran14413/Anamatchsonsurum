@@ -96,7 +96,8 @@ const AudioPlayer = ({ src }: { src: string }) => {
 
 
 export default function ChatPage() {
-    const { matchId } = useParams() as { matchId: string };
+    const params = useParams();
+    const matchId = Array.isArray(params.matchId) ? params.matchId[0] : params.matchId;
     const router = useRouter();
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
@@ -137,7 +138,7 @@ export default function ChatPage() {
     const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
     
     const messagesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
+        if (!user || !firestore || !matchId) return null;
         const collectionPath = isSystemChat ? `system_messages` : `matches/${matchId}/messages`;
         return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
@@ -149,7 +150,7 @@ export default function ChatPage() {
     }, [otherUserId, firestore]);
 
     const matchDataDocRef = useMemoFirebase(() => {
-        if (!user || !firestore || isSystemChat) return null;
+        if (!user || !firestore || isSystemChat || !matchId) return null;
         return doc(firestore, `users/${user.uid}/matches`, matchId);
     }, [user, firestore, isSystemChat, matchId]);
     
@@ -280,7 +281,7 @@ export default function ChatPage() {
     const handleSendMessage = useCallback(async (
         content: { text?: string; imageUrl?: string; imagePublicId?: string; audioUrl?: string, audioDuration?: number; type?: ChatMessage['type'] } = {}
     ) => {
-        if (!user || !firestore || isSystemChat || !otherUserId || !otherUser) return;
+        if (!user || !firestore || isSystemChat || !otherUserId || !otherUser || !matchId) return;
         
         if (editingMessage) {
             if (!newMessage.trim()) return;
@@ -464,7 +465,7 @@ export default function ChatPage() {
     };
     
     const sendAudioMessage = async () => {
-        if (!audioBlob) return;
+        if (!audioBlob || !matchId) return;
         setIsUploading(true);
         const audioFile = new File([audioBlob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
         
@@ -500,7 +501,7 @@ export default function ChatPage() {
     };
 
     const handleAcceptSuperLike = async () => {
-        if (!user || !firestore || !otherUserId) return;
+        if (!user || !firestore || !otherUserId || !matchId) return;
         setIsAcceptingSuperLike(true);
 
         try {
@@ -543,7 +544,7 @@ export default function ChatPage() {
     };
 
     const handleBlockUser = async () => {
-        if (!user || !firestore || !otherUserId) return;
+        if (!user || !firestore || !otherUserId || !matchId) return;
         
         setIsBlocking(true);
         try {
@@ -596,7 +597,7 @@ export default function ChatPage() {
     };
 
     const handleDeleteMessage = async () => {
-        if (!deletingMessage || !firestore) return;
+        if (!deletingMessage || !firestore || !matchId) return;
         
         try {
             const messageRef = doc(firestore, `matches/${matchId}/messages`, deletingMessage.id);
@@ -656,7 +657,7 @@ export default function ChatPage() {
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {
-        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed) return;
+        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed || !matchId) return;
         
         // This function now IMMEDIATELY marks the photo as viewed and starts deletion process.
         const markAsViewed = async () => {
