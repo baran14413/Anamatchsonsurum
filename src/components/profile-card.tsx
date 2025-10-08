@@ -71,9 +71,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     setActiveImageIndex(0);
   }, [profile.uid]);
   
-  const likeOpacity = useTransform(x, [50, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [-100, -50], [1, 0]);
-  const superlikeOpacity = useTransform(y, [-100, -50], [1, 0]);
+  const likeOpacity = useTransform(x, [0, 50], [0, 1]);
+  const dislikeOpacity = useTransform(x, [-50, 0], [1, 0]);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   
   const age = calculateAge(profile.dateOfBirth);
@@ -198,9 +197,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
 
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-400 text-blue-400 -translate-y-12">
-                <Star className="w-16 h-16 fill-blue-400" />
-            </motion.div>
             <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
                 <Heart className="w-16 h-16 fill-transparent" />
             </motion.div>
