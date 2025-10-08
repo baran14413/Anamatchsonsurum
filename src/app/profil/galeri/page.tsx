@@ -7,12 +7,13 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Image as ImageIcon, Star } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
 import { langTr } from '@/languages/tr';
 import { Progress } from "@/components/ui/progress";
 import type { UserImage } from "@/lib/types";
+import { Badge } from '@/components/ui/badge';
 
 type ImageSlot = {
     file: File | null;
@@ -153,8 +154,13 @@ export default function GalleryPage() {
         
         setImageSlots(prevSlots => {
             const newSlots = [...prevSlots];
-            URL.revokeObjectURL(newSlots[index].preview!);
+            // Revoke the object URL to free up memory
+            if (newSlots[index].preview && newSlots[index].file) {
+                 URL.revokeObjectURL(newSlots[index].preview!);
+            }
+            // Remove the item at the index
             newSlots.splice(index, 1);
+            // Add a new empty slot at the end
             newSlots.push({ file: null, preview: null, public_id: null, isUploading: false });
             return newSlots;
         });
@@ -218,6 +224,12 @@ export default function GalleryPage() {
                 <div className="grid grid-cols-2 gap-4">
                     {imageSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
+                            {index === 0 && slot.preview && (
+                                <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5">
+                                    <Star className="w-3 h-3"/>
+                                    Profil Fotoğrafı
+                                </Badge>
+                            )}
                             <div onClick={() => handleFileSelect(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
                                 {slot.preview ? (
                                     <>

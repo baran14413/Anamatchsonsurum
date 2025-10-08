@@ -379,41 +379,46 @@ export default function ProfileCompletionForm() {
   };
   
   const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
-      e.stopPropagation(); 
-      if(isSubmitting) return;
-      
-      const slotToDelete = imageSlots[index];
+    e.stopPropagation();
+    if(isSubmitting) return;
+    
+    const slotToDelete = imageSlots[index];
 
-      if(slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')){
+    if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
         try {
             await fetch('/api/delete-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ public_id: slotToDelete.public_id }),
             });
-        } catch(err){
+        } catch(err) {
             console.error("Failed to delete from Cloudinary but proceeding in UI", err);
         }
-      }
+    }
 
-      // Update UI state
-      const newSlots = [...imageSlots];
-      newSlots[index] = { file: null, preview: null, isUploading: false, public_id: null };
-
-      // Shift remaining items to fill the gap
-      const filledSlots = newSlots.filter(s => s.preview);
-      const emptySlots = Array.from({ length: 6 - filledSlots.length }, () => ({ file: null, preview: null, isUploading: false, public_id: null }));
+    // Update UI state
+    setImageSlots(prevSlots => {
+        const newSlots = [...prevSlots];
+        // Revoke URL if it was a blob
+        if (newSlots[index].file && newSlots[index].preview) {
+          URL.revokeObjectURL(newSlots[index].preview!);
+        }
+        // Remove the item at the index
+        newSlots.splice(index, 1);
+        // Add a new empty slot at the end
+        newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
+        return newSlots;
+    });
       
-      const finalSlots = [...filledSlots, ...emptySlots];
-      setImageSlots(finalSlots);
-      
-      // Update form state
-      const newImagesForForm = finalSlots
-        .filter(slot => slot.preview)
+    // Update form state
+    const newImagesForForm = imageSlots
+        .filter((_, i) => i !== index) // Exclude the deleted one
+        .filter(slot => slot.preview && slot.public_id) // Filter for valid, uploaded images
         .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
         
-      form.setValue('images', newImagesForForm, { shouldValidate: true });
-  }
+    form.setValue('images', newImagesForForm, { shouldValidate: true });
+};
+
   
   const handleDistanceChange = (value: number[]) => {
       const newDistance = value[0];
