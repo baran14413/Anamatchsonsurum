@@ -1,7 +1,7 @@
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, serverTimestamp, increment } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import { UserProfile } from '@/lib/types';
 import { format, add } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Bot, Shield, Trash2, Gem } from 'lucide-react';
+import { MoreHorizontal, Bot, Shield, Trash2, Gem, Star } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,12 +30,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [userToBan, setUserToBan] = useState<UserProfile | null>(null);
-  const [userToManageGold, setUserToManageGold] = useState<UserProfile | null>(null);
+  const [userToManage, setUserToManage] = useState<UserProfile | null>(null);
 
   const allUsersCollectionRef = useMemo(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -87,9 +88,9 @@ export default function AdminUsersPage() {
   }
 
   const handleGrantGold = async (duration: 'weekly' | 'monthly' | 'yearly' | 'permanent' | 'remove') => {
-      if (!firestore || !userToManageGold) return;
+      if (!firestore || !userToManage) return;
 
-      const userDocRef = doc(firestore, 'users', userToManageGold.id);
+      const userDocRef = doc(firestore, 'users', userToManage.id);
       let expiryDate: Date | null = new Date();
       let updateData: any = {};
 
@@ -116,7 +117,7 @@ export default function AdminUsersPage() {
           await updateDoc(userDocRef, updateData);
           toast({
               title: 'Üyelik Güncellendi',
-              description: `${userToManageGold.fullName} kullanıcısının üyeliği başarıyla güncellendi.`
+              description: `${userToManage.fullName} kullanıcısının Gold üyeliği başarıyla güncellendi.`
           });
       } catch (error: any) {
            toast({
@@ -125,8 +126,31 @@ export default function AdminUsersPage() {
               variant: 'destructive',
           });
       } finally {
-          setUserToManageGold(null);
+          setUserToManage(null);
       }
+  }
+
+  const handleGrantSuperLikes = async (amount: number) => {
+    if (!firestore || !userToManage) return;
+
+    const userDocRef = doc(firestore, 'users', userToManage.id);
+    try {
+        await updateDoc(userDocRef, {
+            superLikeBalance: increment(amount)
+        });
+        toast({
+            title: 'Super Like Eklendi',
+            description: `${userToManage.fullName} kullanıcısına ${amount} Super Like başarıyla eklendi.`
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Hata',
+            description: `Super Like eklenirken bir hata oluştu: ${error.message}`,
+            variant: 'destructive',
+        });
+    } finally {
+        setUserToManage(null);
+    }
   }
 
 
@@ -136,7 +160,7 @@ export default function AdminUsersPage() {
 
   return (
      <AlertDialog>
-       <Dialog open={!!userToManageGold} onOpenChange={(isOpen) => !isOpen && setUserToManageGold(null)}>
+       <Dialog open={!!userToManage} onOpenChange={(isOpen) => !isOpen && setUserToManage(null)}>
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">Kullanıcılar ({users.length})</h1>
             <div className="rounded-lg border">
@@ -147,6 +171,7 @@ export default function AdminUsersPage() {
                     <TableHead>İsim</TableHead>
                     <TableHead>E-posta</TableHead>
                     <TableHead>Üyelik</TableHead>
+                    <TableHead>Super Like</TableHead>
                     <TableHead>Durum</TableHead>
                     <TableHead>Kayıt Tarihi</TableHead>
                     <TableHead className='text-right'>Eylemler</TableHead>
@@ -160,7 +185,6 @@ export default function AdminUsersPage() {
                         try {
                            expiryDate = format(user.goldMembershipExpiresAt.toDate(), 'd MMM yyyy', { locale: tr });
                         } catch (e) {
-                          // Handle cases where it might not be a Firestore timestamp yet
                           if (user.goldMembershipExpiresAt instanceof Date) {
                              expiryDate = format(user.goldMembershipExpiresAt, 'd MMM yyyy', { locale: tr });
                           }
@@ -179,11 +203,19 @@ export default function AdminUsersPage() {
                           <TableCell>{user.email}</TableCell>
                            <TableCell>
                               <div className='flex items-center gap-2'>
-                                <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManageGold(user)}>
+                                <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManage(user)}>
                                     <Gem className={isGold ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-500'} />
                                 </Button>
                                 {isGold && <span className='text-xs text-muted-foreground'>{expiryDate || 'Kalıcı'}</span>}
                               </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className='flex items-center gap-2'>
+                                <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManage(user)}>
+                                    <Star className={(user.superLikeBalance || 0) > 0 ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground hover:text-blue-500'} />
+                                </Button>
+                                <span className='text-sm font-medium'>{user.superLikeBalance || 0}</span>
+                            </div>
                           </TableCell>
                           <TableCell>
                           <div className='flex items-center gap-2'>
@@ -205,7 +237,10 @@ export default function AdminUsersPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                       <DropdownMenuLabel>Eylemler</DropdownMenuLabel>
-                                      <DropdownMenuSeparator/>
+                                      <DropdownMenuItem onClick={() => setUserToManage(user)}>
+                                        <Gem className='mr-2 h-4 w-4' />
+                                        <span>Üyelik & Bakiye</span>
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
                                           <Shield className='mr-2 h-4 w-4' />
                                           <span>{user.isAdmin ? 'Admin Yetkisini Al' : 'Admin Yap'}</span>
@@ -225,7 +260,7 @@ export default function AdminUsersPage() {
                     })}
                     {(!users || users.length === 0) && (
                         <TableRow>
-                            <TableCell colSpan={7} className="h-24 text-center">
+                            <TableCell colSpan={8} className="h-24 text-center">
                             Gerçek kullanıcı bulunamadı.
                             </TableCell>
                         </TableRow>
@@ -249,26 +284,40 @@ export default function AdminUsersPage() {
 
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>{userToManageGold?.fullName} için Üyelik Yönetimi</DialogTitle>
+                <DialogTitle>{userToManage?.fullName} için Üyelik & Bakiye Yönetimi</DialogTitle>
                 <DialogDescription>
-                    Kullanıcıya Gold üyelik vermek veya üyeliğini yönetmek için bir süre seçin.
+                    Kullanıcıya Gold üyelik vermek veya Super Like bakiyesi eklemek için bir seçenek seçin.
                 </DialogDescription>
             </DialogHeader>
-            <div className='grid grid-cols-2 gap-4 py-4'>
-                <Button onClick={() => handleGrantGold('weekly')}>Haftalık</Button>
-                <Button onClick={() => handleGrantGold('monthly')}>Aylık</Button>
-                <Button onClick={() => handleGrantGold('yearly')}>Yıllık</Button>
-                <Button onClick={() => handleGrantGold('permanent')}>Kalıcı</Button>
+            <div className='py-4 space-y-6'>
+                <div>
+                    <h3 className='font-semibold mb-2'>Gold Üyelik</h3>
+                    <div className='grid grid-cols-2 gap-4'>
+                        <Button onClick={() => handleGrantGold('weekly')}>Haftalık</Button>
+                        <Button onClick={() => handleGrantGold('monthly')}>Aylık</Button>
+                        <Button onClick={() => handleGrantGold('yearly')}>Yıllık</Button>
+                        <Button onClick={() => handleGrantGold('permanent')}>Kalıcı</Button>
+                         {userToManage?.membershipType === 'gold' && (
+                            <Button variant="destructive" className="col-span-2" onClick={() => handleGrantGold('remove')}>
+                                Üyeliği Kaldır
+                            </Button>
+                        )}
+                    </div>
+                </div>
+                 <Separator />
+                <div>
+                    <h3 className='font-semibold mb-2'>Super Like Bakiye Ekle</h3>
+                     <div className='grid grid-cols-3 gap-4'>
+                        <Button variant="outline" onClick={() => handleGrantSuperLikes(5)}>+5 Super Like</Button>
+                        <Button variant="outline" onClick={() => handleGrantSuperLikes(25)}>+25 Super Like</Button>
+                        <Button variant="outline" onClick={() => handleGrantSuperLikes(60)}>+60 Super Like</Button>
+                    </div>
+                </div>
             </div>
              <DialogFooter>
                   <DialogClose asChild>
-                    <Button variant="outline">İptal</Button>
+                    <Button variant="outline">Kapat</Button>
                   </DialogClose>
-                  {userToManageGold?.membershipType === 'gold' && (
-                    <Button variant="destructive" onClick={() => handleGrantGold('remove')}>
-                        Üyeliği Kaldır
-                    </Button>
-                  )}
             </DialogFooter>
         </DialogContent>
      </Dialog>
