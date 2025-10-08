@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore } from '@/firebase/provider';
@@ -185,7 +184,7 @@ export default function PreferencesPage() {
                         </Label>
                     </RadioGroup>
                 </div>
-                <Separator />
+                
                  <div className='space-y-4'>
                     <div>
                         <h2 className="text-xl font-bold">Yaş Aralığı</h2>
@@ -218,7 +217,7 @@ export default function PreferencesPage() {
                         />
                     </div>
                 </div>
-                <Separator />
+                
                 <div className='space-y-6'>
                     <div>
                         <h2 className="text-xl font-bold">Konum Tercihleri</h2>

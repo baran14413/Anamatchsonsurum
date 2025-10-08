@@ -304,7 +304,7 @@ export default function AdminUsersPage() {
                         )}
                     </div>
                 </div>
-                 <Separator />
+                
                 <div>
                     <h3 className='font-semibold mb-2'>Super Like Bakiye Ekle</h3>
                      <div className='grid grid-cols-3 gap-4'>
