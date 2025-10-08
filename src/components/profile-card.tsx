@@ -66,15 +66,10 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
-  const [likeRatio, setLikeRatio] = useState<number>(75); // Default encouraging value
+  const [likeRatio, setLikeRatio] = useState<number | null>(null);
 
   useEffect(() => {
     setActiveImageIndex(0);
-  }, [profile.uid]);
-
-  useEffect(() => {
-    // This effect runs only once when the component mounts for the first time
-    // or when the profile.uid changes, preventing re-calculation on every render.
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
@@ -174,6 +169,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   
   const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
   const visibleInterests = showAllInterests ? interestEntries : interestEntries.slice(0, 5);
+  
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const CardContent = (
       <motion.div
@@ -246,12 +243,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            <div className="flex items-end justify-between gap-4">
                 <div className="flex-1 min-w-0 space-y-1">
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                     <div className='flex flex-col items-start'>
-                         {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
-                         <h3 className="text-3xl font-bold truncate">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-3xl font-bold truncate">
                             {profile.fullName}
-                            <span className="font-semibold text-white/80"> {age}</span>
                         </h3>
+                         <span className="font-semibold text-white/80 text-3xl">{age}</span>
                     </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
                         {(profile.distance || (profile as any).distance === 0) && (
@@ -269,23 +265,28 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                         </div>
                     )}
                 </div>
-                 <Sheet onOpenChange={(open) => !open && setShowAllInterests(false)}>
-                    <SheetTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                            <ChevronUp className="h-6 w-6" />
-                        </Button>
-                    </SheetTrigger>
+                 <Sheet onOpenChange={(open) => {setShowAllInterests(false); setIsSheetOpen(open)}}>
+                    <div className="relative">
+                        {!isSheetOpen && (
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                    <ChevronUp className="h-6 w-6" />
+                                </Button>
+                            </SheetTrigger>
+                        )}
+                        {isSheetOpen && (
+                           <SheetClose asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                    <X className="h-6 w-6" />
+                                </Button>
+                            </SheetClose>
+                        )}
+                    </div>
                     <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
                         <SheetHeader className='sr-only'>
                             <SheetTitle>Profil Detayları</SheetTitle>
                             <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                         </SheetHeader>
-                        <SheetClose asChild>
-                            <Button variant="ghost" size="icon" className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-                                <X className="h-5 w-5" />
-                                <span className="sr-only">Close</span>
-                            </Button>
-                        </SheetClose>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
                                 {profile.images && profile.images.length > 0 && (
@@ -320,10 +321,12 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                                 <p className="font-semibold text-yellow-500">Gold Üye</p>
                                               </div>
                                             )}
-                                            <h3 className="text-3xl font-bold">
-                                                {profile.fullName}
-                                                <span className="font-semibold text-foreground/80"> {age}</span>
-                                            </h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-3xl font-bold">
+                                                    {profile.fullName}
+                                                </h3>
+                                                <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                            </div>
                                         </div>
                                         {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                         
@@ -337,6 +340,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                         )}
                                     </div>
                                     
+                                    {likeRatio && (
                                      <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
                                         <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
                                         <div className='flex-1'>
@@ -344,6 +348,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                             <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
                                         </div>
                                     </div>
+                                    )}
                                     
                                     {profile.bio && (
                                         <div>
@@ -402,11 +407,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 </div>
                             </div>
                         </ScrollArea>
-                         <SheetClose asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
-                                <ChevronDown className="h-6 w-6" />
-                            </Button>
-                        </SheetClose>
                     </SheetContent>
                 </Sheet>
             </div>
