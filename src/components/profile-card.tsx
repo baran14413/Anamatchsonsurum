@@ -72,8 +72,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   }, [profile.uid]);
   
   const likeOpacity = useTransform(x, [0, 50], [0, 1]);
-  const dislikeOpacity = useTransform(x, [-50, 0], [1, 0]);
-  const superlikeOpacity = useTransform(y, [-50, 0], [1, 0]);
+  const dislikeOpacity = useTransform(x, [0, -50], [0, 1]);
+  const superlikeOpacity = useTransform(y, [-3, -50], [0, 1]);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
   
   const age = calculateAge(profile.dateOfBirth);
@@ -177,8 +177,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     <motion.div
       style={{ rotate }}
       className={cn(
-        "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
-        profile.membershipType === 'gold' && "p-1 gold-member-card-wrapper"
+        "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 gold-member-card-wrapper",
+        profile.membershipType === 'gold' && "p-1"
       )}
     >
         <div className="relative w-full h-full rounded-[14px] overflow-hidden">
