@@ -155,11 +155,11 @@ export default function ProfilePage() {
               <p className="font-semibold">{matchCount} Eşleşme</p>
               <span className="text-xs text-muted-foreground">yakaladınız</span>
           </Card>
-           <Card className="p-3 shadow-md">
-              <Star className="h-6 w-6 text-blue-400 mx-auto mb-1 fill-blue-400" />
-              <p className="font-semibold">{superLikeBalance} Super Like</p>
+           <Card className="p-4 flex flex-col items-center justify-center space-y-1">
+              <Star className="h-8 w-8 text-blue-400 fill-blue-400" />
+              <p className="text-lg font-bold">{superLikeBalance} Super Like</p>
                <Link href="/market">
-                <span className="text-xs text-blue-500 font-bold cursor-pointer">{t.profil.getMore}</span>
+                <span className="text-xs font-semibold text-blue-500 cursor-pointer">{t.profil.getMore}</span>
               </Link>
           </Card>
           <Card className="p-3 shadow-md">
@@ -206,4 +206,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
