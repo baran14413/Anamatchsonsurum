@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -8,8 +9,8 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, g
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText } from 'lucide-react';
-import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart } from 'lucide-react';
+import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, UserProfile, DenormalizedMatch, SystemMessage } from '@/lib/types';
@@ -28,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -37,8 +37,13 @@ import Image from 'next/image';
 import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription, SheetClose } from '@/components/ui/sheet';
 import ProfileCard from '@/components/profile-card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import * as LucideIcons from 'lucide-react';
+
+type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
@@ -723,11 +728,20 @@ export default function ChatPage() {
         return () => cancelAnimationFrame(animationFrameId);
     };
     
-    
+    const calculateAge = (dateOfBirth: string | undefined): number | null => {
+        if (!dateOfBirth) return null;
+        const birthday = new Date(dateOfBirth);
+        if (isNaN(birthday.getTime())) return null;
+        const ageDate = new Date(Date.now() - birthday.getTime());
+        return Math.abs(ageDate.getUTCFullYear() - 1970);
+    };
+
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
     const isOtherUserGold = otherUser?.membershipType === 'gold';
+    const age = otherUser ? calculateAge(otherUser.dateOfBirth) : null;
+    const isNewUser = otherUser?.createdAt && (Date.now() - new Date(otherUser.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
     
     return (
         <Sheet>
@@ -1138,17 +1152,54 @@ export default function ChatPage() {
                         )}
                     </DialogContent>
                 </Dialog>
-                <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent'>
-                    <SheetHeader className='sr-only'>
-                        <SheetTitle>Profil Detayları</SheetTitle>
-                        <SheetDescription>
-                            {otherUser?.fullName} kullanıcısının profil detayları.
-                        </SheetDescription>
+                
+                {otherUser && (
+                 <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-card flex flex-col'>
+                    <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                       <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                              <AvatarImage src={otherUser.profilePicture} />
+                              <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <SheetTitle>{otherUser.fullName}</SheetTitle>
+                            <SheetDescription>{renderOnlineStatus()}</SheetDescription>
+                          </div>
+                       </div>
+                       <SheetClose asChild>
+                           <Button variant="ghost" size="icon" className='rounded-full'>
+                               <X className="h-5 w-5" />
+                           </Button>
+                       </SheetClose>
                     </SheetHeader>
-                    <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                        {otherUser && <ProfileCard profile={otherUser} />}
-                    </div>
-                </SheetContent>
+                    <ScrollArea className='flex-1'>
+                       <div className='relative w-full aspect-[9/16]'>
+                           <Image src={otherUser.profilePicture || ''} alt={otherUser.fullName || ''} fill className='object-cover'/>
+                       </div>
+                       <div className="p-6 space-y-6">
+                            <div className="text-left space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-3xl font-bold">{otherUser.fullName}</h3>
+                                    <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                </div>
+                                {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                {(otherUser.address?.city && otherUser.address?.country) && (
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <MapPin className="w-4 h-4" />
+                                        <span>{otherUser.address.city}, {otherUser.address.country}</span>
+                                    </div>
+                                )}
+                            </div>
+                             {otherUser.bio && (
+                                <div>
+                                    <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                    <p className='text-muted-foreground'>{otherUser.bio}</p>
+                                </div>
+                            )}
+                       </div>
+                    </ScrollArea>
+                 </SheetContent>
+                )}
             </div>
         </Sheet>
     );

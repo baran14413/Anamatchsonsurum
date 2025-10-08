@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -70,6 +71,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
   useEffect(() => {
     setActiveImageIndex(0);
+    // This effect runs only once when the component mounts with a new profile.
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
@@ -243,11 +245,9 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            <div className="flex items-end justify-between gap-4">
                 <div className="flex-1 min-w-0 space-y-1">
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-3xl font-bold truncate">
-                            {profile.fullName}
-                        </h3>
-                         <span className="font-semibold text-white/80 text-3xl">{age}</span>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                        <span className="font-semibold text-white/80 text-3xl">{age}</span>
                     </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
                         {(profile.distance || (profile as any).distance === 0) && (
@@ -267,19 +267,17 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                 </div>
                  <Sheet onOpenChange={(open) => {setShowAllInterests(false); setIsSheetOpen(open)}}>
                     <div className="relative">
-                        {!isSheetOpen && (
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                    <ChevronUp className="h-6 w-6" />
-                                </Button>
-                            </SheetTrigger>
-                        )}
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                <ChevronUp className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
                         {isSheetOpen && (
                            <SheetClose asChild>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                    <X className="h-6 w-6" />
-                                </Button>
-                            </SheetClose>
+                               <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                   <X className="h-6 w-6" />
+                               </Button>
+                           </SheetClose>
                         )}
                     </div>
                     <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
