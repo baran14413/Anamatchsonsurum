@@ -66,9 +66,16 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
+  const [likeRatio, setLikeRatio] = useState<number>(75); // Default encouraging value
 
   useEffect(() => {
     setActiveImageIndex(0);
+  }, [profile.uid]);
+
+  useEffect(() => {
+    // This effect runs only once when the component mounts for the first time
+    // or when the profile.uid changes, preventing re-calculation on every render.
+    setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
   const likeOpacity = x ? useTransform(x, [0, 50], [0, 1]) : 0;
@@ -168,11 +175,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
   const visibleInterests = showAllInterests ? interestEntries : interestEntries.slice(0, 5);
 
-   const likeRatio = useMemo(() => {
-    return Math.floor(Math.random() * (98 - 70 + 1)) + 70;
-  }, [profile.uid]);
-
-
   const CardContent = (
       <motion.div
       style={{ rotate }}
@@ -244,11 +246,11 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
            <div className="flex items-end justify-between gap-4">
                 <div className="flex-1 min-w-0 space-y-1">
                     <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                    <div className='flex flex-col items-start'>
-                        {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
-                        <h3 className="text-3xl font-bold truncate">
+                     <div className='flex flex-col items-start'>
+                         {profile.membershipType === 'gold' && <Icons.beGold width={24} height={24} className="mb-1" />}
+                         <h3 className="text-3xl font-bold truncate">
                             {profile.fullName}
-                            {age && <span className="font-semibold text-white/80"> {age}</span>}
+                            <span className="font-semibold text-white/80"> {age}</span>
                         </h3>
                     </div>
                     <div className='flex flex-col gap-1.5 pt-1'>
@@ -278,8 +280,8 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                             <SheetTitle>Profil Detayları</SheetTitle>
                             <SheetDescription>{profile.fullName} kullanıcısının profil detayları.</SheetDescription>
                         </SheetHeader>
-                        <SheetClose asChild className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-                            <Button variant="ghost" size="icon">
+                        <SheetClose asChild>
+                            <Button variant="ghost" size="icon" className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
                                 <X className="h-5 w-5" />
                                 <span className="sr-only">Close</span>
                             </Button>
@@ -311,7 +313,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                 
                                 <div className="p-6 space-y-6 !pt-2">
                                     <div className="text-left space-y-2">
-                                        <div className='flex flex-col items-start gap-1'>
+                                         <div className='flex flex-col items-start'>
                                             {profile.membershipType === 'gold' && (
                                               <div className='flex items-center gap-2'>
                                                 <Icons.beGold width={24} height={24} />
@@ -320,7 +322,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                                             )}
                                             <h3 className="text-3xl font-bold">
                                                 {profile.fullName}
-                                                {age && <span className="font-semibold text-foreground/80"> {age}</span>}
+                                                <span className="font-semibold text-foreground/80"> {age}</span>
                                             </h3>
                                         </div>
                                         {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
@@ -401,7 +403,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                             </div>
                         </ScrollArea>
                          <SheetClose asChild>
-                             <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0 absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
                                 <ChevronDown className="h-6 w-6" />
                             </Button>
                         </SheetClose>
