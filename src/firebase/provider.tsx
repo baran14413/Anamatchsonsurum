@@ -62,48 +62,26 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const { auth, firestore } = services;
 
     let profileUnsubscribe: (() => void) | undefined;
-    let visibilityChangeHandler: (() => void) | undefined;
-    let beforeUnloadHandler: ((e: BeforeUnloadEvent) => void) | undefined;
-
-
-    const updateUserPresence = async (uid: string, isOnline: boolean) => {
-        try {
-            const userDocRef = doc(firestore, 'users', uid);
-            const presenceData = {
-                isOnline: isOnline,
-                lastSeen: serverTimestamp()
-            };
-            await setDoc(userDocRef, presenceData, { merge: true });
-        } catch (error) {
-            console.error("Failed to update user presence:", error);
-        }
-    };
-
-
+    
     const authUnsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
         // Clean up previous listeners
         profileUnsubscribe?.();
-        if (visibilityChangeHandler) document.removeEventListener("visibilitychange", visibilityChangeHandler);
-        if (beforeUnloadHandler) window.removeEventListener("beforeunload", beforeUnloadHandler);
-
 
         if (firebaseUser) {
             setUser(firebaseUser);
-            updateUserPresence(firebaseUser.uid, true);
+            
+            // Set user online upon login
+            const userDocRef = doc(firestore, 'users', firebaseUser.uid);
+            setDoc(userDocRef, { isOnline: true }, { merge: true });
 
             // Listen for profile changes
-            const profileDocRef = doc(firestore, 'users', firebaseUser.uid);
-            profileUnsubscribe = onSnapshot(profileDocRef, 
+            profileUnsubscribe = onSnapshot(userDocRef, 
                 (docSnap) => {
                     if (docSnap.exists()) {
                         const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-                        if (profileData.gender) {
-                            setUserProfile(profileData);
-                        } else {
-                            setUserProfile(null);
-                        }
+                        setUserProfile(profileData);
                     } else {
                         setUserProfile(null);
                     }
@@ -117,26 +95,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 }
             );
 
-             // Handle browser tab visibility and closing for presence
-            visibilityChangeHandler = () => {
-                if (document.visibilityState === 'hidden') {
-                    updateUserPresence(firebaseUser.uid, false);
-                } else {
-                    updateUserPresence(firebaseUser.uid, true);
-                }
-            };
-
-            beforeUnloadHandler = (e) => {
-                 updateUserPresence(firebaseUser.uid, false);
-            };
-
-            document.addEventListener("visibilitychange", visibilityChangeHandler);
-            window.addEventListener("beforeunload", beforeUnloadHandler);
-
         } else {
             // User logs out
-            if (user) { // Check if there was a previously logged-in user
-                updateUserPresence(user.uid, false);
+            if (user) { 
+                 const userDocRef = doc(firestore, 'users', user.uid);
+                 setDoc(userDocRef, { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
             }
             setUser(null);
             setUserProfile(null);
@@ -155,13 +118,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => {
       authUnsubscribe();
       profileUnsubscribe?.();
-       if (visibilityChangeHandler) document.removeEventListener("visibilitychange", visibilityChangeHandler);
-       if (beforeUnloadHandler) window.removeEventListener("beforeunload", beforeUnloadHandler);
-       if (user) { // When component unmounts, set user offline
-          updateUserPresence(user.uid, false);
+       if (user) { 
+          const userDocRef = doc(firestore, 'users', user.uid);
+          setDoc(userDocRef, { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
        }
     };
-  }, [services, user]); // Rerun when services are initialized or user changes
+  }, [services, user]); 
 
   const contextValue = useMemo((): FirebaseContextState => {
     const areServicesAvailable = !!services;
