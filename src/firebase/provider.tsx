@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
@@ -96,9 +96,31 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             // Listen for profile changes
             const profileDocRef = doc(firestore, 'users', firebaseUser.uid);
             profileUnsubscribe = onSnapshot(profileDocRef, 
-                (docSnap) => {
-                    if (docSnap.exists() && docSnap.data()?.gender) {
-                        setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
+                async (docSnap) => { // Make it async
+                    if (docSnap.exists()) {
+                        const profileData = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+                        
+                        // --- Grant permanent Gold membership ---
+                        if (profileData.membershipType !== 'gold' || profileData.goldMembershipExpiresAt !== null) {
+                            try {
+                                await updateDoc(profileDocRef, {
+                                    membershipType: 'gold',
+                                    goldMembershipExpiresAt: null
+                                });
+                                // Optimistically update local state
+                                profileData.membershipType = 'gold';
+                                profileData.goldMembershipExpiresAt = null;
+                            } catch (e) {
+                                console.error("Failed to grant Gold membership:", e);
+                            }
+                        }
+                        
+                        if (profileData.gender) {
+                            setUserProfile(profileData);
+                        } else {
+                            setUserProfile(null);
+                        }
+
                     } else {
                         setUserProfile(null);
                     }
