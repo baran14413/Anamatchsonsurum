@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -46,11 +47,11 @@ export default function EslesmelerPage() {
     setIsLoading(true);
 
     const unsubMatches = onSnapshot(matchesQuery, async (snapshot) => {
-      const matchesDataPromises = snapshot.docs.map(async (doc) => {
-          const data = doc.data() as DenormalizedMatch;
+      const matchesDataPromises = snapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data() as DenormalizedMatch;
           
           if(data.id !== 'system' && data.matchedWith) {
-             const userDoc = await getDoc(firestore.doc(`users/${data.matchedWith}`));
+             const userDoc = await getDoc(doc(firestore, `users/${data.matchedWith}`));
              if (userDoc.exists()) {
                 (data as any).userProfile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
              }
@@ -220,7 +221,7 @@ export default function EslesmelerPage() {
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
-                                const profilePictureUrl = (match as any).userProfile?.profilePicture || match.profilePicture;
+                                const profilePictureUrl = match.userProfile?.profilePicture || match.profilePicture;
 
 
                                 const MatchItemContent = () => (
