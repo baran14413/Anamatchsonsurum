@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -279,8 +279,13 @@ export default function ProfileCompletionForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (step === 0) router.push('/'); 
-    else setStep((prev) => prev - 1);
+    if (step === 0 && !isGoogleUser) {
+        router.push('/');
+    } else if (step === 1 && isGoogleUser) {
+        router.push('/');
+    } else {
+        setStep((prev) => prev - 1);
+    }
   };
 
   async function onSubmit(data: SignupFormValues) {
@@ -511,8 +516,8 @@ export default function ProfileCompletionForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
-            <ArrowLeft className="h-6 w-6" />
+        <Button variant="ghost" size="icon" onClick={() => (step === 0 && !isGoogleUser) || (step === 1 && isGoogleUser) ? router.push('/') : prevStep()} disabled={isSubmitting}>
+            {(step === 0 && !isGoogleUser) || (step === 1 && isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
         <div className="w-9 h-9" />
