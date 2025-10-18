@@ -177,6 +177,8 @@ export default function ProfileCompletionForm() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      email: '',
+      password: '',
       name: "",
       lookingFor: "",
       images: [],
@@ -513,7 +515,7 @@ export default function ProfileCompletionForm() {
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
-           {(step === 1 && isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
+           {(step === 1 && isGoogleUser) || (step === 0 && !isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
         <div className="w-9 h-9" />
