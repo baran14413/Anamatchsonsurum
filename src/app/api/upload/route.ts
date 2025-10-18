@@ -1,6 +1,5 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDownloadURL } from 'firebase-admin/storage';
 import { getAdminServices } from '@/firebase/admin';
 
 export const runtime = 'nodejs';
@@ -16,7 +15,6 @@ async function uploadToFirebaseStorage(file: File): Promise<{ url: string; publi
 
     const fileBuffer = await file.arrayBuffer();
     
-    // Save files to a 'bematch_profiles' folder as requested.
     const uniqueFileName = `bematch_profiles/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const storageRef = bucket.file(uniqueFileName);
 
@@ -26,11 +24,15 @@ async function uploadToFirebaseStorage(file: File): Promise<{ url: string; publi
         },
     });
 
-    const downloadURL = await getDownloadURL(storageRef);
+    // Make the file public to get a public URL
+    await storageRef.makePublic();
+    
+    // Get the public URL
+    const downloadURL = storageRef.publicUrl();
 
     return {
         url: downloadURL,
-        public_id: uniqueFileName, // Using the full path as the public_id
+        public_id: uniqueFileName,
     };
 }
 
