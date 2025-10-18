@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, Trash2, Pencil, Image as ImageIcon, Star } from 'lucide-react';
@@ -45,13 +46,14 @@ const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
 export default function GalleryPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { user, userProfile } = useUser();
+    const { user, userProfile, firebaseApp } = useUser();
     const firestore = useFirestore();
     const t = langTr.ayarlarGaleri;
 
     const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(userProfile));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const storage = firebaseApp ? getStorage(firebaseApp) : null;
 
     useEffect(() => {
         if (userProfile) {
@@ -81,7 +83,11 @@ export default function GalleryPage() {
     };
 
     const handleImageUpload = async (file: File, slotIndex: number) => {
-        
+        if (!storage || !user) {
+            toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
+            return;
+        }
+
         setImageSlots(prev => {
             const newSlots = [...prev];
             const targetIndex = newSlots.findIndex(slot => !slot.preview);
@@ -91,48 +97,31 @@ export default function GalleryPage() {
             return newSlots;
         });
 
-        const formData = new FormData();
-        formData.append('file', file);
-        const tempPreviewUrl = URL.createObjectURL(file);
         let finalIndex = imageSlots.findIndex(slot => !slot.preview);
         if (finalIndex === -1) finalIndex = 5;
 
-        try {
-            const response = await fetch('/api/upload', {
-                 method: 'POST',
-                 body: formData
-            });
+        const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+        const imageRef = storageRef(storage, uniqueFileName);
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Yükleme başarısız');
-            }
-            const result = await response.json();
+        try {
+            const snapshot = await uploadBytes(imageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
 
             setImageSlots(prev => {
                 const newSlots = [...prev];
-                newSlots[finalIndex] = { ...newSlots[finalIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
+                newSlots[finalIndex] = { ...newSlots[finalIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
                 return newSlots;
             });
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            setImageSlots(prev => {
-                const newSlots = [...prev];
-                const slotToClear = newSlots.find(s => s.preview === tempPreviewUrl);
-                if (slotToClear) {
-                    slotToClear.file = null;
-                    slotToClear.preview = null;
-                    slotToClear.isUploading = false;
-                }
-                return newSlots;
-            });
+            setImageSlots(prev => prev.map((s, i) => i === finalIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
         }
     };
     
     const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
         e.stopPropagation();
-        if(isSubmitting) return;
+        if(isSubmitting || !storage) return;
 
         if (uploadedImageCount <= 1) {
             toast({ title: t.toasts.deleteFailedMinRequiredTitle, description: t.toasts.deleteFailedMinRequiredDesc, variant: "destructive" });
@@ -140,27 +129,25 @@ export default function GalleryPage() {
         }
 
         const slotToDelete = imageSlots[index];
-        if (slotToDelete.public_id) {
+        if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
             try {
-                await fetch('/api/delete-image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ public_id: slotToDelete.public_id }),
-                });
-            } catch (err) {
-                 console.error("Failed to delete from Cloudinary but proceeding in UI", err);
+                const imageRef = storageRef(storage, slotToDelete.public_id);
+                await deleteObject(imageRef);
+            } catch (err: any) {
+                 if (err.code !== 'storage/object-not-found') {
+                    console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
+                    toast({ title: t.toasts.deleteErrorTitle, description: t.toasts.deleteErrorDesc, variant: 'destructive' });
+                    return;
+                 }
             }
         }
         
         setImageSlots(prevSlots => {
             const newSlots = [...prevSlots];
-            // Revoke the object URL to free up memory
             if (newSlots[index].preview && newSlots[index].file) {
                  URL.revokeObjectURL(newSlots[index].preview!);
             }
-            // Remove the item at the index
             newSlots.splice(index, 1);
-            // Add a new empty slot at the end
             newSlots.push({ file: null, preview: null, public_id: null, isUploading: false });
             return newSlots;
         });
@@ -258,3 +245,5 @@ export default function GalleryPage() {
         </div>
     );
 }
+
+    

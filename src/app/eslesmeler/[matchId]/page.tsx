@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup, arrayUnion } from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +30,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -107,10 +107,11 @@ export default function ChatPage() {
     const params = useParams();
     const matchId = Array.isArray(params.matchId) ? params.matchId[0] : params.matchId;
     const router = useRouter();
-    const { user, userProfile } = useUser();
+    const { user, userProfile, firebaseApp } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const t = langTr;
+    const storage = firebaseApp ? getStorage(firebaseApp) : null;
 
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
@@ -378,29 +379,20 @@ export default function ChatPage() {
     };
 
     const handleSendImage = async () => {
-        if (!imagePreview) return;
+        if (!imagePreview || !storage || !user) return;
         setIsUploading(true);
-
-        const formData = new FormData();
-        formData.append('file', imagePreview.file);
         
+        const uniqueFileName = `bematch_chats/${matchId}/${Date.now()}-${imagePreview.file.name.replace(/\s+/g, '_')}`;
+        const imageRef = storageRef(storage, uniqueFileName);
+
         try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Fotoğraf yüklenemedi: ${response.statusText}`);
-            }
-
-            const { url, public_id } = await response.json();
+            const snapshot = await uploadBytes(imageRef, imagePreview.file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
             
             handleSendMessage({ 
                 text: caption, 
-                imageUrl: url, 
-                imagePublicId: public_id, 
+                imageUrl: downloadURL, 
+                imagePublicId: uniqueFileName, 
                 type: isViewOnce ? 'view-once' : 'user'
             });
 
@@ -473,26 +465,18 @@ export default function ChatPage() {
     };
     
     const sendAudioMessage = async () => {
-        if (!audioBlob || !matchId) return;
+        if (!audioBlob || !matchId || !storage || !user) return;
         setIsUploading(true);
         const audioFile = new File([audioBlob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
         
-        const formData = new FormData();
-        formData.append('file', audioFile);
+        const uniqueFileName = `bematch_chats/${matchId}/audio/${Date.now()}.mp3`;
+        const audioRef = storageRef(storage, uniqueFileName);
 
         try {
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
+            const snapshot = await uploadBytes(audioRef, audioFile);
+            const downloadURL = await getDownloadURL(snapshot.ref);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Sesli mesaj yüklenemedi: ${response.statusText}`);
-            }
-
-            const { url } = await response.json();
-            handleSendMessage({ audioUrl: url, audioDuration: recordingTime, type: 'audio' });
+            handleSendMessage({ audioUrl: downloadURL, audioDuration: recordingTime, type: 'audio' });
             
         } catch (error: any) {
              toast({
@@ -665,7 +649,7 @@ export default function ChatPage() {
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {
-        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed || !matchId) return;
+        if (!user || !firestore || !otherUserId || message.senderId === user.uid || message.viewed || !matchId || !storage) return;
         
         // This function now IMMEDIATELY marks the photo as viewed and starts deletion process.
         const markAsViewed = async () => {
@@ -692,13 +676,12 @@ export default function ChatPage() {
 
             if (publicId) {
                 try {
-                    await fetch('/api/delete-image', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ public_id: publicId }),
-                    });
-                } catch (err) {
-                    console.error("Failed to delete 'view once' image from Cloudinary:", err);
+                    const imageRef = storageRef(storage, publicId);
+                    await deleteObject(imageRef);
+                } catch (err: any) {
+                    if (err.code !== 'storage/object-not-found') {
+                        console.error("Failed to delete 'view once' image from Firebase Storage:", err);
+                    }
                 }
             }
         };
@@ -1169,3 +1152,5 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
+
+    
