@@ -462,29 +462,42 @@ export default function ProfileCompletionForm() {
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues) | (keyof SignupFormValues)[] | undefined;
     let isValid = true;
+
+    if (step === 0) {
+        const email = form.getValues("email");
+        const password = form.getValues("password");
+        isValid = await form.trigger(["email", "password"]);
+        
+        if (isValid && auth && email && password) {
+            setIsSubmitting(true);
+            try {
+                // This function creates the user AND signs them in.
+                // The onAuthStateChanged listener in FirebaseProvider will then pick up the new user.
+                await createUserWithEmailAndPassword(auth, email, password);
+                // No need to setIsSubmitting(false) here, as onAuthStateChanged will trigger a re-render.
+                // We can immediately proceed to the next step.
+                nextStep();
+            } catch (error: any) {
+                if (error.code === 'auth/email-already-in-use') {
+                    toast({
+                        title: "Kayıt Hatası",
+                        description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.",
+                        variant: "destructive"
+                    });
+                } else {
+                    toast({
+                        title: "Kayıt Hatası",
+                        description: error.message,
+                        variant: "destructive"
+                    });
+                }
+                setIsSubmitting(false); // Only set to false on error
+            }
+        }
+        return; // Stop execution for this special step
+    }
     
     switch (step) {
-      case 0:
-        fieldsToValidate = ['email', 'password'];
-        isValid = await form.trigger(fieldsToValidate);
-        if (isValid && auth) {
-          setIsSubmitting(true);
-          const email = form.getValues("email")!;
-          const password = form.getValues("password")!;
-          try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            setIsSubmitting(false);
-            nextStep();
-          } catch(error: any) {
-              if (error.code === 'auth/email-already-in-use') {
-                 toast({ title: "Kayıt Hatası", description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.", variant: "destructive" });
-              } else {
-                 toast({ title: "Kayıt Hatası", description: error.message, variant: "destructive" });
-              }
-            setIsSubmitting(false);
-          }
-        }
-        return;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'location'; break;
       case 3: fieldsToValidate = 'images'; break;
@@ -493,8 +506,8 @@ export default function ProfileCompletionForm() {
       case 6: fieldsToValidate = 'gender'; break;
       case 7: fieldsToValidate = 'lookingFor'; break;
       case 8: fieldsToValidate = 'distancePreference'; break;
-      case totalSteps: // The final confirmation step
-        await form.trigger(); // Validate all fields before final submission
+      case totalSteps:
+        await form.trigger();
         if(form.formState.isValid) {
             onSubmit(form.getValues());
         }
@@ -502,7 +515,7 @@ export default function ProfileCompletionForm() {
     }
     
     if (fieldsToValidate) {
-        isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
+        isValid = await form.trigger(fieldsToValidate);
         if (isValid) {
           nextStep();
         }
@@ -847,3 +860,5 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
+    
