@@ -1,13 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminServices } from '@/firebase/admin';
+import { storage } from '@/firebase/admin';
 
 export const runtime = 'nodejs';
 
 async function deleteFromFirebaseStorage(public_id: string): Promise<void> {
-    const { storage } = getAdminServices();
-
-    const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
+    const bucket = storage.bucket(bucketName);
     const fileRef = bucket.file(public_id);
 
     try {

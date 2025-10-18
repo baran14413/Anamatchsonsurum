@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminServices } from '@/firebase/admin';
+import { db } from '@/firebase/admin';
 import { BOT_REPLIES } from '@/lib/bot-data';
 import type { ChatMessage } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -22,8 +22,6 @@ const getRandomBotReply = () => {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { db } = getAdminServices();
-
     // 1. Yetkilendirme Kontrolü
     const token = req.headers.get('authorization')?.split('Bearer ')[1];
     if (token !== SHARED_SECRET) {
