@@ -281,9 +281,9 @@ export default function ProfileCompletionForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (step === 0 && !isGoogleUser) {
+    if (step === 1 && isGoogleUser) {
         router.push('/');
-    } else if (step === 1 && isGoogleUser) {
+    } else if (step === 0 && !isGoogleUser) {
         router.push('/');
     } else {
         setStep((prev) => prev - 1);
@@ -471,11 +471,9 @@ export default function ProfileCompletionForm() {
         if (isValid && auth && email && password) {
             setIsSubmitting(true);
             try {
-                // This function creates the user AND signs them in.
-                // The onAuthStateChanged listener in FirebaseProvider will then pick up the new user.
                 await createUserWithEmailAndPassword(auth, email, password);
-                // No need to setIsSubmitting(false) here, as onAuthStateChanged will trigger a re-render.
-                // We can immediately proceed to the next step.
+                // The onAuthStateChanged listener will handle the user state update.
+                // We can now proceed to the next step.
                 nextStep();
             } catch (error: any) {
                 if (error.code === 'auth/email-already-in-use') {
@@ -491,10 +489,11 @@ export default function ProfileCompletionForm() {
                         variant: "destructive"
                     });
                 }
-                setIsSubmitting(false); // Only set to false on error
+            } finally {
+                setIsSubmitting(false);
             }
         }
-        return; // Stop execution for this special step
+        return;
     }
     
     switch (step) {
@@ -860,5 +859,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
