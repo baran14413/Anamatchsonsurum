@@ -1,38 +1,27 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase-admin/storage';
+import { db, auth, admin } from '@/firebase/admin';
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-async function uploadToCloudinary(file: File): Promise<any> {
+async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
+    const storage = getStorage();
+    const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
     const fileBuffer = await file.arrayBuffer();
-    const mime = file.type;
-    const encoding = 'base64';
-    const base64Data = Buffer.from(fileBuffer).toString('base64');
-    const fileUri = 'data:' + mime + ';' + encoding + ',' + base64Data;
+    const uniqueFileName = `bematch_profiles/${Date.now()}-${file.name}`;
+    const storageRef = bucket.file(uniqueFileName);
 
-    return new Promise((resolve, reject) => {
-        cloudinary.uploader.upload(
-            fileUri,
-            {
-                folder: 'bematch_profiles',
-                resource_type: 'auto', // Let Cloudinary detect if it's an image or audio
-            },
-            (error, result) => {
-                if (error) {
-                    console.error("Cloudinary Upload Error:", error);
-                    reject(error);
-                } else {
-                    resolve(result);
-                }
-            }
-        );
+    await storageRef.save(Buffer.from(fileBuffer), {
+        metadata: {
+            contentType: file.type,
+        },
     });
+
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return {
+        url: downloadURL,
+        public_id: uniqueFileName, // Using the full path as the public_id
+    };
 }
 
 export async function POST(req: NextRequest) {
@@ -44,12 +33,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
         }
         
-        const result = await uploadToCloudinary(file);
+        const result = await uploadToFirebaseStorage(file);
 
         return NextResponse.json({
-            url: result.secure_url,
+            url: result.url,
             public_id: result.public_id,
-            resource_type: result.resource_type,
+            resource_type: file.type.startsWith('image/') ? 'image' : 'raw',
         });
 
     } catch (error: any) {

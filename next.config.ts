@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    FIREBASE_STORAGE_BUCKET: 'bematch-new.appspot.com',
   },
   images: {
     remotePatterns: [
@@ -35,12 +36,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'www.citypng.com',
         port: '',
         pathname: '/**',
@@ -48,6 +43,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
         port: '',
         pathname: '/**',
       }

@@ -1,14 +1,30 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
+import { getStorage, ref, deleteObject } from 'firebase-admin/storage';
+import { admin } from '@/firebase/admin';
+
+
+async function deleteFromFirebaseStorage(public_id: string): Promise<void> {
+    const storage = getStorage();
+    const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+    const fileRef = bucket.file(public_id);
+
+    try {
+        await fileRef.delete();
+    } catch (error: any) {
+        // If the file doesn't exist, Firebase throws a "not-found" error.
+        // We can safely ignore this as the end result is the same: the file is gone.
+        if (error.code === 404) {
+            console.log(`File not found, skipping deletion: ${public_id}`);
+            return;
+        }
+        // For other errors, we re-throw them to be caught by the main handler.
+        throw error;
+    }
+}
+
 
 export async function POST(req: NextRequest) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-
   try {
     const { public_id } = await req.json();
 
@@ -20,16 +36,12 @@ export async function POST(req: NextRequest) {
     if (public_id.startsWith('google_')) {
         return NextResponse.json({ message: 'Skipping deletion for Google content.' });
     }
-    
-    const result = await cloudinary.uploader.destroy(public_id);
-    
-    if (result.result !== 'ok' && result.result !== 'not found') {
-        throw new Error(result.result);
-    }
 
+    await deleteFromFirebaseStorage(public_id);
+    
     return NextResponse.json({ message: 'Image deleted successfully.' });
   } catch (error: any) {
-    console.error("Cloudinary Deletion Error:", error);
+    console.error("Firebase Storage Deletion Error:", error);
     return NextResponse.json({ error: `Deletion failed: ${error.message}` }, { status: 500 });
   }
 }
