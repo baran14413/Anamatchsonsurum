@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
+import serviceAccountKey from '../../../service-account-key.json';
 
 // Re-export admin itself to be used in other files if needed
 export { admin };
@@ -19,25 +20,12 @@ function initializeAdminApp(): admin.app.App {
         return admin.apps[0]!;
     }
     
-    const { 
-        FIREBASE_PROJECT_ID: projectId, 
-        FIREBASE_CLIENT_EMAIL: clientEmail, 
-        FIREBASE_PRIVATE_KEY: privateKey 
-    } = process.env;
+    // Type assertion to match the structure of ServiceAccount
+    const serviceAccount = serviceAccountKey as admin.ServiceAccount;
 
-    if (!projectId || !clientEmail || !privateKey) {
-        throw new Error("Firebase Admin SDK environment variables are not set. Cannot initialize.");
-    }
-    
-    const serviceAccount: admin.ServiceAccount = {
-        projectId: projectId,
-        clientEmail: clientEmail,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
-    };
-    
     return admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        storageBucket: "bematch-new.appspot.com",
     });
 }
 

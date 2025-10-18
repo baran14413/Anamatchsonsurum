@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+.yarn/install-state.gz
 
 # testing
 /coverage
@@ -33,14 +34,14 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-tsconfig.tsbuildinfo
+next-env.d.ts
 
-# turbo
-.turbo
-
-# firebase
-.firebase
-
-# genkit
-.genkit
-.genkit-cache
+# studio
+.firebase/
+firebase.json
+service-account-key.json
+apphosting.yaml
+database.rules.json
+storage.rules
+firestore.rules
+firestore.indexes.json
