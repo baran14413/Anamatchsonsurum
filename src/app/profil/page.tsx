@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signOut } from 'firebase/auth';
-import { useAuth, useUser, useFirestore } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,8 +21,7 @@ import type { Match } from '@/lib/types';
 
 export default function ProfilePage() {
   const t = langTr;
-  const { user, userProfile } = useUser();
-  const auth = useAuth();
+  const { user, userProfile, auth } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
