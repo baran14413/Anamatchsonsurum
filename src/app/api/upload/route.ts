@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDownloadURL } from 'firebase-admin/storage';
 import { getAdminServices } from '@/firebase/admin';
 
+export const runtime = 'nodejs';
+
 async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
     const { storage } = getAdminServices();
     

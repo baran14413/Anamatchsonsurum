@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminServices } from '@/firebase/admin';
 
+export const runtime = 'nodejs';
 
 async function deleteFromFirebaseStorage(public_id: string): Promise<void> {
     const { storage } = getAdminServices();

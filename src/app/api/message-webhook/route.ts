@@ -5,6 +5,8 @@ import { BOT_REPLIES } from '@/lib/bot-data';
 import type { ChatMessage } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 
+export const runtime = 'nodejs';
+
 // Güvenlik için, webhook çağrısının yetkili bir kaynaktan geldiğini doğrulamak amacıyla kullanılır.
 const SHARED_SECRET = process.env.NEXT_PUBLIC_WEBHOOK_SECRET || 'your-very-secret-key';
 
