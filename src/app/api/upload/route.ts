@@ -1,12 +1,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDownloadURL } from 'firebase-admin/storage';
-import { storage } from '@/firebase/admin';
+import { getAdminServices } from '@/firebase/admin';
 
 async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
-    if (!storage) {
-        throw new Error("Firebase Admin SDK not initialized. Storage service is unavailable.");
-    }
+    const { storage } = getAdminServices();
     
     const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
     const fileBuffer = await file.arrayBuffer();

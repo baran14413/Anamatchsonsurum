@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/firebase/admin';
+import { getAdminServices } from '@/firebase/admin';
 import { BOT_REPLIES } from '@/lib/bot-data';
 import type { ChatMessage } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -20,9 +20,8 @@ const getRandomBotReply = () => {
  */
 export async function POST(req: NextRequest) {
   try {
-    if (!db) {
-        return NextResponse.json({ error: 'Veritabanı bağlantısı kurulamadı. Yönetici ile iletişime geçin.' }, { status: 500 });
-    }
+    const { db } = getAdminServices();
+
     // 1. Yetkilendirme Kontrolü
     const token = req.headers.get('authorization')?.split('Bearer ')[1];
     if (token !== SHARED_SECRET) {
