@@ -1,10 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase-admin/storage';
-import { db, auth, admin } from '@/firebase/admin';
+import { getDownloadURL } from 'firebase-admin/storage';
+import { storage } from '@/firebase/admin';
 
 async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
-    const storage = getStorage();
+    if (!storage) {
+        throw new Error("Firebase Admin SDK not initialized. Storage service is unavailable.");
+    }
+    
     const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
     const fileBuffer = await file.arrayBuffer();
     const uniqueFileName = `bematch_profiles/${Date.now()}-${file.name}`;

@@ -1,11 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorage, ref, deleteObject } from 'firebase-admin/storage';
-import { admin } from '@/firebase/admin';
+import { storage } from '@/firebase/admin';
 
 
 async function deleteFromFirebaseStorage(public_id: string): Promise<void> {
-    const storage = getStorage();
+    if (!storage) {
+      throw new Error("Firebase Admin SDK not initialized. Storage service is unavailable.");
+    }
     const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
     const fileRef = bucket.file(public_id);
 
