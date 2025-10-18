@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { useAuth, useFirestore, useUser } from '@/firebase/provider';
+import { useFirestore, useUser } from '@/firebase/provider';
 import {
   fetchSignInMethodsForEmail,
   createUserWithEmailAndPassword,
@@ -48,10 +48,9 @@ const signupSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
-  const auth = useAuth();
+  const { auth, user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { user } = useUser();
   const t = langTr.login;
 
   const [step, setStep] = useState<'email' | 'password' | 'signup'>('email');
