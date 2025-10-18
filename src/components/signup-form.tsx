@@ -38,8 +38,8 @@ const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-    email: z.string().email({ message: langTr.signup.errors.form.email }).optional(),
-    password: z.string().min(6, { message: langTr.signup.errors.form.password }).optional(),
+    email: z.string().email({ message: langTr.signup.errors.form.email }),
+    password: z.string().min(6, { message: langTr.signup.errors.form.password }),
     name: z.string()
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
@@ -174,8 +174,11 @@ export default function ProfileCompletionForm() {
 
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots());
 
+  const formSchemaForGoogle = formSchema.omit({ email: true, password: true });
+  const isGoogleUser = useMemo(() => user?.providerData.some(p => p.providerId === 'google.com'), [user]);
+
   const form = useForm<SignupFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(isGoogleUser ? formSchemaForGoogle : formSchema),
     defaultValues: {
       email: '',
       password: '',
@@ -188,8 +191,6 @@ export default function ProfileCompletionForm() {
     mode: "onChange",
   });
   
-  const isGoogleUser = useMemo(() => user?.providerData.some(p => p.providerId === 'google.com'), [user]);
-
   useEffect(() => {
     // If user is from Google, skip email step
     if (isGoogleUser) {
@@ -291,41 +292,66 @@ export default function ProfileCompletionForm() {
   };
 
   async function onSubmit(data: SignupFormValues) {
-    if (!firestore || !user) {
-      toast({ title: t.common.error, description: t.errors.dbConnectionError, variant: "destructive" });
-      return;
-    }
-    
     setIsSubmitting(true);
     try {
-      
-      await updateProfile(user, { displayName: data.name });
+        let currentUser = user;
+        // If not a Google user, create the user now
+        if (!isGoogleUser) {
+            if (!auth || !data.email || !data.password) {
+                throw new Error("Kimlik doğrulama bilgileri eksik.");
+            }
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+                currentUser = userCredential.user;
+            } catch (error: any) {
+                if (error.code === 'auth/email-already-in-use') {
+                    toast({
+                        title: "Kayıt Hatası",
+                        description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.",
+                        variant: "destructive"
+                    });
+                } else {
+                    toast({
+                        title: "Kayıt Hatası",
+                        description: error.message,
+                        variant: "destructive"
+                    });
+                }
+                setIsSubmitting(false);
+                return;
+            }
+        }
 
-      const userProfileData = {
-        ...data,
-        uid: user.uid,
-        email: user.email,
-        createdAt: serverTimestamp(),
-        fullName: data.name,
-        dateOfBirth: data.dateOfBirth.toISOString(),
-        images: data.images,
-        profilePicture: data.images.length > 0 ? data.images[0].url : '',
-        globalModeEnabled: true, 
-        expandAgeRange: true,
-        isBot: false,
-      };
-      
-      // Remove optional fields used only in the form
-      delete (userProfileData as any).password;
+        if (!firestore || !currentUser) {
+            throw new Error(t.errors.dbConnectionError);
+        }
 
-      await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
-      
-      router.push('/kurallar');
+        await updateProfile(currentUser, { displayName: data.name });
+
+        const userProfileData = {
+            ...data,
+            uid: currentUser.uid,
+            email: currentUser.email,
+            createdAt: serverTimestamp(),
+            fullName: data.name,
+            dateOfBirth: data.dateOfBirth.toISOString(),
+            images: data.images,
+            profilePicture: data.images.length > 0 ? data.images[0].url : '',
+            globalModeEnabled: true,
+            expandAgeRange: true,
+            isBot: false,
+        };
+
+        delete (userProfileData as any).password;
+
+        await setDoc(doc(firestore, "users", currentUser.uid), userProfileData, { merge: true });
+
+        router.push('/kurallar');
 
     } catch (error: any) {
-      console.error("Signup error:", error);
-      toast({ title: "Profil Tamamlama Başarısız", description: error.message || "Bir hata oluştu", variant: "destructive" });
-      setIsSubmitting(false);
+        console.error("Signup error:", error);
+        toast({ title: "Profil Tamamlama Başarısız", description: error.message || "Bir hata oluştu", variant: "destructive" });
+        setIsSubmitting(false);
     }
   }
   
@@ -462,41 +488,9 @@ export default function ProfileCompletionForm() {
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues) | (keyof SignupFormValues)[] | undefined;
     let isValid = true;
-
-    if (step === 0) {
-        const email = form.getValues("email");
-        const password = form.getValues("password");
-        isValid = await form.trigger(["email", "password"]);
-        
-        if (isValid && auth && email && password) {
-            setIsSubmitting(true);
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                // The onAuthStateChanged listener will handle the user state update.
-                // We can now proceed to the next step.
-                nextStep();
-            } catch (error: any) {
-                if (error.code === 'auth/email-already-in-use') {
-                    toast({
-                        title: "Kayıt Hatası",
-                        description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.",
-                        variant: "destructive"
-                    });
-                } else {
-                    toast({
-                        title: "Kayıt Hatası",
-                        description: error.message,
-                        variant: "destructive"
-                    });
-                }
-            } finally {
-                setIsSubmitting(false);
-            }
-        }
-        return;
-    }
     
     switch (step) {
+      case 0: fieldsToValidate = ['email', 'password']; break;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'location'; break;
       case 3: fieldsToValidate = 'images'; break;
@@ -509,6 +503,13 @@ export default function ProfileCompletionForm() {
         await form.trigger();
         if(form.formState.isValid) {
             onSubmit(form.getValues());
+        } else {
+            const firstErrorField = Object.keys(form.formState.errors)[0];
+            toast({
+                title: "Form Eksik",
+                description: `Lütfen tüm alanları doğru bir şekilde doldurun. Hata: ${firstErrorField}`,
+                variant: "destructive"
+            });
         }
         return; 
     }
