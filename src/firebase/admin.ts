@@ -25,7 +25,7 @@ function initializeAdminApp(): admin.app.App {
 
     return admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        storageBucket: "bematch-new.appspot.com",
+        storageBucket: "bematch-new.firebasestorage.app",
     });
 }
 
