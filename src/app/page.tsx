@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { Mail } from 'lucide-react';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -57,7 +58,7 @@ export default function WelcomePage() {
                 uid: signedInUser.uid,
                 email: signedInUser.email || '',
                 fullName: signedInUser.displayName || '',
-                images: signedInUser.photoURL ? [{ url: signedInUser.photoURL, public_id: '' }] : [],
+                images: signedInUser.photoURL ? [{ url: signedInUser.photoURL, public_id: `google_${signedInUser.uid}` }] : [],
                 profilePicture: signedInUser.photoURL || '',
                 isBot: false, // Explicitly mark as not a bot
             };
@@ -106,7 +107,7 @@ export default function WelcomePage() {
           >
             <Icons.logo width={256} height={256} />
           </motion.div>
-           <div className="w-40 h-px bg-gradient-to-r from-red-500 to-blue-500 mb-8"></div>
+           <div className="w-40 h-px bg-gradient-to-r from-red-500 to-yellow-500 mb-8"></div>
         </div>
 
         <div className="w-full max-w-sm space-y-6">
@@ -127,6 +128,14 @@ export default function WelcomePage() {
                    <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
                 )}
                 {t.welcome.continueWithGoogle}
+              </Button>
+               <Button
+                onClick={() => router.push('/login')}
+                variant="outline"
+                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+              >
+                <Mail className="mr-4 h-6 w-6" />
+                {t.welcome.continueWithEmail}
               </Button>
           </div>
         </div>
