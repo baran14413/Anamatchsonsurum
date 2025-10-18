@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
-    FIREBASE_STORAGE_BUCKET: 'bematch-new.appspot.com',
+    FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
   },
   images: {
     remotePatterns: [
