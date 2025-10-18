@@ -3,18 +3,13 @@ import * as admin from 'firebase-admin';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
+import { serviceAccount } from './service-account';
 
 // This function ensures Firebase is initialized only once.
 if (!admin.apps.length) {
-    const privateKey = Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64!, 'base64').toString('utf8');
-
     admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: privateKey,
-        }),
-        storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: `${serviceAccount.project_id}.appspot.com`
     });
 }
 

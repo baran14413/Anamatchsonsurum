@@ -7,8 +7,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export const runtime = 'nodejs';
 
-// Güvenlik için, webhook çağrısının yetkili bir kaynaktan geldiğini doğrulamak amacıyla kullanılır.
-const SHARED_SECRET = process.env.NEXT_PUBLIC_WEBHOOK_SECRET || 'your-very-secret-key';
+// It's better to get this from environment variables
+const SHARED_SECRET = process.env.WEBHOOK_SECRET || 'your-very-secret-key';
 
 // Basit, önceden tanımlanmış bir cevap havuzundan rastgele bir cevap seçer.
 const getRandomBotReply = () => {
