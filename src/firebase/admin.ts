@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
+import getConfig from 'next/config';
 
 // Re-export admin itself to be used in other files if needed
 export { admin };
@@ -18,13 +19,20 @@ function initializeAdminApp(): admin.app.App {
     if (admin.apps.length > 0) {
         return admin.apps[0]!;
     }
+    
+    // Use Next.js runtime config to get server-side environment variables
+    const { serverRuntimeConfig } = getConfig();
 
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const { 
+        FIREBASE_PROJECT_ID: projectId, 
+        FIREBASE_CLIENT_EMAIL: clientEmail, 
+        FIREBASE_PRIVATE_KEY: privateKey 
+    } = serverRuntimeConfig;
+
 
     if (!projectId || !clientEmail || !privateKey) {
-        throw new Error("Firebase Admin SDK environment variables are not set. Cannot initialize.");
+        // This error should now be much less likely to occur.
+        throw new Error("Firebase Admin SDK server runtime configuration is not set. Cannot initialize.");
     }
     
     const serviceAccount: admin.ServiceAccount = {
