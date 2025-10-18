@@ -6,8 +6,9 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase/provider";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -37,6 +38,8 @@ const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
+    email: z.string().email({ message: langTr.signup.errors.form.email }).optional(),
+    password: z.string().min(6, { message: langTr.signup.errors.form.password }).optional(),
     name: z.string()
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
@@ -74,8 +77,7 @@ type ImageSlot = {
     isUploading: boolean;
 };
 
-const getInitialImageSlots = (user?: any): ImageSlot[] => {
-  // The user wants to remove automatic Google photo population.
+const getInitialImageSlots = (): ImageSlot[] => {
   return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 };
 
@@ -156,7 +158,7 @@ export default function ProfileCompletionForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr.signup;
-  const { user } = useUser();
+  const { user, auth } = useUser();
   const [step, setStep] = useState(0);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,7 +172,7 @@ export default function ProfileCompletionForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceValue, setDistanceValue] = useState(80);
 
-  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(user));
+  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots());
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -183,15 +185,21 @@ export default function ProfileCompletionForm() {
     },
     mode: "onChange",
   });
+  
+  const isGoogleUser = useMemo(() => user?.providerData.some(p => p.providerId === 'google.com'), [user]);
 
   useEffect(() => {
-    if (user) {
+    // If user is from Google, skip email step
+    if (isGoogleUser) {
+        setStep(1); // Start from name step
         form.setValue('name', user.displayName || '');
-        // Clear initial images to respect user's choice
+        // We don't pre-populate images anymore
         setImageSlots(getInitialImageSlots());
         form.setValue('images', [], { shouldValidate: true });
+    } else {
+        setStep(0); // Start from email/password step for new users
     }
-  }, [user, form]);
+  }, [user, isGoogleUser, form]);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -284,6 +292,8 @@ export default function ProfileCompletionForm() {
     setIsSubmitting(true);
     try {
       
+      await updateProfile(user, { displayName: data.name });
+
       const userProfileData = {
         ...data,
         uid: user.uid,
@@ -297,6 +307,9 @@ export default function ProfileCompletionForm() {
         expandAgeRange: true,
         isBot: false,
       };
+      
+      // Remove optional fields used only in the form
+      delete (userProfileData as any).password;
 
       await setDoc(doc(firestore, "users", user.uid), userProfileData, { merge: true });
       
@@ -309,8 +322,8 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 8;
-  const progressValue = (step / totalSteps) * 100;
+  const totalSteps = 9;
+  const progressValue = ((step) / totalSteps) * 100;
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
     
@@ -339,10 +352,9 @@ export default function ProfileCompletionForm() {
             const newSlots = [...prev];
             newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
             
-            // Update react-hook-form state
             const currentImages = form.getValues('images') || [];
             const updatedImages = [...currentImages];
-            const existingIndex = updatedImages.findIndex(img => img.url === newSlots[slotIndex].preview); // Should be -1 for new
+            const existingIndex = updatedImages.findIndex(img => img.url === newSlots[slotIndex].preview); 
             if (existingIndex !== -1) {
               updatedImages[existingIndex] = { url: result.url, public_id: result.public_id };
             } else {
@@ -368,7 +380,6 @@ export default function ProfileCompletionForm() {
         handleImageUpload(file, slotIndex);
     }
 
-    // Reset file input to allow re-uploading the same file
     if (e.target) e.target.value = '';
   };
   
@@ -396,24 +407,19 @@ export default function ProfileCompletionForm() {
         }
     }
 
-    // Update UI state
     setImageSlots(prevSlots => {
         const newSlots = [...prevSlots];
-        // Revoke URL if it was a blob
         if (newSlots[index].file && newSlots[index].preview) {
           URL.revokeObjectURL(newSlots[index].preview!);
         }
-        // Remove the item at the index
         newSlots.splice(index, 1);
-        // Add a new empty slot at the end
         newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
         return newSlots;
     });
       
-    // Update form state
     const newImagesForForm = imageSlots
-        .filter((_, i) => i !== index) // Exclude the deleted one
-        .filter(slot => slot.preview && slot.public_id) // Filter for valid, uploaded images
+        .filter((_, i) => i !== index)
+        .filter(slot => slot.preview && slot.public_id)
         .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
         
     form.setValue('images', newImagesForForm, { shouldValidate: true });
@@ -448,26 +454,52 @@ export default function ProfileCompletionForm() {
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues) | (keyof SignupFormValues)[] | undefined;
-
+    let isValid = true;
+    
     switch (step) {
-      case 0: fieldsToValidate = 'name'; break;
-      case 1: fieldsToValidate = 'location'; break;
-      case 2: fieldsToValidate = 'images'; break;
-      case 3: fieldsToValidate = 'interests'; break;
-      case 4: fieldsToValidate = 'dateOfBirth'; break;
-      case 5: fieldsToValidate = 'gender'; break;
-      case 6: fieldsToValidate = 'lookingFor'; break;
-      case 7: fieldsToValidate = 'distancePreference'; break;
+      case 0:
+        fieldsToValidate = ['email', 'password'];
+        isValid = await form.trigger(fieldsToValidate);
+        if (isValid && auth) {
+          setIsSubmitting(true);
+          const email = form.getValues("email")!;
+          const password = form.getValues("password")!;
+          try {
+            const userDoc = await getDoc(doc(firestore, "users_by_email", email));
+            if(userDoc.exists()) {
+                toast({ title: "Hata", description: "Bu e-posta adresi zaten kullanımda.", variant: "destructive" });
+                setIsSubmitting(false);
+                return;
+            }
+            await createUserWithEmailAndPassword(auth, email, password);
+            // Auth state change will be handled by the provider
+            // We can proceed to the next step optimistically
+            setIsSubmitting(false);
+            nextStep();
+          } catch(error: any) {
+            toast({ title: "Kayıt Hatası", description: error.message, variant: "destructive" });
+            setIsSubmitting(false);
+          }
+        }
+        return;
+      case 1: fieldsToValidate = 'name'; break;
+      case 2: fieldsToValidate = 'location'; break;
+      case 3: fieldsToValidate = 'images'; break;
+      case 4: fieldsToValidate = 'interests'; break;
+      case 5: fieldsToValidate = 'dateOfBirth'; break;
+      case 6: fieldsToValidate = 'gender'; break;
+      case 7: fieldsToValidate = 'lookingFor'; break;
+      case 8: fieldsToValidate = 'distancePreference'; break;
       case totalSteps: // The final confirmation step
         await form.trigger(); // Validate all fields before final submission
         if(form.formState.isValid) {
             onSubmit(form.getValues());
         }
-        return; // Don't call nextStep()
+        return; 
     }
     
     if (fieldsToValidate) {
-        const isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
+        isValid = await form.trigger(Array.isArray(fieldsToValidate) ? fieldsToValidate : [fieldsToValidate]);
         if (isValid) {
           nextStep();
         }
@@ -475,8 +507,6 @@ export default function ProfileCompletionForm() {
         nextStep();
     }
   };
-
-  const isGoogleUser = user?.providerData.some(p => p.providerId === 'google.com');
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -497,8 +527,40 @@ export default function ProfileCompletionForm() {
                 )}
                  <h1 className="text-3xl font-bold">Profilini Tamamla</h1>
                </div>
-
+              
               {step === 0 && (
+                <>
+                  <h1 className="text-3xl font-bold">{t.step1.title}</h1>
+                  <p className="text-muted-foreground mt-2">{t.step1.description}</p>
+                  <div className="space-y-6 mt-8">
+                     <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t.step1.emailLabel}</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type="email" placeholder={langTr.login.emailPlaceholder} className="pl-10 h-12" {...field} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                      )} />
+                     <FormField control={form.control} name="password" render={({ field }) => (
+                        <FormItem>
+                             <FormLabel>{t.step1.passwordLabel}</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type="password" placeholder={langTr.login.passwordPlaceholder} className="pl-10 h-12" {...field} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                      )} />
+                  </div>
+                </>
+              )}
+              {step === 1 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step2.title}</h1>
                   <FormField control={form.control} name="name" render={({ field }) => (
@@ -513,7 +575,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 1 && (
+              {step === 2 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <MapPin className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -541,7 +603,7 @@ export default function ProfileCompletionForm() {
                     )}
                  </div>
               )}
-              {step === 2 && (
+              {step === 3 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step12.title}</h1>
@@ -602,7 +664,7 @@ export default function ProfileCompletionForm() {
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                 </div>
               )}
-               {step === 3 && (
+               {step === 4 && (
                 <div className="flex-1 flex flex-col min-h-0">
                     <FormField
                         control={form.control}
@@ -653,7 +715,7 @@ export default function ProfileCompletionForm() {
                     />
                 </div>
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step3.title}</h1>
                   <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
@@ -671,7 +733,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step4.title}</h1>
                   <FormField control={form.control} name="gender" render={({ field }) => (
@@ -688,7 +750,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step5.title}</h1>
@@ -718,7 +780,7 @@ export default function ProfileCompletionForm() {
                   </div>
                 </div>
               )}
-              {step === 7 && (
+              {step === 8 && (
                 <div className="flex flex-col h-full">
                     <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.step7.title}</h1>
@@ -748,7 +810,7 @@ export default function ProfileCompletionForm() {
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
-              {step === 8 && (
+              {step === 9 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <Globe className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -768,10 +830,10 @@ export default function ProfileCompletionForm() {
               className="w-full h-14 rounded-full text-lg font-bold"
               disabled={
                 isSubmitting ||
-                (step === 1 && locationStatus !== 'success') ||
-                (step === 2 && uploadedImageCount < 2) ||
-                (step === 3 && (form.getValues('interests')?.length ?? 0) < 10) ||
-                (step === 4 && ageStatus !== 'valid')
+                (step === 2 && locationStatus !== 'success') ||
+                (step === 3 && uploadedImageCount < 2) ||
+                (step === 4 && (form.getValues('interests')?.length ?? 0) < 10) ||
+                (step === 5 && ageStatus !== 'valid')
               }
             >
               {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}

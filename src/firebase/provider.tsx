@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot, setDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { Firestore, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
@@ -28,6 +28,7 @@ export interface FirebaseContextState {
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult {
   user: User | null;
+  auth: Auth | null;
   userProfile: UserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -162,7 +163,6 @@ export const useFirebase = (): Omit<FirebaseContextState, 'areServicesAvailable'
   return context;
 };
 
-export const useAuth = (): Auth => useFirebase().auth!;
 export const useFirestore = (): Firestore => useFirebase().firestore!;
 export const useFirebaseApp = (): FirebaseApp => useFirebase().firebaseApp!;
 export const useUserProfile = (): UserProfile | null => useFirebase().userProfile;
@@ -177,6 +177,6 @@ export const useUser = (): UserHookResult => {
    if (context === undefined) {
     throw new Error('useUser must be used within a FirebaseProvider.');
   }
-  const { user, userProfile, isUserLoading, userError } = context;
-  return { user, userProfile, isUserLoading, userError };
+  const { user, auth, userProfile, isUserLoading, userError } = context;
+  return { user, auth, userProfile, isUserLoading, userError };
 };
