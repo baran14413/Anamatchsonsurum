@@ -3,7 +3,7 @@ import * as admin from 'firebase-admin';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
-import serviceAccountKey from '../../../service-account-key.json';
+import serviceAccountKey from '@/service-account-key.json';
 
 // Re-export admin itself to be used in other files if needed
 export { admin };
