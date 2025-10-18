@@ -8,9 +8,16 @@ export const runtime = 'nodejs';
 async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
     const { storage } = getAdminServices();
     
-    const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET);
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
+    if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured in environment variables.");
+    }
+    const bucket = storage.bucket(bucketName);
+
     const fileBuffer = await file.arrayBuffer();
-    const uniqueFileName = `bematch_profiles/${Date.now()}-${file.name}`;
+    
+    // Save files to a 'bematch_profiles' folder as requested.
+    const uniqueFileName = `bematch_profiles/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const storageRef = bucket.file(uniqueFileName);
 
     await storageRef.save(Buffer.from(fileBuffer), {

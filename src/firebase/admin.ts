@@ -19,24 +19,10 @@ function initializeAdminApp(): admin.app.App {
         return admin.apps[0]!;
     }
     
-    // Ensure all required environment variables are present
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-        throw new Error('Firebase Admin SDK environment variables are not set. Cannot initialize.');
-    }
-
-    // The private key needs to have its newlines restored.
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-
-    const serviceAccount: admin.ServiceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-    };
-
-    return admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    });
+    // App Hosting provides the configuration automatically.
+    // initializeApp() will automatically use the GOOGLE_APPLICATION_CREDENTIALS
+    // environment variable, which is set by the App Hosting runtime.
+    return admin.initializeApp();
 }
 
 // A lazy-getter to ensure services are retrieved from an initialized app.
