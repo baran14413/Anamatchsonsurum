@@ -470,19 +470,15 @@ export default function ProfileCompletionForm() {
           const email = form.getValues("email")!;
           const password = form.getValues("password")!;
           try {
-            const userDoc = await getDoc(doc(firestore, "users_by_email", email));
-            if(userDoc.exists()) {
-                toast({ title: "Hata", description: "Bu e-posta adresi zaten kullanımda.", variant: "destructive" });
-                setIsSubmitting(false);
-                return;
-            }
             await createUserWithEmailAndPassword(auth, email, password);
-            // Auth state change will be handled by the provider
-            // We can proceed to the next step optimistically
             setIsSubmitting(false);
             nextStep();
           } catch(error: any) {
-            toast({ title: "Kayıt Hatası", description: error.message, variant: "destructive" });
+              if (error.code === 'auth/email-already-in-use') {
+                 toast({ title: "Kayıt Hatası", description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.", variant: "destructive" });
+              } else {
+                 toast({ title: "Kayıt Hatası", description: error.message, variant: "destructive" });
+              }
             setIsSubmitting(false);
           }
         }
@@ -516,8 +512,8 @@ export default function ProfileCompletionForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        <Button variant="ghost" size="icon" onClick={() => (step === 0 && !isGoogleUser) || (step === 1 && isGoogleUser) ? router.push('/') : prevStep()} disabled={isSubmitting}>
-            {(step === 0 && !isGoogleUser) || (step === 1 && isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
+        <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
+           {(step === 1 && isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
         <div className="w-9 h-9" />
