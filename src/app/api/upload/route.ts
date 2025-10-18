@@ -5,7 +5,7 @@ import { storage } from '@/firebase/admin';
 export const runtime = 'nodejs';
 
 async function uploadToFirebaseStorage(file: File): Promise<{ url: string; public_id: string }> {
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`;
     if (!bucketName) {
         throw new Error("Firebase Storage bucket name is not configured in environment variables.");
     }
