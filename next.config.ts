@@ -10,9 +10,6 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  devIndicators: {
-    buildActivity: false,
-  },
   env: {
     NEXT_PUBLIC_WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
   },
