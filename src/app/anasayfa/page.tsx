@@ -178,11 +178,18 @@ export default function AnasayfaPage() {
         
         const globalMode = userProfile.globalModeEnabled ?? false;
         
-        let fetchedProfiles = querySnapshot.docs
-            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+        const potentialProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+        
+        const filteredProfiles = potentialProfiles
+            .map(p => {
+                let distance;
+                 if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                }
+                return { ...p, distance };
+            })
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                
                 if (!p.images || p.images.length === 0) return false;
 
                 const userGenderPref = userProfile.genderPreference;
@@ -199,25 +206,16 @@ export default function AnasayfaPage() {
                     }
                 }
 
-                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                    if (distance > (userProfile.distancePreference || 160)) {
+                if (!globalMode && p.distance !== undefined) {
+                    if (p.distance > (userProfile.distancePreference || 160)) {
                         return false; 
                     }
                 }
                 
                 return true;
-            })
-            .map(p => {
-                let distance;
-                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                }
-                return { ...p, distance };
-            })
-            .slice(0, 20);
+            });
 
-        setProfiles(fetchedProfiles);
+        setProfiles(filteredProfiles.slice(0, 20));
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -354,7 +352,7 @@ export default function AnasayfaPage() {
                                 top: (profiles.length - 1 - index) * 10,
                                 opacity: 1,
                               }}
-                            exit={{
+                             exit={{
                                 x: 300,
                                 y: -100,
                                 opacity: 0,

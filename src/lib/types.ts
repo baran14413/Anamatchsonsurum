@@ -28,7 +28,7 @@ export type UserProfile = {
     country?: string | null;
     state?: string | null;
     city?: string | null;
-  }
+  } | null;
   school?: string;
   lookingFor?: string;
   distancePreference?: number;
