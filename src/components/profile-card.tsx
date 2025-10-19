@@ -66,7 +66,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const x = useMotionValue(0);
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const rotate = useTransform(x, [-200, 200], [-30, 30]);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -128,11 +128,11 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
       style={{ x, rotate }}
     >
-      <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-          <Heart className="w-32 h-32 text-green-400 fill-green-400" />
+      <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
+          <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
       </motion.div>
-      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-          <XIcon className="w-32 h-32 text-red-500" strokeWidth={3} />
+      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-10 left-10 z-30 pointer-events-none rotate-[20deg]">
+          <XIcon className="w-32 h-32 text-red-500" strokeWidth={4} />
       </motion.div>
         
       {profile.images && profile.images.length > 0 && (

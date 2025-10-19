@@ -246,7 +246,12 @@ export default function AnasayfaPage() {
                     y: (profiles.slice(-3).length - 1 - index) * 10,
                     opacity: 1
                   }}
-                  exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                  exit={{
+                    opacity: 0,
+                    x: offset.x < 0 ? -500 : 500,
+                    rotate: offset.x < 0 ? -30 : 30,
+                    transition: { duration: 0.3 }
+                  }}
                   dragElastic={0.5}
                 >
                   <ProfileCard profile={profile} />
