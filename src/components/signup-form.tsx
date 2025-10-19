@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -58,10 +57,6 @@ const formSchema = z.object({
       country: z.string().optional()
     }).optional(),
     distancePreference: z.number().min(1, { message: "Mesafe en az 1 km olmalıdır." }).max(160, { message: "Mesafe en fazla 160 km olabilir." }),
-    images: z.array(z.object({
-        url: z.string().url(),
-        public_id: z.string(),
-    })).min(2, {message: 'En az 2 fotoğraf yüklemelisin.'}).max(6),
     ageRange: z.object({
       min: z.number(),
       max: z.number()
@@ -70,17 +65,6 @@ const formSchema = z.object({
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
-
-type ImageSlot = {
-    file: File | null;
-    preview: string | null;
-    public_id?: string | null;
-    isUploading: boolean;
-};
-
-const getInitialImageSlots = (): ImageSlot[] => {
-  return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
-};
 
 
 const lookingForOptions = [
@@ -169,10 +153,7 @@ export default function ProfileCompletionForm() {
   const [locationStatus, setLocationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceValue, setDistanceValue] = useState(80);
-
-  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots());
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -181,7 +162,6 @@ export default function ProfileCompletionForm() {
       password: '',
       name: "",
       lookingFor: "",
-      images: [],
       distancePreference: 80,
       interests: [],
     },
@@ -267,9 +247,6 @@ export default function ProfileCompletionForm() {
       }
     );
   };
-  
-  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
-
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
@@ -317,7 +294,7 @@ export default function ProfileCompletionForm() {
         }
 
         // Update profile displayName just in case
-        await updateProfile(currentUser, { displayName: data.name, photoURL: data.images[0]?.url });
+        await updateProfile(currentUser, { displayName: data.name, photoURL: '' });
         
         const userProfileData = {
             ...data,
@@ -326,8 +303,8 @@ export default function ProfileCompletionForm() {
             createdAt: serverTimestamp(),
             fullName: data.name,
             dateOfBirth: data.dateOfBirth.toISOString(),
-            images: data.images,
-            profilePicture: data.images.length > 0 ? data.images[0].url : '',
+            images: [], // No images on initial signup
+            profilePicture: '',
             globalModeEnabled: true,
             expandAgeRange: true,
             isBot: false,
@@ -345,106 +322,8 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 9;
+  const totalSteps = 8;
   const progressValue = ((step) / totalSteps) * 100;
-
-  const handleImageUpload = async (file: File, slotIndex: number) => {
-    // A temporary user object is needed for the upload path if user is not yet created.
-    const uploadUserId = user ? user.uid : `temp_${form.getValues('email') || Date.now()}`;
-
-    if (!storage) {
-        toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
-        return;
-    }
-
-    setImageSlots(prev => {
-        const newSlots = [...prev];
-        newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
-        return newSlots;
-    });
-
-    const uniqueFileName = `bematch_profiles/${uploadUserId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-    const imageRef = storageRef(storage, uniqueFileName);
-
-    try {
-        const snapshot = await uploadBytes(imageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
-        setImageSlots(prev => {
-            const newSlots = [...prev];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
-            
-            const updatedImages = newSlots
-                .filter(slot => slot.preview && slot.public_id)
-                .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
-            
-            form.setValue('images', updatedImages, { shouldValidate: true });
-            
-            return newSlots;
-        });
-
-    } catch (error: any) {
-        toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
-        setImageSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
-    }
-  };
-
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
-    const slotIndex = slotIndexStr ? parseInt(slotIndexStr, 10) : -1;
-
-    if (file && slotIndex !== -1) {
-        handleImageUpload(file, slotIndex);
-    }
-
-    if (e.target) e.target.value = '';
-  };
-  
-  const openFilePicker = (index: number) => {
-      if(isSubmitting) return;
-      fileInputRef.current?.setAttribute('data-slot-index', String(index));
-      fileInputRef.current?.click();
-  };
-  
-  const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
-    e.stopPropagation();
-    if(isSubmitting || !storage) return;
-    
-    const slotToDelete = imageSlots[index];
-
-    if (slotToDelete.public_id) {
-        try {
-            const imageRef = storageRef(storage, slotToDelete.public_id);
-            await deleteObject(imageRef);
-        } catch(err: any) {
-             if (err.code !== 'storage/object-not-found') {
-                console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
-                toast({ title: t.ayarlarGaleri.toasts.deleteErrorTitle, description: t.ayarlarGaleri.toasts.deleteErrorDesc, variant: 'destructive' });
-                return;
-             }
-        }
-    }
-
-    setImageSlots(prevSlots => {
-        const newSlots = [...prevSlots];
-        if (newSlots[index].file && newSlots[index].preview) {
-          URL.revokeObjectURL(newSlots[index].preview!);
-        }
-        newSlots.splice(index, 1);
-        newSlots.push({ file: null, preview: null, isUploading: false, public_id: null });
-        return newSlots;
-    });
-      
-    const newImagesForForm = imageSlots
-        .filter((_, i) => i !== index)
-        .filter(slot => slot.preview && slot.public_id)
-        .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
-        
-    form.setValue('images', newImagesForForm, { shouldValidate: true });
-};
-
   
   const handleDistanceChange = (value: number[]) => {
       const newDistance = value[0];
@@ -480,12 +359,11 @@ export default function ProfileCompletionForm() {
       case 0: fieldsToValidate = ['email', 'password']; break;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'location'; break;
-      case 3: fieldsToValidate = 'images'; break;
-      case 4: fieldsToValidate = 'interests'; break;
-      case 5: fieldsToValidate = 'dateOfBirth'; break;
-      case 6: fieldsToValidate = 'gender'; break;
-      case 7: fieldsToValidate = 'lookingFor'; break;
-      case 8: fieldsToValidate = 'distancePreference'; break;
+      case 3: fieldsToValidate = 'interests'; break;
+      case 4: fieldsToValidate = 'dateOfBirth'; break;
+      case 5: fieldsToValidate = 'gender'; break;
+      case 6: fieldsToValidate = 'lookingFor'; break;
+      case 7: fieldsToValidate = 'distancePreference'; break;
       case totalSteps:
         await form.trigger();
         if(form.formState.isValid) {
@@ -603,68 +481,7 @@ export default function ProfileCompletionForm() {
                     )}
                  </div>
               )}
-              {step === 3 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{t.step12.title}</h1>
-                    <div className="flex items-center gap-4 mt-2">
-                      <div
-                        className="relative flex items-center justify-center"
-                        style={{ width: 40, height: 40 }}
-                      >
-                        <Icons.logo width={40} height={40} className="animate-pulse" style={{ animationDuration: '3s' }} />
-                        <span className="absolute text-xs font-bold text-primary">{Math.round((uploadedImageCount / 6) * 100)}%</span>
-                      </div>
-                      <p className="text-muted-foreground flex-1">{t.step12.description.replace("{count}", String(uploadedImageCount))}</p>
-                    </div>
-                     <FormMessage className="pt-2">{form.formState.errors.images?.message}</FormMessage>
-                  </div>
-                  <div className="flex-1 overflow-y-auto -mr-6 pr-5 pt-6">
-                    <div className="grid grid-cols-3 gap-4">
-                      {imageSlots.map((slot, index) => (
-                        <div key={index} className="relative aspect-square">
-                          {index === 0 && slot.preview && (
-                              <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5">
-                                <Star className="w-3 h-3"/>
-                                Profil Fotoğrafı
-                              </Badge>
-                          )}
-                          <div onClick={() => openFilePicker(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
-                            {slot.preview ? (
-                              <>
-                                <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
-                                {!isSubmitting && (
-                                  <div className="absolute bottom-2 right-2 flex gap-2">
-                                    <button type="button" onClick={(e) => {e.stopPropagation(); openFilePicker(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                    {uploadedImageCount > 2 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                  {index === 0 ? (
-                                      <>
-                                          <span className="text-xs font-bold block">Profil Fotoğrafı</span>
-                                          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                                      </>
-                                  ) : (
-                                       <>
-                                          <span className="text-xs font-medium block">Fotoğraf ekle</span>
-                                          <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-                                       </>
-                                  )}
-                                </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                </div>
-              )}
-               {step === 4 && (
+               {step === 3 && (
                 <div className="flex-1 flex flex-col min-h-0">
                     <FormField
                         control={form.control}
@@ -715,7 +532,7 @@ export default function ProfileCompletionForm() {
                     />
                 </div>
               )}
-              {step === 5 && (
+              {step === 4 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step3.title}</h1>
                   <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
@@ -733,7 +550,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step4.title}</h1>
                   <FormField control={form.control} name="gender" render={({ field }) => (
@@ -750,7 +567,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 7 && (
+              {step === 6 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step5.title}</h1>
@@ -780,7 +597,7 @@ export default function ProfileCompletionForm() {
                   </div>
                 </div>
               )}
-              {step === 8 && (
+              {step === 7 && (
                 <div className="flex flex-col h-full">
                     <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.step7.title}</h1>
@@ -810,7 +627,7 @@ export default function ProfileCompletionForm() {
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
-              {step === 9 && (
+              {step === 8 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <Globe className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -831,9 +648,8 @@ export default function ProfileCompletionForm() {
               disabled={
                 isSubmitting ||
                 (step === 2 && locationStatus !== 'success') ||
-                (step === 3 && uploadedImageCount < 2) ||
-                (step === 4 && (form.getValues('interests')?.length ?? 0) < 10) ||
-                (step === 5 && ageStatus !== 'valid')
+                (step === 3 && (form.getValues('interests')?.length ?? 0) < 10) ||
+                (step === 4 && ageStatus !== 'valid')
               }
             >
               {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}
@@ -844,5 +660,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
