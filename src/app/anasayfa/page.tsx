@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -25,10 +25,7 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
-  const fetchProfiles = useCallback(async () => {
-    // Reset profiles to allow refetching
-    setProfiles([]);
-
+  const fetchProfiles = useCallback(async (ignoreInteractions = false) => {
     if (!user || !userProfile || !firestore) {
       setIsLoading(false);
       return;
@@ -38,26 +35,44 @@ export default function AnasayfaPage() {
 
     try {
       const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, limit(50));
+      let q = query(usersRef, limit(50));
+
       const usersSnapshot = await getDocs(q);
 
-      const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-      const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+      let interactedUids = new Set<string>();
+      if (!ignoreInteractions) {
+        const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+        interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+      }
       interactedUids.add(user.uid);
+
 
       const fetchedProfiles = usersSnapshot.docs
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
         .filter(p => {
-            if (!p.images || p.images.length === 0) return false;
-            if (p.uid === user.uid) return false;
-            
-            const sortedIds = [user.uid, p.uid].sort();
-            const matchId = sortedIds.join('_');
-            if (interactedUids.has(matchId)) {
-                return false;
-            }
+          if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
+          if (interactedUids.has(p.uid)) return false;
+          
+          const sortedIds = [user.uid, p.uid].sort();
+          const matchId = sortedIds.join('_');
+          if (interactedUids.has(matchId)) {
+              return false;
+          }
 
-            return true;
+          // Mesafe filtresi
+          if (userProfile.location && p.location && !userProfile.globalModeEnabled) {
+              const distance = getDistance(
+                  userProfile.location.latitude!,
+                  userProfile.location.longitude!,
+                  p.location.latitude!,
+                  p.location.longitude!
+              );
+              if (distance > (userProfile.distancePreference || 160)) {
+                  return false;
+              }
+          }
+
+          return true;
         });
 
       setProfiles(fetchedProfiles);
@@ -68,6 +83,12 @@ export default function AnasayfaPage() {
       setIsLoading(false);
     }
   }, [user, userProfile, firestore, toast]);
+
+  // Butonun çağıracağı özel fonksiyon
+  const forceRefetchProfiles = () => {
+    setProfiles([]); // Arayüzü anında temizle
+    fetchProfiles(true); // Etkileşimleri görmezden gelerek profilleri getir
+  };
 
   useEffect(() => {
     if (user && firestore) {
@@ -81,29 +102,38 @@ export default function AnasayfaPage() {
     if (!user || !firestore || !profileToSwipe) return;
 
     setExitDirection(direction);
-
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
-    if (direction === 'left') {
-        const action = 'disliked';
-        try {
-            const sortedIds = [user.uid, profileToSwipe.uid].sort();
-            const matchId = sortedIds.join('_');
-            const matchDocRef = doc(firestore, 'matches', matchId);
+    const action = direction === 'left' ? 'disliked' : 'liked';
+    
+    try {
+        const sortedIds = [user.uid, profileToSwipe.uid].sort();
+        const matchId = sortedIds.join('_');
+        const matchDocRef = doc(firestore, 'matches', matchId);
 
-            const user1IsCurrentUser = user.uid === sortedIds[0];
-            const updateData: Partial<Match> = {
-                user1Id: sortedIds[0],
-                user2Id: sortedIds[1],
-                status: 'pending',
-                ...(user1IsCurrentUser 
-                    ? { user1_action: action, user1_timestamp: serverTimestamp() } 
-                    : { user2_action: action, user2_timestamp: serverTimestamp() })
-            };
-            await setDoc(matchDocRef, updateData, { merge: true });
-        } catch (error: any) {
-            console.error(`Error handling ${action}:`, error);
-        }
+        const user1IsCurrentUser = user.uid === sortedIds[0];
+        const updateData: Partial<Match> = {
+            user1Id: sortedIds[0],
+            user2Id: sortedIds[1],
+            status: 'pending',
+            ...(user1IsCurrentUser 
+                ? { user1_action: action, user1_timestamp: serverTimestamp() } 
+                : { user2_action: action, user2_timestamp: serverTimestamp() })
+        };
+        await setDoc(matchDocRef, updateData, { merge: true });
+
+        // Also record interaction in user's subcollection for filtering
+        const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+        await setDoc(userInteractionRef, { 
+            matchedWith: profileToSwipe.uid, 
+            status: 'pending', 
+            timestamp: serverTimestamp(),
+            fullName: profileToSwipe.fullName,
+            profilePicture: profileToSwipe.profilePicture || '',
+        }, { merge: true });
+
+    } catch (error: any) {
+        console.error(`Error handling ${action}:`, error);
     }
 
   }, [user, firestore, toast, userProfile]);
@@ -133,17 +163,8 @@ export default function AnasayfaPage() {
                                 key={profile.uid}
                                 className="absolute w-full h-full"
                                 style={{
-                                    transformStyle: 'preserve-3d',
                                     zIndex: index,
-                                }}
-                                initial={{
-                                    scale: 1,
-                                    y: 0,
-                                }}
-                                animate={{
-                                    scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
-                                    y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
-                                    transition: { duration: 0.3, ease: 'easeOut' },
+                                    transform: `scale(${1 - (profiles.length - 1 - index) * CARD_STACK_SCALE}) translateY(${(profiles.length - 1 - index) * CARD_STACK_OFFSET}px)`,
                                 }}
                                 drag="x"
                                 dragConstraints={{ left: 0, right: 0 }}
@@ -155,6 +176,8 @@ export default function AnasayfaPage() {
 
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'left');
+                                    } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
+                                        // handleSwipe(profile, 'right'); // Sağ swipe şimdilik devre dışı
                                     }
                                 }}
                                 custom={exitDirection}
@@ -173,7 +196,7 @@ export default function AnasayfaPage() {
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
                         <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={fetchProfiles}>
+                        <Button onClick={forceRefetchProfiles}>
                             Tekrar Dene
                         </Button>
                     </div>
