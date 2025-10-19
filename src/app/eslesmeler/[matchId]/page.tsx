@@ -30,6 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -1134,7 +1135,7 @@ export default function ChatPage() {
                 {otherUser && (
                  <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent flex flex-col'>
                     <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                        <ProfileCard profile={otherUser} onSwipe={() => {}} isTopCard={false}/>
+                        <ProfileCard profile={otherUser} onSwipe={() => {}} />
                     </div>
                  </SheetContent>
                 )}
