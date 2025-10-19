@@ -4,7 +4,6 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import FooterNav from './footer-nav';
 import { ShieldCheck, Settings, AtSign } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
@@ -152,7 +151,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 flex flex-col overflow-y-auto">
            {children}
         </main>
       </div>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Undo2, Star, Heart, HeartCrack } from 'lucide-react';
+import { Undo2, Star, Heart, X as XIcon, Send } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
@@ -340,6 +340,7 @@ export default function AnasayfaPage() {
 
         let processedProfiles = fetchedProfiles
             .filter(p => {
+                // Base filters
                 if (interactedUids.has(p.uid)) return false;
                 if (!p.fullName || !p.images || p.images.length === 0) return false;
                 
@@ -347,24 +348,25 @@ export default function AnasayfaPage() {
                 if (age === null || age < minAge || age > maxAge) {
                     if (!userProfile.expandAgeRange) return false;
                 }
-                
+
+                // Global vs. Distance filtering
                 if (isGlobalMode) {
-                    return true;
+                    return true; // No distance filter in global mode
+                } else {
+                    // Distance filter for non-global mode
+                    if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
+                        const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                        (p as ProfileWithDistance).distance = distance;
+                        return distance <= (userProfile.distancePreference ?? 80);
+                    }
+                    return false; // No location data, so filter out in non-global mode
                 }
-
-                if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
-                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                    (p as ProfileWithDistance).distance = distance;
-                    return distance <= (userProfile.distancePreference ?? 80);
-                }
-
-                return false;
             });
-        
+
         if (isGlobalMode) {
             processedProfiles.sort(() => Math.random() - 0.5);
         } else {
-            processedProfiles.sort((a, b) => (a as ProfileWithDistance).distance! - (b as ProfileWithDistance).distance!);
+            processedProfiles.sort((a, b) => ((a as ProfileWithDistance).distance ?? Infinity) - ((b as ProfileWithDistance).distance ?? Infinity));
         }
 
         setProfiles(processedProfiles);
@@ -388,32 +390,35 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
+  const currentProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4">
+    <div className="flex flex-1 flex-col items-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) {
               setShowUndoLimitModal(false);
               setShowSuperlikeModal(false);
           }
       }}>
-           <div className="relative w-full aspect-[3/4]">
+           <div className="relative w-full max-w-sm aspect-[3/4]">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                           <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                       </div>
                   ) : profiles.length > 0 ? (
-                    profiles.map((profile, index) => (
+                    profiles.map((profile, index) => {
+                       const isTopCard = index === profiles.length - 1;
+                       return (
                       <motion.div
                         key={profile.id}
                         className="absolute w-full h-full"
                         style={{
-                          zIndex: profiles.length - index,
+                          zIndex: index,
                         }}
-                        drag={index === profiles.length - 1}
+                        drag={isTopCard}
                         onDragEnd={(event, info) => {
-                          if (index !== profiles.length - 1) return;
+                          if (!isTopCard) return;
                           if (info.offset.x > 100) {
                             handleSwipeAction(profile, 'liked');
                           } else if (info.offset.x < -100) {
@@ -425,9 +430,10 @@ export default function AnasayfaPage() {
                         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                         dragElastic={0.2}
                       >
-                        <ProfileCard profile={profile} isTopCard={index === profiles.length - 1} />
+                        <ProfileCard profile={profile} isTopCard={isTopCard} />
                       </motion.div>
-                    ))
+                       )
+                    })
                   ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-center">
                           <div className='space-y-4'>
@@ -440,14 +446,25 @@ export default function AnasayfaPage() {
                       </div>
                   )}
                </AnimatePresence>
-                {profiles.length > 0 && lastDislikedProfile && (
-                  <div className="absolute top-4 right-4 z-40">
-                      <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                          <Undo2 className="h-5 w-5" />
-                      </Button>
-                  </div>
-                )}
           </div>
+          <div className="flex w-full items-center justify-evenly py-6">
+              <Button onClick={handleUndo} disabled={!lastDislikedProfile} variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
+                  <Undo2 className="h-8 w-8 text-yellow-500" />
+              </Button>
+              <Button onClick={() => currentProfile && handleSwipeAction(currentProfile, 'disliked')} disabled={!currentProfile} variant="ghost" className="h-20 w-20 rounded-full bg-background shadow-lg">
+                  <XIcon className="h-10 w-10 text-red-500" />
+              </Button>
+               <Button onClick={() => currentProfile && handleSwipeAction(currentProfile, 'superliked')} disabled={!currentProfile} variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
+                  <Star className="h-8 w-8 text-blue-500" />
+              </Button>
+              <Button onClick={() => currentProfile && handleSwipeAction(currentProfile, 'liked')} disabled={!currentProfile} variant="ghost" className="h-20 w-20 rounded-full bg-background shadow-lg">
+                  <Heart className="h-10 w-10 text-green-500" />
+              </Button>
+               <Button variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
+                  <Send className="h-8 w-8 text-purple-500" />
+              </Button>
+          </div>
+
            {showUndoLimitModal && (
               <AlertDialogContent>
                   <AlertDialogHeader className="items-center text-center">
@@ -494,5 +511,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
