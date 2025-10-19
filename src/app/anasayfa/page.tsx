@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -163,25 +164,56 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         
         if (!resetInteractions) {
-            // New, more robust way to get all interactions using collectionGroup
             const userMatchesSnapshot = await getDocs(collectionGroup(firestore, 'matches'));
             userMatchesSnapshot.forEach(matchDoc => {
                 const matchData = matchDoc.data();
-                if (matchData.id.includes(user.uid)) {
-                    const otherUserId = matchData.id.replace(user.uid, '').replace('_', '');
-                    interactedUids.add(otherUserId);
+                if (matchData.user1Id === user.uid) {
+                    interactedUids.add(matchData.user2Id);
+                } else if (matchData.user2Id === user.uid) {
+                    interactedUids.add(matchData.user1Id);
                 }
             });
         }
-
-        const usersCollectionRef = collection(firestore, 'users');
-        let usersQuery = query(usersCollectionRef, limit(20));
+        
+        let usersQuery = query(collection(firestore, 'users'), limit(50));
         const querySnapshot = await getDocs(usersQuery);
         
+        const globalMode = userProfile.globalModeEnabled ?? false;
+        
         let fetchedProfiles = querySnapshot.docs
-          .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-          .filter(p => !interactedUids.has(p.uid) && p.uid !== user.uid);
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            .filter(p => {
+                if (!p.uid || interactedUids.has(p.uid)) return false;
+                if (!(p.images && p.images.length > 0)) return false;
 
+                const userGenderPref = userProfile.genderPreference;
+                if (userGenderPref !== 'both' && p.gender !== userGenderPref) {
+                    return false;
+                }
+
+                const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
+                const minAge = userProfile.ageRange?.min || 18;
+                const maxAge = userProfile.ageRange?.max || 80;
+                if (age < minAge || age > maxAge) {
+                    if (!userProfile.expandAgeRange) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            })
+            .map(p => {
+                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                    if (distance > (userProfile.distancePreference || 160)) {
+                         return { ...p, distance: distance, hide: true };
+                    }
+                    return { ...p, distance };
+                }
+                return { ...p, distance: undefined };
+            })
+            .filter(p => !(p as any).hide)
+            .slice(0, 20);
 
         setProfiles(fetchedProfiles);
 
@@ -202,7 +234,7 @@ export default function AnasayfaPage() {
   const handleSwipeAction = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || profiles.length === 0) return;
     
-    const swipedProfile = profiles[0];
+    const swipedProfile = profiles[profiles.length - 1];
     if (!swipedProfile) return;
 
     if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
@@ -235,7 +267,7 @@ export default function AnasayfaPage() {
         }
     })();
     
-    setProfiles(currentProfiles => currentProfiles.slice(1));
+    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
   }, [user, firestore, userProfile, profiles, toast, t]);
  
   const handleUndo = useCallback(async () => {
@@ -260,7 +292,7 @@ export default function AnasayfaPage() {
         } catch (error) { console.error("Error updating undo count:", error); }
     }
     
-    setProfiles(prev => [lastDislikedProfile, ...prev]);
+    setProfiles(prev => [...prev, lastDislikedProfile]);
     
     const matchDocRef = doc(firestore, 'matches', [user.uid, lastDislikedProfile.uid].sort().join('_'));
     const isUser1 = user.uid < lastDislikedProfile.uid;
@@ -277,36 +309,39 @@ export default function AnasayfaPage() {
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
       }}>
-           <div className="relative w-full aspect-[3/4]">
+           <div className="relative w-full aspect-[3/4] max-w-sm">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                           <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                       </div>
                   ) : profiles.length > 0 ? (
-                    profiles.reverse().map((profile, index) => {
+                    profiles.map((profile, index) => {
                        const isTopCard = index === profiles.length - 1;
                        return (
-                      <motion.div
-                        key={profile.id}
-                        className="absolute w-full h-full"
-                        style={{
-                          zIndex: index,
-                        }}
-                        drag={isTopCard}
-                        onDragEnd={(event, info) => {
-                          if (!isTopCard) return;
-                          if (info.offset.x > 100) {
-                            handleSwipeAction('liked');
-                          } else if (info.offset.x < -100) {
-                            handleSwipeAction('disliked');
-                          }
-                        }}
-                        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                        dragElastic={0.2}
-                      >
-                        <ProfileCard profile={profile} isTopCard={isTopCard} />
-                      </motion.div>
+                        <motion.div
+                            key={profile.id}
+                            className="absolute w-full h-full"
+                            style={{
+                                zIndex: index,
+                                y: index * -8,
+                            }}
+                            drag={isTopCard}
+                            onDragEnd={(event, info) => {
+                                if (!isTopCard) return;
+                                if (info.offset.x > 100) {
+                                    handleSwipeAction('liked');
+                                } else if (info.offset.x < -100) {
+                                    handleSwipeAction('disliked');
+                                }
+                            }}
+                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                            dragElastic={0.2}
+                            animate={{ y: 0, scale: 1 - (profiles.length - 1 - index) * 0.05 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <ProfileCard profile={profile} isTopCard={isTopCard} />
+                        </motion.div>
                        )
                     })
                   ) : (
