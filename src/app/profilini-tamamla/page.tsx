@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Star, Mail, Lock, Eye, EyeOff, Check, User, Camera } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Star, Mail, Lock, Eye, EyeOff, Check, User, Camera, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
