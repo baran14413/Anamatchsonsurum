@@ -8,6 +8,7 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useFirestore, useUser } from "@/firebase/provider";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -158,7 +159,7 @@ export default function ProfileCompletionForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr.signup;
-  const { user, auth } = useUser();
+  const { user, auth, firebaseApp } = useUser();
   const [step, setStep] = useState(0);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -171,6 +172,7 @@ export default function ProfileCompletionForm() {
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceValue, setDistanceValue] = useState(80);
+  const storage = firebaseApp ? getStorage(firebaseApp) : null;
 
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots());
 
@@ -359,41 +361,34 @@ export default function ProfileCompletionForm() {
   const progressValue = ((step) / totalSteps) * 100;
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
-    
+    if (!storage || !user) {
+        toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
+        return;
+    }
+
     setImageSlots(prev => {
         const newSlots = [...prev];
         newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
         return newSlots;
     });
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const imageRef = storageRef(storage, uniqueFileName);
 
     try {
-        const response = await fetch('/api/upload', {
-             method: 'POST',
-             body: formData
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Yükleme başarısız');
-        }
-        const result = await response.json();
-
+        const snapshot = await uploadBytes(imageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        
         setImageSlots(prev => {
             const newSlots = [...prev];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: result.public_id, preview: result.url, file: null };
+            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
             
             const currentImages = form.getValues('images') || [];
-            const updatedImages = [...currentImages];
-            const existingIndex = updatedImages.findIndex(img => img.url === newSlots[slotIndex].preview); 
-            if (existingIndex !== -1) {
-              updatedImages[existingIndex] = { url: result.url, public_id: result.public_id };
-            } else {
-              updatedImages[slotIndex] = { url: result.url, public_id: result.public_id };
-            }
-             form.setValue('images', updatedImages.filter(Boolean), { shouldValidate: true });
+            const updatedImages = newSlots
+                .filter(slot => slot.preview && slot.public_id)
+                .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
+            
+            form.setValue('images', updatedImages, { shouldValidate: true });
             
             return newSlots;
         });
@@ -403,6 +398,7 @@ export default function ProfileCompletionForm() {
         setImageSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
     }
   };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -424,19 +420,20 @@ export default function ProfileCompletionForm() {
   
   const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
-    if(isSubmitting) return;
+    if(isSubmitting || !storage) return;
     
     const slotToDelete = imageSlots[index];
 
     if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
         try {
-            await fetch('/api/delete-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ public_id: slotToDelete.public_id }),
-            });
-        } catch(err) {
-            console.error("Failed to delete from Cloudinary but proceeding in UI", err);
+            const imageRef = storageRef(storage, slotToDelete.public_id);
+            await deleteObject(imageRef);
+        } catch(err: any) {
+             if (err.code !== 'storage/object-not-found') {
+                console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
+                toast({ title: t.ayarlarGaleri.toasts.deleteErrorTitle, description: t.ayarlarGaleri.toasts.deleteErrorDesc, variant: 'destructive' });
+                return;
+             }
         }
     }
 
