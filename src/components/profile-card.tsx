@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -167,7 +168,15 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
                 <div className="space-y-2">
-                    <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
+                     <div className="flex flex-wrap items-center gap-2">
+                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
+                        {(profile.distance || profile.distance === 0) && (
+                            <div className="flex items-center gap-1.5 bg-black/40 text-white backdrop-blur-sm border-none rounded-full px-3 py-1 text-sm font-medium">
+                                <MapPin className="w-4 h-4" />
+                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex items-end justify-between gap-4">
                         <div className="flex-1 min-w-0">
                              <div className="flex items-center gap-2">
@@ -182,12 +191,6 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                         </SheetTrigger>
                     </div>
                      <div className='flex flex-col gap-1.5 pt-1'>
-                        {(profile.distance || profile.distance === 0) && (
-                            <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                            </div>
-                        )}
                         <div className="flex items-center gap-2">
                            <span>🤔</span>
                            <span>{lookingForText}</span>
