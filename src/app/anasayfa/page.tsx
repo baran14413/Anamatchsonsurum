@@ -326,10 +326,10 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // --- Start of Base Filtering ---
-                if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length < 1) return false;
-                
+                if (!p.uid || interactedUids.has(p.uid) || !p.fullName || !p.images || p.images.length === 0) {
+                    return false;
+                }
+
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
                     if (age === null) return false;
@@ -339,10 +339,7 @@ export default function AnasayfaPage() {
                     
                     if (age < minAge || age > maxAge) return false;
                 }
-                // --- End of Base Filtering ---
 
-
-                // --- Start of Location Logic ---
                 if (isGlobalMode) {
                     return true;
                 } else {
@@ -359,15 +356,12 @@ export default function AnasayfaPage() {
                     const userDistancePref = userProfile.distancePreference || 50;
                     return distance <= userDistancePref;
                 }
-                 // --- End of Location Logic ---
             });
         
         fetchedProfiles.sort((a, b) => {
             if (isGlobalMode) {
-                // If global mode is on, randomize the sort
                 return Math.random() - 0.5;
             }
-            // Default sort by distance
             if (a.isBot && !b.isBot) return -1;
             if (!a.isBot && b.isBot) return 1;
             return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
@@ -394,74 +388,76 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
   
   const CardStack = useCallback(() => {
-    const reversedProfiles = [...profiles].reverse();
-    const visibleProfiles = reversedProfiles.slice(-2);
+    return profiles.map((profile, i) => {
+        const isTopCard = i === profiles.length - 1;
+        const x = useMotionValue(0);
+        const rotate = useTransform(x, [-200, 200], [-25, 25]);
+        const likeOpacity = useTransform(x, [10, 80], [0, 1]);
+        const dislikeOpacity = useTransform(x, [-80, -10], [1, 0]);
 
-    return visibleProfiles.map((profile, i) => {
-      const isTopCard = i === visibleProfiles.length - 1;
-      const x = useMotionValue(0);
-      const rotate = useTransform(x, [-200, 200], [-25, 25]);
-      const likeOpacity = useTransform(x, [10, 80], [0, 1]);
-      const dislikeOpacity = useTransform(x, [-80, -10], [1, 0]);
+        const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
+            if (!isTopCard) return;
+            const SWIPE_THRESHOLD = 50;
+            const swipedIndex = profiles.findIndex(p => p.id === profile.id);
 
-      const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
-        if (!isTopCard) return;
-        const SWIPE_THRESHOLD = 50;
-        const swipedIndex = profiles.findIndex(p => p.id === profile.id);
+            if (info.offset.y < -SWIPE_THRESHOLD * 2) {
+                handleSwipe(swipedIndex, 'superliked');
+            } else if (info.offset.x > SWIPE_THRESHOLD) {
+                handleSwipe(swipedIndex, 'liked');
+            } else if (info.offset.x < -SWIPE_THRESHOLD) {
+                handleSwipe(swipedIndex, 'disliked');
+            }
+        };
 
-        if (info.offset.y < -SWIPE_THRESHOLD * 2) {
-          handleSwipe(swipedIndex, 'superliked');
-        } else if (info.offset.x > SWIPE_THRESHOLD) {
-          handleSwipe(swipedIndex, 'liked');
-        } else if (info.offset.x < -SWIPE_THRESHOLD) {
-          handleSwipe(swipedIndex, 'disliked');
-        }
-      };
-
-      return (
-        <motion.div
-          key={profile.id}
-          drag={isTopCard}
-          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-          dragElastic={0.2}
-          onDragEnd={onDragEnd}
-          className="absolute w-full h-full"
-          style={{ zIndex: i, x, rotate }}
-          initial={{
-            scale: 1 - (visibleProfiles.length - 1 - i) * 0.05,
-            y: (visibleProfiles.length - 1 - i) * 10,
-            opacity: 1,
-          }}
-          animate={{
-            scale: 1 - (visibleProfiles.length - 1 - i) * 0.05,
-            y: (visibleProfiles.length - 1 - i) * 10,
-            opacity: 1,
-          }}
-          transition={{ duration: 0.3 }}
-          exit={{
-            x: x.get() > 0 ? 300 : -300,
-            opacity: 0,
-            scale: 0.5,
-            transition: { duration: 0.3 },
-          }}
-        >
-          <motion.div
-            style={{ opacity: likeOpacity }}
-            className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
-          >
-            <Heart className="w-16 h-16 text-green-500 fill-green-500" />
-          </motion.div>
-          <motion.div
-            style={{ opacity: dislikeOpacity }}
-            className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
-          >
-            <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-          </motion.div>
-          <ProfileCard profile={profile} isTopCard={isTopCard} />
-        </motion.div>
-      );
-    });
-  }, [profiles, handleSwipe]);
+        return (
+            <motion.div
+                key={profile.id}
+                drag={isTopCard}
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.2}
+                onDragEnd={onDragEnd}
+                className="absolute w-full h-full"
+                style={{
+                    zIndex: i,
+                    x: isTopCard ? x : 0,
+                    rotate: isTopCard ? rotate : 0,
+                    scale: 1 - (profiles.length - 1 - i) * 0.05,
+                    y: (profiles.length - 1 - i) * 10,
+                }}
+                initial={{
+                  scale: 1 - (profiles.length - 1 - i) * 0.05,
+                  y: (profiles.length - 1 - i) * 10,
+                }}
+                animate={{
+                    scale: 1 - (profiles.length - 1 - i) * 0.05,
+                    y: (profiles.length - 1 - i) * 10,
+                    opacity: 1
+                }}
+                transition={{ duration: 0.3 }}
+                exit={{
+                    x: x.get() > 0 ? 300 : -300,
+                    opacity: 0,
+                    scale: 0.5,
+                    transition: { duration: 0.3 },
+                }}
+            >
+                <motion.div
+                    style={{ opacity: isTopCard ? likeOpacity : 0 }}
+                    className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
+                >
+                    <Heart className="w-16 h-16 text-green-500 fill-green-500" />
+                </motion.div>
+                <motion.div
+                    style={{ opacity: isTopCard ? dislikeOpacity : 0 }}
+                    className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
+                >
+                    <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
+                </motion.div>
+                <ProfileCard profile={profile} isTopCard={isTopCard} />
+            </motion.div>
+        );
+    }).reverse();
+}, [profiles, handleSwipe]);
 
 
   return (
@@ -548,5 +544,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
