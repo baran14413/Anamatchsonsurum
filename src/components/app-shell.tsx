@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
-const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
+const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar', '/market'];
 const publicRoutes = ['/', '/tos', '/privacy', '/cookies'];
 const authRoutes = ['/giris', '/kayit'];
 const rulesRoute = '/kurallar';
@@ -39,13 +39,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     // 2. Handle Logged-In Users
     if (user) {
-      // If profile is incomplete, force to registration page.
-      if (!userProfile?.gender && !isAuthRoute) {
-        router.replace('/kayit');
+      if(userProfile && userProfile.isAdmin && pathname.startsWith('/admin')) {
         return;
       }
+      
       // If rules are not agreed to, force to rules page.
-      if (userProfile?.gender && !userProfile.rulesAgreed && !isRulesRoute) {
+      if (userProfile && !userProfile.rulesAgreed && !isRulesRoute) {
         router.replace(rulesRoute);
         return;
       }
@@ -107,19 +106,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
   const isAuthPage = authRoutes.includes(pathname);
+  const isWelcomePage = pathname === '/';
+  const isAdminPage = pathname.startsWith('/admin');
 
-  // This is the main logic for showing the app shell.
-  // It should ONLY be shown for authenticated, fully onboarded users on protected routes.
-  const showHeaderAndFooter = 
-      user && 
-      userProfile?.rulesAgreed && 
-      !isAuthPage && // CRITICAL FIX: Do NOT show shell on auth pages
-      protectedRoutes.some(route => pathname.startsWith(route)) && 
-      !pathname.startsWith('/ayarlar/') && 
-      !isChatPage;
+  const showAppUI = user && userProfile?.rulesAgreed && !isAuthPage && !isWelcomePage && !isAdminPage;
 
-
-  if (showHeaderAndFooter) {
+  if (showAppUI) {
     const isProfilePage = pathname === '/profil';
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -151,7 +143,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
         </header>
-        <main className="flex-1 flex flex-col overflow-y-auto">
+        <main className="flex-1 flex flex-col overflow-hidden">
            {children}
         </main>
       </div>

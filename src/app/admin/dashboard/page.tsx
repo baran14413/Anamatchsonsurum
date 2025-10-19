@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Users, Heart, MessageSquare, Bot, AlertTriangle, Trash2 } from 'lucide-react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, writeBatch, getDocs, collectionGroup } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import { useMemo, useState } from 'react';
 import type { UserProfile } from '@/lib/types';
@@ -60,8 +61,8 @@ export default function AdminDashboardPage() {
       // 2. Delete the 'matches' subcollection for every user
       if (allUsers) {
         for (const user of allUsers) {
-            const userMatchesCollection = collection(firestore, `users/${user.uid}/matches`);
-            const userMatchesSnapshot = await getDocs(userMatchesCollection);
+            const userMatchesQuery = collection(firestore, `users/${user.uid}/matches`);
+            const userMatchesSnapshot = await getDocs(userMatchesQuery);
             userMatchesSnapshot.forEach(doc => batch.delete(doc.ref));
         }
       }

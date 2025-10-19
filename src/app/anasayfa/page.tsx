@@ -164,8 +164,8 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         
         if (!resetInteractions) {
-            const userMatchesSnapshot = await getDocs(collectionGroup(firestore, 'matches'));
-            userMatchesSnapshot.forEach(matchDoc => {
+             const userMatchesSnapshot = await getDocs(collectionGroup(firestore, 'matches'));
+             userMatchesSnapshot.forEach(matchDoc => {
                 const matchData = matchDoc.data();
                 if (matchData.user1Id === user.uid) {
                     interactedUids.add(matchData.user2Id);
@@ -184,6 +184,7 @@ export default function AnasayfaPage() {
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
+                
                 if (!(p.images && p.images.length > 0)) return false;
 
                 const userGenderPref = userProfile.genderPreference;
@@ -324,7 +325,7 @@ export default function AnasayfaPage() {
                             className="absolute w-full h-full"
                             style={{
                                 zIndex: index,
-                                y: index * -8,
+                                y: (profiles.length - 1 - index) * -8,
                             }}
                             drag={isTopCard}
                             onDragEnd={(event, info) => {

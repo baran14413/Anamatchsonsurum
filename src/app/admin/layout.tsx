@@ -9,10 +9,19 @@ import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { isUserLoading } = useUser();
+  const { userProfile, isUserLoading } = useUser();
   const router = useRouter();
 
-  if (isUserLoading) {
+  useEffect(() => {
+    if (isUserLoading) {
+      return;
+    }
+    if (!userProfile?.isAdmin) {
+      router.replace('/anasayfa');
+    }
+  }, [userProfile, isUserLoading, router]);
+
+  if (isUserLoading || !userProfile?.isAdmin) {
     return <div className="flex h-screen items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
   }
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -51,7 +52,7 @@ export default function AdminUsersPage() {
 
   const handleToggleAdmin = async (user: UserProfile) => {
     if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', user.id);
+    const userDocRef = doc(firestore, 'users', user.uid);
     const newAdminStatus = !user.isAdmin;
     try {
       await updateDoc(userDocRef, { isAdmin: newAdminStatus });
@@ -71,7 +72,7 @@ export default function AdminUsersPage() {
   const handleBanUser = async () => {
     if (!firestore || !userToBan) return;
     try {
-        await deleteDoc(doc(firestore, 'users', userToBan.id));
+        await deleteDoc(doc(firestore, 'users', userToBan.uid));
         toast({
             title: 'Kullanıcı Yasaklandı',
             description: `${userToBan.fullName} başarıyla sistemden yasaklandı.`
@@ -90,7 +91,7 @@ export default function AdminUsersPage() {
   const handleGrantGold = async (duration: 'weekly' | 'monthly' | 'yearly' | 'permanent' | 'remove') => {
       if (!firestore || !userToManage) return;
 
-      const userDocRef = doc(firestore, 'users', userToManage.id);
+      const userDocRef = doc(firestore, 'users', userToManage.uid);
       let expiryDate: Date | null = new Date();
       let updateData: any = {};
 
@@ -133,7 +134,7 @@ export default function AdminUsersPage() {
   const handleGrantSuperLikes = async (amount: number) => {
     if (!firestore || !userToManage) return;
 
-    const userDocRef = doc(firestore, 'users', userToManage.id);
+    const userDocRef = doc(firestore, 'users', userToManage.uid);
     try {
         await updateDoc(userDocRef, {
             superLikeBalance: increment(amount)

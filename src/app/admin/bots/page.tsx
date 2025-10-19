@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, doc, deleteDoc, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import {
   Table,
   TableBody,
@@ -12,13 +12,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
 import { UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Bot, Copy, LogIn, Trash2, User, ImageIcon, MessagesSquare } from 'lucide-react';
+import { MoreHorizontal, Bot, Copy, Trash2, User, ImageIcon, MessagesSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,8 +29,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useAuth } from '@/firebase/provider';
-import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -64,11 +61,9 @@ const getRandomLocation = () => {
 
 export default function AdminBotsPage() {
   const firestore = useFirestore();
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [botToDelete, setBotToDelete] = useState<UserProfile | null>(null);
-  const [botToLogin, setBotToLogin] = useState<UserProfile | null>(null);
 
   const [isCreatingBots, setIsCreatingBots] = useState(false);
   const [botCount, setBotCount] = useState(10);
@@ -83,7 +78,8 @@ export default function AdminBotsPage() {
   const handleDeleteBot = async () => {
     if (!firestore || !botToDelete) return;
     try {
-        await deleteDoc(doc(firestore, 'users', botToDelete.id));
+        // This is a simplified deletion. In a real app, you'd want to delete the auth user too.
+        await deleteDoc(doc(firestore, 'users', botToDelete.uid));
         toast({
             title: 'Bot Silindi',
             description: `${botToDelete.fullName} adlı bot başarıyla sistemden silindi.`
@@ -99,34 +95,16 @@ export default function AdminBotsPage() {
     }
   }
 
-  const handleLoginAsBot = async () => {
-      if (!auth || !botToLogin) return;
-      
-      const email = botToLogin.email;
-      const password = botToLogin.botPassword;
-
-      if (!email || !password) {
-        toast({
-            title: 'Hata',
-            description: 'Bu botun giriş bilgileri bulunamadı. Lütfen botu silip yeniden oluşturun.',
-            variant: 'destructive'
-        });
-        return;
-      }
-      await signOut(auth);
-      router.push('/');
-  }
-  
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
         title: "Kopyalandı!",
-        description: "Giriş bilgileri panoya kopyalandı."
+        description: "Bot bilgileri panoya kopyalandı."
     })
   }
 
   const handleCreateBots = async () => {
-    if (!auth || !firestore) {
+    if (!firestore) {
       toast({
         title: 'Hata',
         description: 'Firebase servisleri başlatılamadı.',
@@ -157,9 +135,8 @@ export default function AdminBotsPage() {
                 : botGender as 'male' | 'female';
 
             const fullName = `${getRandomItem(gender === 'female' ? femaleNames : maleNames)} ${getRandomItem(lastNames)}`;
-            const email = `bot_${fullName.toLowerCase().replace(/\s/g, '_')}_${Date.now()}@bematch.app`;
-            const password = Math.random().toString(36).slice(-8);
-
+            const botId = `bot_${Date.now()}_${i}`; // Unique ID for bot
+            
             let randomImage;
             if (gender === 'female') {
                 randomImage = availableFemaleImages.pop();
@@ -171,22 +148,13 @@ export default function AdminBotsPage() {
                  throw new Error(`${gender === 'female' ? 'Kadın' : 'Erkek'} cinsiyeti için kullanılabilir benzersiz resim kalmadı. Lütfen daha az bot oluşturmayı deneyin veya resim kütüphanesini genişletin.`);
             }
 
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-
-            await updateProfile(user, {
-                displayName: fullName,
-                photoURL: randomImage.imageUrl,
-            });
-            
-            const botId = user.uid;
             const docRef = doc(firestore, 'users', botId);
             
-            const botProfile = {
+            const botProfile: UserProfile = {
+                id: botId,
                 uid: botId,
                 fullName,
-                email,
-                botPassword: password,
+                email: `${botId}@bematch.app`,
                 dateOfBirth: getRandomDob().toISOString(),
                 gender,
                 genderPreference: gender === 'female' ? 'male' : 'female',
@@ -346,7 +314,7 @@ export default function AdminBotsPage() {
                             <TableRow>
                             <TableHead className="w-[80px]">Avatar</TableHead>
                             <TableHead>İsim</TableHead>
-                            <TableHead>E-posta & Şifre</TableHead>
+                            <TableHead>Email</TableHead>
                             <TableHead>Oluşturulma Tarihi</TableHead>
                             <TableHead className='text-right'>Eylemler</TableHead>
                             </TableRow>
@@ -363,16 +331,7 @@ export default function AdminBotsPage() {
                                 <TableCell className="font-medium">{bot.fullName}</TableCell>
                                 <TableCell>
                                     <div className="text-sm relative group w-fit">
-                                        <p><strong>E:</strong> {bot.email}</p>
-                                        <p><strong>Ş:</strong> {bot.botPassword}</p>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="absolute -top-1 -right-8 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => copyToClipboard(`E-posta: ${bot.email}\nŞifre: ${bot.botPassword}`)}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
+                                        <p>{bot.email}</p>
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -389,14 +348,7 @@ export default function AdminBotsPage() {
                                             <DropdownMenuLabel>Eylemler</DropdownMenuLabel>
                                             <DropdownMenuSeparator />
                                             <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem onClick={() => setBotToLogin(bot)}>
-                                                    <LogIn className='mr-2 h-4 w-4'/>
-                                                    <span>Giriş Yap</span>
-                                                </DropdownMenuItem>
-                                            </AlertDialogTrigger>
-                                            <DropdownMenuSeparator />
-                                            <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => { setBotToDelete(bot); setBotToLogin(null); }}>
+                                                <DropdownMenuItem className='text-red-500 focus:text-red-500' onClick={() => setBotToDelete(bot) }>
                                                     <Trash2 className='mr-2 h-4 w-4'/>
                                                     <span>Botu Sil</span>
                                                 </DropdownMenuItem>
@@ -408,7 +360,7 @@ export default function AdminBotsPage() {
                             ))}
                             {(!bots || bots.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
+                                    <TableCell colSpan={5} className="h-24 text-center">
                                     Bot bulunamadı.
                                     </TableCell>
                                 </TableRow>
@@ -424,26 +376,12 @@ export default function AdminBotsPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Botu Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Bu işlem geri alınamaz. {botToDelete?.fullName} adlı botun hesabı ve tüm verileri kalıcı olarak silinecektir.
+                    Bu işlem geri alınamaz. {botToDelete?.fullName} adlı botun profili ve tüm verileri kalıcı olarak silinecektir.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setBotToDelete(null)}>İptal</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteBot} className='bg-destructive hover:bg-destructive/90'>Sil</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        )}
-         {botToLogin && (
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Bot Olarak Giriş Yap</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Mevcut oturumunuz kapatılacak ve giriş sayfasına yönlendirileceksiniz. Kopyalanan bilgileri kullanarak bot hesabına giriş yapabilirsiniz.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setBotToLogin(null)}>İptal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleLoginAsBot}>Evet, Çıkış Yap ve Yönlendir</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         )}
