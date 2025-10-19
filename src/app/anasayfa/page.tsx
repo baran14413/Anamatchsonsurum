@@ -124,7 +124,6 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
-    // Optimistically remove from profiles to trigger re-render
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -138,34 +137,10 @@ export default function AnasayfaPage() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
-            // Re-add the profile if the action fails by putting it back
             setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
-    }
-    
-    if (profileToSwipe.isBot && (direction === 'right' || direction === 'up')) {
-      try {
-          const res = await fetch('/api/message-webhook', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
-              },
-              body: JSON.stringify({
-                  matchId: [user.uid, profileToSwipe.uid].sort().join('_'),
-                  message: {
-                      senderId: user.uid,
-                      text: "Initial bot match message"
-                  }
-              })
-          });
-          if(!res.ok) throw new Error("Webhook failed");
-
-      } catch (error: any) {
-          console.error("Bot interaction error:", error);
-      }
     }
     
     try {
@@ -210,41 +185,59 @@ export default function AnasayfaPage() {
 
         await setDoc(matchDocRef, updateData, { merge: true });
         
-        let lastMessage = '';
-        if (isMatch) lastMessage = langTr.eslesmeler.defaultMessage;
-        else if (action === 'superliked') lastMessage = `${userProfile.fullName} sana bir Super Like gönderdi!`;
-
-        await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), { 
-            id: matchId,
-            matchedWith: user.uid, 
-            status: updateData.status,
-            timestamp: serverTimestamp(),
-            fullName: userProfile.fullName,
-            profilePicture: userProfile.profilePicture || '',
-            isSuperLike: updateData.isSuperLike || false,
-            superLikeInitiator: updateData.superLikeInitiator || null,
-            lastMessage: lastMessage,
-        }, { merge: true });
-        
-        await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), {
-            id: matchId,
-            matchedWith: profileToSwipe.uid,
-            status: updateData.status,
-            timestamp: serverTimestamp(),
-            fullName: profileToSwipe.fullName,
-            profilePicture: profileToSwipe.profilePicture || '',
-            isSuperLike: updateData.isSuperLike || false,
-            superLikeInitiator: updateData.superLikeInitiator || null,
-            lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : (action === 'superliked' ? `Super Like gönderildi` : ''),
-        }, { merge: true });
-
+        // --- ONLY create chat entries IF it's a match ---
         if (isMatch) {
+            const lastMessage = langTr.eslesmeler.defaultMessage;
+            
+            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), { 
+                id: matchId,
+                matchedWith: user.uid, 
+                status: 'matched',
+                timestamp: serverTimestamp(),
+                fullName: userProfile.fullName,
+                profilePicture: userProfile.profilePicture || '',
+                isSuperLike: updateData.isSuperLike || false,
+                superLikeInitiator: updateData.superLikeInitiator || null,
+                lastMessage: lastMessage,
+            }, { merge: true });
+            
+            await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), {
+                id: matchId,
+                matchedWith: profileToSwipe.uid,
+                status: 'matched',
+                timestamp: serverTimestamp(),
+                fullName: profileToSwipe.fullName,
+                profilePicture: profileToSwipe.profilePicture || '',
+                isSuperLike: updateData.isSuperLike || false,
+                superLikeInitiator: updateData.superLikeInitiator || null,
+                lastMessage: lastMessage,
+            }, { merge: true });
+
+            if (profileToSwipe.isBot) {
+                try {
+                    await fetch('/api/message-webhook', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
+                        },
+                        body: JSON.stringify({
+                            matchId: matchId,
+                            message: { senderId: user.uid, text: "Initial bot match message" }
+                        })
+                    });
+                } catch (error: any) {
+                    console.error("Bot interaction webhook error:", error);
+                }
+            }
+
             toast({
                 title: langTr.anasayfa.matchToastTitle,
                 description: `${profileToSwipe.fullName} ${langTr.anasayfa.matchToastDescription}`
-            })
+            });
         }
-         if (action === 'superliked') {
+        
+         if (action === 'superliked' && !isMatch) {
             toast({
                 title: "Super Like Gönderildi!",
                 description: `${profileToSwipe.fullName} kabul ederse eşleşeceksiniz.`
@@ -253,7 +246,6 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
-        // If there's an error, put the card back on the stack
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
   }, [user, firestore, toast, userProfile, router]);
