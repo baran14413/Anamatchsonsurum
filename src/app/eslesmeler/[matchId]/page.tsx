@@ -30,6 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -796,8 +797,8 @@ export default function ChatPage() {
                     {otherUser && (
                          <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
                             <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
-                                <SheetTitle className="text-xl sr-only">{otherUser.fullName} Profili</SheetTitle>
-                                <SheetDescription className="sr-only">Kullanıcının detaylı profili</SheetDescription>
+                                <SheetTitle className="sr-only">{otherUser.fullName} Profili</SheetTitle>
+                                <SheetDescription className="sr-only">Kullanıcının detaylı profili.</SheetDescription>
                                 <div className="w-9"></div>
                                 <h2 className="font-semibold text-lg">{otherUser.fullName}</h2>
                                 <SheetClose asChild>
