@@ -130,7 +130,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   return (
     <motion.div
-        className="absolute w-full h-full cursor-grab"
+        className="absolute w-full h-full cursor-grab transform-gpu"
         drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
