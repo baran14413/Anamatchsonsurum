@@ -343,25 +343,19 @@ export default function AnasayfaPage() {
 
 
                 // --- Start of Location Logic ---
-                let distance: number | undefined = undefined;
-                if (p.location?.latitude && p.location?.longitude) {
-                     distance = getDistance(
+                if (isGlobalMode) {
+                    return true;
+                } else {
+                    if (!p.location?.latitude || !p.location?.longitude) return false;
+                    
+                    const distance = getDistance(
                         userProfile.location!.latitude!,
                         userProfile.location!.longitude!,
                         p.location.latitude,
                         p.location.longitude
                     );
                     (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
-                }
 
-                if (isGlobalMode) {
-                    // If global mode is on, we don't filter by distance.
-                    return true;
-                } else {
-                    // If global mode is off, we MUST have a distance.
-                    if (distance === undefined) return false;
-                    
-                    // And the distance must be within the user's preference.
                     const userDistancePref = userProfile.distancePreference || 50;
                     return distance <= userDistancePref;
                 }
@@ -370,10 +364,10 @@ export default function AnasayfaPage() {
         
         fetchedProfiles.sort((a, b) => {
             if (isGlobalMode) {
-                if (a.isBot && !b.isBot) return -1;
-                if (!a.isBot && b.isBot) return 1;
+                // If global mode is on, randomize the sort
                 return Math.random() - 0.5;
             }
+            // Default sort by distance
             if (a.isBot && !b.isBot) return -1;
             if (!a.isBot && b.isBot) return 1;
             return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
@@ -554,3 +548,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
