@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -115,7 +116,7 @@ export default function LoginPage() {
           </Form>
            <p className="text-center text-sm text-white/80">
               {t.login.noAccount}{' '}
-              <Link href="/kayit" className="font-semibold text-white hover:underline">
+              <Link href="/profilini-tamamla" className="font-semibold text-white hover:underline">
                 {t.login.signupNow}
               </Link>
             </p>
