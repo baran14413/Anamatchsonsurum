@@ -3,11 +3,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase/provider';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion, useAnimation } from 'framer-motion';
+import { motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -34,8 +34,11 @@ const fetchProfiles = async (
 
         const usersSnapshot = await getDocs(q);
 
-        const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-        const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+        let interactedUids = new Set<string>();
+        if (!ignoreFilters) {
+            const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+            interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+        }
         
         const fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
@@ -88,15 +91,16 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const controls = useAnimation();
+
+  const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
-      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
+      memoizedFetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, isUserLoading, toast]);
+  }, [user, firestore, userProfile, isUserLoading, toast, memoizedFetchProfiles]);
 
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
@@ -214,18 +218,10 @@ export default function AnasayfaPage() {
                     const swipeConfidenceThreshold = 10000;
                     
                     if (swipePower > swipeConfidenceThreshold) { // Swiped right
-                      controls.start({
-                        x: 500,
-                        opacity: 0,
-                        rotate: 30,
-                        transition: { duration: 0.5 }
-                      }).then(() => handleSwipe(profile, 'right'));
-                    } else { // Didn't swipe right with enough force, snap back
-                      controls.start({ x: 0, rotate: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+                      handleSwipe(profile, 'right');
                     }
                   }}
                   initial={{ scale: 1, y: 0, rotate: 0 }}
-                  animate={controls}
                   style={{
                     scale: 1 - Math.min(profiles.length - 1 - index, 3) * 0.05,
                     y: Math.min(profiles.length - 1 - index, 3) * 10,
