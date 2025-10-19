@@ -15,11 +15,10 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform, MotionValue } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  motionX: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -61,12 +60,13 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile, motionX }: ProfileCardProps) => {
+const ProfileCard = ({ profile }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  
-  const likeOpacity = useTransform(motionX, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(motionX, [0, -100], [0, 1]);
-  const rotate = useTransform(motionX, [-200, 200], [-30, 30]);
+
+  const x = useMotionValue(0);
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -126,7 +126,7 @@ const ProfileCard = ({ profile, motionX }: ProfileCardProps) => {
   return (
     <motion.div 
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
-      style={{ rotate }}
+      style={{ x, rotate }}
     >
       <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
           <Heart className="w-32 h-32 text-green-400 fill-green-400" />

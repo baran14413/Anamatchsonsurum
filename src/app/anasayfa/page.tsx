@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion, useAnimation, useMotionValue } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -15,7 +15,6 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 
 
-// Moved fetchProfiles outside the component to prevent it from being recreated on every render.
 const fetchProfiles = async (
     firestore: Firestore,
     user: User,
@@ -34,13 +33,16 @@ const fetchProfiles = async (
         const usersSnapshot = await getDocs(q);
 
         let interactedUids = new Set<string>();
-        // Only check for interacted users if we are NOT ignoring filters.
         if (!ignoreFilters) {
-            const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-            interactedUids = new Set(interactedUsersSnap.docs.map(doc => {
-                 const sortedIds = [user.uid, doc.data().matchedWith].sort();
-                 return sortedIds.join('_');
-            }));
+            const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
+            interactedMatchDocsSnap.forEach(doc => {
+                const match = doc.data();
+                if (match.user1Id === user.uid && match.user1_action) {
+                    interactedUids.add(match.user2Id);
+                } else if (match.user2Id === user.uid && match.user2_action) {
+                    interactedUids.add(match.user1Id);
+                }
+            });
         }
         
         const fetchedProfiles = usersSnapshot.docs
@@ -48,6 +50,7 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
+                if (!ignoreFilters && interactedUids.has(p.uid)) return false; // Filter out interacted users
                  if (p.isBot) return true; // Always include bots if they appear
 
                 if (userProfile.location && p.location) {
@@ -61,16 +64,6 @@ const fetchProfiles = async (
                     p.distance = undefined;
                 }
                 
-                // Only filter interacted users if ignoreFilters is false
-                if (!ignoreFilters) {
-                    const sortedIds = [user.uid, p.uid].sort();
-                    const matchId = sortedIds.join('_');
-                    if (interactedUids.has(matchId)) {
-                        return false;
-                    }
-                }
-
-                // Standard filters (distance, etc.) are always bypassed when ignoreFilters is true
                 if (!ignoreFilters) {
                      if (userProfile.globalModeEnabled === false && p.distance !== undefined) {
                          if (p.distance > (userProfile.distancePreference || 160)) {
@@ -90,7 +83,7 @@ const fetchProfiles = async (
                 return true;
             });
 
-        setProfiles(fetchedProfiles.sort(() => Math.random() - 0.5)); // Shuffle profiles
+        setProfiles(fetchedProfiles.sort(() => Math.random() - 0.5));
     } catch (error: any) {
       console.error("Profil getirme hatası:", error);
       toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
@@ -119,7 +112,6 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
-    // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     if (profileToSwipe.isBot) {
@@ -181,18 +173,6 @@ export default function AnasayfaPage() {
         }
 
         await setDoc(matchDocRef, updateData, { merge: true });
-
-        const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-        await setDoc(userInteractionRef, { 
-            id: matchId,
-            matchedWith: profileToSwipe.uid, 
-            status: isMatch ? 'matched' : (matchData.status || 'pending'),
-            action: action, 
-            timestamp: serverTimestamp(),
-            fullName: profileToSwipe.fullName,
-            profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
-            lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
-        }, { merge: true });
         
         if (profileToSwipe.uid) {
             const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
@@ -216,7 +196,6 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
-        // Re-add profile to the list if the action fails
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
@@ -239,12 +218,10 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-          <AnimatePresence initial={false}>
+          <AnimatePresence>
           {profiles.length > 0 ? (
-            profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              const x = useMotionValue(0);
-
+            profiles.slice(-3).map((profile, index) => {
+              const isTopCard = index === profiles.slice(-3).length - 1;
               return (
                 <motion.div
                   key={profile.uid}
@@ -265,20 +242,14 @@ export default function AnasayfaPage() {
                   }}
                   initial={{ scale: 1, y: 0, opacity: 1 }}
                   animate={{
-                    scale: 1 - (profiles.length - 1 - index) * 0.05,
-                    y: (profiles.length - 1 - index) * 10,
+                    scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05,
+                    y: (profiles.slice(-3).length - 1 - index) * 10,
                     opacity: 1
                   }}
-                  exit={{
-                    x: offset.x > 0 ? 500 : -500,
-                    opacity: 0,
-                    scale: 0.5,
-                    transition: { duration: 0.5 }
-                  }}
-                  style={{ x }}
+                  exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
                   dragElastic={0.5}
                 >
-                  <ProfileCard profile={profile} motionX={x} />
+                  <ProfileCard profile={profile} />
                 </motion.div>
               );
             })
