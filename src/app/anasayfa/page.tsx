@@ -161,67 +161,15 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
-        const interactedUids = new Set<string>([user.uid]);
-        if (!resetInteractions) {
-            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-            
-            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
-            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
-        }
-
-        const qConstraints = [];
-        if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-          qConstraints.push(where('gender', '==', userProfile.genderPreference));
-        }
-        qConstraints.push(limit(20));
-        
         const usersCollectionRef = collection(firestore, 'users');
-        const usersQuery = query(usersCollectionRef, ...qConstraints);
-
+        const usersQuery = query(usersCollectionRef, limit(20));
         const querySnapshot = await getDocs(usersQuery);
-        let fetchedProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-
-        const minAge = userProfile.ageRange?.min ?? 18;
-        const maxAge = userProfile.ageRange?.max ?? 99;
-
-        const calculateAge = (dateString?: string): number | null => {
-            if (!dateString) return null;
-            const birthDate = new Date(dateString);
-            return isNaN(birthDate.getTime()) ? null : new Date(Date.now() - birthDate.getTime()).getUTCFullYear() - 1970;
-        };
-
-        const isGlobalMode = userProfile.globalModeEnabled ?? false;
-
-        let processedProfiles = fetchedProfiles.filter(p => {
-            if (interactedUids.has(p.uid) || !p.fullName || p.images?.length < 1) return false;
-            
-            const age = calculateAge(p.dateOfBirth);
-            if (age === null || age < minAge || age > maxAge) {
-                if (!userProfile.expandAgeRange) return false;
-            }
-
-            if (isGlobalMode) {
-                return true; 
-            }
-            
-            if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
-                const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                (p as ProfileWithDistance).distance = distance;
-                return distance <= (userProfile.distancePreference ?? 160);
-            }
-            
-            return false;
-        });
         
-        if (isGlobalMode) {
-            processedProfiles.sort(() => Math.random() - 0.5);
-        } else {
-            processedProfiles.sort((a, b) => ((a as ProfileWithDistance).distance ?? Infinity) - ((b as ProfileWithDistance).distance ?? Infinity));
-        }
-        
-        setProfiles(processedProfiles);
+        let fetchedProfiles = querySnapshot.docs
+          .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+          .filter(p => p.uid !== user.uid); // Filter out the current user
+
+        setProfiles(fetchedProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
