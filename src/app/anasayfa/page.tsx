@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
@@ -7,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useAnimation, useMotionValue } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -38,7 +37,10 @@ const fetchProfiles = async (
         // Only check for interacted users if we are NOT ignoring filters.
         if (!ignoreFilters) {
             const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-            interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+            interactedUids = new Set(interactedUsersSnap.docs.map(doc => {
+                 const sortedIds = [user.uid, doc.data().matchedWith].sort();
+                 return sortedIds.join('_');
+            }));
         }
         
         const fetchedProfiles = usersSnapshot.docs
@@ -46,6 +48,7 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
+                 if (p.isBot) return true; // Always include bots if they appear
 
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
@@ -69,25 +72,25 @@ const fetchProfiles = async (
 
                 // Standard filters (distance, etc.) are always bypassed when ignoreFilters is true
                 if (!ignoreFilters) {
-                    if (userProfile.globalModeEnabled === false && p.distance !== undefined) {
-                        if (p.distance > (userProfile.distancePreference || 160)) {
-                            return false;
-                        }
-                    }
-                     if(userProfile.ageRange) {
-                        const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
-                        if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                            if(!userProfile.expandAgeRange){
-                                return false;
-                            }
-                        }
-                    }
+                     if (userProfile.globalModeEnabled === false && p.distance !== undefined) {
+                         if (p.distance > (userProfile.distancePreference || 160)) {
+                             return false;
+                         }
+                     }
+                      if(userProfile.ageRange) {
+                         const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
+                         if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                             if(!userProfile.expandAgeRange){
+                                 return false;
+                             }
+                         }
+                     }
                 }
 
                 return true;
             });
 
-        setProfiles(fetchedProfiles);
+        setProfiles(fetchedProfiles.sort(() => Math.random() - 0.5)); // Shuffle profiles
     } catch (error: any) {
       console.error("Profil getirme hatası:", error);
       toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
@@ -119,6 +122,29 @@ export default function AnasayfaPage() {
     // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
+    if (profileToSwipe.isBot) {
+      try {
+          const res = await fetch('/api/message-webhook', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
+              },
+              body: JSON.stringify({
+                  matchId: [user.uid, profileToSwipe.uid].sort().join('_'),
+                  message: {
+                      senderId: user.uid,
+                      text: "Initial bot match message"
+                  }
+              })
+          });
+          if(!res.ok) throw new Error("Webhook failed");
+
+      } catch (error: any) {
+          console.error("Bot interaction error:", error);
+      }
+    }
+    
     try {
         const action = direction === 'right' ? 'liked' : 'disliked';
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
@@ -126,18 +152,20 @@ export default function AnasayfaPage() {
         const matchDocRef = doc(firestore, 'matches', matchId);
 
         const matchDoc = await getDoc(matchDocRef);
-        const matchData = matchDoc.data() as Match | undefined;
+        let matchData: any = matchDoc.exists() ? matchDoc.data() : {};
 
         const user1IsCurrentUser = user.uid === sortedIds[0];
+        
+        const otherUserKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
+        const otherUserAction = matchData[otherUserKey];
 
-        const otherUserAction = user1IsCurrentUser ? matchData?.user2_action : matchData?.user1_action;
         const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked'));
 
         const updateData: any = {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
-            status: isMatch ? 'matched' : (matchData?.status || 'pending'),
+            status: isMatch ? 'matched' : (matchData.status || 'pending'),
         };
 
         if (isMatch) {
@@ -158,11 +186,11 @@ export default function AnasayfaPage() {
         await setDoc(userInteractionRef, { 
             id: matchId,
             matchedWith: profileToSwipe.uid, 
-            status: isMatch ? 'matched' : (matchData?.status || 'pending'),
+            status: isMatch ? 'matched' : (matchData.status || 'pending'),
             action: action, 
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
-            profilePicture: profileToSwipe.profilePicture || '',
+            profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
         }, { merge: true });
         
@@ -171,10 +199,10 @@ export default function AnasayfaPage() {
             await setDoc(otherUserInteractionRef, { 
                 id: matchId,
                 matchedWith: user.uid, 
-                status: isMatch ? 'matched' : (matchData?.status || 'pending'),
+                status: isMatch ? 'matched' : (matchData.status || 'pending'),
                 timestamp: serverTimestamp(),
                 fullName: userProfile?.fullName,
-                profilePicture: userProfile?.profilePicture || '',
+                profilePicture: userProfile?.profilePicture || userProfile?.images?.[0]?.url || '',
                 lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
             }, { merge: true });
         }
@@ -207,15 +235,15 @@ export default function AnasayfaPage() {
         fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, true);
       }
   }
-
+  
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-      <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-          <AnimatePresence>
+    <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
+      <div className="relative w-full h-full max-w-md flex items-center justify-center">
+          <AnimatePresence initial={false}>
           {profiles.length > 0 ? (
-            profiles.slice(-3).map((profile, index) => {
-              const isTopCard = index === profiles.slice(-3).length - 1;
-              const cardIndex = profiles.slice(-3).length - 1 - index;
+            profiles.map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              const x = useMotionValue(0);
 
               return (
                 <motion.div
@@ -235,30 +263,37 @@ export default function AnasayfaPage() {
                       handleSwipe(profile, 'left');
                     }
                   }}
-                  initial={{ scale: 1, y: 0 }}
+                  initial={{ scale: 1, y: 0, opacity: 1 }}
                   animate={{
-                    scale: 1 - cardIndex * 0.05,
-                    y: cardIndex * 10,
+                    scale: 1 - (profiles.length - 1 - index) * 0.05,
+                    y: (profiles.length - 1 - index) * 10,
+                    opacity: 1
                   }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    scale: { duration: 0.2 },
-                    y: { duration: 0.2 },
+                  exit={{
+                    x: offset.x > 0 ? 500 : -500,
+                    opacity: 0,
+                    scale: 0.5,
+                    transition: { duration: 0.5 }
                   }}
+                  style={{ x }}
                   dragElastic={0.5}
                 >
-                  <ProfileCard profile={profile} />
+                  <ProfileCard profile={profile} motionX={x} />
                 </motion.div>
               );
             })
           ) : (
-            <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
+            <motion.div 
+              className="flex flex-col items-center justify-center text-center p-4 space-y-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
               <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
               <p className="text-muted-foreground">
                 Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.
               </p>
               <Button onClick={handleRetry}>Tekrar Dene</Button>
-            </div>
+            </motion.div>
           )}
           </AnimatePresence>
       </div>

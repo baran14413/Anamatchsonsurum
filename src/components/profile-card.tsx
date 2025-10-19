@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,10 +15,11 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, MotionValue } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
+  motionX: MotionValue<number>;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -61,19 +61,16 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile }: ProfileCardProps) => {
+const ProfileCard = ({ profile, motionX }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   
-  const x = useMotionValue(0);
-  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
+  const likeOpacity = useTransform(motionX, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(motionX, [0, -100], [0, 1]);
+  const rotate = useTransform(motionX, [-200, 200], [-30, 30]);
   
   useEffect(() => {
-    // Reset motion value when profile changes to prevent stale animation state
-    x.set(0);
     setActiveImageIndex(0);
-  }, [profile.uid, x]);
+  }, [profile.uid]);
 
   const age = calculateAge(profile.dateOfBirth);
 
@@ -129,7 +126,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   return (
     <motion.div 
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
-      style={{ x, rotate }}
+      style={{ rotate }}
     >
       <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
           <Heart className="w-32 h-32 text-green-400 fill-green-400" />
