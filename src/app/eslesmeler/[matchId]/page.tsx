@@ -1134,6 +1134,10 @@ export default function ChatPage() {
                 
                 {otherUser && (
                  <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent flex flex-col'>
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>Kullanıcı Profili</SheetTitle>
+                        <SheetDescription>{otherUser.fullName} kullanıcısının profili.</SheetDescription>
+                    </SheetHeader>
                     <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
                         <ProfileCard profile={otherUser} onSwipe={() => {}} />
                     </div>
