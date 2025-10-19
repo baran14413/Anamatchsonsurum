@@ -1,7 +1,6 @@
-
 'use client';
 
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -754,7 +752,7 @@ export default function ChatPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                 <Sheet>
+                <Sheet>
                     <SheetTrigger asChild>
                         <div className="flex items-center gap-3 cursor-pointer">
                             {isSystemChat ? (
@@ -799,13 +797,6 @@ export default function ChatPage() {
                             <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
                                 <SheetTitle className="sr-only">{otherUser.fullName} Profili</SheetTitle>
                                 <SheetDescription className="sr-only">Kullanıcının detaylı profili.</SheetDescription>
-                                <div className="w-9"></div>
-                                <h2 className="font-semibold text-lg">{otherUser.fullName}</h2>
-                                <SheetClose asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full">
-                                    <X className="w-5 h-5"/>
-                                </Button>
-                                </SheetClose>
                             </SheetHeader>
                             <ScrollArea className='flex-1'>
                                 <div className="space-y-6">
