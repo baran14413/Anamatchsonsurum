@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, getDoc, setDoc, serverTimestamp, QueryConstraint } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, getDoc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -36,30 +35,56 @@ export default function AnasayfaPage() {
     setProfiles([]);
 
     try {
+        // 1. Keep the query extremely simple to avoid ANY index issues.
         const usersRef = collection(firestore, 'users');
-        const queryConstraints: QueryConstraint[] = [where('isBot', '!=', true), limit(50)];
-        
-        const genderPref = userProfile.genderPreference;
-        if (genderPref && genderPref !== 'both') {
-            queryConstraints.push(where('gender', '==', genderPref));
-        }
-        
-        const q = query(usersRef, ...queryConstraints);
+        const q = query(usersRef, limit(50));
         const usersSnapshot = await getDocs(q);
 
-        const matchesSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-        const interactedUids = new Set(matchesSnap.docs.map(d => d.id.replace(user.uid, '').replace('_', '')));
+        // 2. Get all interactions (likes, dislikes, matches) for the current user.
+        const interactionsSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+        const interactedUids = new Set(interactionsSnap.docs.map(d => d.id));
+        interactedUids.add(`${user.uid}_${user.uid}`); // Ensure self is always excluded
 
         const allFetchedUsers = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            // 3. Perform all filtering in the client-side code.
             .filter(p => {
-                if (p.uid === user.uid) return false; // Exclude self
-                if (interactedUids.has(p.id)) return false;
+                // Exclude self
+                if (p.uid === user.uid) return false;
+
+                // Exclude anyone already interacted with (liked, disliked, or matched)
+                const matchId1 = `${user.uid}_${p.uid}`;
+                const matchId2 = `${p.uid}_${user.uid}`;
+                if (interactedUids.has(matchId1) || interactedUids.has(matchId2)) {
+                    return false;
+                }
+                
+                // Filter bots
+                if (p.isBot === true) return false;
+
+                // Gender preference filter
+                const genderPref = userProfile.genderPreference;
+                if (genderPref && genderPref !== 'both' && p.gender !== genderPref) {
+                    return false;
+                }
                 
                 // Age preference filter
-                const age = p.dateOfBirth ? new Date(Date.now() - new Date(p.dateOfBirth).getTime()).getUTCFullYear() - 1970 : 0;
-                if(userProfile.ageRange && (age < userProfile.ageRange.min || age > userProfile.ageRange.max)) {
-                    return false;
+                if (p.dateOfBirth && userProfile.ageRange) {
+                    const age = new Date(Date.now() - new Date(p.dateOfBirth).getTime()).getUTCFullYear() - 1970;
+                    if(age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                        return false;
+                    }
+                }
+
+                // Distance filter
+                if (!userProfile.globalModeEnabled) {
+                    let distance: number | undefined = undefined;
+                    if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                        distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                    }
+                    if (distance !== undefined && userProfile.distancePreference && distance > userProfile.distancePreference) {
+                        return false;
+                    }
                 }
 
                 return true;
@@ -70,15 +95,7 @@ export default function AnasayfaPage() {
                     distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
                 }
                 return { ...p, distance };
-            })
-            .filter(p => {
-                // Apply distance filter only if global mode is off
-                if (!userProfile.globalModeEnabled && p.distance !== undefined && userProfile.distancePreference && p.distance > userProfile.distancePreference) {
-                    return false;
-                }
-                return true;
             });
-
 
         setProfiles(allFetchedUsers);
 
@@ -109,92 +126,94 @@ export default function AnasayfaPage() {
     const action = direction === 'right' ? 'liked' : direction === 'up' ? 'superliked' : 'disliked';
     const [user1Id, user2Id] = [user.uid, swipedProfile.uid].sort();
     const matchId = `${user1Id}_${user2Id}`;
-    const matchDocRef = doc(firestore, 'matches', matchId);
-
+    const mainMatchDocRef = doc(firestore, 'matches', matchId);
+    
     try {
-        const matchDoc = await getDoc(matchDocRef);
+        const batch = writeBatch(firestore);
+        
+        const matchDoc = await getDoc(mainMatchDocRef);
         let status: Match['status'] = 'pending';
         let isMatch = false;
 
-        const updateData: Partial<Match> = {
+        const isUser1 = user.uid === user1Id;
+        const otherUserAction = isUser1 ? matchDoc.data()?.user2_action : matchDoc.data()?.user1_action;
+
+        if ((action === 'liked' || action === 'superliked') && (otherUserAction === 'liked' || otherUserAction === 'superliked')) {
+            isMatch = true;
+            status = 'matched';
+        } else if (action === 'superliked') {
+            status = 'superlike_pending';
+        }
+
+        const updateData: any = {
             id: matchId,
             user1Id: user1Id,
             user2Id: user2Id,
+            status: status,
         };
 
-        const isUser1 = user.uid === user1Id;
         if (isUser1) {
             updateData.user1_action = action;
             updateData.user1_timestamp = serverTimestamp();
-            if (matchDoc.exists() && (matchDoc.data().user2_action === 'liked' || matchDoc.data().user2_action === 'superliked') && (action === 'liked' || action === 'superliked')) {
-                isMatch = true;
-            }
-        } else { // user.uid === user2Id
+        } else {
             updateData.user2_action = action;
             updateData.user2_timestamp = serverTimestamp();
-            if (matchDoc.exists() && (matchDoc.data().user1_action === 'liked' || matchDoc.data().user1_action === 'superliked') && (action === 'liked' || action === 'superliked')) {
-                isMatch = true;
-            }
         }
-
+        
         if (isMatch) {
-            status = 'matched';
             updateData.matchDate = serverTimestamp();
-        } else if (action === 'superliked') {
-            status = 'superlike_pending';
+        }
+        if (action === 'superliked'){
             updateData.isSuperLike = true;
             updateData.superLikeInitiator = user.uid;
         }
-        
-        updateData.status = status;
 
-        await setDoc(matchDocRef, updateData, { merge: true });
+        batch.set(mainMatchDocRef, updateData, { merge: true });
 
-        const lastMessage = isMatch ? "Eşleştiniz! Bir merhaba de." : (action === 'liked' ? 'Beğendin' : 'Pas geçtin');
-        
+        // Denormalized data for current user
         const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-        await setDoc(currentUserMatchRef, {
+        batch.set(currentUserMatchRef, {
             id: matchId,
             matchedWith: swipedProfile.uid,
             status: status,
             fullName: swipedProfile.fullName,
             profilePicture: swipedProfile.profilePicture,
-            lastMessage: lastMessage,
+            lastMessage: isMatch ? "Eşleştiniz! Bir merhaba de." : (action === 'liked' ? 'Beğendin' : 'Pas geçtin'),
             timestamp: serverTimestamp(),
-            unreadCount: isMatch ? 1 : 0,
-            isSuperLike: action === 'superliked',
-            superLikeInitiator: action === 'superliked' ? user.uid : undefined
-        }, {merge: true});
-
+            isSuperLike: action === 'superliked' ? true : false,
+            superLikeInitiator: action === 'superliked' ? user.uid : undefined,
+        }, { merge: true });
+        
+        // Denormalized data for the other user
+        const otherUserMatchRef = doc(firestore, `users/${swipedProfile.uid}/matches`, matchId);
         if (isMatch) {
             toast({ title: t.anasayfa.matchToastTitle, description: `${swipedProfile.fullName} ${t.anasayfa.matchToastDescription}` });
-            const otherUserMatchRef = doc(firestore, `users/${swipedProfile.uid}/matches`, matchId);
-             await setDoc(otherUserMatchRef, {
+            batch.set(otherUserMatchRef, {
                 id: matchId,
                 matchedWith: user.uid,
-                status: status,
-                fullName: userProfile?.fullName,
-                profilePicture: userProfile?.profilePicture,
+                status: 'matched',
+                fullName: userProfile.fullName,
+                profilePicture: userProfile.profilePicture,
                 lastMessage: "Yeni bir eşleşmen var!",
                 timestamp: serverTimestamp(),
                 unreadCount: 1,
-            }, {merge: true});
-        }
-        
-        if (status === 'superlike_pending') {
-             const otherUserMatchRef = doc(firestore, `users/${swipedProfile.uid}/matches`, matchId);
-             await setDoc(otherUserMatchRef, {
+            }, { merge: true });
+        } else if (status === 'superlike_pending') {
+             batch.set(otherUserMatchRef, {
                 id: matchId,
                 matchedWith: user.uid,
-                status: status,
-                fullName: userProfile?.fullName,
-                profilePicture: userProfile?.profilePicture,
+                status: 'superlike_pending',
+                fullName: userProfile.fullName,
+                profilePicture: userProfile.profilePicture,
                 lastMessage: `${userProfile.fullName} sana Super Like gönderdi!`,
                 timestamp: serverTimestamp(),
                 isSuperLike: true,
                 superLikeInitiator: user.uid
             }, {merge: true});
         }
+
+
+        await batch.commit();
 
     } catch (error) {
         console.error("Error handling swipe action:", error);
@@ -217,7 +236,8 @@ export default function AnasayfaPage() {
                         ...profile,
                         fullName: profile.fullName || "İsimsiz Kullanıcı",
                         gender: profile.gender || "other",
-                        images: profile.images || []
+                        images: profile.images || [],
+                        bio: profile.bio || "...",
                     };
                     return (
                         <motion.div
@@ -273,4 +293,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
