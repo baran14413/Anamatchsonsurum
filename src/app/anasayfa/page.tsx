@@ -161,13 +161,25 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
+        const interactedUids = new Set<string>([user.uid]);
+
+        if (!resetInteractions) {
+            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+            
+            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
+
+            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+        }
+
         const usersCollectionRef = collection(firestore, 'users');
-        const usersQuery = query(usersCollectionRef, limit(20));
+        let usersQuery = query(usersCollectionRef, limit(20));
         const querySnapshot = await getDocs(usersQuery);
         
         let fetchedProfiles = querySnapshot.docs
           .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-          .filter(p => p.uid !== user.uid); // Filter out the current user
+          .filter(p => !interactedUids.has(p.uid));
 
         setProfiles(fetchedProfiles);
 
@@ -194,7 +206,7 @@ export default function AnasayfaPage() {
 
         if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
             setShowSuperlikeModal(true);
-            return currentProfiles; // Don't remove profile if modal is shown
+            return currentProfiles;
         }
 
         if (action === 'disliked') {
@@ -217,9 +229,6 @@ export default function AnasayfaPage() {
                     toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
                 }
             } catch (error: any) {
-                // If any async action fails, we should ideally add the profile back.
-                // However, since state update is synchronous, we'll just log the error
-                // and show a toast. The user can refresh to get the profile again.
                 console.error("Swipe action failed:", error);
                 toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
             }
