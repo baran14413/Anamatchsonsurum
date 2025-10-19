@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy, collectionGroup } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -162,15 +161,17 @@ export default function AnasayfaPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-
+        
         if (!resetInteractions) {
-            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-            
-            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
-
-            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
+            // New, more robust way to get all interactions using collectionGroup
+            const userMatchesSnapshot = await getDocs(collectionGroup(firestore, 'matches'));
+            userMatchesSnapshot.forEach(matchDoc => {
+                const matchData = matchDoc.data();
+                if (matchData.id.includes(user.uid)) {
+                    const otherUserId = matchData.id.replace(user.uid, '').replace('_', '');
+                    interactedUids.add(otherUserId);
+                }
+            });
         }
 
         const usersCollectionRef = collection(firestore, 'users');
@@ -179,7 +180,8 @@ export default function AnasayfaPage() {
         
         let fetchedProfiles = querySnapshot.docs
           .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-          .filter(p => !interactedUids.has(p.uid));
+          .filter(p => !interactedUids.has(p.uid) && p.uid !== user.uid);
+
 
         setProfiles(fetchedProfiles);
 
@@ -275,7 +277,7 @@ export default function AnasayfaPage() {
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
       }}>
-           <div className="relative w-full max-w-sm aspect-[3/4]">
+           <div className="relative w-full aspect-[3/4]">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
