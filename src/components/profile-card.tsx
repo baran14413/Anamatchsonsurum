@@ -457,10 +457,10 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
     >
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
           <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
-              <Heart className="w-16 h-16 fill-transparent" />
+              <Heart className="w-16 h-16 text-green-500 fill-green-500" />
           </motion.div>
           <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
-              <HeartCrack className="w-16 h-16 fill-transparent" />
+              <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
           </motion.div>
            <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-500 text-blue-500">
               <Star className="w-16 h-16 fill-transparent" />
