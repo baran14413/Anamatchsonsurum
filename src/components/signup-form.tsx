@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase/provider";
+import { useFirebase } from "@/firebase/provider";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
@@ -159,7 +159,7 @@ export default function ProfileCompletionForm() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr.signup;
-  const { user, auth, firebaseApp } = useUser();
+  const { user, userProfile, firestore, auth, storage } = useFirebase();
   const [step, setStep] = useState(0);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,18 +169,13 @@ export default function ProfileCompletionForm() {
   const [locationStatus, setLocationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceValue, setDistanceValue] = useState(80);
-  const storage = firebaseApp ? getStorage(firebaseApp) : null;
 
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots());
 
-  const formSchemaForGoogle = formSchema.omit({ email: true, password: true });
-  const isGoogleUser = useMemo(() => user?.providerData.some(p => p.providerId === 'google.com'), [user]);
-
   const form = useForm<SignupFormValues>({
-    resolver: zodResolver(isGoogleUser ? formSchemaForGoogle : formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
@@ -194,17 +189,11 @@ export default function ProfileCompletionForm() {
   });
   
   useEffect(() => {
-    // If user is from Google, skip email step
-    if (isGoogleUser) {
-        setStep(1); // Start from name step
-        form.setValue('name', user.displayName || '');
-        // We don't pre-populate images anymore
-        setImageSlots(getInitialImageSlots());
-        form.setValue('images', [], { shouldValidate: true });
-    } else {
-        setStep(0); // Start from email/password step for new users
+    // If user exists and profile is complete, redirect
+    if (user && userProfile?.gender) {
+        router.replace('/anasayfa');
     }
-  }, [user, isGoogleUser, form]);
+  }, [user, userProfile, router]);
   
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
@@ -284,9 +273,7 @@ export default function ProfileCompletionForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (step === 1 && isGoogleUser) {
-        router.push('/');
-    } else if (step === 0 && !isGoogleUser) {
+    if (step === 0) {
         router.push('/');
     } else {
         setStep((prev) => prev - 1);
@@ -295,10 +282,11 @@ export default function ProfileCompletionForm() {
 
   async function onSubmit(data: SignupFormValues) {
     setIsSubmitting(true);
+    let currentUser = user;
+
     try {
-        let currentUser = user;
-        // If not a Google user, create the user now
-        if (!isGoogleUser) {
+        // Step 1: Create user if not already logged in
+        if (!currentUser) {
             if (!auth || !data.email || !data.password) {
                 throw new Error("Kimlik doğrulama bilgileri eksik.");
             }
@@ -306,7 +294,7 @@ export default function ProfileCompletionForm() {
                 const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
                 currentUser = userCredential.user;
             } catch (error: any) {
-                if (error.code === 'auth/email-already-in-use') {
+                 if (error.code === 'auth/email-already-in-use') {
                     toast({
                         title: "Kayıt Hatası",
                         description: "Bu e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta deneyin veya giriş yapın.",
@@ -323,13 +311,14 @@ export default function ProfileCompletionForm() {
                 return;
             }
         }
-
+        
         if (!firestore || !currentUser) {
             throw new Error(t.errors.dbConnectionError);
         }
 
-        await updateProfile(currentUser, { displayName: data.name });
-
+        // Update profile displayName just in case
+        await updateProfile(currentUser, { displayName: data.name, photoURL: data.images[0]?.url });
+        
         const userProfileData = {
             ...data,
             uid: currentUser.uid,
@@ -343,11 +332,10 @@ export default function ProfileCompletionForm() {
             expandAgeRange: true,
             isBot: false,
         };
-
+        
         delete (userProfileData as any).password;
-
-        await setDoc(doc(firestore, "users", currentUser.uid), userProfileData, { merge: true });
-
+        
+        await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
         router.push('/kurallar');
 
     } catch (error: any) {
@@ -361,7 +349,10 @@ export default function ProfileCompletionForm() {
   const progressValue = ((step) / totalSteps) * 100;
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
-    if (!storage || !user) {
+    // A temporary user object is needed for the upload path if user is not yet created.
+    const uploadUserId = user ? user.uid : `temp_${form.getValues('email') || Date.now()}`;
+
+    if (!storage) {
         toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
         return;
     }
@@ -372,7 +363,7 @@ export default function ProfileCompletionForm() {
         return newSlots;
     });
 
-    const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const uniqueFileName = `bematch_profiles/${uploadUserId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const imageRef = storageRef(storage, uniqueFileName);
 
     try {
@@ -383,7 +374,6 @@ export default function ProfileCompletionForm() {
             const newSlots = [...prev];
             newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
             
-            const currentImages = form.getValues('images') || [];
             const updatedImages = newSlots
                 .filter(slot => slot.preview && slot.public_id)
                 .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
@@ -424,7 +414,7 @@ export default function ProfileCompletionForm() {
     
     const slotToDelete = imageSlots[index];
 
-    if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
+    if (slotToDelete.public_id) {
         try {
             const imageRef = storageRef(storage, slotToDelete.public_id);
             await deleteObject(imageRef);
@@ -525,7 +515,7 @@ export default function ProfileCompletionForm() {
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
-           {(step === 1 && isGoogleUser) || (step === 0 && !isGoogleUser) ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
+           {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
         <div className="w-9 h-9" />
@@ -535,10 +525,7 @@ export default function ProfileCompletionForm() {
          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col p-6 overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                <div className="relative text-center mb-6 flex items-center justify-center gap-3">
-                {isGoogleUser && (
-                  <Image src={googleLogo} alt="Google logo" width={24} height={24} />
-                )}
-                 <h1 className="text-3xl font-bold">Profilini Tamamla</h1>
+                 <h1 className="text-3xl font-bold">Profilini Oluştur</h1>
                </div>
               
               {step === 0 && (
@@ -857,3 +844,5 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
+
+    
