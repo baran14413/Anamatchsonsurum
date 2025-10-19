@@ -29,37 +29,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // --- START: ROUTING LOGIC ---
   useEffect(() => {
-    // 1. Do nothing while auth state is resolving. This is the most important guard.
+    // 1. Wait until authentication state is fully resolved. This is the most important guard.
     if (isUserLoading) {
       return;
     }
 
-    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
-    const isPublicRoute = publicRoutes.includes(pathname);
     const isAuthRoute = authRoutes.includes(pathname);
+    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
     const isRulesRoute = pathname === rulesRoute;
 
-    // 2. Handle signed-in users
+    // 2. Handle Logged-In Users
     if (user) {
-      // Profile is incomplete -> force registration steps
+      // If profile is incomplete, force to registration page.
       if (!userProfile?.gender && !isAuthRoute) {
         router.replace('/profilini-tamamla');
         return;
       }
-      // Rules are not agreed to -> force rules page
+      // If rules are not agreed to, force to rules page.
       if (userProfile?.gender && !userProfile.rulesAgreed && !isRulesRoute) {
         router.replace(rulesRoute);
         return;
       }
-      // User is fully onboarded, but on a public/auth/rules page -> redirect to app main page
-      if (userProfile?.rulesAgreed && (isPublicRoute || isAuthRoute || isRulesRoute)) {
-         router.replace('/anasayfa');
+      // If user is fully onboarded but on a public/auth route, redirect to the main app.
+      if (userProfile?.rulesAgreed && (publicRoutes.includes(pathname) || isAuthRoute || isRulesRoute)) {
+        router.replace('/anasayfa');
         return;
       }
     } 
-    // 3. Handle signed-out users
+    // 3. Handle Logged-Out Users
     else {
-      // If a logged-out user tries to access a protected page, redirect to home.
+      // If a logged-out user tries to access a protected page, redirect to the welcome page.
       if (isProtectedRoute) {
         router.replace('/');
         return;
@@ -98,7 +97,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [user, firestore]);
   
 
-  // Show a global loader while auth is resolving to prevent flickers.
+  // Show a global loader while auth is resolving to prevent any UI flickering or incorrect rendering.
   if (isUserLoading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
@@ -107,9 +106,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // Determine if the header and footer should be shown
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
-  const showHeaderAndFooter = user && userProfile?.rulesAgreed && protectedRoutes.some(route => pathname.startsWith(route)) && !pathname.startsWith('/ayarlar/') && !isChatPage;
+  const isAuthPage = authRoutes.includes(pathname);
+
+  // This is the main logic for showing the app shell.
+  // It should ONLY be shown for authenticated, fully onboarded users on protected routes.
+  const showHeaderAndFooter = 
+      user && 
+      userProfile?.rulesAgreed && 
+      !isAuthPage && // CRITICAL FIX: Do NOT show shell on auth pages
+      protectedRoutes.some(route => pathname.startsWith(route)) && 
+      !pathname.startsWith('/ayarlar/') && 
+      !isChatPage;
+
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';
@@ -151,6 +160,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For all other cases (public routes, login, registration, settings, chat etc.) render children without the main shell.
+  // For ALL other cases (public routes, login, registration, settings, chat etc.), render children without the main app shell.
+  // This correctly isolates the registration and login flows from the main app's UI.
   return <>{children}</>;
 }
