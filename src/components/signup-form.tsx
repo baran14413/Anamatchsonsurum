@@ -246,7 +246,7 @@ export default function ProfileCompletionForm() {
         form.setValue('location', { latitude, longitude }, { shouldValidate: true });
         
         try {
-          const response = await fetch(\`/api/geocode?lat=\${latitude}&lon=\${longitude}\`);
+          const response = await fetch('/api/geocode?lat=' + latitude + '&lon=' + longitude);
           if(response.ok) {
             const data = await response.json();
             if (data.address) {
@@ -313,7 +313,7 @@ export default function ProfileCompletionForm() {
           return;
       }
       
-      const tempId = form.getValues('email') || \`temp_\${Date.now()}\`;
+      const tempId = form.getValues('email') || 'temp_' + Date.now();
 
       setImageSlots(prev => {
           const newSlots = [...prev];
@@ -321,7 +321,7 @@ export default function ProfileCompletionForm() {
           return newSlots;
       });
 
-      const uniqueFileName = \`bematch_profiles/temp_\${tempId}/\${Date.now()}-\${file.name.replace(/\s+/g, '_')}\`;
+      const uniqueFileName = 'bematch_profiles/temp_' + tempId + '/' + Date.now() + '-' + file.name.replace(/\s+/g, '_');
       const imageRef = storageRef(storage, uniqueFileName);
 
       try {
@@ -469,7 +469,7 @@ export default function ProfileCompletionForm() {
       } else {
         toast({
           title: "Limit Aşıldı",
-          description: \`Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.\`,
+          description: 'Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.',
           variant: 'destructive',
         });
       }
@@ -499,7 +499,7 @@ export default function ProfileCompletionForm() {
             const firstErrorField = Object.keys(form.formState.errors)[0];
             toast({
                 title: "Form Eksik",
-                description: \`Lütfen tüm alanları doğru bir şekilde doldurun. Hata: \${firstErrorField}\`,
+                description: 'Lütfen tüm alanları doğru bir şekilde doldurun. Hata: ' + firstErrorField,
                 variant: "destructive"
             });
         }
@@ -604,7 +604,7 @@ export default function ProfileCompletionForm() {
                                         <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed border-white/50 bg-white/10 rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-white/20 group", slot.preview && "border-solid border-white/30")}>
                                             {slot.preview ? (
                                                 <>
-                                                    <Image src={slot.preview} alt={\`Önizleme \${index}\`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
+                                                    <Image src={slot.preview} alt={'Önizleme ' + index} fill style={{ objectFit: "cover" }} className="rounded-lg" />
                                                     {slot.isUploading && (
                                                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                                             <div className="w-16 h-16">
