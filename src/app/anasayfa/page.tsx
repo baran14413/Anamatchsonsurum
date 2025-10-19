@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Undo2, Star, Heart, X as XIcon, Send, MapPin } from 'lucide-react';
+import { Undo2, Star, Heart, X as XIcon } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
@@ -162,60 +162,57 @@ export default function AnasayfaPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-        
         const userMatchesQuery = query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', 'in', ['matched', 'superlike_pending'])
         );
-        
         const userMatchesSnap = await getDocs(userMatchesQuery);
         userMatchesSnap.forEach(doc => {
             interactedUids.add(doc.data().matchedWith);
         });
         
-        let usersQuery = query(collection(firestore, 'users'), limit(50));
-        const querySnapshot = await getDocs(usersQuery);
+        const allUsersQuery = query(collection(firestore, 'users'), limit(50));
+        const allUsersSnapshot = await getDocs(allUsersQuery);
+        const allUsers = allUsersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
         
         const globalMode = userProfile.globalModeEnabled ?? false;
         
-        const potentialProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-        
-        const filteredProfiles = potentialProfiles
-            .map(p => {
-                let distance;
-                 if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                }
-                return { ...p, distance };
-            })
+        const potentialProfiles = allUsers
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
                 if (!p.images || p.images.length === 0) return false;
 
                 const userGenderPref = userProfile.genderPreference;
-                if (userGenderPref !== 'both' && p.gender !== userGenderPref) {
-                    return false;
-                }
+                if (userGenderPref !== 'both' && p.gender !== userGenderPref) return false;
 
                 const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
                 const minAge = userProfile.ageRange?.min || 18;
                 const maxAge = userProfile.ageRange?.max || 80;
                 if (age < minAge || age > maxAge) {
-                    if (!userProfile.expandAgeRange) {
-                        return false;
-                    }
-                }
-
-                if (!globalMode && p.distance !== undefined) {
-                    if (p.distance > (userProfile.distancePreference || 160)) {
-                        return false; 
-                    }
+                    if (!userProfile.expandAgeRange) return false;
                 }
                 
                 return true;
+            })
+            .map(p => {
+                let distance;
+                if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                }
+                return { ...p, distance };
+            })
+            .sort((a, b) => {
+                if (a.distance === undefined) return 1;
+                if (b.distance === undefined) return -1;
+                return a.distance - b.distance;
             });
 
-        setProfiles(filteredProfiles.slice(0, 20));
+        const finalProfiles = globalMode 
+            ? potentialProfiles
+            : potentialProfiles.filter(p => p.distance !== undefined && p.distance <= (userProfile.distancePreference || 160));
+
+
+        setProfiles(finalProfiles.slice(0, 20));
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -304,11 +301,6 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
   }, [lastDislikedProfile, user, firestore, userProfile]);
 
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
-  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -321,9 +313,7 @@ export default function AnasayfaPage() {
                           <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                       </div>
                   ) : profiles.length > 0 ? (
-                    profiles.map((profile, index) => {
-                       const isTopCard = index === profiles.length - 1;
-                       return (
+                    profiles.map((profile, index) => (
                         <motion.div
                             key={profile.id}
                             className="absolute w-full h-full"
@@ -331,27 +321,17 @@ export default function AnasayfaPage() {
                                 zIndex: index,
                                 scale: 1 - (profiles.length - 1 - index) * 0.05,
                                 top: (profiles.length - 1 - index) * 10,
-                                x: isTopCard ? x : 0,
-                                rotate: isTopCard ? rotate: 0,
                             }}
-                            drag={isTopCard}
+                            drag
                             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                             dragElastic={0.5}
                             onDragEnd={(event, info) => {
-                                if (!isTopCard) return;
                                 if (info.offset.x > 100) {
                                     handleSwipeAction('liked');
                                 } else if (info.offset.x < -100) {
                                     handleSwipeAction('disliked');
-                                } else {
-                                     motion.animate(x, 0, { duration: 0.2 });
                                 }
                             }}
-                            animate={{
-                                scale: 1 - (profiles.length - 1 - index) * 0.05,
-                                top: (profiles.length - 1 - index) * 10,
-                                opacity: 1,
-                              }}
                              exit={{
                                 x: 300,
                                 y: -100,
@@ -361,31 +341,14 @@ export default function AnasayfaPage() {
                                 transition: { duration: 0.3 },
                             }}
                         >
-                             {isTopCard && (
-                                <>
-                                    <motion.div
-                                        style={{ opacity: dislikeOpacity }}
-                                        className="absolute top-8 left-8 text-red-500 z-50 transform -rotate-20"
-                                    >
-                                        <XIcon size={128} strokeWidth={4} />
-                                    </motion.div>
-                                    <motion.div
-                                        style={{ opacity: likeOpacity }}
-                                        className="absolute top-8 right-8 text-green-500 z-50 transform rotate-20"
-                                    >
-                                        <Heart size={128} strokeWidth={4} fill="currentColor" />
-                                    </motion.div>
-                                </>
-                             )}
-                            <ProfileCard profile={profile} isTopCard={isTopCard} />
+                            <ProfileCard profile={profile} isTopCard={index === profiles.length - 1} />
                         </motion.div>
-                       )
-                    })
+                    ))
                   ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
                             <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
                             <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
-                            <Button onClick={() => fetchProfiles()}>
+                            <Button onClick={fetchProfiles}>
                                 <Undo2 className="mr-2 h-4 w-4" />
                                 Tekrar Dene
                             </Button>
@@ -393,7 +356,44 @@ export default function AnasayfaPage() {
                   )}
                </AnimatePresence>
           </div>
-          
+          <div className="flex items-center justify-center gap-4 mt-8">
+              <Button
+                  onClick={() => handleSwipeAction('disliked')}
+                  variant="outline"
+                  size="icon"
+                  className="h-16 w-16 rounded-full border-2 border-red-500 text-red-500"
+                  disabled={profiles.length === 0}
+              >
+                  <XIcon size={32} />
+              </Button>
+              <Button
+                   onClick={() => handleSwipeAction('superliked')}
+                   variant="outline"
+                   size="icon"
+                   className="h-14 w-14 rounded-full border-2 border-blue-500 text-blue-500"
+                   disabled={profiles.length === 0}
+              >
+                  <Star size={24} />
+              </Button>
+              <Button
+                   onClick={() => handleSwipeAction('liked')}
+                   variant="outline"
+                   size="icon"
+                   className="h-16 w-16 rounded-full border-2 border-green-500 text-green-500"
+                   disabled={profiles.length === 0}
+              >
+                  <Heart size={32} />
+              </Button>
+              <Button
+                   onClick={handleUndo}
+                   variant="outline"
+                   size="icon"
+                   className="h-14 w-14 rounded-full border-2 border-yellow-500 text-yellow-500"
+                   disabled={!lastDislikedProfile}
+              >
+                  <Undo2 size={24} />
+              </Button>
+          </div>
            {showUndoLimitModal && (
               <AlertDialogContent>
                   <AlertDialogHeader className="items-center text-center">
