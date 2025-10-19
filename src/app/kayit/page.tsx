@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,17 +14,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import { Icons } from '@/components/icons';
-import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, User, X } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: "İsim en az 2 karakter olmalıdır." }),
   email: z.string().email({ message: langTr.login.errors.invalidEmail }),
-  password: z.string().min(1, { message: 'Şifre boş olamaz.' }),
+  password: z.string().min(6, { message: 'Şifre en az 6 karakter olmalıdır.' }),
 });
 
-type LoginFormValues = z.infer<typeof formSchema>;
+type SignUpFormValues = z.infer<typeof formSchema>;
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const t = langTr;
   const router = useRouter();
   const auth = useAuth();
@@ -31,29 +33,34 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const form = useForm<LoginFormValues>({
+  const form = useForm<SignUpFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (data: SignUpFormValues) => {
     if (!auth) {
       toast({ title: t.login.errors.authServiceError, variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
-      // onAuthStateChanged in provider will handle redirect
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      // The onAuthStateChanged listener in the provider will now catch this new user
+      // and redirect them to the rules page or wherever is appropriate next.
+      // We can also push them to the next step manually if needed.
+       router.push('/kurallar'); // Example redirect after successful creation
+
     } catch (error: any) {
       setIsSubmitting(false);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        toast({ title: 'Giriş Başarısız', description: 'E-posta veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.', variant: 'destructive' });
+      if (error.code === 'auth/email-already-in-use') {
+        toast({ title: 'Kayıt Hatası', description: 'Bu e-posta adresi zaten kullanımda. Lütfen giriş yapmayı deneyin.', variant: 'destructive' });
       } else {
-        toast({ title: t.login.errors.emailCheckError, description: error.message, variant: 'destructive' });
+        toast({ title: 'Kayıt Hatası', description: error.message, variant: 'destructive' });
       }
     }
   };
@@ -61,18 +68,34 @@ export default function LoginPage() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground animated-gradient-bg">
       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/20 bg-transparent px-4 text-white">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting}>
-          <ArrowLeft className="h-6 w-6" />
+        <Button variant="ghost" size="icon" onClick={() => router.push('/')} disabled={isSubmitting}>
+          <X className="h-6 w-6" />
         </Button>
       </header>
       <main className="flex-1 flex flex-col justify-center items-center p-6 text-white">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Tekrar Hoş Geldin!</h1>
-            <p className="text-white/80">Hesabına giriş yaparak maceraya devam et.</p>
+            <h1 className="text-3xl font-bold">Kayıt Yap</h1>
+            <p className="text-white/80">Yeni bir hesap oluşturarak aramıza katıl.</p>
           </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adın</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                        <Input type="text" placeholder="Adını gir" className="pl-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -109,14 +132,14 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full h-12 rounded-full font-bold text-lg bg-white text-red-600 hover:bg-gray-200" disabled={isSubmitting}>
-                {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : 'Giriş Yap'}
+                {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : 'Hesap Oluştur'}
               </Button>
             </form>
           </Form>
            <p className="text-center text-sm text-white/80">
-              {t.login.noAccount}{' '}
-              <Link href="/kayit" className="font-semibold text-white hover:underline">
-                {t.login.signupNow}
+              Zaten bir hesabın var mı?{' '}
+              <Link href="/giris" className="font-semibold text-white hover:underline">
+                Giriş Yap
               </Link>
             </p>
         </div>
