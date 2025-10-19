@@ -202,7 +202,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                     <div 
                         key={`${media.url}-${index}`}
                         className={cn(
-                          "absolute inset-0 w-full h-full transition-opacity duration-300",
+                          "absolute inset-0 w-full h-full transition-opacity duration-300 group",
                           isActive ? "opacity-100" : "opacity-0 pointer-events-none"
                         )}
                         onClick={handleVideoClick}
