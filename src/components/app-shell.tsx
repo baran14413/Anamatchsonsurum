@@ -14,7 +14,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
 const publicRoutes = ['/', '/tos', '/privacy', '/cookies'];
-const authRoutes = ['/giris', '/profilini-tamamla'];
+const authRoutes = ['/giris', '/kayit'];
 const rulesRoute = '/kurallar';
 const adminRoutePrefix = '/admin';
 
@@ -42,7 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (user) {
       // If profile is incomplete, force to registration page.
       if (!userProfile?.gender && !isAuthRoute) {
-        router.replace('/profilini-tamamla');
+        router.replace('/kayit');
         return;
       }
       // If rules are not agreed to, force to rules page.

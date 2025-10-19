@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Star, Mail, Lock, Eye, EyeOff, Check, User, Camera, X } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Star, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -573,7 +573,7 @@ export default function SignUpPage() {
                                             ) : (
                                                 <div className="text-center text-white/70 p-2 flex flex-col items-center justify-center gap-2">
                                                     <div className='h-12 w-12 rounded-full flex items-center justify-center bg-white/20 text-white'>
-                                                        <Camera className="w-6 h-6" />
+                                                        <Plus className="w-8 h-8" />
                                                     </div>
                                                 </div>
                                             )}

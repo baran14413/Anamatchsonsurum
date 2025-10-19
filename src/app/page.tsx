@@ -102,7 +102,7 @@ export default function WelcomePage() {
                   E-posta ile Giriş Yap
                 </Button>
               </Link>
-              <Link href="/profilini-tamamla">
+              <Link href="/kayit">
                 <Button
                   variant="outline"
                   className="w-full h-12 rounded-full bg-white/90 border-white/30 text-black hover:bg-white text-base font-semibold justify-start pl-6 backdrop-blur-sm"
