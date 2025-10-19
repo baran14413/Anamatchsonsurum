@@ -2,12 +2,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Undo2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, getDoc, collectionGroup, QueryConstraint } from 'firebase/firestore';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -34,54 +33,67 @@ export default function AnasayfaPage() {
     setProfiles([]); // Clear previous profiles before fetching new ones
 
     try {
-      // 1. Get UIDs of already matched users
-      const matchesQuery = query(
-        collection(firestore, `users/${user.uid}/matches`),
-        where('status', '==', 'matched')
-      );
-      const matchesSnap = await getDocs(matchesQuery);
-      const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
-      matchedUids.add(user.uid);
+        // 1. Get UIDs of users we have already matched with.
+        const matchesSnap = await getDocs(query(collection(firestore, `users/${user.uid}/matches`), where('status', '==', 'matched')));
+        const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
+        matchedUids.add(user.uid); // Don't show the current user's own profile
 
-      // 2. Base query to get potential users
-      const usersRef = collection(firestore, 'users');
-      let q = query(usersRef);
-      
-      const genderPref = userProfile.genderPreference;
-      if (genderPref && genderPref !== 'both') {
-          q = query(q, where('gender', '==', genderPref));
-      }
-      
-      const usersSnapshot = await getDocs(q);
+        // 2. Build the base query with server-side filters.
+        const usersRef = collection(firestore, 'users');
+        const queryConstraints: QueryConstraint[] = [where('isBot', '!=', true)];
 
-      const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-      
-      const potentialProfiles = allFetchedUsers.filter(p => {
-          if (!p.uid || matchedUids.has(p.uid)) {
-              return false;
-          }
-          const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
-          const minAge = userProfile.ageRange?.min || 18;
-          const maxAge = userProfile.ageRange?.max || 80;
-          if (age < minAge || age > maxAge) {
-              if (!userProfile.expandAgeRange) return false;
-          }
-          return true;
-      });
+        const genderPref = userProfile.genderPreference;
+        if (genderPref && genderPref !== 'both') {
+            queryConstraints.push(where('gender', '==', genderPref));
+        }
 
-      const profilesWithDistance = potentialProfiles.map(p => {
-          let distance: number | undefined = undefined;
-          if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-              distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-          }
-          return { ...p, distance };
-      });
-      
-      const finalProfiles = profilesWithDistance
-        .sort(() => Math.random() - 0.5) // Shuffle
-        .slice(0, 20);
+        const q = query(usersRef, ...queryConstraints, limit(50));
+        const usersSnapshot = await getDocs(q);
+        
+        const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
 
-      setProfiles(finalProfiles);
+        // 3. Perform client-side filtering for complex logic (age, distance).
+        const potentialProfiles = allFetchedUsers.filter(p => {
+            if (!p.uid || matchedUids.has(p.uid)) {
+                return false;
+            }
+
+            const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
+            const minAge = userProfile.ageRange?.min || 18;
+            const maxAge = userProfile.ageRange?.max || 80;
+
+            if (age < minAge || age > maxAge) {
+                if (!userProfile.expandAgeRange) return false;
+            }
+            
+            return true;
+        });
+
+
+        // 4. Calculate distance and apply distance filter.
+        const profilesWithDistance = potentialProfiles.map(p => {
+            let distance: number | undefined = undefined;
+            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+            }
+            return { ...p, distance };
+        });
+
+        const finalProfiles = profilesWithDistance
+            .filter(p => {
+                // If global mode is on, don't filter by distance.
+                if (userProfile.globalModeEnabled) {
+                    return true;
+                }
+                // If global mode is off, a distance must be calculated and within preference.
+                if (p.distance === undefined) {
+                    return false;
+                }
+                return p.distance <= (userProfile.distancePreference || 160);
+            })
+            .sort(() => Math.random() - 0.5); // Shuffle the final list
+
+        setProfiles(finalProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -90,6 +102,7 @@ export default function AnasayfaPage() {
       setIsLoading(false);
     }
   }, [user, firestore, userProfile, toast, t]);
+
 
   useEffect(() => {
     if (user && firestore && userProfile) {
@@ -109,14 +122,13 @@ export default function AnasayfaPage() {
             {profiles.map(profile => (
                 <Card key={profile.uid}>
                     <CardHeader>
-                        <CardTitle>{profile.fullName}</CardTitle>
+                        <CardTitle>{profile.fullName}, {profile.dateOfBirth ? new Date().getFullYear() - new Date(profile.dateOfBirth).getFullYear() : ''}</CardTitle>
                         <CardDescription>UID: {profile.uid}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p>Doğum Tarihi: {profile.dateOfBirth}</p>
                         <p>Cinsiyet: {profile.gender}</p>
                         <p>Mesafe: {profile.distance !== undefined ? `${profile.distance} km` : 'Hesaplanamadı'}</p>
-                        <p>Konum: {profile.location ? `${profile.location.latitude}, ${profile.location.longitude}` : 'Bilinmiyor'}</p>
+                        <p>Konum: {profile.location ? `${profile.location.latitude.toFixed(2)}, ${profile.location.longitude.toFixed(2)}` : 'Bilinmiyor'}</p>
                     </CardContent>
                 </Card>
             ))}
@@ -126,7 +138,6 @@ export default function AnasayfaPage() {
           <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
           <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
           <Button onClick={fetchProfiles}>
-            <Undo2 className="mr-2 h-4 w-4" />
             Tekrar Dene
           </Button>
         </div>
