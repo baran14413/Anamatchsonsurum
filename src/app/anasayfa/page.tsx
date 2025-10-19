@@ -161,6 +161,7 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
+        // --- SERVER-SIDE FILTERING ---
         const interactedUids = new Set<string>([user.uid]);
 
         if (!resetInteractions) {
@@ -177,9 +178,13 @@ export default function AnasayfaPage() {
         let usersQuery = query(usersCollectionRef, limit(20));
         const querySnapshot = await getDocs(usersQuery);
         
+        // --- CLIENT-SIDE FILTERING ---
         let fetchedProfiles = querySnapshot.docs
           .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-          .filter(p => !interactedUids.has(p.uid));
+          .filter(p => 
+            !interactedUids.has(p.uid) && // Keep only profiles user hasn't interacted with
+            p.images && p.images.length > 0 // Keep only profiles with at least one photo
+          );
 
         setProfiles(fetchedProfiles);
 
@@ -200,42 +205,40 @@ export default function AnasayfaPage() {
   const handleSwipeAction = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || profiles.length === 0) return;
     
-    setProfiles(currentProfiles => {
-        const swipedProfile = currentProfiles[currentProfiles.length - 1];
-        if (!swipedProfile) return currentProfiles;
+    const swipedProfile = profiles[0];
+    if (!swipedProfile) return;
 
-        if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
-            setShowSuperlikeModal(true);
-            return currentProfiles;
-        }
+    if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
+        setShowSuperlikeModal(true);
+        return;
+    }
 
-        if (action === 'disliked') {
-            setLastDislikedProfile(swipedProfile);
-        } else {
-            setLastDislikedProfile(null);
-        }
+    if (action === 'disliked') {
+        setLastDislikedProfile(swipedProfile);
+    } else {
+        setLastDislikedProfile(null);
+    }
 
-        (async () => {
-            try {
-                if (action === 'liked') {
-                    const result = await handleLikeAction(firestore, userProfile, swipedProfile);
-                    if(result.matched){
-                         toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
-                    }
-                } else if (action === 'disliked') {
-                    await handleDislikeAction(firestore, user.uid, swipedProfile.uid);
-                } else if (action === 'superliked') {
-                    await handleSuperlikeAction(firestore, userProfile, swipedProfile);
-                    toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
+    (async () => {
+        try {
+            if (action === 'liked') {
+                const result = await handleLikeAction(firestore, userProfile, swipedProfile);
+                if(result.matched){
+                     toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
                 }
-            } catch (error: any) {
-                console.error("Swipe action failed:", error);
-                toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
+            } else if (action === 'disliked') {
+                await handleDislikeAction(firestore, user.uid, swipedProfile.uid);
+            } else if (action === 'superliked') {
+                await handleSuperlikeAction(firestore, userProfile, swipedProfile);
+                toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
             }
-        })();
-
-        return currentProfiles.slice(0, -1);
-    });
+        } catch (error: any) {
+            console.error("Swipe action failed:", error);
+            toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
+        }
+    })();
+    
+    setProfiles(currentProfiles => currentProfiles.slice(1));
   }, [user, firestore, userProfile, profiles, toast, t]);
  
   const handleUndo = useCallback(async () => {
@@ -260,7 +263,7 @@ export default function AnasayfaPage() {
         } catch (error) { console.error("Error updating undo count:", error); }
     }
     
-    setProfiles(prev => [...prev, lastDislikedProfile]);
+    setProfiles(prev => [lastDislikedProfile, ...prev]);
     
     const matchDocRef = doc(firestore, 'matches', [user.uid, lastDislikedProfile.uid].sort().join('_'));
     const isUser1 = user.uid < lastDislikedProfile.uid;
@@ -277,14 +280,14 @@ export default function AnasayfaPage() {
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
       }}>
-           <div className="relative w-full max-w-[380px] aspect-[3/4]">
+           <div className="relative w-full max-w-sm aspect-[3/4]">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                           <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                       </div>
                   ) : profiles.length > 0 ? (
-                    profiles.map((profile, index) => {
+                    profiles.reverse().map((profile, index) => {
                        const isTopCard = index === profiles.length - 1;
                        return (
                       <motion.div
@@ -310,19 +313,18 @@ export default function AnasayfaPage() {
                        )
                     })
                   ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-center">
-                          <div className='space-y-4'>
-                              <p>{t.anasayfa.outOfProfilesDescription}</p>
-                              <Button onClick={() => fetchProfiles(true)}>
-                                  <Undo2 className="mr-2 h-4 w-4" />
-                                  Tekrar Dene
-                              </Button>
-                          </div>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                            <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
+                            <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
+                            <Button onClick={() => fetchProfiles(true)}>
+                                <Undo2 className="mr-2 h-4 w-4" />
+                                Tekrar Dene
+                            </Button>
                       </div>
                   )}
                </AnimatePresence>
           </div>
-          <div className="flex w-full items-center justify-evenly py-6">
+          <div className="flex w-full items-center justify-evenly py-6 max-w-sm">
               <Button onClick={handleUndo} disabled={!lastDislikedProfile} variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
                   <Undo2 className="h-8 w-8 text-yellow-500" />
               </Button>
