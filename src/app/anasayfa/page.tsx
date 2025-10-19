@@ -326,8 +326,9 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
+                // --- Start of Base Filtering ---
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                if (!p.fullName || !p.images || p.images.length < 1) return false;
                 
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
@@ -336,14 +337,15 @@ export default function AnasayfaPage() {
                     const minAge = userProfile.expandAgeRange ? ageRange.min - 5 : ageRange.min;
                     const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
                     
-                    if (age < minAge || age > maxAge) {
-                        return false;
-                    }
+                    if (age < minAge || age > maxAge) return false;
                 }
-                
-                // Calculate distance for everyone who has a location
+                // --- End of Base Filtering ---
+
+
+                // --- Start of Location Logic ---
+                let distance: number | undefined = undefined;
                 if (p.location?.latitude && p.location?.longitude) {
-                    const distance = getDistance(
+                     distance = getDistance(
                         userProfile.location!.latitude!,
                         userProfile.location!.longitude!,
                         p.location.latitude,
@@ -352,31 +354,26 @@ export default function AnasayfaPage() {
                     (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
                 }
 
-                // Apply distance filter ONLY if global mode is OFF
-                if (!isGlobalMode) {
-                    // If user is not a bot, they must have a location and be within range
-                    if (!p.isBot) {
-                        if (!(p as ProfileWithDistance).distance) return false; // No location
-                        
-                        const userDistancePref = userProfile.distancePreference || 50;
-                        if ((p as ProfileWithDistance).distance! > userDistancePref) {
-                            return false; // Out of range
-                        }
-                    }
-                    // Bots in non-global mode are always included if they have a location
+                if (isGlobalMode) {
+                    // If global mode is on, we don't filter by distance.
+                    return true;
+                } else {
+                    // If global mode is off, we MUST have a distance.
+                    if (distance === undefined) return false;
+                    
+                    // And the distance must be within the user's preference.
+                    const userDistancePref = userProfile.distancePreference || 50;
+                    return distance <= userDistancePref;
                 }
-                
-                return true; // Include profile if it passed all checks
+                 // --- End of Location Logic ---
             });
         
         fetchedProfiles.sort((a, b) => {
-            // If global mode is on, randomize the sort order
             if (isGlobalMode) {
                 if (a.isBot && !b.isBot) return -1;
                 if (!a.isBot && b.isBot) return 1;
                 return Math.random() - 0.5;
             }
-            // If global mode is off, sort by bot status then distance
             if (a.isBot && !b.isBot) return -1;
             if (!a.isBot && b.isBot) return 1;
             return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
