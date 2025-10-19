@@ -124,7 +124,7 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
         } else { setYear(val); newYear = val; }
 
         if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
-            const date = new Date(\`\${newYear}-\${newMonth}-\${newDay}\`);
+            const date = new Date(newYear + '-' + newMonth + '-' + newDay);
             if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
                 onChange(date);
             } else { onChange(new Date('invalid')); }
