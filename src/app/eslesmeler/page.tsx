@@ -1,7 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useCollection } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
+import { useCollection } from '@/firebase';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -261,3 +263,5 @@ export default function EslesmelerPage() {
     </div>
   );
 }
+
+    
