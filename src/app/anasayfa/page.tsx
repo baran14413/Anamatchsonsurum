@@ -2,226 +2,86 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Undo2, Star, Heart, X as XIcon } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { langTr } from '@/languages/tr';
-import type { UserProfile, Match } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy } from 'firebase/firestore';
-import ProfileCard from '@/components/profile-card';
+import { collection, query, getDocs, where, limit, doc, getDoc } from 'firebase/firestore';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { BOT_GREETINGS } from '@/lib/bot-data';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
-
-const handleLikeAction = async (db: any, currentUser: UserProfile, swipedUser: UserProfile) => {
-    const matchId = [currentUser.uid, swipedUser.uid].sort().join('_');
-    const matchDocRef = doc(db, 'matches', matchId);
-    const matchSnap = await getDoc(matchDocRef);
-    const existingMatchData = matchSnap.data() as Match | undefined;
-
-    const isUser1 = currentUser.uid < swipedUser.uid;
-    const theirAction = isUser1 ? existingMatchData?.user2_action : existingMatchData?.user1_action;
-    const currentUserField = isUser1 ? 'user1' : 'user2';
-
-    let updateData: any = {
-        user1Id: [currentUser.uid, swipedUser.uid].sort()[0],
-        user2Id: [currentUser.uid, swipedUser.uid].sort()[1],
-        [`${currentUserField}_action`]: 'liked',
-        [`${currentUserField}_timestamp`]: serverTimestamp(),
-    };
-
-    if (swipedUser.isBot) {
-        updateData.status = 'matched';
-        updateData.matchDate = serverTimestamp();
-        
-        const batch = writeBatch(db);
-        batch.set(matchDocRef, updateData, { merge: true });
-
-        const userMatchData = { id: matchId, matchedWith: swipedUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.profilePicture || '', status: 'matched', unreadCount: 1 };
-        const botMatchData = { id: matchId, matchedWith: currentUser.uid, lastMessage: '', timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' };
-        
-        batch.set(doc(db, `users/${currentUser.uid}/matches`, matchId), userMatchData);
-        batch.set(doc(db, `users/${swipedUser.uid}/matches`, matchId), botMatchData);
-        
-        await batch.commit();
-
-        setTimeout(() => {
-            const botGreeting = BOT_GREETINGS[Math.floor(Math.random() * BOT_GREETINGS.length)];
-            const messageRef = collection(db, `matches/${matchId}/messages`);
-            addDoc(messageRef, { matchId, senderId: swipedUser.uid, text: botGreeting, timestamp: serverTimestamp(), isRead: false, type: 'user' });
-            updateDoc(doc(db, `users/${currentUser.uid}/matches`, matchId), { lastMessage: botGreeting, unreadCount: increment(1) });
-            updateDoc(doc(db, `users/${swipedUser.uid}/matches`, matchId), { lastMessage: botGreeting });
-        }, 10000); 
-
-        return { matched: true, swipedUserName: swipedUser.fullName };
-    }
-
-    if (theirAction === 'liked' || theirAction === 'superliked') {
-        updateData.status = 'matched';
-        updateData.matchDate = serverTimestamp();
-        
-        const batch = writeBatch(db);
-        batch.set(matchDocRef, updateData, { merge: true });
-
-        const user1MatchData = { id: matchId, matchedWith: swipedUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.profilePicture || '', status: 'matched' };
-        const user2MatchData = { id: matchId, matchedWith: currentUser.uid, lastMessage: langTr.eslesmeler.defaultMessage, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', status: 'matched' };
-
-        batch.set(doc(db, `users/${currentUser.uid}/matches`, matchId), user1MatchData);
-        batch.set(doc(db, `users/${swipedUser.uid}/matches`, matchId), user2MatchData);
-        
-        await batch.commit();
-
-        return { matched: true, swipedUserName: swipedUser.fullName };
-    } else {
-        await setDoc(matchDocRef, updateData, { merge: true });
-        return { matched: false };
-    }
-};
-
-const handleDislikeAction = async (db: any, currentUserUid: string, swipedUserUid: string) => {
-    const matchId = [currentUserUid, swipedUserUid].sort().join('_');
-    const matchDocRef = doc(db, 'matches', matchId);
-    const isUser1 = currentUserUid < swipedUserUid;
-    const currentUserField = isUser1 ? 'user1' : 'user2';
-    const updateData = {
-        user1Id: [currentUserUid, swipedUserUid].sort()[0],
-        user2Id: [currentUserUid, swipedUserUid].sort()[1],
-        [`${currentUserField}_action`]: 'disliked',
-        [`${currentUserField}_timestamp`]: serverTimestamp(),
-    };
-    await setDoc(matchDocRef, updateData, { merge: true });
-};
-
-const handleSuperlikeAction = async (db: any, currentUser: UserProfile, swipedUser: UserProfile) => {
-    const matchId = [currentUser.uid, swipedUser.uid].sort().join('_');
-    const matchDocRef = doc(db, 'matches', matchId);
-    const matchSnap = await getDoc(matchDocRef);
-    const existingMatchData = matchSnap.data() as Match | undefined;
-
-    if (existingMatchData?.status === 'matched') throw new Error("Bu kullanıcıyla zaten eşleştiniz.");
-    if (existingMatchData?.status === 'superlike_pending' && existingMatchData?.superLikeInitiator === currentUser.uid) throw new Error("Bu kullanıcıya gönderdiğiniz Super Like henüz yanıtlanmadı.");
-
-    const isUser1 = currentUser.uid < swipedUser.uid;
-    const currentUserField = isUser1 ? 'user1' : 'user2';
-    
-    const batch = writeBatch(db);
-    const updateData = {
-        user1Id: [currentUser.uid, swipedUser.uid].sort()[0],
-        user2Id: [currentUser.uid, swipedUser.uid].sort()[1],
-        status: 'superlike_pending',
-        isSuperLike: true,
-        superLikeInitiator: currentUser.uid,
-        [`${currentUserField}_action`]: 'superliked',
-        [`${currentUserField}_timestamp`]: serverTimestamp(),
-    };
-    batch.set(matchDocRef, updateData, { merge: true });
-
-    const currentUserMatchData = { id: matchId, matchedWith: swipedUser.uid, lastMessage: "Yanıt bekleniyor...", timestamp: serverTimestamp(), fullName: swipedUser.fullName, profilePicture: swipedUser.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
-    const swipedUserMatchData = { id: matchId, matchedWith: currentUser.uid, lastMessage: `${currentUser.fullName} sana bir Super Like gönderdi!`, timestamp: serverTimestamp(), fullName: currentUser.fullName, profilePicture: currentUser.profilePicture || '', isSuperLike: true, status: 'superlike_pending', superLikeInitiator: currentUser.uid };
-    
-    batch.set(doc(db, `users/${currentUser.uid}/matches`, matchId), currentUserMatchData);
-    batch.set(doc(db, `users/${swipedUser.uid}/matches`, matchId), swipedUserMatchData);
-    
-    const systemMessage = { matchId, senderId: 'system', text: `${swipedUser.fullName} merhaba, benim adım ${currentUser.fullName}. Sana bir süper like yolladım, benimle eşleşmek ister misin? ♥️🙊`, timestamp: serverTimestamp(), isRead: false, type: 'system_superlike_prompt', actionTaken: false };
-    batch.set(doc(collection(db, `matches/${matchId}/messages`)), systemMessage);
-    
-    const userDocRef = doc(db, 'users', currentUser.uid);
-    batch.update(userDocRef, { superLikeBalance: increment(-1) });
-    
-    await batch.commit();
-};
-
 
 export default function AnasayfaPage() {
   const t = langTr;
   const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const router = useRouter();
 
   const [profiles, setProfiles] = useState<ProfileWithDistance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastDislikedProfile, setLastDislikedProfile] = useState<ProfileWithDistance | null>(null);
-  const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
-  const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
-  
+
   const fetchProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile) {
-        setIsLoading(false);
-        return;
+      setIsLoading(false);
+      return;
     }
-    
+
     setIsLoading(true);
+    setProfiles([]); // Clear previous profiles before fetching new ones
 
     try {
-        // Get UIDs of already matched users
-        const matchesQuery = query(
-            collection(firestore, `users/${user.uid}/matches`),
-            where('status', '==', 'matched')
-        );
-        const matchesSnap = await getDocs(matchesQuery);
-        const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
-        matchedUids.add(user.uid);
+      // 1. Get UIDs of already matched users
+      const matchesQuery = query(
+        collection(firestore, `users/${user.uid}/matches`),
+        where('status', '==', 'matched')
+      );
+      const matchesSnap = await getDocs(matchesQuery);
+      const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
+      matchedUids.add(user.uid);
 
-        // Base query to get potential users
-        const usersRef = collection(firestore, 'users');
-        let q = query(usersRef);
+      // 2. Base query to get potential users
+      const usersRef = collection(firestore, 'users');
+      let q = query(usersRef);
+      
+      const genderPref = userProfile.genderPreference;
+      if (genderPref && genderPref !== 'both') {
+          q = query(q, where('gender', '==', genderPref));
+      }
+      
+      const usersSnapshot = await getDocs(q);
 
-        // Filter by gender preference at the database level
-        const genderPref = userProfile.genderPreference;
-        if (genderPref && genderPref !== 'both') {
-            q = query(q, where('gender', '==', genderPref));
-        }
-        
-        q = query(q, limit(50)); // Limit initial fetch
-        
-        const usersSnapshot = await getDocs(q);
-        
-        const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-        
-        const potentialProfiles = allFetchedUsers.filter(p => {
-            if (!p.uid || matchedUids.has(p.uid)) return false;
-            
-            // Age filter
-            const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
-            const minAge = userProfile.ageRange?.min || 18;
-            const maxAge = userProfile.ageRange?.max || 80;
-            if (age < minAge || age > maxAge) {
-                if (!userProfile.expandAgeRange) return false;
-            }
-            
-            return true;
-        });
+      const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+      
+      const potentialProfiles = allFetchedUsers.filter(p => {
+          if (!p.uid || matchedUids.has(p.uid)) {
+              return false;
+          }
+          const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
+          const minAge = userProfile.ageRange?.min || 18;
+          const maxAge = userProfile.ageRange?.max || 80;
+          if (age < minAge || age > maxAge) {
+              if (!userProfile.expandAgeRange) return false;
+          }
+          return true;
+      });
 
-        // Map profiles with distance and filter
-        const profilesWithDistance = potentialProfiles.map(p => {
-            let distance: number | undefined = undefined;
-            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-            }
-            return { ...p, distance };
-        });
+      const profilesWithDistance = potentialProfiles.map(p => {
+          let distance: number | undefined = undefined;
+          if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+              distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+          }
+          return { ...p, distance };
+      });
+      
+      const finalProfiles = profilesWithDistance
+        .sort(() => Math.random() - 0.5) // Shuffle
+        .slice(0, 20);
 
-        let finalProfiles = profilesWithDistance;
-
-        // Filter by distance if global mode is off
-        if (!userProfile.globalModeEnabled) {
-            finalProfiles = profilesWithDistance.filter(p => {
-                if (p.distance === undefined) return false;
-                return p.distance <= (userProfile.distancePreference || 160);
-            });
-        }
-        
-        // Shuffle the final list
-        finalProfiles.sort(() => Math.random() - 0.5);
-
-        setProfiles(finalProfiles.slice(0, 20)); // Take the first 20 after shuffling
+      setProfiles(finalProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -237,178 +97,40 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
 
-  const handleSwipeAction = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
-    if (!user || !firestore || !userProfile || profiles.length === 0) return;
-    
-    const swipedProfile = profiles[profiles.length - 1];
-    if (!swipedProfile) return;
-
-    if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
-        setShowSuperlikeModal(true);
-        return;
-    }
-
-    if (action === 'disliked') {
-        setLastDislikedProfile(swipedProfile);
-    } else {
-        setLastDislikedProfile(null);
-    }
-
-    (async () => {
-        try {
-            if (action === 'liked') {
-                const result = await handleLikeAction(firestore, userProfile, swipedProfile);
-                if(result.matched){
-                     toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
-                }
-            } else if (action === 'disliked') {
-                await handleDislikeAction(firestore, user.uid, swipedProfile.uid);
-            } else if (action === 'superliked') {
-                await handleSuperlikeAction(firestore, userProfile, swipedProfile);
-                toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
-            }
-        } catch (error: any) {
-            console.error("Swipe action failed:", error);
-            toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
-        }
-    })();
-    
-    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
-  }, [user, firestore, userProfile, profiles, toast, t]);
- 
-  const handleUndo = useCallback(async () => {
-    if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
-    
-    const isGoldMember = userProfile.membershipType === 'gold';
-    if (!isGoldMember) {
-        const now = new Date();
-        const lastUndoDate = userProfile.lastUndoTimestamp?.toDate() ?? null;
-        let currentUndoCount = userProfile.dailyUndoCount || 0;
-
-        if (lastUndoDate && (now.getTime() - lastUndoDate.getTime()) > 24 * 60 * 60 * 1000) {
-            currentUndoCount = 0;
-        }
-        
-        if (currentUndoCount >= 3) {
-            setShowUndoLimitModal(true);
-            return;
-        }
-        try {
-            await updateDoc(doc(firestore, 'users', user.uid), { dailyUndoCount: currentUndoCount + 1, lastUndoTimestamp: serverTimestamp() });
-        } catch (error) { console.error("Error updating undo count:", error); }
-    }
-    
-    setProfiles(prev => [...prev, lastDislikedProfile]);
-    
-    const matchDocRef = doc(firestore, 'matches', [user.uid, lastDislikedProfile.uid].sort().join('_'));
-    const isUser1 = user.uid < lastDislikedProfile.uid;
-    const currentUserField = isUser1 ? 'user1' : 'user2';
-    try {
-      await updateDoc(matchDocRef, { [`${currentUserField}_action`]: deleteField(), [`${currentUserField}_timestamp`]: deleteField() });
-    } catch (error) { console.error("Error reverting dislike:", error); }
-    
-    setLastDislikedProfile(null);
-  }, [lastDislikedProfile, user, firestore, userProfile]);
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
-      <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
-          if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
-      }}>
-           <div className="relative w-full max-w-sm aspect-[3/4]">
-              <AnimatePresence>
-                  {isLoading ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                          <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-                      </div>
-                  ) : profiles.length > 0 ? (
-                    profiles.map((profile, index) => (
-                        <motion.div
-                            key={profile.id}
-                            className="absolute w-full h-full"
-                            style={{
-                                zIndex: index,
-                                scale: 1 - (profiles.length - 1 - index) * 0.05,
-                                top: (profiles.length - 1 - index) * 10,
-                            }}
-                            drag
-                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                            dragElastic={0.5}
-                            onDragEnd={(event, info) => {
-                                if (info.offset.x > 100) {
-                                    handleSwipeAction('liked');
-                                } else if (info.offset.x < -100) {
-                                    handleSwipeAction('disliked');
-                                }
-                            }}
-                            exit={{
-                                x: 300,
-                                y: -100,
-                                opacity: 0,
-                                scale: 0.8,
-                                rotate: 45,
-                                transition: { duration: 0.3 },
-                            }}
-                        >
-                            <ProfileCard profile={profile} isTopCard={index === profiles.length - 1} />
-                        </motion.div>
-                    ))
-                  ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
-                            <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
-                            <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
-                            <Button onClick={fetchProfiles}>
-                                <Undo2 className="mr-2 h-4 w-4" />
-                                Tekrar Dene
-                            </Button>
-                      </div>
-                  )}
-               </AnimatePresence>
-          </div>
-          
-           {showUndoLimitModal && (
-              <AlertDialogContent>
-                  <AlertDialogHeader className="items-center text-center">
-                      <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
-                          <Star className="w-10 h-10 text-yellow-400 fill-yellow-400" />
-                      </div>
-                      <AlertDialogTitle className="text-2xl">Geri Alma Hakkın Doldu!</AlertDialogTitle>
-                      <AlertDialogDescription>
-                      Sınırsız geri alma hakkı için Gold'a yükselt. Bu sayede yanlışlıkla geçtiğin hiçbir profili kaçırma!
-                      </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-                      <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
-                      <AlertDialogAction asChild>
-                          <Button className='bg-yellow-400 text-yellow-900 hover:bg-yellow-500' onClick={() => router.push('/market')}>
-                              <Star className="mr-2 h-4 w-4" /> Gold'a Yükselt
-                          </Button>
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-              </AlertDialogContent>
-           )}
-           {showSuperlikeModal && (
-                <AlertDialogContent>
-                  <AlertDialogHeader className="items-center text-center">
-                       <div className="w-16 h-16 rounded-full bg-blue-400/20 flex items-center justify-center mb-4">
-                          <Star className="w-10 h-10 text-blue-400 fill-blue-400" />
-                       </div>
-                      <AlertDialogTitle className="text-2xl">Super Like Bakiyen Bitti!</AlertDialogTitle>
-                      <AlertDialogDescription>
-                         Super Like göndererek eşleşme şansını 3 katına çıkarabilirsin. Bakiyeni yenilemek için hemen bir paket seç!
-                      </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
-                      <AlertDialogCancel>Şimdi Değil</AlertDialogCancel>
-                      <AlertDialogAction asChild>
-                          <Button className='bg-blue-500 text-white hover:bg-blue-600' onClick={() => router.push('/market')}>
-                              <Star className="mr-2 h-4 w-4" /> Super Like Satın Al
-                          </Button>
-                      </AlertDialogAction>
-                  </AlertDialogFooter>
-              </AlertDialogContent>
-           )}
-      </AlertDialog>
+      {isLoading ? (
+        <div className="flex items-center justify-center">
+          <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+        </div>
+      ) : profiles.length > 0 ? (
+        <div className="w-full max-w-md space-y-4">
+            <h2 className="text-xl font-bold text-center">Profil Listesi ({profiles.length})</h2>
+            {profiles.map(profile => (
+                <Card key={profile.uid}>
+                    <CardHeader>
+                        <CardTitle>{profile.fullName}</CardTitle>
+                        <CardDescription>UID: {profile.uid}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Doğum Tarihi: {profile.dateOfBirth}</p>
+                        <p>Cinsiyet: {profile.gender}</p>
+                        <p>Mesafe: {profile.distance !== undefined ? `${profile.distance} km` : 'Hesaplanamadı'}</p>
+                        <p>Konum: {profile.location ? `${profile.location.latitude}, ${profile.location.longitude}` : 'Bilinmiyor'}</p>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
+          <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
+          <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
+          <Button onClick={fetchProfiles}>
+            <Undo2 className="mr-2 h-4 w-4" />
+            Tekrar Dene
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
