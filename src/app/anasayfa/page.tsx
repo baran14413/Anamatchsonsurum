@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Undo2, Star, Heart, X as XIcon, Send } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
@@ -18,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
-const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile) => {
+const handleLikeAction = async (db: any, currentUser: UserProfile, swipedUser: UserProfile) => {
     const matchId = [currentUser.uid, swipedUser.uid].sort().join('_');
     const matchDocRef = doc(db, 'matches', matchId);
     const matchSnap = await getDoc(matchDocRef);
@@ -83,7 +84,7 @@ const handleLikeAction = async (db: Firestore, currentUser: UserProfile, swipedU
     }
 };
 
-const handleDislikeAction = async (db: Firestore, currentUserUid: string, swipedUserUid: string) => {
+const handleDislikeAction = async (db: any, currentUserUid: string, swipedUserUid: string) => {
     const matchId = [currentUserUid, swipedUserUid].sort().join('_');
     const matchDocRef = doc(db, 'matches', matchId);
     const isUser1 = currentUserUid < swipedUserUid;
@@ -97,7 +98,7 @@ const handleDislikeAction = async (db: Firestore, currentUserUid: string, swiped
     await setDoc(matchDocRef, updateData, { merge: true });
 };
 
-const handleSuperlikeAction = async (db: Firestore, currentUser: UserProfile, swipedUser: UserProfile) => {
+const handleSuperlikeAction = async (db: any, currentUser: UserProfile, swipedUser: UserProfile) => {
     const matchId = [currentUser.uid, swipedUser.uid].sort().join('_');
     const matchDocRef = doc(db, 'matches', matchId);
     const matchSnap = await getDoc(matchDocRef);
@@ -156,14 +157,6 @@ export default function AnasayfaPage() {
         return;
     }
     
-    if (!userProfile?.location?.latitude && !userProfile.globalModeEnabled) {
-        toast({
-            title: t.ayarlarKonum.locationMissingTitle,
-            description: t.ayarlarKonum.locationMissingDesc,
-            variant: 'destructive'
-        });
-    }
-
     setIsLoading(true);
     setLastDislikedProfile(null);
 
@@ -173,7 +166,7 @@ export default function AnasayfaPage() {
             const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
             const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
             
-            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(query2Snapshot) ]);
+            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
             query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
             query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
         }
@@ -182,7 +175,7 @@ export default function AnasayfaPage() {
         if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
           qConstraints.push(where('gender', '==', userProfile.genderPreference));
         }
-        qConstraints.push(limit(100)); // Fetch more to allow for client-side filtering
+        qConstraints.push(limit(20));
         
         const usersCollectionRef = collection(firestore, 'users');
         const usersQuery = query(usersCollectionRef, ...qConstraints);
@@ -202,7 +195,7 @@ export default function AnasayfaPage() {
         const isGlobalMode = userProfile.globalModeEnabled ?? false;
 
         let processedProfiles = fetchedProfiles.filter(p => {
-            if (interactedUids.has(p.uid) || !p.fullName || !p.images || p.images.length < 1) return false;
+            if (interactedUids.has(p.uid) || !p.fullName || p.images?.length < 1) return false;
             
             const age = calculateAge(p.dateOfBirth);
             if (age === null || age < minAge || age > maxAge) {
@@ -211,16 +204,17 @@ export default function AnasayfaPage() {
 
             if (isGlobalMode) {
                 return true; 
-            } else {
-                if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
-                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                    (p as ProfileWithDistance).distance = distance;
-                    return distance <= (userProfile.distancePreference ?? 80);
-                }
-                return false; 
             }
+            
+            if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
+                const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                (p as ProfileWithDistance).distance = distance;
+                return distance <= (userProfile.distancePreference ?? 160);
+            }
+            
+            return false;
         });
-
+        
         if (isGlobalMode) {
             processedProfiles.sort(() => Math.random() - 0.5);
         } else {
@@ -246,39 +240,45 @@ export default function AnasayfaPage() {
   const handleSwipeAction = useCallback((action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile || profiles.length === 0) return;
     
-    const swipedProfile = profiles[profiles.length - 1];
+    setProfiles(currentProfiles => {
+        const swipedProfile = currentProfiles[currentProfiles.length - 1];
+        if (!swipedProfile) return currentProfiles;
 
-    if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
-        setShowSuperlikeModal(true);
-        return;
-    }
-    
-    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
-
-    if (action === 'disliked') {
-      setLastDislikedProfile(swipedProfile);
-    } else {
-      setLastDislikedProfile(null);
-    }
-
-    (async () => {
-        try {
-            if (action === 'liked') {
-                const result = await handleLikeAction(firestore, userProfile, swipedProfile);
-                if(result.matched){
-                     toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
-                }
-            } else if (action === 'disliked') {
-                await handleDislikeAction(firestore, user.uid, swipedProfile.uid);
-            } else if (action === 'superliked') {
-                await handleSuperlikeAction(firestore, userProfile, swipedProfile);
-                toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
-            }
-        } catch (error: any) {
-            setProfiles(currentProfiles => [...currentProfiles, swipedProfile]); // Add back on error
-            toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
+        if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
+            setShowSuperlikeModal(true);
+            return currentProfiles; // Don't remove profile if modal is shown
         }
-    })();
+
+        if (action === 'disliked') {
+            setLastDislikedProfile(swipedProfile);
+        } else {
+            setLastDislikedProfile(null);
+        }
+
+        (async () => {
+            try {
+                if (action === 'liked') {
+                    const result = await handleLikeAction(firestore, userProfile, swipedProfile);
+                    if(result.matched){
+                         toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
+                    }
+                } else if (action === 'disliked') {
+                    await handleDislikeAction(firestore, user.uid, swipedProfile.uid);
+                } else if (action === 'superliked') {
+                    await handleSuperlikeAction(firestore, userProfile, swipedProfile);
+                    toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
+                }
+            } catch (error: any) {
+                // If any async action fails, we should ideally add the profile back.
+                // However, since state update is synchronous, we'll just log the error
+                // and show a toast. The user can refresh to get the profile again.
+                console.error("Swipe action failed:", error);
+                toast({ title: t.common.error, description: error.message || "Etkileşim kaydedilemedi.", variant: "destructive" });
+            }
+        })();
+
+        return currentProfiles.slice(0, -1);
+    });
   }, [user, firestore, userProfile, profiles, toast, t]);
  
   const handleUndo = useCallback(async () => {
@@ -316,11 +316,11 @@ export default function AnasayfaPage() {
   }, [lastDislikedProfile, user, firestore, userProfile]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-4">
+    <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
       }}>
-           <div className="relative w-full max-w-sm aspect-[3/4]">
+           <div className="relative w-full max-w-[380px] aspect-[3/4]">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -335,7 +335,6 @@ export default function AnasayfaPage() {
                         className="absolute w-full h-full"
                         style={{
                           zIndex: index,
-                          transform: `scale(${1 - (profiles.length - 1 - index) * 0.05}) translateY(-${(profiles.length - 1 - index) * 10}px)`,
                         }}
                         drag={isTopCard}
                         onDragEnd={(event, info) => {
