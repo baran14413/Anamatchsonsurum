@@ -32,7 +32,7 @@ export default function AnasayfaPage() {
     }
 
     setIsLoading(true);
-    setProfiles([]);
+    setProfiles([]); // Clear profiles to force a re-render with new data
 
     try {
       const usersRef = collection(firestore, 'users');
@@ -42,6 +42,7 @@ export default function AnasayfaPage() {
 
       let interactedUids = new Set<string>();
       if (!ignoreInteractions) {
+        // Fetch all interactions, including dislikes, to prevent them from reappearing
         const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
         interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
       }
@@ -52,13 +53,16 @@ export default function AnasayfaPage() {
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
         .filter(p => {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
-          if (interactedUids.has(p.uid)) return false;
           
+          // Use the matchId format for checking interactions, which is more robust
           const sortedIds = [user.uid, p.uid].sort();
           const matchId = sortedIds.join('_');
           if (interactedUids.has(matchId)) {
               return false;
           }
+          
+          if (!p.isBot && p.uid === user.uid) return false;
+
 
           if (userProfile.location && p.location && !userProfile.globalModeEnabled) {
               const distance = getDistance(
@@ -86,7 +90,7 @@ export default function AnasayfaPage() {
   }, [user, userProfile, firestore, toast]);
 
   const forceRefetchProfiles = () => {
-    fetchProfiles(true);
+    fetchProfiles(true); // Pass true to ignore previous interactions and "reset" the deck
   };
 
   useEffect(() => {
@@ -121,10 +125,12 @@ export default function AnasayfaPage() {
         };
         await setDoc(matchDocRef, updateData, { merge: true });
 
+        // Record the interaction in the user's subcollection as well to filter them out easily next time
         const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(userInteractionRef, { 
             matchedWith: profileToSwipe.uid, 
-            status: 'pending', 
+            status: 'pending', // A general status for any interaction
+            action: action, // Store the specific action
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || '',
@@ -162,7 +168,15 @@ export default function AnasayfaPage() {
                                 className="absolute w-full h-full"
                                 style={{
                                     zIndex: index,
-                                    transform: `scale(${1 - (profiles.length - 1 - index) * CARD_STACK_SCALE}) translateY(${(profiles.length - 1 - index) * CARD_STACK_OFFSET}px)`,
+                                }}
+                                initial={{
+                                    scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
+                                    y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
+                                }}
+                                animate={{
+                                    scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
+                                    y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
+                                    transition: { duration: 0.3, ease: "easeOut" }
                                 }}
                                 drag="x"
                                 dragConstraints={{ left: 0, right: 0 }}
@@ -175,7 +189,7 @@ export default function AnasayfaPage() {
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        // handleSwipe(profile, 'right'); // Right swipe is disabled for now
+                                        handleSwipe(profile, 'right');
                                     }
                                 }}
                                 custom={exitDirection}
