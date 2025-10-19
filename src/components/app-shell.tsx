@@ -13,8 +13,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
-const publicAuthRoutes = ['/', '/giris', '/login', '/tos', '/privacy', '/cookies'];
-const registrationRoute = '/profilini-tamamla';
+const publicAuthRoutes = ['/', '/giris', '/login', '/profilini-tamamla', '/tos', '/privacy', '/cookies'];
 const rulesRoute = '/kurallar';
 const adminRoutePrefix = '/admin';
 
@@ -27,13 +26,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
-  // Determine current route type
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
-  const isRegistrationRoute = pathname.startsWith(registrationRoute);
-  const isRulesRoute = pathname.startsWith(rulesRoute);
-  const isAdminRoute = pathname.startsWith(adminRoutePrefix);
-  const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
+  // --- START: ROUTING LOGIC ---
+  useEffect(() => {
+    // 1. Do nothing while auth state is resolving. This is the most important guard.
+    if (isUserLoading) {
+      return;
+    }
+
+    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
+    const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
+    const isRulesRoute = pathname.startsWith(rulesRoute);
+
+    // 2. Handle signed-in users
+    if (user) {
+      // Profile is incomplete -> force registration
+      if (!userProfile?.gender && pathname !== '/profilini-tamamla') {
+        router.replace('/profilini-tamamla');
+        return;
+      }
+      // Rules are not agreed to -> force rules page
+      if (userProfile?.gender && !userProfile.rulesAgreed && !isRulesRoute) {
+        router.replace(rulesRoute);
+        return;
+      }
+      // User is fully onboarded, but on a public/auth page -> redirect to app
+      if (userProfile?.rulesAgreed && (isPublicAuthRoute || isRulesRoute)) {
+        router.replace('/anasayfa');
+        return;
+      }
+    } 
+    // 3. Handle signed-out users
+    else {
+      // If a logged-out user tries to access a protected page, redirect to home.
+      if (isProtectedRoute) {
+        router.replace('/');
+        return;
+      }
+    }
+  }, [isUserLoading, user, userProfile, pathname, router]);
+  // --- END: ROUTING LOGIC ---
+
 
   // Effect for notifications (likes and messages)
   useEffect(() => {
@@ -63,45 +95,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, firestore]);
   
-  // --- REDESIGNED ROUTING LOGIC ---
-  useEffect(() => {
-    // 1. Do nothing while auth state is resolving. This is the most important guard.
-    if (isUserLoading) {
-      return;
-    }
 
-    // 2. Handle signed-in users
-    if (user) {
-      // Profile is incomplete -> force registration
-      if (!userProfile?.gender && !isRegistrationRoute) {
-        router.replace(registrationRoute);
-        return;
-      }
-      // Rules are not agreed to -> force rules page
-      if (userProfile?.gender && !userProfile.rulesAgreed && !isRulesRoute) {
-        router.replace(rulesRoute);
-        return;
-      }
-      // User is fully onboarded, but on a public/auth page -> redirect to app
-      if (userProfile?.rulesAgreed && (isPublicAuthRoute || isRegistrationRoute || isRulesRoute)) {
-        router.replace('/anasayfa');
-        return;
-      }
-    } 
-    // 3. Handle signed-out users
-    else {
-      // If a logged-out user tries to access a protected page, redirect to home.
-      // This allows them to stay on public pages like /login, /profilini-tamamla, /tos etc.
-      if (isProtectedRoute || isAdminRoute) {
-        router.replace('/');
-        return;
-      }
-    }
-  }, [isUserLoading, user, userProfile, pathname, router]);
-
-
-  // Show a global loader for protected areas while auth is resolving.
-  if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute)) {
+  // Show a global loader while auth is resolving to prevent flickers.
+  if (isUserLoading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
         <Icons.logo width={48} height={48} className="animate-pulse" />
@@ -110,7 +106,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   // Determine if the header and footer should be shown
-  const showHeaderAndFooter = user && userProfile?.gender && userProfile?.rulesAgreed && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
+  const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
+  const showHeaderAndFooter = user && userProfile?.rulesAgreed && protectedRoutes.some(route => pathname.startsWith(route)) && !pathname.startsWith('/ayarlar/') && !isChatPage;
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';
@@ -152,6 +149,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For all other cases (public routes, login, registration, settings, chat, loading), just render the children.
+  // For all other cases (public routes, login, registration, settings, chat etc.) render children without the main shell.
   return <>{children}</>;
 }
