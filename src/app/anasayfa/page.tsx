@@ -26,6 +26,9 @@ export default function AnasayfaPage() {
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   const fetchProfiles = useCallback(async () => {
+    // Reset profiles to allow refetching
+    setProfiles([]);
+
     if (!user || !userProfile || !firestore) {
       setIsLoading(false);
       return;
@@ -48,7 +51,6 @@ export default function AnasayfaPage() {
             if (!p.images || p.images.length === 0) return false;
             if (p.uid === user.uid) return false;
             
-            // Check if already matched
             const sortedIds = [user.uid, p.uid].sort();
             const matchId = sortedIds.join('_');
             if (interactedUids.has(matchId)) {
@@ -80,58 +82,30 @@ export default function AnasayfaPage() {
 
     setExitDirection(direction);
 
-    // Remove swiped profile from UI immediately
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
-    const action = direction === 'left' ? 'disliked' : 'liked';
-    
-    try {
-      const sortedIds = [user.uid, profileToSwipe.uid].sort();
-      const matchId = sortedIds.join('_');
-      const matchDocRef = doc(firestore, 'matches', matchId);
-      
-      const user1IsCurrentUser = user.uid === sortedIds[0];
-      const updateData: Partial<Match> = {
-          user1Id: sortedIds[0],
-          user2Id: sortedIds[1],
-          status: 'pending',
-          ...(user1IsCurrentUser 
-              ? { user1_action: action, user1_timestamp: serverTimestamp() } 
-              : { user2_action: action, user2_timestamp: serverTimestamp() })
-      };
-      
-      const denormalizedMatchForCurrentUser = {
-        id: matchId,
-        matchedWith: profileToSwipe.uid,
-        lastMessage: `You ${action} ${profileToSwipe.fullName}`,
-        timestamp: serverTimestamp(),
-        fullName: profileToSwipe.fullName,
-        profilePicture: profileToSwipe.profilePicture
-      };
+    if (direction === 'left') {
+        const action = 'disliked';
+        try {
+            const sortedIds = [user.uid, profileToSwipe.uid].sort();
+            const matchId = sortedIds.join('_');
+            const matchDocRef = doc(firestore, 'matches', matchId);
 
-      const denormalizedMatchForOtherUser = {
-        id: matchId,
-        matchedWith: user.uid,
-        lastMessage: `${userProfile?.fullName} has made a move!`,
-        timestamp: serverTimestamp(),
-        fullName: userProfile?.fullName,
-        profilePicture: userProfile?.profilePicture
-      };
-
-      await setDoc(matchDocRef, updateData, { merge: true });
-      await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), denormalizedMatchForCurrentUser, { merge: true });
-      await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), denormalizedMatchForOtherUser, { merge: true });
-
-    } catch (error: any) {
-      console.error(`Error handling ${action}:`, error);
-      toast({
-        title: "Hata",
-        description: `İşlem kaydedilemedi: ${error.message}`,
-        variant: "destructive"
-      });
-      // Optionally, add the profile back to the stack if the DB write fails
-      // setProfiles(prev => [profileToSwipe, ...prev]);
+            const user1IsCurrentUser = user.uid === sortedIds[0];
+            const updateData: Partial<Match> = {
+                user1Id: sortedIds[0],
+                user2Id: sortedIds[1],
+                status: 'pending',
+                ...(user1IsCurrentUser 
+                    ? { user1_action: action, user1_timestamp: serverTimestamp() } 
+                    : { user2_action: action, user2_timestamp: serverTimestamp() })
+            };
+            await setDoc(matchDocRef, updateData, { merge: true });
+        } catch (error: any) {
+            console.error(`Error handling ${action}:`, error);
+        }
     }
+
   }, [user, firestore, toast, userProfile]);
 
 
