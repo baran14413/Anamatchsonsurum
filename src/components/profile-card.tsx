@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, memo, useRef } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, Volume2, VolumeX } from 'lucide-react';
-import { motion, useTransform, useMotionValue } from 'framer-motion';
+import { MapPin, Heart, Star, ChevronUp, ChevronDown, Volume2, VolumeX } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -20,7 +19,6 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile;
-  x: ReturnType<typeof useMotionValue>;
   isTopCard?: boolean;
 }
 
@@ -63,7 +61,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, x, isTopCard = false }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
@@ -164,31 +162,28 @@ const ProfileCardComponent = ({ profile, x, isTopCard = false }: ProfileCardProp
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  const SWIPE_THRESHOLD = 80;
-
-  const CardContent = (
-    <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-        {profile.images && profile.images.length > 0 && profile.images.map((image, index) => {
-            const isActive = index === activeImageIndex;
-            return (
-              image.url && (
-                <Image
-                    key={`${image.url}-${index}`}
-                    src={image.url}
-                    alt={`${profile.fullName} profile image ${index + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ 
-                        objectFit: 'cover',
-                        opacity: isActive ? 1 : 0,
-                        transition: 'opacity 300ms ease-in-out'
-                    }}
-                    priority={isTopCard && index === 0}
-                />
-              )
-          )
-        })}
+  return (
+    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group">
+        {profile.images && profile.images.length > 0 && (
+          <>
+            {profile.images.map((image, index) => (
+                <div
+                  key={`${image.url}-${index}`}
+                  className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
+                  style={{ opacity: index === activeImageIndex ? 1 : 0 }}
+                >
+                  <Image
+                      src={image.url}
+                      alt={`${profile.fullName} profile image ${index + 1}`}
+                      fill
+                      sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                      className="object-cover"
+                      priority={isTopCard && index === 0}
+                  />
+                </div>
+            ))}
+          </>
+        )}
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
@@ -382,37 +377,11 @@ const ProfileCardComponent = ({ profile, x, isTopCard = false }: ProfileCardProp
         </div>
       </div>
   );
-
-  return (
-    <motion.div
-      style={{ rotate, x }}
-      drag={isTopCard}
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      dragElastic={0.2}
-      className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
-    >
-      <motion.div
-        style={{ display: x.get() > SWIPE_THRESHOLD ? 'flex' : 'none' }}
-        className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
-      >
-        <Heart className="w-16 h-16 text-green-500 fill-green-500" />
-      </motion.div>
-      <motion.div
-        style={{ display: x.get() < -SWIPE_THRESHOLD ? 'flex' : 'none' }}
-        className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
-      >
-        <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-      </motion.div>
-      {CardContent}
-    </motion.div>
-  );
 };
 
 const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
-
-    
 
     
