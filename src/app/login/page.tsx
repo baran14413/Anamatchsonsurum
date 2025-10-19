@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/anasayfa');
+      router.replace('/profilini-tamamla');
     }
   }, [user, router]);
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/anasayfa');
+      router.push('/profilini-tamamla');
     } catch (error: any) {
       toast({ title: t.errors.wrongPassword, description: error.message, variant: 'destructive' });
     } finally {
