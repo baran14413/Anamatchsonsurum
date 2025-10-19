@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -96,6 +97,18 @@ input, textarea {
       #dc2626,
       #000000,
       #7f1d1d
+    );
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+  }
+  
+  .animated-gradient-bg-signup {
+    background: linear-gradient(
+      -45deg,
+      #4f46e5,
+      #7c3aed,
+      #2563eb,
+      #0ea5e9
     );
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;

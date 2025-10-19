@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -59,17 +60,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+    <div className="flex h-dvh flex-col bg-background text-foreground animated-gradient-bg">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/20 bg-transparent px-4 text-white">
         <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting}>
           <ArrowLeft className="h-6 w-6" />
         </Button>
       </header>
-      <main className="flex-1 flex flex-col justify-center items-center p-6">
+      <main className="flex-1 flex flex-col justify-center items-center p-6 text-white">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h1 className="text-3xl font-bold">Tekrar Hoş Geldin!</h1>
-            <p className="text-muted-foreground">Hesabına giriş yaparak maceraya devam et.</p>
+            <p className="text-white/80">Hesabına giriş yaparak maceraya devam et.</p>
           </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -81,8 +82,8 @@ export default function LoginPage() {
                     <FormLabel>E-posta Adresi</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input type="email" placeholder={t.login.emailPlaceholder} className="pl-10 h-12" {...field} />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                        <Input type="email" placeholder={t.login.emailPlaceholder} className="pl-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -97,10 +98,10 @@ export default function LoginPage() {
                     <FormLabel>Şifre</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input type={showPassword ? 'text' : 'password'} placeholder={t.login.passwordPlaceholder} className="pl-10 pr-10 h-12" {...field} />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                        <Input type={showPassword ? 'text' : 'password'} placeholder={t.login.passwordPlaceholder} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                          {showPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
                         </button>
                       </div>
                     </FormControl>
@@ -108,14 +109,14 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full h-12 rounded-full font-bold text-lg" disabled={isSubmitting}>
+              <Button type="submit" className="w-full h-12 rounded-full font-bold text-lg bg-white text-red-600 hover:bg-gray-200" disabled={isSubmitting}>
                 {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : 'Giriş Yap'}
               </Button>
             </form>
           </Form>
-           <p className="text-center text-sm text-muted-foreground">
+           <p className="text-center text-sm text-white/80">
               {t.login.noAccount}{' '}
-              <Link href="/profilini-tamamla" className="font-semibold text-primary hover:underline">
+              <Link href="/profilini-tamamla" className="font-semibold text-white hover:underline">
                 {t.login.signupNow}
               </Link>
             </p>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -386,6 +387,8 @@ export default function ProfileCompletionForm() {
   const prevStep = () => {
     if (step > 0) {
       setStep((prev) => prev - 1);
+    } else {
+        router.push('/');
     }
   };
 
@@ -524,9 +527,9 @@ export default function ProfileCompletionForm() {
   };
   
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
-       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        <Button variant="ghost" size="icon" onClick={step === 0 ? () => router.push('/') : prevStep} disabled={isSubmitting}>
+    <div className="flex h-dvh flex-col animated-gradient-bg-signup text-white">
+       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-white/20 bg-transparent px-4">
+        <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
@@ -543,15 +546,15 @@ export default function ProfileCompletionForm() {
               {step === 0 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step1.title}</h1>
-                  <p className="text-muted-foreground mt-2">{t.step1.description}</p>
+                  <p className="text-white/80 mt-2">{t.step1.description}</p>
                   <div className="space-y-6 mt-8">
                      <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
                             <FormLabel>{t.step1.emailLabel}</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type="email" placeholder={langTr.login.emailPlaceholder} className="pl-10 h-12" {...field} />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                                    <Input type="email" placeholder={langTr.login.emailPlaceholder} className="pl-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -562,10 +565,10 @@ export default function ProfileCompletionForm() {
                              <FormLabel>{t.step1.passwordLabel}</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type={showPassword ? 'text' : 'password'} placeholder={langTr.login.passwordPlaceholder} className="pl-10 pr-10 h-12" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                                    <Input type={showPassword ? 'text' : 'password'} placeholder={langTr.login.passwordPlaceholder} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                        {showPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -577,10 +580,10 @@ export default function ProfileCompletionForm() {
                              <FormLabel>{t.step1.confirmPasswordLabel}</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.step1.confirmPasswordLabel} className="pl-10 pr-10 h-12" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.step1.confirmPasswordLabel} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -596,9 +599,9 @@ export default function ProfileCompletionForm() {
                   <FormField control={form.control} name="name" render={({ field }) => (
                       <FormItem>
                           <FormControl>
-                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent" {...field} />
+                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-white/50 rounded-none px-0 text-xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-white/50" {...field} />
                           </FormControl>
-                          <FormLabel className="text-muted-foreground">{t.step2.label}</FormLabel>
+                          <FormLabel className="text-white/80">{t.step2.label}</FormLabel>
                           <FormMessage />
                       </FormItem>
                       )}
@@ -614,11 +617,11 @@ export default function ProfileCompletionForm() {
                         <FormItem className="flex-1 flex flex-col min-h-0">
                           <div className="shrink-0">
                             <h1 className="text-3xl font-bold">{t.step12.title}</h1>
-                            <p className="text-muted-foreground">
+                            <p className="text-white/80">
                               {t.step12.description.replace('{count}', String(uploadedImageCount))}
                             </p>
                              <div className="space-y-2 mt-4">
-                                <Progress value={(uploadedImageCount / 10) * 100} className="h-2" />
+                                <Progress value={(uploadedImageCount / 10) * 100} className="h-2 bg-white/20" />
                                 <FormMessage />
                             </div>
                           </div>
@@ -626,7 +629,7 @@ export default function ProfileCompletionForm() {
                             <div className="grid grid-cols-2 gap-4">
                                 {imageSlots.map((slot, index) => (
                                     <div key={index} className="relative aspect-square">
-                                        <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-muted")}>
+                                        <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed border-white/50 bg-white/10 rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-white/20 group", slot.preview && "border-solid border-white/30")}>
                                             {slot.preview ? (
                                                 <>
                                                     <Image src={slot.preview} alt={`Önizleme ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
@@ -651,8 +654,8 @@ export default function ProfileCompletionForm() {
                                                     )}
                                                 </>
                                             ) : (
-                                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                                    <div className='h-12 w-12 rounded-full flex items-center justify-center bg-primary/20 text-primary'>
+                                                <div className="text-center text-white/70 p-2 flex flex-col items-center justify-center gap-2">
+                                                    <div className='h-12 w-12 rounded-full flex items-center justify-center bg-white/20 text-white'>
                                                         <Plus className="w-8 h-8" />
                                                     </div>
                                                 </div>
@@ -676,10 +679,10 @@ export default function ProfileCompletionForm() {
                         <FormControl>
                           <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} t={t.step3} />
                         </FormControl>
-                        <FormLabel className="text-muted-foreground pt-2 block">{t.step3.label}</FormLabel>
-                        <FormDescription>Doğum tarihinizi yalnızca bir kez ayarlayabilirsiniz ve bu daha sonra değiştirilemez.</FormDescription>
-                         {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2"><CheckCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageConfirm}</p></div>}
-                         {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2"><XCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageError}</p></div>}
+                        <FormLabel className="text-white/80 pt-2 block">{t.step3.label}</FormLabel>
+                        <FormDescription className="text-white/60">Doğum tarihinizi yalnızca bir kez ayarlayabilirsiniz ve bu daha sonra değiştirilemez.</FormDescription>
+                         {ageStatus === 'valid' && <div className="flex items-center text-green-400 mt-2"><CheckCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageConfirm}</p></div>}
+                         {ageStatus === 'invalid' && <div className="flex items-center text-red-400 mt-2"><XCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageError}</p></div>}
                          {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
                       </FormItem>
                     )}
@@ -707,7 +710,7 @@ export default function ProfileCompletionForm() {
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step5.title}</h1>
-                    <p className="text-muted-foreground">{t.step5.label}</p>
+                    <p className="text-white/80">{t.step5.label}</p>
                   </div>
                   <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
                   <FormField control={form.control} name="lookingFor" render={({ field }) => (
@@ -718,7 +721,7 @@ export default function ProfileCompletionForm() {
                               const Icon = lookingForOptions[index].icon;
                               const isSelected = field.value === option.id;
                               return (
-                                <button key={option.id} type="button" onClick={() => field.onChange(option.id)} className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors aspect-square ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}>
+                                <button key={option.id} type="button" onClick={() => field.onChange(option.id)} className={cn("p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors aspect-square", isSelected ? "bg-white text-blue-600 border-white" : "bg-white/10 border-white/30 hover:bg-white/20")}>
                                   <Icon className="w-8 h-8" />
                                   <span className="text-sm font-semibold text-center">{option.label}</span>
                                 </button>
@@ -742,7 +745,7 @@ export default function ProfileCompletionForm() {
                             <FormItem className="flex-1 flex flex-col min-h-0">
                                 <div className="shrink-0">
                                     <h1 className="text-3xl font-bold">{t.step11.title}</h1>
-                                    <p className="text-muted-foreground">
+                                    <p className="text-white/80">
                                         {t.step11.description.replace('{count}', String(field.value.length))}
                                     </p>
                                     <FormMessage className="pt-2" />
@@ -752,8 +755,8 @@ export default function ProfileCompletionForm() {
                                         {interestCategories.map((category) => {
                                         const Icon = LucideIcons[category.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
                                         return (
-                                            <AccordionItem value={category.title} key={category.title}>
-                                            <AccordionTrigger>
+                                            <AccordionItem value={category.title} key={category.title} className="border-white/20">
+                                            <AccordionTrigger className="hover:no-underline">
                                                 <div className="flex items-center gap-3">
                                                 <Icon className="h-5 w-5" />
                                                 <span>{category.title}</span>
@@ -778,7 +781,7 @@ export default function ProfileCompletionForm() {
                                         })}
                                     </Accordion>
                                 </div>
-                                <p className="text-center text-sm text-muted-foreground pt-4">Bunu daha sonra ayarlarınızda değiştirebilirsiniz.</p>
+                                <p className="text-center text-sm text-white/80 pt-4">Bunu daha sonra ayarlarınızda değiştirebilirsiniz.</p>
                             </FormItem>
                         )}
                     />
@@ -786,25 +789,25 @@ export default function ProfileCompletionForm() {
               )}
                {step === 7 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <MapPin className="w-20 h-20 text-primary" />
+                    <MapPin className="w-20 h-20 text-white" />
                     <div className="space-y-2">
                       <h1 className="text-3xl font-bold">{t.step6.title}</h1>
-                      <p className="text-muted-foreground">{t.step6.description}</p>
+                      <p className="text-white/80">{t.step6.description}</p>
                     </div>
                     {locationStatus === 'idle' && (
-                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full">
+                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full bg-white text-blue-600 hover:bg-gray-200">
                             {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />}
                             {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
                         </Button>
                     )}
                     {locationStatus === 'success' && (
-                        <div className="flex flex-col items-center gap-2 text-green-600">
+                        <div className="flex flex-col items-center gap-2 text-green-400">
                            <CheckCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">Konum Başarıyla Alındı!</p>
                         </div>
                     )}
                     {locationStatus === 'error' && (
-                         <div className="flex flex-col items-center gap-2 text-destructive">
+                         <div className="flex flex-col items-center gap-2 text-red-400">
                            <XCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">{locationError}</p>
                            <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
@@ -816,12 +819,12 @@ export default function ProfileCompletionForm() {
                 <div className="flex flex-col h-full">
                     <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.step7.title}</h1>
-                        <p className="text-muted-foreground">{t.step7.description}</p>
+                        <p className="text-white/80">{t.step7.description}</p>
                     </div>
                     <div className="flex-1 flex flex-col justify-center gap-8">
                         <div className="flex justify-between items-baseline">
                             <FormLabel className="text-base">Mesafe Tercihi</FormLabel>
-                            <span className="text-xl font-bold text-foreground">{distanceValue} Km</span>
+                            <span className="text-xl font-bold">{distanceValue} Km</span>
                         </div>
                         <Controller
                             name="distancePreference"
@@ -837,17 +840,17 @@ export default function ProfileCompletionForm() {
                                 />
                             )}
                         />
-                         <p className="text-center text-sm text-muted-foreground">{t.step7.info}</p>
+                         <p className="text-center text-sm text-white/80">{t.step7.info}</p>
                     </div>
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
                {step === totalSteps && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <Globe className="w-20 h-20 text-primary" />
+                    <Globe className="w-20 h-20 text-white" />
                     <div className="space-y-2">
                       <h1 className="text-3xl font-bold">Hazırsın!</h1>
-                      <p className="text-muted-foreground max-w-sm">
+                      <p className="text-white/80 max-w-sm">
                         Küresel mod açık olarak başlayacaksın. Bu, dünyanın her yerinden insanları görmeni sağlar. Bu ayarı daha sonra Tercihler menüsünden istediğin zaman değiştirebilirsin.
                       </p>
                     </div>
@@ -859,7 +862,7 @@ export default function ProfileCompletionForm() {
             <Button
               type="button"
               onClick={handleNextStep}
-              className="w-full h-14 rounded-full text-lg font-bold"
+              className="w-full h-14 rounded-full text-lg font-bold bg-white text-blue-600 hover:bg-gray-200"
               disabled={
                 isSubmitting ||
                 (step === 2 && uploadedImageCount < 2) ||
