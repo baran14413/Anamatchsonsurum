@@ -4,7 +4,7 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Settings, AtSign, Plus, Flame, Heart, MessageSquare, User } from 'lucide-react';
+import { ShieldCheck, Settings, AtSign, Plus, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 
 // Define route categories
@@ -28,17 +36,19 @@ const rulesRoute = '/kurallar';
 const adminRoutePrefix = '/admin';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, isUserLoading } = useUser();
+  const { user, userProfile, auth, isUserLoading } = useUser();
   const firestore = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
+  const { toast } = useToast();
+  const t = langTr;
 
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // --- START: ROUTING LOGIC ---
   useEffect(() => {
-    // 1. Wait until authentication state is fully resolved. This is the most important guard.
     if (isUserLoading) {
       return;
     }
@@ -47,26 +57,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
     const isRulesRoute = pathname === rulesRoute;
 
-    // 2. Handle Logged-In Users
     if (user) {
       if(userProfile && userProfile.isAdmin && pathname.startsWith('/admin')) {
         return;
       }
       
-      // If rules are not agreed to, force to rules page.
       if (userProfile && !userProfile.rulesAgreed && !isRulesRoute) {
         router.replace(rulesRoute);
         return;
       }
-      // If user is fully onboarded but on a public/auth route, redirect to the main app.
       if (userProfile?.rulesAgreed && (publicRoutes.includes(pathname) || isAuthRoute || isRulesRoute)) {
         router.replace('/anasayfa');
         return;
       }
     } 
-    // 3. Handle Logged-Out Users
     else {
-      // If a logged-out user tries to access a protected page, redirect to the welcome page.
       if (isProtectedRoute) {
         router.replace('/');
         return;
@@ -81,10 +86,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!user || !firestore) return;
 
     const likesQuery = query(
-      collection(firestore, "matches"),
-      where('user2Id', '==', user.uid),
-      where('user1_action', '==', 'liked'),
-      where('user2_action', '==', null)
+        collection(firestore, `users/${user.uid}/matches`), 
+        where('status', '==', 'superlike_pending'),
+        where('superLikeInitiator', '!=', user.uid)
     );
     const unsubscribeLikes = onSnapshot(likesQuery, (snapshot) => {
         setHasNewLikes(!snapshot.empty);
@@ -103,9 +107,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         unsubscribeMatches();
     };
   }, [user, firestore]);
+
+   const handleLogout = async () => {
+    if (!auth) return;
+    setIsLoggingOut(true);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: t.ayarlar.toasts.logoutErrorTitle,
+        description: t.ayarlar.toasts.logoutErrorDesc,
+        variant: "destructive"
+      });
+      setIsLoggingOut(false);
+    }
+  };
   
 
-  // Show a global loader while auth is resolving to prevent any UI flickering or incorrect rendering.
   if (isUserLoading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
@@ -122,38 +141,70 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (showAppUI) {
     const navItems = [
-      { href: '/anasayfa', icon: Flame, label: langTr.footerNav.home, hasNotification: false },
-      { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
-      { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
-      { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
+      { href: '/anasayfa', icon: Flame, label: t.footerNav.home, hasNotification: false },
+      { href: '/begeniler', icon: Heart, label: t.footerNav.likes, hasNotification: hasNewLikes },
+      { href: '/eslesmeler', icon: MessageSquare, label: t.footerNav.chats, hasNotification: hasUnreadMessages },
+      { href: '/profil', icon: User, label: t.footerNav.profile, hasNotification: false },
     ];
 
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
-         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4">
-            <div className="flex items-center gap-2">
-                <Link href="/ayarlar">
-                    <Button variant="ghost" size="icon">
-                        <Settings className="h-6 w-6 text-muted-foreground" />
-                    </Button>
-                </Link>
-                {userProfile?.isAdmin && (
-                    <Link href="/admin/dashboard">
-                        <Button variant="ghost" size="icon">
-                            <AtSign className="h-6 w-6 text-muted-foreground" />
-                        </Button>
-                    </Link>
-                )}
-            </div>
-
-            <Icons.logo width={80} height={26} />
-
-            <Link href="/profil">
-                <Button variant="ghost" size="icon">
-                    <User className="h-6 w-6 text-muted-foreground" />
-                </Button>
+         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+            <Link href="/anasayfa">
+              <Icons.logo width={32} height={32} />
             </Link>
 
+            <div className='flex items-center gap-1'>
+                 <TooltipProvider>
+                    {navItems.map((item) => (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          <Link href={item.href}>
+                            <Button variant='ghost' size='icon' className={cn("relative rounded-full h-11 w-11", pathname.startsWith(item.href) && "bg-muted")}>
+                                <item.icon className={cn("h-6 w-6", pathname.startsWith(item.href) ? "text-primary" : "text-muted-foreground")} />
+                                {item.hasNotification && (
+                                    <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
+                                )}
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{item.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                </TooltipProvider>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="rounded-full h-11 w-11">
+                            <Settings className="h-6 w-6 text-muted-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                         <DropdownMenuItem asChild>
+                           <Link href="/ayarlar">
+                            <Settings className='mr-2'/>
+                            <span>Ayarlar ve Hareketler</span>
+                           </Link>
+                        </DropdownMenuItem>
+                         {userProfile?.isAdmin && (
+                            <DropdownMenuItem asChild>
+                               <Link href="/admin/dashboard">
+                                 <AtSign className='mr-2'/>
+                                 <span>Yönetici Paneli</span>
+                               </Link>
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className='text-red-500 focus:text-red-500'>
+                            <LogOut className='mr-2'/>
+                            <span>Çıkış Yap</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+            </div>
         </header>
         <main className="flex-1 flex flex-col overflow-hidden">
            {children}
@@ -162,7 +213,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For ALL other cases (public routes, login, registration, settings, chat etc.), render children without the main app shell.
-  // This correctly isolates the registration and login flows from the main app's UI.
   return <>{children}</>;
 }
