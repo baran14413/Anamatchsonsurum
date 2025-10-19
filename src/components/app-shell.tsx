@@ -53,7 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // --- START: ROUTING LOGIC ---
   useEffect(() => {
     // Wait until user status is fully resolved before attempting any redirects.
-    if (isUserLoading) {
+    if (isUserLoading || (user && !userProfile) ) {
       return;
     }
 
@@ -135,7 +135,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // This is the most crucial part. While user status is loading,
   // or if the user is logged in but profile data is not yet available, show a full-screen loader.
   // This prevents any "flicker" of other pages.
-  if (isUserLoading || (user && !userProfile && pathname !== rulesRoute && !authRoutes.includes(pathname) && pathname !== '/')) {
+  if (isUserLoading || (user && !userProfile && !authRoutes.includes(pathname) && pathname !== rulesRoute && pathname !== '/')) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
         <Icons.logo width={48} height={48} className="animate-pulse" />
