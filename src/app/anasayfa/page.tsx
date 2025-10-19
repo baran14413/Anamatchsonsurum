@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +14,6 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -93,6 +93,8 @@ const fetchProfiles = async (
     }
 };
 
+const MemoizedProfileCard = memo(ProfileCard);
+
 export default function AnasayfaPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -119,8 +121,8 @@ export default function AnasayfaPage() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
-
-    // Immediately remove the card from the UI for a snappy feel
+    
+    // Optimistically remove the card from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -134,7 +136,7 @@ export default function AnasayfaPage() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
-            // Re-add the profile to the top of the stack if the action fails
+            // Re-add the profile if the action fails
             setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
@@ -206,27 +208,23 @@ export default function AnasayfaPage() {
 
         await setDoc(matchDocRef, updateData, { merge: true });
         
-        if (profileToSwipe.uid) {
-            let lastMessage = '';
-            if (isMatch) lastMessage = langTr.eslesmeler.defaultMessage;
-            if (action === 'superliked') lastMessage = `${userProfile.fullName} sana bir Super Like gönderdi!`;
+        let lastMessage = '';
+        if (isMatch) lastMessage = langTr.eslesmeler.defaultMessage;
+        else if (action === 'superliked') lastMessage = `${userProfile.fullName} sana bir Super Like gönderdi!`;
 
-            const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
-            await setDoc(otherUserInteractionRef, { 
-                id: matchId,
-                matchedWith: user.uid, 
-                status: updateData.status,
-                timestamp: serverTimestamp(),
-                fullName: userProfile?.fullName,
-                profilePicture: userProfile?.profilePicture || '',
-                isSuperLike: updateData.isSuperLike || false,
-                superLikeInitiator: updateData.superLikeInitiator || null,
-                lastMessage: lastMessage,
-            }, { merge: true });
-        }
+        await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), { 
+            id: matchId,
+            matchedWith: user.uid, 
+            status: updateData.status,
+            timestamp: serverTimestamp(),
+            fullName: userProfile.fullName,
+            profilePicture: userProfile.profilePicture || '',
+            isSuperLike: updateData.isSuperLike || false,
+            superLikeInitiator: updateData.superLikeInitiator || null,
+            lastMessage: lastMessage,
+        }, { merge: true });
         
-        const currentUserInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-        await setDoc(currentUserInteractionRef, {
+        await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), {
             id: matchId,
             matchedWith: profileToSwipe.uid,
             status: updateData.status,
@@ -276,26 +274,25 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-        <AnimatePresence>
             {topCard ? (
-                <ProfileCard
+                <MemoizedProfileCard
                     key={topCard.uid}
                     profile={topCard}
                     onSwipe={handleSwipe}
                 />
-            ) : null}
-        </AnimatePresence>
-        {!topCard && !isLoading && (
-            <div
-                className="flex flex-col items-center justify-center text-center p-4 space-y-4"
-            >
-                <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-                <p className="text-muted-foreground">
-                {langTr.anasayfa.outOfProfilesDescription}
-                </p>
-                <Button onClick={handleRetry}>Tekrar Dene</Button>
-            </div>
-        )}
+            ) : (
+                 !isLoading && (
+                    <div
+                        className="flex flex-col items-center justify-center text-center p-4 space-y-4"
+                    >
+                        <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                        <p className="text-muted-foreground">
+                        {langTr.anasayfa.outOfProfilesDescription}
+                        </p>
+                        <Button onClick={handleRetry}>Tekrar Dene</Button>
+                    </div>
+                )
+            )}
       </div>
     </div>
   );
