@@ -274,7 +274,7 @@ export default function AnasayfaPage() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-4 overflow-hidden">
-      <div className="relative w-full h-full max-w-md flex items-center justify-center">
+      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[85vh]">
             {topCard ? (
                 <MemoizedProfileCard
                     key={topCard.uid}
