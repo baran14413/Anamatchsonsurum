@@ -2,10 +2,10 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, PlayCircle } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, PlayCircle, VolumeX, Volume2 } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
@@ -67,9 +67,12 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setActiveImageIndex(0);
+    setIsMuted(true);
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
@@ -78,12 +81,19 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev + 1) % (profile.media?.length || 1));
+    setIsMuted(true);
   };
   
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev - 1 + (profile.media?.length || 1)) % (profile.media?.length || 1));
+    setIsMuted(true);
   };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(prev => !prev);
+  }
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -170,38 +180,52 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const CardView = (
     <>
       <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-        {profile.media && profile.media.length > 0 && profile.media.map((media, index) => (
-          media.url && (
-              media.type === 'image' ? (
-                <Image
-                    key={`${media.url}-${index}`}
-                    src={media.url}
-                    alt={`${profile.fullName} profile media ${index + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ objectFit: 'cover' }}
-                    className={cn(
-                        "pointer-events-none absolute inset-0 transition-opacity duration-300",
-                        index === activeImageIndex ? "opacity-100" : "opacity-0"
-                    )}
-                    priority={isTopCard && index === 0}
-                />
-              ) : (
-                <video
-                  key={`${media.url}-${index}`}
-                  src={media.url}
-                  muted
-                  autoPlay
-                  loop
-                  playsInline
-                  className={cn(
-                    "pointer-events-none absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
-                     index === activeImageIndex ? "opacity-100" : "opacity-0"
-                  )}
-                />
+        {profile.media && profile.media.length > 0 && profile.media.map((media, index) => {
+            const isActive = index === activeImageIndex;
+            return (
+              media.url && (
+                  media.type === 'image' ? (
+                    <Image
+                        key={`${media.url}-${index}`}
+                        src={media.url}
+                        alt={`${profile.fullName} profile media ${index + 1}`}
+                        fill
+                        sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                        style={{ objectFit: 'cover' }}
+                        className={cn(
+                            "absolute inset-0 transition-opacity duration-300",
+                            isActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                        )}
+                        priority={isTopCard && index === 0}
+                    />
+                  ) : (
+                    <div 
+                        key={`${media.url}-${index}`}
+                        className={cn(
+                          "absolute inset-0 w-full h-full transition-opacity duration-300",
+                          isActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                        )}
+                        onClick={handleVideoClick}
+                    >
+                        <video
+                          ref={videoRef}
+                          src={media.url}
+                          muted={isMuted}
+                          autoPlay
+                          loop
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                         {isActive && (
+                           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100'>
+                            {isMuted ? <VolumeX className='w-6 h-6' /> : <Volume2 className='w-6 h-6' />}
+                           </div>
+                        )}
+                    </div>
+                  )
               )
           )
-        ))}
+        })}
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
@@ -406,7 +430,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   );
 
   const cardWrapperClass = cn(
-    "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+    "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group",
     profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
   );
   
