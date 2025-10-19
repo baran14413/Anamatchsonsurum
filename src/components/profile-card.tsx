@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, Volume2, VolumeX } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
@@ -165,8 +164,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const CardView = (
-    <>
-      <div className="relative w-full h-full rounded-[14px] overflow-hidden">
+    <div className="relative w-full h-full rounded-[14px] overflow-hidden">
         {profile.images && profile.images.length > 0 && profile.images.map((image, index) => {
             const isActive = index === activeImageIndex;
             return (
@@ -379,15 +377,14 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
             </div>
         </div>
       </div>
-    </>
   );
   
   const x = useMemo(() => new MotionValue(0), []);
   const y = useMemo(() => new MotionValue(0), []);
-  const likeOpacity = useTransform(x, [0, 50], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -50], [0, 1]);
-  const superlikeOpacity = useTransform(y, [0, -50], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
+  const superlikeOpacity = useTransform(y, [0, -100], [0, 1]);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   
 
   if (!isTopCard) {
@@ -403,14 +400,14 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
       style={{ rotate, x, y }}
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
     >
-      <motion.div style={{ opacity: likeOpacity }} className="absolute top-16 left-4 z-40 p-4 rounded-full border-4 border-green-500 text-green-500">
+      <motion.div style={{ opacity: likeOpacity }} className="absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12">
         <Heart className="w-16 h-16 text-green-500 fill-green-500" />
       </motion.div>
-      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-16 right-4 z-40 p-4 rounded-full border-4 border-red-500 text-red-500">
+      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12">
           <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
       </motion.div>
-       <motion.div style={{ opacity: superlikeOpacity }} className="absolute bottom-32 left-1/2 -translate-x-1/2 z-40 p-4 rounded-full border-4 border-blue-500 text-blue-500">
-          <Star className="w-16 h-16 fill-transparent" />
+       <motion.div style={{ opacity: superlikeOpacity }} className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 p-4 rounded-full border-4 border-blue-500 text-blue-500">
+          <Star className="w-16 h-16 text-blue-500 fill-blue-500" />
       </motion.div>
       {CardView}
     </motion.div>
