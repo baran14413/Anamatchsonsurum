@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo, memo } from 'react';
@@ -21,7 +20,6 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  isTopCard?: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -63,7 +61,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
   
@@ -131,16 +129,14 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
       style={{ x, rotate }}
     >
-        {isTopCard && (
-            <>
-                 <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                    <Heart className="w-32 h-32 text-green-400 fill-green-400" />
-                </motion.div>
-                <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                    <XIcon className="w-32 h-32 text-red-500" strokeWidth={3} />
-                </motion.div>
-            </>
-        )}
+        <>
+             <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                <Heart className="w-32 h-32 text-green-400 fill-green-400" />
+            </motion.div>
+            <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                <XIcon className="w-32 h-32 text-red-500" strokeWidth={3} />
+            </motion.div>
+        </>
         
         {profile.images && profile.images.length > 0 && (
           <>
@@ -156,7 +152,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                       fill
                       sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                       className="object-cover"
-                      priority={isTopCard && index === 0}
+                      priority={index === 0}
                   />
                 </div>
             ))}
@@ -342,7 +338,9 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
 };
 
 const MemoizedProfileCard = memo(ProfileCardComponent, (prevProps, nextProps) => {
-    return prevProps.profile.uid === nextProps.profile.uid && prevProps.isTopCard === nextProps.isTopCard;
+    // Only re-render if the profile UID changes. This prevents re-renders
+    // from parent state changes that don't affect this specific card.
+    return prevProps.profile.uid === nextProps.profile.uid;
 });
 MemoizedProfileCard.displayName = 'ProfileCard';
 

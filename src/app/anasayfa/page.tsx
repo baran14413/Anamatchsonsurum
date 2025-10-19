@@ -7,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion, useAnimation } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -120,6 +120,7 @@ export default function AnasayfaPage() {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
     // Optimistically remove the profile from the UI
+    setSwipedCards(prev => ({ ...prev, [profileToSwipe.uid]: direction }));
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
@@ -232,9 +233,6 @@ export default function AnasayfaPage() {
                     const swipePower = Math.abs(offset.x) * velocity.x;
                     const swipeConfidenceThreshold = 10000;
                     
-                    const direction = offset.x > 0 ? 'right' : 'left';
-                    setSwipedCards(prev => ({ ...prev, [profile.uid]: direction }));
-
                     if (swipePower > swipeConfidenceThreshold) {
                       handleSwipe(profile, 'right');
                     } else if (swipePower < -swipeConfidenceThreshold) {
@@ -256,7 +254,7 @@ export default function AnasayfaPage() {
                   custom={{ direction: swipedCards[profile.uid] || 'left' }}
                   dragElastic={0.5}
                 >
-                  <ProfileCard profile={profile} isTopCard={isTopCard} />
+                  <ProfileCard profile={profile} />
                 </motion.div>
               );
             })
