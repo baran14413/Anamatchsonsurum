@@ -158,42 +158,44 @@ export default function SignUpPage() {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0) return;
-      const file = e.target.files[0];
-      const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
-      const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
+    const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
 
-      if (slotIndex === -1) return;
-      if (!storage) {
-          toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
-          return;
-      }
-      
-      setImageSlots(prev => {
-          const newSlots = [...prev];
-          newSlots[slotIndex] = { file, preview: URL.createObjectURL(file), isUploading: true, public_id: null };
-          return newSlots;
-      });
+    if (slotIndex === -1) return;
+    if (!storage) {
+        toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
+        return;
+    }
 
-      const tempId = `temp_${Date.now()}`;
-      const uniqueFileName = `bematch_profiles/${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      const imageRef = storageRef(storage, uniqueFileName);
+    setImageSlots(prev => {
+        const newSlots = [...prev];
+        newSlots[slotIndex] = { file, preview: URL.createObjectURL(file), isUploading: true, public_id: null };
+        return newSlots;
+    });
 
-      try {
-          const snapshot = await uploadBytes(imageRef, file);
-          const downloadURL = await getDownloadURL(snapshot.ref);
-          
-          setImageSlots(prev => {
-              const newSlots = [...prev];
-              newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
-              return newSlots;
-          });
-      } catch (error: any) {
-          toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
-          setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots()[i] : s));
-      } finally {
-        if (e.target) e.target.value = '';
-      }
+    const email = form.getValues('email');
+    const tempId = email ? email.replace(/[^a-zA-Z0-9]/g, '_') : `temp_${Date.now()}`;
+    const uniqueFileName = `bematch_profiles/${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const imageRef = storageRef(storage, uniqueFileName);
+
+    try {
+        const snapshot = await uploadBytes(imageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        
+        setImageSlots(prev => {
+            const newSlots = [...prev];
+            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
+            return newSlots;
+        });
+    } catch (error: any) {
+        toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
+        // Revert UI on failure
+        setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots()[i] : s));
+    } finally {
+        if (e.target) e.target.value = ''; // Reset file input
+    }
   };
 
 
@@ -207,19 +209,23 @@ export default function SignUpPage() {
               const imageRef = storageRef(storage, slotToDelete.public_id);
               await deleteObject(imageRef);
           } catch (err: any) {
+                // If object does not exist, we can ignore, otherwise it's a problem.
                 if (err.code !== 'storage/object-not-found') {
                   console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
-                  return;
+                  return; // Optionally stop the UI update if delete fails
                 }
           }
       }
       
+      // Update UI regardless of storage deletion outcome for better UX
       setImageSlots(prevSlots => {
           const newSlots = [...prevSlots];
           if (newSlots[index].preview && newSlots[index].file) {
+                // Revoke object URL to free memory if it's a local preview
                 URL.revokeObjectURL(newSlots[index].preview!);
           }
           newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
+          // Re-sort the array so empty slots are at the end
           const filledSlots = newSlots.filter(s => s.preview);
           const emptySlots = newSlots.filter(s => !s.preview);
           return [...filledSlots, ...emptySlots];
