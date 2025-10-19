@@ -22,7 +22,7 @@ const swipePower = (offset: number, velocity: number) => {
 };
 
 export default function AnasayfaPage() {
-  const { user, userProfile } = useUser();
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
