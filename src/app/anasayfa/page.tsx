@@ -91,8 +91,8 @@ export default function AnasayfaPage() {
   const forceRefetchProfiles = () => {
     if (!user || !userProfile || !firestore) return;
     
-    setIsLoading(true);
     setProfiles([]);
+    setIsLoading(true);
 
     const usersRef = collection(firestore, 'users');
     let q = query(usersRef, limit(50));
@@ -133,10 +133,10 @@ export default function AnasayfaPage() {
   useEffect(() => {
     if (user && firestore && userProfile) {
       fetchProfiles();
-    } else if (!user) {
+    } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, fetchProfiles]);
+  }, [user, firestore, userProfile, fetchProfiles, isUserLoading]);
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe) return;
@@ -254,8 +254,10 @@ export default function AnasayfaPage() {
                                     const power = swipePower(offset.x, velocity.x);
 
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
+                                        controls.start({ x: -500, rotate: -45, opacity: 0 });
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
+                                        controls.start({ x: 500, rotate: 45, opacity: 0 });
                                         handleSwipe(profile, 'right');
                                     } else {
                                         // Not enough power, snap back to center
@@ -264,13 +266,6 @@ export default function AnasayfaPage() {
                                 }}
                                 initial={{ x: 0, rotate: 0 }}
                                 animate={controls}
-                                exit={(direction: 'left' | 'right') => ({
-                                    x: direction === 'left' ? -500 : 500,
-                                    rotate: direction === 'left' ? -45 : 45,
-                                    opacity: 0,
-                                    transition: { duration: 0.5 }
-                                })}
-                                custom={offset.x < 0 ? 'left' : 'right'} // This seems incorrect, removing exit logic for now to simplify
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
