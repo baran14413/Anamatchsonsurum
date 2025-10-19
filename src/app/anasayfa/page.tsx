@@ -370,12 +370,16 @@ export default function AnasayfaPage() {
             });
         
         fetchedProfiles.sort((a, b) => {
+            // If global mode is on, randomize the sort order
+            if (isGlobalMode) {
+                if (a.isBot && !b.isBot) return -1;
+                if (!a.isBot && b.isBot) return 1;
+                return Math.random() - 0.5;
+            }
+            // If global mode is off, sort by bot status then distance
             if (a.isBot && !b.isBot) return -1;
             if (!a.isBot && b.isBot) return 1;
-            if (isGlobalMode) {
-              return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
-            }
-            return Math.random() - 0.5;
+            return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
         });
         
         setProfiles(fetchedProfiles.slice(0, 20));
@@ -553,6 +557,8 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
 
     
 
