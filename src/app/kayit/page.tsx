@@ -49,10 +49,6 @@ const formSchema = z.object({
         latitude: z.number(),
         longitude: z.number(),
     }),
-    address: z.object({
-      city: z.string().optional(),
-      country: z.string().optional()
-    }).optional(),
     interests: z.array(z.string()).min(5, { message: "Devam etmek için en az 5 ilgi alanı seçmelisin." }),
 }).refine(data => data.password === data.confirmPassword, {
     message: "Şifreler eşleşmiyor.",
@@ -133,18 +129,6 @@ export default function SignUpPage() {
         const { latitude, longitude } = position.coords;
         form.setValue('location', { latitude, longitude }, { shouldValidate: true });
         
-        try {
-          const response = await fetch('/api/geocode?lat=' + latitude + '&lon=' + longitude);
-          if(response.ok) {
-            const data = await response.json();
-            if (data.address) {
-              form.setValue('address', data.address);
-            }
-          }
-        } catch (e) {
-          console.warn("Konum adresi alınamadı, adres olmadan devam ediliyor.");
-        }
-
         setLocationStatus('success');
         setIsLocationLoading(false);
         toast({
@@ -163,7 +147,7 @@ export default function SignUpPage() {
         setLocationStatus('error');
         setIsLocationLoading(false);
       },
-      { timeout: 10000, enableHighAccuracy: false }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
   
@@ -282,7 +266,7 @@ export default function SignUpPage() {
             interests: data.interests,
             images: finalImages,
             location: data.location,
-            address: data.address || null,
+            address: null,
             profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
             createdAt: serverTimestamp(),
             dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 25)).toISOString(), // Default age 25
@@ -626,7 +610,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-
-    
-
-    
