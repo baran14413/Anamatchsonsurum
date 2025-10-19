@@ -28,7 +28,6 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const controls = useAnimation();
 
   const fetchProfiles = useCallback(async () => {
     if (!user || !userProfile || !firestore) {
@@ -80,7 +79,7 @@ export default function AnasayfaPage() {
         });
 
       setProfiles(fetchedProfiles);
-    } catch (error: any) {
+    } catch (error: any) => {
       console.error("Profil getirme hatası:", error);
       toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
     } finally {
@@ -254,18 +253,17 @@ export default function AnasayfaPage() {
                                     const power = swipePower(offset.x, velocity.x);
 
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
-                                        controls.start({ x: -500, rotate: -45, opacity: 0 });
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        controls.start({ x: 500, rotate: 45, opacity: 0 });
                                         handleSwipe(profile, 'right');
-                                    } else {
-                                        // Not enough power, snap back to center
-                                        controls.start({ x: 0, rotate: 0 });
                                     }
                                 }}
-                                initial={{ x: 0, rotate: 0 }}
-                                animate={controls}
+                                exit={{
+                                    x: (direction) => (direction === 'left' ? -500 : 500),
+                                    rotate: (direction) => (direction === 'left' ? -45 : 45),
+                                    opacity: 0,
+                                    transition: { duration: 0.5 }
+                                }}
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
@@ -285,3 +283,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
