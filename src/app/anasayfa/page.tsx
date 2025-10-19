@@ -190,8 +190,8 @@ export default function AnasayfaPage() {
         return;
     }
     
-    // Remove swiped profile from state immediately for smooth UI
-    setProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedProfile.id));
+    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
+
 
     if (action === 'disliked') {
       setLastDislikedProfile(swipedProfile);
@@ -313,7 +313,8 @@ export default function AnasayfaPage() {
         
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-            //.filter(p => !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
+
+        // Temporary: Disable all filters for debugging
         
         setProfiles(fetchedProfiles);
 
@@ -336,52 +337,6 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
- const CardStack = () => {
-    return (
-      <div className="relative w-full h-full">
-        <AnimatePresence>
-          {profiles.map((profile, index) => {
-            const isTopCard = index === profiles.length - 1;
-            return (
-              <motion.div
-                key={profile.id}
-                drag={isTopCard ? "x" : false}
-                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(e, { offset }) => {
-                  if (isTopCard) {
-                    if (offset.y < -100) handleSwipeAction(profile, 'superliked');
-                    else if (offset.x > 100) handleSwipeAction(profile, 'liked');
-                    else if (offset.x < -100) handleSwipeAction(profile, 'disliked');
-                  }
-                }}
-                className="absolute w-full h-full"
-                style={{ zIndex: index }}
-                initial={{
-                  y: index * 10,
-                  scale: 1 - (profiles.length - 1 - index) * 0.05,
-                  opacity: 1,
-                }}
-                animate={{
-                  y: (profiles.length - 1 - index) > 2 ? 2 * 10 : (profiles.length - 1 - index) * 10,
-                  scale: 1 - ((profiles.length - 1 - index) > 2 ? 2 * 0.05 : (profiles.length - 1 - index) * 0.05),
-                  opacity: (profiles.length - 1 - index) > 2 ? 0 : 1,
-                }}
-                exit={{
-                  x: 300,
-                  opacity: 0,
-                  scale: 0.5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <ProfileCard profile={profile} isTopCard={isTopCard} />
-              </motion.div>
-            );
-          }).reverse()}
-        </AnimatePresence>
-      </div>
-    );
-};
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -397,48 +352,45 @@ export default function AnasayfaPage() {
                       <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                   </div>
               ) : profiles.length > 0 ? (
-                  <>
-                    <AnimatePresence>
-                      {profiles.map((profile, index) => {
-                        const isTopCard = index === profiles.length - 1;
-                        return (
-                          <motion.div
-                            key={profile.id}
-                            drag={isTopCard ? "x" : false}
-                            onDragEnd={(event, info) => {
-                              if (info.offset.x > 100) {
-                                handleSwipeAction(profile, 'liked');
-                              } else if (info.offset.x < -100) {
-                                handleSwipeAction(profile, 'disliked');
-                              } else if (info.offset.y < -100) {
-                                 handleSwipeAction(profile, 'superliked');
-                              }
-                            }}
-                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                            dragElastic={0.5}
-                            className="absolute w-full h-full"
-                            style={{
-                                zIndex: index,
-                                scale: 1 - (profiles.length - 1 - index) * 0.03,
-                                top: (profiles.length - 1 - index) * 8
-                            }}
-                            exit={{ x: 300, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                          >
-                            <ProfileCard profile={profile} isTopCard={isTopCard} />
-                          </motion.div>
-                        )
-                      })}
-                    </AnimatePresence>
-
-                      {lastDislikedProfile && (
-                          <div className="absolute top-4 right-4 z-40">
-                              <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
-                                  <Undo2 className="h-5 w-5" />
-                              </Button>
-                          </div>
-                      )}
-                  </>
+                  <AnimatePresence>
+                    {profiles.map((profile, index) => {
+                      const isTopCard = index === profiles.length - 1;
+                      return (
+                        <motion.div
+                          key={profile.id}
+                          drag={isTopCard}
+                          onDragEnd={(event, info) => {
+                            if (!isTopCard) return;
+                            if (info.offset.x > 100) {
+                              handleSwipeAction(profile, 'liked');
+                            } else if (info.offset.x < -100) {
+                              handleSwipeAction(profile, 'disliked');
+                            } else if (info.offset.y < -100) {
+                               handleSwipeAction(profile, 'superliked');
+                            }
+                          }}
+                          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                          dragElastic={0.2}
+                          className="absolute w-full h-full"
+                          style={{
+                            zIndex: index,
+                          }}
+                          animate={{
+                             scale: 1 - (profiles.length - 1 - index) * 0.05,
+                             y: (profiles.length - 1 - index) * 10
+                          }}
+                          exit={{
+                            x: 300,
+                            opacity: 0,
+                            scale: 0.5,
+                            transition: { duration: 0.3 }
+                          }}
+                        >
+                          <ProfileCard profile={profile} isTopCard={isTopCard} />
+                        </motion.div>
+                      )
+                    }).reverse()}
+                  </AnimatePresence>
               ) : (
                   <div className="flex-1 flex items-center justify-center text-center h-full">
                       <div className='space-y-4'>
@@ -448,6 +400,13 @@ export default function AnasayfaPage() {
                               Tekrar Dene
                           </Button>
                       </div>
+                  </div>
+              )}
+               {profiles.length > 0 && lastDislikedProfile && (
+                  <div className="absolute top-4 right-4 z-40">
+                      <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
+                          <Undo2 className="h-5 w-5" />
+                      </Button>
                   </div>
               )}
           </div>
