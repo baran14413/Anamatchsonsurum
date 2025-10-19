@@ -54,18 +54,18 @@ const fetchProfiles = async (
                     p.distance = undefined;
                 }
 
-                const sortedIds = [user.uid, p.uid].sort();
-                const matchId = sortedIds.join('_');
-                if (interactedUids.has(matchId)) {
-                    return false;
-                }
-                
                 if (!ignoreFilters) {
-                  if (!userProfile.globalModeEnabled && p.distance !== undefined) {
-                      if (p.distance > (userProfile.distancePreference || 160)) {
-                          return false;
-                      }
-                  }
+                    const sortedIds = [user.uid, p.uid].sort();
+                    const matchId = sortedIds.join('_');
+                    if (interactedUids.has(matchId)) {
+                        return false;
+                    }
+
+                    if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+                        if (p.distance > (userProfile.distancePreference || 160)) {
+                            return false;
+                        }
+                    }
                 }
 
                 return true;
@@ -217,7 +217,7 @@ export default function AnasayfaPage() {
                       handleSwipe(profile, 'right');
                     }
                   }}
-                  initial={{ scale: 1, y: 0 }}
+                  initial={{ scale: 1, y: 0, rotate: 0 }}
                   animate={{
                     scale: 1 - Math.min(profiles.length - 1 - index, 3) * 0.05,
                     y: Math.min(profiles.length - 1 - index, 3) * 10,
