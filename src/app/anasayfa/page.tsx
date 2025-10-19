@@ -151,7 +151,7 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const fetchProfiles = useCallback(async (resetInteractions = false) => {
+  const fetchProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile) {
         setIsLoading(false);
         return;
@@ -163,14 +163,16 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        if (!resetInteractions) {
-            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-            
-            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
-            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
-            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
-        }
+        const userMatchesQuery = query(collectionGroup(firestore, 'matches'), where('id', 'in', [user.uid]));
+        const userInteractionsSnap = await getDocs(userMatchesQuery);
+        userInteractionsSnap.forEach(doc => {
+            const data = doc.data();
+            const uids = doc.id.split('_');
+            const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
+            if (otherUid) {
+                interactedUids.add(otherUid);
+            }
+        });
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
         const querySnapshot = await getDocs(usersQuery);
@@ -304,6 +306,8 @@ export default function AnasayfaPage() {
 
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-30, 30]);
+    const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+    const dislikeOpacity = useTransform(x, [-100, 0], [1, 0]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -340,6 +344,12 @@ export default function AnasayfaPage() {
                                 }
                             }}
                         >
+                            <motion.div style={{ opacity: likeOpacity }} className="absolute top-8 right-8 z-10">
+                                <Heart className="w-24 h-24 text-green-500 fill-green-500" />
+                            </motion.div>
+                            <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-8 left-8 z-10">
+                                <XIcon className="w-24 h-24 text-red-500" strokeWidth={3} />
+                            </motion.div>
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
                         </motion.div>
                        )
@@ -348,13 +358,30 @@ export default function AnasayfaPage() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
                             <h3 className="text-2xl font-bold">{t.anasayfa.outOfProfilesTitle}</h3>
                             <p className="text-muted-foreground">{t.anasayfa.outOfProfilesDescription}</p>
-                            <Button onClick={() => fetchProfiles(true)}>
+                            <Button onClick={() => fetchProfiles()}>
                                 <Undo2 className="mr-2 h-4 w-4" />
                                 Tekrar Dene
                             </Button>
                       </div>
                   )}
                </AnimatePresence>
+          </div>
+          <div className="flex justify-center items-center gap-4 mt-6">
+                <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-amber-400 text-amber-400" onClick={handleUndo} disabled={!lastDislikedProfile}>
+                    <Undo2 className="h-8 w-8" />
+                </Button>
+                <Button variant="outline" className="w-20 h-20 rounded-full border-2 border-red-500 text-red-500" onClick={() => handleSwipeAction('disliked')}>
+                    <XIcon className="h-10 w-10" />
+                </Button>
+                <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-blue-400 text-blue-400" onClick={() => handleSwipeAction('superliked')}>
+                    <Star className="h-8 w-8" />
+                </Button>
+                 <Button variant="outline" className="w-20 h-20 rounded-full border-2 border-green-400 text-green-400" onClick={() => handleSwipeAction('liked')}>
+                    <Heart className="h-10 w-10" />
+                </Button>
+                 <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-purple-400 text-purple-400" onClick={() => toast({ title: "Çok yakında!", description: "Bu özellik şu an geliştirme aşamasındadır."})}>
+                    <Send className="h-8 w-8" />
+                </Button>
           </div>
           
            {showUndoLimitModal && (
