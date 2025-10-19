@@ -1,26 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-
-const CARD_STACK_OFFSET = 10;
-const CARD_STACK_SCALE = 0.05;
-const SWIPE_CONFIDENCE_THRESHOLD = 10000;
-
-const swipePower = (offset: number, velocity: number) => {
-  return Math.abs(offset) * velocity;
-};
+import { Heart, X } from 'lucide-react';
 
 // Moved fetchProfiles outside the component to prevent it from being recreated on every render.
 const fetchProfiles = async (
@@ -90,7 +82,6 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
@@ -104,10 +95,9 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
-    setExitDirection(direction);
-
     const action = direction === 'right' ? 'liked' : 'disliked';
     
+    // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
@@ -178,20 +168,11 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
+        // Re-add profile to the list if the action fails
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
   }, [user, firestore, toast, userProfile]);
-
-  const handleDragEnd = (event: any, info: any, profile: UserProfile) => {
-      const power = swipePower(info.offset.x, info.velocity.x);
-
-      if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
-          handleSwipe(profile, 'left');
-      } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-          handleSwipe(profile, 'right');
-      }
-  };
 
   if (isLoading || isUserLoading) {
     return (
@@ -207,49 +188,44 @@ export default function AnasayfaPage() {
       }
   }
 
+  const currentProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-            <AnimatePresence>
-                {profiles.length > 0 ? (
-                    profiles.map((profile, index) => {
-                        const isTopCard = index === profiles.length - 1;
-                        return (
-                            <motion.div
-                                key={profile.uid}
-                                className="absolute w-full h-full"
-                                style={{
-                                    zIndex: index,
-                                    scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
-                                    y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
-                                }}
-                                drag={isTopCard}
-                                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                                dragElastic={0.2}
-                                onDragEnd={(e, info) => isTopCard && handleDragEnd(e, info, profile)}
-                                initial={{ opacity: 0, y: 50 }}
-                                animate={{ opacity: 1, y: (profiles.length - 1 - index) * CARD_STACK_OFFSET }}
-                                exit={{
-                                    x: exitDirection === 'right' ? 500 : -500,
-                                    opacity: 0,
-                                    rotate: exitDirection === 'right' ? 25 : -25,
-                                    transition: { duration: 0.5 }
-                                }}
-                            >
-                                <ProfileCard profile={profile} isTopCard={isTopCard} />
-                            </motion.div>
-                        );
-                    })
-                ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
-                        <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
-                        <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={handleRetry}>
-                            Tekrar Dene
+            {currentProfile ? (
+                <div className="w-full h-full flex flex-col gap-4">
+                    <div className="flex-1 w-full h-full">
+                       <ProfileCard profile={currentProfile} isTopCard={true} />
+                    </div>
+                    <div className="flex justify-center items-center gap-4">
+                        <Button
+                            onClick={() => handleSwipe(currentProfile, 'left')}
+                            variant="outline"
+                            size="icon"
+                            className="w-20 h-20 rounded-full border-destructive text-destructive bg-destructive/10 hover:bg-destructive/20"
+                        >
+                            <X className="h-10 w-10" />
+                        </Button>
+                        <Button
+                            onClick={() => handleSwipe(currentProfile, 'right')}
+                            variant="outline"
+                            size="icon"
+                            className="w-20 h-20 rounded-full border-green-500 text-green-500 bg-green-500/10 hover:bg-green-500/20"
+                        >
+                            <Heart className="h-10 w-10 fill-current" />
                         </Button>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
+                    <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
+                    <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
+                    <Button onClick={handleRetry}>
+                        Tekrar Dene
+                    </Button>
+                </div>
+            )}
         </div>
     </div>
   );
