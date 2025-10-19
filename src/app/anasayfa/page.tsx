@@ -162,13 +162,12 @@ export default function AnasayfaPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-        const userMatchesCollectionRef = collection(firestore, `users/${user.uid}/matches`);
-        const userInteractionsSnap = await getDocs(userMatchesCollectionRef);
-        
+        const userMatchesQuery = query(collectionGroup(firestore, 'matches'), where(user.uid, 'in', ['user1Id', 'user2Id']));
+        const userInteractionsSnap = await getDocs(userMatchesQuery);
+
         userInteractionsSnap.forEach(doc => {
             const matchData = doc.data() as Match;
-            if (matchData.id.startsWith('system')) return;
-            const otherUid = doc.id.replace(user.uid, '').replace('_', '');
+            const otherUid = matchData.user1Id === user.uid ? matchData.user2Id : matchData.user1Id;
             if (otherUid) {
                 interactedUids.add(otherUid);
             }
@@ -347,9 +346,11 @@ export default function AnasayfaPage() {
                               }}
                             exit={{
                                 x: 300,
+                                y: -100,
                                 opacity: 0,
                                 scale: 0.8,
-                                transition: { duration: 0.2 },
+                                rotate: 45,
+                                transition: { duration: 0.3 },
                             }}
                         >
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
@@ -415,3 +416,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
