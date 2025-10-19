@@ -384,10 +384,8 @@ export default function ProfileCompletionForm() {
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
-    if (step === 0) {
-        router.push('/');
-    } else {
-        setStep((prev) => prev - 1);
+    if (step > 0) {
+      setStep((prev) => prev - 1);
     }
   };
 
@@ -528,7 +526,7 @@ export default function ProfileCompletionForm() {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
-        <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
+        <Button variant="ghost" size="icon" onClick={step === 0 ? () => router.push('/') : prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
         <Progress value={progressValue} className="h-2 flex-1" />
@@ -576,11 +574,11 @@ export default function ProfileCompletionForm() {
                       )} />
                       <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                         <FormItem>
-                             <FormLabel>{t.login.confirmPasswordLabel}</FormLabel>
+                             <FormLabel>{t.step1.confirmPasswordLabel}</FormLabel>
                             <FormControl>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.login.confirmPasswordLabel} className="pl-10 pr-10 h-12" {...field} />
+                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.step1.confirmPasswordLabel} className="pl-10 pr-10 h-12" {...field} />
                                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
                                         {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
                                     </button>
