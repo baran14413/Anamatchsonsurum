@@ -80,9 +80,11 @@ const fetchProfiles = async (
             });
 
         fetchedProfiles.sort((a, b) => {
+            // If global mode is enabled, sort by distance from nearest to farthest.
             if (userProfile.globalModeEnabled) {
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
+            // Otherwise, shuffle randomly.
             return Math.random() - 0.5;
         });
 
@@ -103,12 +105,14 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [swipedUids, setSwipedUids] = useState<Set<string>>(new Set());
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
     if (user && firestore && userProfile && !isUserLoading) {
       setIsLoading(true);
       const fetched = await fetchProfiles(firestore, user, userProfile, ignoreFilters);
       setProfiles(fetched);
+      setSwipedUids(new Set()); // Reset swiped UIDs when loading new profiles
       setIsLoading(false);
     } else if (!isUserLoading) {
       setIsLoading(false);
@@ -122,8 +126,8 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
-    // Optimistically remove the card from the UI
-    setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
+    // Optimistically add to swiped list to trigger exit animation
+    setSwipedUids(prev => new Set(prev).add(profileToSwipe.uid));
 
     if (direction === 'up') {
         const currentUserRef = doc(firestore, 'users', user.uid);
@@ -136,8 +140,12 @@ export default function AnasayfaPage() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
-            // Re-add the profile if the action fails
-            setProfiles(prev => [profileToSwipe, ...prev]);
+            // Re-add the profile if the action fails by removing from swiped list
+            setSwipedUids(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(profileToSwipe.uid);
+                return newSet;
+            });
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
@@ -252,9 +260,18 @@ export default function AnasayfaPage() {
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
         // If there's an error, put the card back on the stack
-        setProfiles(prev => [profileToSwipe, ...prev]);
+        setSwipedUids(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(profileToSwipe.uid);
+            return newSet;
+        });
     }
   }, [user, firestore, toast, userProfile, router]);
+  
+  const handleExitComplete = (uid: string) => {
+    // Permanently remove the profile from the state after the animation is complete
+    setProfiles(prev => prev.filter(p => p.uid !== uid));
+  };
 
 
   if (isLoading || isUserLoading) {
@@ -269,7 +286,8 @@ export default function AnasayfaPage() {
       loadProfiles(true);
   }
   
-  const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
+  const visibleProfiles = profiles.filter(p => !swipedUids.has(p.uid));
+  const topCard = visibleProfiles.length > 0 ? visibleProfiles[visibleProfiles.length - 1] : null;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
