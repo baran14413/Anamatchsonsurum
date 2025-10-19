@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, PlayCircle } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
@@ -83,12 +83,12 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
+    setActiveImageIndex((prev) => (prev + 1) % (profile.media?.length || 1));
   };
   
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
+    setActiveImageIndex((prev) => (prev - 1 + (profile.media?.length || 1)) % (profile.media?.length || 1));
   };
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
@@ -176,21 +176,36 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
   const CardView = (
     <>
       <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-        {profile.images && profile.images.length > 0 && profile.images.map((image, index) => (
-          image.url && (
-              <Image
-                  key={`${image.url}-${index}`}
-                  src={image.url}
-                  alt={`${profile.fullName} profile image ${index + 1}`}
-                  fill
-                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                  style={{ objectFit: 'cover' }}
+        {profile.media && profile.media.length > 0 && profile.media.map((media, index) => (
+          media.url && (
+              media.type === 'image' ? (
+                <Image
+                    key={`${media.url}-${index}`}
+                    src={media.url}
+                    alt={`${profile.fullName} profile media ${index + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                    style={{ objectFit: 'cover' }}
+                    className={cn(
+                        "pointer-events-none absolute inset-0 transition-opacity duration-300",
+                        index === activeImageIndex ? "opacity-100" : "opacity-0"
+                    )}
+                    priority={index === 0}
+                />
+              ) : (
+                <video
+                  key={`${media.url}-${index}`}
+                  src={media.url}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
                   className={cn(
-                      "pointer-events-none absolute inset-0 transition-opacity duration-300",
-                      index === activeImageIndex ? "opacity-100" : "opacity-0"
+                    "pointer-events-none absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+                     index === activeImageIndex ? "opacity-100" : "opacity-0"
                   )}
-                  priority={index === 0}
-              />
+                />
+              )
           )
         ))}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -207,10 +222,10 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
-        {profile.images && profile.images.length > 1 && (
+        {profile.media && profile.media.length > 1 && (
             <>
                 <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
-                    {profile.images.map((_, index) => (
+                    {profile.media.map((_, index) => (
                         <div key={index} className='h-1 flex-1 rounded-full bg-white/40 group'>
                             <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                         </div>
@@ -274,20 +289,27 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                         </SheetHeader>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
-                                {profile.images && profile.images.length > 0 && (
+                                {profile.media && profile.media.length > 0 && (
                                      <Carousel className="w-full">
                                         <CarouselContent>
-                                            {profile.images
-                                                .filter(image => image && image.url && validImageExtensions.some(ext => image.url.toLowerCase().endsWith(ext)))
-                                                .map((image, index) => (
+                                            {profile.media
+                                                .map((media, index) => (
                                                 <CarouselItem key={index}>
                                                     <div className="relative w-full aspect-[4/3]">
-                                                        <Image
-                                                            src={image.url}
-                                                            alt={`${profile.fullName} profil fotoğrafı ${index + 1}`}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
+                                                         {media.type === 'image' ? (
+                                                            <Image
+                                                                src={media.url}
+                                                                alt={`${profile.fullName} profil medyası ${index + 1}`}
+                                                                fill
+                                                                className="object-cover"
+                                                            />
+                                                          ) : (
+                                                            <video
+                                                              src={media.url}
+                                                              controls
+                                                              className="w-full h-full object-cover"
+                                                             />
+                                                          )}
                                                     </div>
                                                 </CarouselItem>
                                             ))}

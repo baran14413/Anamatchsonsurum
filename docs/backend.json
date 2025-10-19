@@ -40,9 +40,9 @@
           "description": "URL of the user's main profile picture.",
           "format": "uri"
         },
-        "images": {
+        "media": {
           "type": "array",
-          "description": "A list of image objects for the user's profile photos.",
+          "description": "A list of media objects for the user's profile.",
           "items": {
             "type": "object",
             "properties": {
@@ -52,6 +52,10 @@
               },
               "public_id": {
                 "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["image", "video"]
               }
             }
           }

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -139,7 +140,7 @@ export default function ProfilePage() {
       if (userProfile.gender) score++;
       if (userProfile.location) score++;
       if (userProfile.lookingFor) score++;
-      if (userProfile.images && userProfile.images.length >= 2) score++;
+      if (userProfile.media && userProfile.media.length >= 2) score++;
       if (userProfile.interests && userProfile.interests.length > 0) score++;
       return Math.round((score / maxScore) * 100);
   }
