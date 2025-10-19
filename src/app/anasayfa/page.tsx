@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -112,7 +112,8 @@ export default function AnasayfaPage() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
-    
+
+    setExitDirection(direction);
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     if (profileToSwipe.isBot) {
@@ -221,8 +222,8 @@ export default function AnasayfaPage() {
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
           <AnimatePresence>
           {profiles.length > 0 ? (
-            profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
+            profiles.slice(-3).map((profile, index) => {
+              const isTopCard = index === profiles.slice(-3).length - 1;
               return (
                 <motion.div
                   key={profile.uid}
@@ -236,17 +237,15 @@ export default function AnasayfaPage() {
                     const swipeConfidenceThreshold = 10000;
                     
                     if (swipePower < -swipeConfidenceThreshold) {
-                      setExitDirection('left');
                       handleSwipe(profile, 'left');
                     } else if (swipePower > swipeConfidenceThreshold) {
-                      setExitDirection('right');
                       handleSwipe(profile, 'right');
                     }
                   }}
                   initial={{ scale: 1, y: 0, opacity: 1 }}
                   animate={{
-                    scale: 1 - (profiles.length - 1 - index) * 0.05,
-                    y: (profiles.length - 1 - index) * 10,
+                    scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05,
+                    y: (profiles.slice(-3).length - 1 - index) * 10,
                     opacity: 1
                   }}
                   exit={{
@@ -279,5 +278,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
