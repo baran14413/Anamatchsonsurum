@@ -7,13 +7,14 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+
 
 // Moved fetchProfiles outside the component to prevent it from being recreated on every render.
 const fetchProfiles = async (
@@ -42,10 +43,6 @@ const fetchProfiles = async (
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
 
-                if (!ignoreFilters) {
-                    if (p.isBot === true) return true; // Bots should always be available
-                }
-                
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
                         userProfile.location.latitude!,
@@ -76,8 +73,8 @@ const fetchProfiles = async (
 
         setProfiles(fetchedProfiles);
     } catch (error: any) {
-        console.error("Profil getirme hatası:", error);
-        toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
+      console.error("Profil getirme hatası:", error);
+      toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -90,7 +87,6 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
@@ -98,20 +94,17 @@ export default function AnasayfaPage() {
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, isUserLoading]);
+  }, [user, firestore, userProfile, isUserLoading, toast]);
 
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
-
-    setExitDirection(direction);
-
-    const action = direction === 'right' ? 'liked' : 'disliked';
     
     // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
+        const action = direction === 'right' ? 'liked' : 'disliked';
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
         const matchId = sortedIds.join('_');
         const matchDocRef = doc(firestore, 'matches', matchId);
@@ -202,10 +195,11 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
       <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-        <AnimatePresence>
           {profiles.length > 0 ? (
             profiles.map((profile, index) => {
               const isTopCard = index === profiles.length - 1;
+              const controls = useAnimation();
+
               return (
                 <motion.div
                   key={profile.uid}
@@ -214,30 +208,28 @@ export default function AnasayfaPage() {
                   dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                   onDragEnd={(event, { offset, velocity }) => {
                     if (!isTopCard) return;
-                    const swipeConfidenceThreshold = 10000;
-                    const swipePower = Math.abs(offset.x) * velocity.x;
 
-                    if (swipePower < -swipeConfidenceThreshold) {
-                      handleSwipe(profile, 'left');
-                    } else if (swipePower > swipeConfidenceThreshold) {
-                      handleSwipe(profile, 'right');
+                    const swipePower = Math.abs(offset.x) * velocity.x;
+                    const swipeConfidenceThreshold = 10000;
+                    
+                    if (swipePower > swipeConfidenceThreshold) { // Swiped right
+                      controls.start({
+                        x: 500,
+                        opacity: 0,
+                        rotate: 30,
+                        transition: { duration: 0.5 }
+                      }).then(() => handleSwipe(profile, 'right'));
+                    } else { // Didn't swipe right with enough force, snap back
+                      controls.start({ x: 0, rotate: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } });
                     }
                   }}
                   initial={{ scale: 1, y: 0, rotate: 0 }}
-                  animate={{
+                  animate={controls}
+                  style={{
                     scale: 1 - Math.min(profiles.length - 1 - index, 3) * 0.05,
                     y: Math.min(profiles.length - 1 - index, 3) * 10,
                   }}
-                  transition={{
-                    scale: { duration: 0.2 },
-                    y: { duration: 0.2 },
-                  }}
-                  exit={{
-                    x: exitDirection === 'left' ? -500 : 500,
-                    opacity: 0,
-                    scale: 0.5,
-                    transition: { duration: 0.5 },
-                  }}
+                  dragElastic={0.5}
                 >
                   <ProfileCard profile={profile} isTopCard={isTopCard} />
                 </motion.div>
@@ -252,7 +244,6 @@ export default function AnasayfaPage() {
               <Button onClick={handleRetry}>Tekrar Dene</Button>
             </div>
           )}
-        </AnimatePresence>
       </div>
     </div>
   );
