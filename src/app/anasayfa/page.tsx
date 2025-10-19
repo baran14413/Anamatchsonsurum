@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -400,9 +400,13 @@ export default function AnasayfaPage() {
   
   const CardStack = useCallback(() => {
     const reversedProfiles = [...profiles].reverse();
+    const visibleProfiles = reversedProfiles.slice(-2);
   
-    return reversedProfiles.slice(-2).map((profile, i) => {
-        const isTopCard = i === reversedProfiles.slice(-2).length - 1;
+    return visibleProfiles.map((profile, i) => {
+        const isTopCard = i === visibleProfiles.length - 1;
+        const x = useMotionValue(0);
+        const y = useMotionValue(0);
+        
         const dragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
             if (!isTopCard) return;
             const SWIPE_THRESHOLD = 50;
@@ -427,15 +431,17 @@ export default function AnasayfaPage() {
                 className="absolute w-full h-full"
                 style={{
                   zIndex: i,
+                  x,
+                  y
                 }}
                 initial={{
-                  scale: 1 - (reversedProfiles.slice(-2).length - 1 - i) * 0.05,
-                  y: (reversedProfiles.slice(-2).length - 1 - i) * 10,
+                  scale: 1 - (visibleProfiles.length - 1 - i) * 0.05,
+                  y: (visibleProfiles.length - 1 - i) * 10,
                   opacity: 1
                 }}
                 animate={{
-                  scale: 1 - (reversedProfiles.slice(-2).length - 1 - i) * 0.05,
-                  y: (reversedProfiles.slice(-2).length - 1 - i) * 10,
+                  scale: 1 - (visibleProfiles.length - 1 - i) * 0.05,
+                  y: (visibleProfiles.length - 1 - i) * 10,
                   opacity: 1
                 }}
                 transition={{ duration: 0.3 }}
@@ -447,7 +453,7 @@ export default function AnasayfaPage() {
                     transition: { duration: 0.3 }
                 }}
             >
-                <ProfileCard profile={profile} isTopCard={isTopCard} />
+                <ProfileCard profile={profile} x={x} y={y} isTopCard={isTopCard} />
             </motion.div>
         );
     });
@@ -538,3 +544,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    

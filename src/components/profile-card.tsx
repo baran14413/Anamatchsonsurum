@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, Volume2, VolumeX } from 'lucide-react';
-import { motion, useTransform, MotionValue } from 'framer-motion';
+import { motion, useTransform, useMotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -20,6 +20,8 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile;
+  x: ReturnType<typeof useMotionValue>;
+  y: ReturnType<typeof useMotionValue>;
   isTopCard?: boolean;
 }
 
@@ -62,10 +64,14 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -83,6 +89,15 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
+    
+  const handleVideoClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if(videoRef.current) {
+        const newMutedState = !videoRef.current.muted;
+        videoRef.current.muted = newMutedState;
+        setIsMuted(newMutedState);
+      }
+  }
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -163,7 +178,11 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const CardView = (
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
+  const superlikeOpacity = useTransform(y, [0, -100], [0, 1]);
+  
+  const CardContent = (
     <div className="relative w-full h-full rounded-[14px] overflow-hidden">
         {profile.images && profile.images.length > 0 && profile.images.map((image, index) => {
             const isActive = index === activeImageIndex;
@@ -177,7 +196,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                     sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                     style={{ objectFit: 'cover' }}
                     className={cn(
-                        "absolute inset-0 transition-opacity duration-300",
+                        "absolute inset-0 transition-opacity duration-200",
                         isActive ? "opacity-100" : "opacity-0 pointer-events-none"
                     )}
                     priority={isTopCard && index === 0}
@@ -378,38 +397,37 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
         </div>
       </div>
   );
-  
-  const x = useMemo(() => new MotionValue(0), []);
-  const y = useMemo(() => new MotionValue(0), []);
-  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-  const superlikeOpacity = useTransform(y, [0, -100], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  
 
-  if (!isTopCard) {
-      return (
-        <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group">
-             {CardView}
-        </div>
-      );
-  }
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const SWIPE_THRESHOLD = 50;
 
   return (
     <motion.div
       style={{ rotate, x, y }}
+      drag={isTopCard}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.2}
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
     >
-      <motion.div style={{ opacity: likeOpacity }} className="absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12">
+      <motion.div
+        style={{ opacity: likeOpacity }}
+        className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12"
+      >
         <Heart className="w-16 h-16 text-green-500 fill-green-500" />
       </motion.div>
-      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12">
-          <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
+      <motion.div
+        style={{ opacity: dislikeOpacity }}
+        className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12"
+      >
+        <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
       </motion.div>
-       <motion.div style={{ opacity: superlikeOpacity }} className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 p-4 rounded-full border-4 border-blue-500 text-blue-500">
-          <Star className="w-16 h-16 text-blue-500 fill-blue-500" />
+      <motion.div
+        style={{ opacity: superlikeOpacity }}
+        className="pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 z-50 p-4 rounded-full border-4 border-blue-500 text-blue-500"
+      >
+        <Star className="w-16 h-16 text-blue-500 fill-blue-500" />
       </motion.div>
-      {CardView}
+      {CardContent}
     </motion.div>
   );
 };
@@ -418,3 +436,5 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
+
+    
