@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -304,15 +304,7 @@ export default function AnasayfaPage() {
         }
 
         const qConstraints = [];
-        const genderPref = userProfile?.genderPreference;
-        const isGlobalMode = userProfile?.globalModeEnabled;
-        const ageRange = userProfile?.ageRange;
-
-        if (genderPref && genderPref !== 'both') {
-          qConstraints.push(where('gender', '==', genderPref));
-        }
-        
-        qConstraints.push(limit(100));
+        qConstraints.push(limit(20));
         
         const usersCollectionRef = collection(firestore, 'users');
         const usersQuery = query(usersCollectionRef, ...qConstraints);
@@ -320,54 +312,10 @@ export default function AnasayfaPage() {
         const querySnapshot = await getDocs(usersQuery);
         
         let fetchedProfiles = querySnapshot.docs
-            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-            .filter(p => {
-                if (!p.uid || interactedUids.has(p.uid) || !p.fullName || !p.images || p.images.length === 0) {
-                    return false;
-                }
-
-                if (ageRange) {
-                    const age = calculateAge(p.dateOfBirth);
-                    if (age === null) return false;
-                    const minAge = userProfile.expandAgeRange ? ageRange.min - 5 : ageRange.min;
-                    const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
-                    if (age < minAge || age > maxAge) return false;
-                }
-                
-                if (isGlobalMode) {
-                    return true;
-                }
-                
-                if (!p.location?.latitude || !p.location?.longitude) {
-                    return false;
-                }
-                
-                const distance = getDistance(
-                    userProfile.location!.latitude!,
-                    userProfile.location!.longitude!,
-                    p.location.latitude,
-                    p.location.longitude
-                );
-
-                (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
-                
-                const userDistancePref = userProfile.distancePreference || 50;
-                return distance <= userDistancePref;
-            });
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+            //.filter(p => !interactedUids.has(p.uid) && p.fullName && p.images && p.images.length > 0);
         
-        if (isGlobalMode) {
-            fetchedProfiles.sort(() => Math.random() - 0.5);
-        } else {
-            fetchedProfiles.sort((a, b) => {
-                const distA = (a as ProfileWithDistance).distance ?? Infinity;
-                const distB = (b as ProfileWithDistance).distance ?? Infinity;
-                if (a.isBot && !b.isBot) return -1;
-                if (!a.isBot && b.isBot) return 1;
-                return distA - distB;
-            });
-        }
-        
-        setProfiles(fetchedProfiles.slice(0, 20));
+        setProfiles(fetchedProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -388,7 +336,7 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
-  const CardStack = () => {
+ const CardStack = () => {
     return (
       <div className="relative w-full h-full">
         <AnimatePresence>
@@ -435,7 +383,6 @@ export default function AnasayfaPage() {
     );
 };
 
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -451,7 +398,39 @@ export default function AnasayfaPage() {
                   </div>
               ) : profiles.length > 0 ? (
                   <>
-                      <CardStack />
+                    <AnimatePresence>
+                      {profiles.map((profile, index) => {
+                        const isTopCard = index === profiles.length - 1;
+                        return (
+                          <motion.div
+                            key={profile.id}
+                            drag={isTopCard ? "x" : false}
+                            onDragEnd={(event, info) => {
+                              if (info.offset.x > 100) {
+                                handleSwipeAction(profile, 'liked');
+                              } else if (info.offset.x < -100) {
+                                handleSwipeAction(profile, 'disliked');
+                              } else if (info.offset.y < -100) {
+                                 handleSwipeAction(profile, 'superliked');
+                              }
+                            }}
+                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                            dragElastic={0.5}
+                            className="absolute w-full h-full"
+                            style={{
+                                zIndex: index,
+                                scale: 1 - (profiles.length - 1 - index) * 0.03,
+                                top: (profiles.length - 1 - index) * 8
+                            }}
+                            exit={{ x: 300, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                          >
+                            <ProfileCard profile={profile} isTopCard={isTopCard} />
+                          </motion.div>
+                        )
+                      })}
+                    </AnimatePresence>
+
                       {lastDislikedProfile && (
                           <div className="absolute top-4 right-4 z-40">
                               <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
@@ -518,5 +497,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
