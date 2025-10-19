@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion } from 'framer-motion';
+import { motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -35,6 +35,7 @@ const fetchProfiles = async (
         const usersSnapshot = await getDocs(q);
 
         let interactedUids = new Set<string>();
+        // Only check for interacted users if we are NOT ignoring filters.
         if (!ignoreFilters) {
             const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
             interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
@@ -64,7 +65,10 @@ const fetchProfiles = async (
                     if (interactedUids.has(matchId)) {
                         return false;
                     }
+                }
 
+                // Standard filters (distance, etc.) are always bypassed when ignoreFilters is true
+                if (!ignoreFilters) {
                     if (!userProfile.globalModeEnabled && p.distance !== undefined) {
                         if (p.distance > (userProfile.distancePreference || 160)) {
                             return false;
@@ -91,6 +95,8 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const controls = useAnimation();
 
   const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
@@ -202,8 +208,10 @@ export default function AnasayfaPage() {
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
       <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
           {profiles.length > 0 ? (
-            profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
+            // Render only the top 3 cards to improve performance
+            profiles.slice(-3).map((profile, index, arr) => {
+              const isTopCard = index === arr.length - 1;
+              const cardIndex = arr.length - 1 - index;
 
               return (
                 <motion.div
@@ -218,13 +226,26 @@ export default function AnasayfaPage() {
                     const swipeConfidenceThreshold = 10000;
                     
                     if (swipePower > swipeConfidenceThreshold) { // Swiped right
-                      handleSwipe(profile, 'right');
+                      controls.start({
+                        x: 500,
+                        rotate: 30,
+                        opacity: 0,
+                        transition: { duration: 0.5 }
+                      }).then(() => handleSwipe(profile, 'right'));
+                    } else { // Return to center
+                      controls.start({
+                        x: 0,
+                        rotate: 0,
+                        transition: { type: 'spring', stiffness: 300, damping: 30 }
+                      });
                     }
                   }}
                   initial={{ scale: 1, y: 0, rotate: 0 }}
+                  animate={controls}
                   style={{
-                    scale: 1 - Math.min(profiles.length - 1 - index, 3) * 0.05,
-                    y: Math.min(profiles.length - 1 - index, 3) * 10,
+                    zIndex: index,
+                    scale: 1 - cardIndex * 0.05,
+                    y: cardIndex * 10,
                   }}
                   dragElastic={0.5}
                 >

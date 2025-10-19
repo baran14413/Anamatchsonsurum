@@ -323,7 +323,11 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   );
 };
 
-const ProfileCard = memo(ProfileCardComponent);
-ProfileCard.displayName = 'ProfileCard';
+// Memoize ProfileCard to prevent unnecessary re-renders.
+// The custom comparison function ensures it only re-renders when the profile UID changes.
+const MemoizedProfileCard = memo(ProfileCardComponent, (prevProps, nextProps) => {
+    return prevProps.profile.uid === nextProps.profile.uid && prevProps.isTopCard === nextProps.isTopCard;
+});
+MemoizedProfileCard.displayName = 'ProfileCard';
 
-export default ProfileCard;
+export default MemoizedProfileCard;
