@@ -7,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Icons } from '@/components/ui/icons';
+import { Icons } from '@/components/icons';
 import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -25,9 +25,11 @@ export default function AnasayfaPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const controls = useAnimation();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   const fetchProfiles = useCallback(async () => {
     if (!user || !userProfile || !firestore) {
@@ -52,6 +54,7 @@ export default function AnasayfaPage() {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
           if (p.uid === user.uid) return false;
           
+          // Always calculate distance if location is available
           if (userProfile.location && p.location) {
               p.distance = getDistance(
                   userProfile.location.latitude!,
@@ -62,13 +65,14 @@ export default function AnasayfaPage() {
           } else {
               p.distance = undefined;
           }
-          
+
           const sortedIds = [user.uid, p.uid].sort();
           const matchId = sortedIds.join('_');
           if (interactedUids.has(matchId)) {
               return false;
           }
           
+          // Only filter by distance if global mode is not enabled
           if (!userProfile.globalModeEnabled && p.distance !== undefined) {
               if (p.distance > (userProfile.distancePreference || 160)) {
                   return false;
@@ -87,48 +91,6 @@ export default function AnasayfaPage() {
     }
   }, [user, userProfile, firestore, toast]);
 
-  const forceRefetchProfiles = () => {
-    if (!user || !userProfile || !firestore) return;
-    
-    setProfiles([]);
-    setIsLoading(true);
-
-    const usersRef = collection(firestore, 'users');
-    let q = query(usersRef, limit(50));
-
-    getDocs(q).then(usersSnapshot => {
-       const fetchedProfiles = usersSnapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-        .filter(p => {
-            if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
-            if (p.uid === user.uid) return false;
-            if (userProfile.location && p.location) {
-                p.distance = getDistance(
-                    userProfile.location.latitude!,
-                    userProfile.location.longitude!,
-                    p.location.latitude!,
-                    p.location.longitude!
-                );
-            } else {
-                p.distance = undefined;
-            }
-            if (!userProfile.globalModeEnabled && p.distance !== undefined) {
-                if (p.distance > (userProfile.distancePreference || 160)) {
-                    return false;
-                }
-            }
-            return true;
-        });
-        setProfiles(fetchedProfiles);
-        setIsLoading(false);
-    }).catch(error => {
-        console.error("Profil getirme hatası (force):", error);
-        toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
-        setIsLoading(false);
-    });
-  }
-
-
   useEffect(() => {
     if (user && firestore && userProfile) {
       fetchProfiles();
@@ -142,7 +104,6 @@ export default function AnasayfaPage() {
 
     const action = direction === 'right' ? 'liked' : 'disliked';
     
-    // Optimistic UI update
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
@@ -219,6 +180,31 @@ export default function AnasayfaPage() {
 
   }, [user, firestore, toast, userProfile]);
 
+  const handleDragEnd = (event: any, info: any, profile: UserProfile) => {
+      const power = swipePower(info.offset.x, info.velocity.x);
+
+      if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
+          controls.start({
+              x: -500,
+              rotate: -45,
+              opacity: 0,
+              transition: { duration: 0.5 },
+          }).then(() => handleSwipe(profile, 'left'));
+      } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
+          controls.start({
+              x: 500,
+              rotate: 45,
+              opacity: 0,
+              transition: { duration: 0.5 },
+          }).then(() => handleSwipe(profile, 'right'));
+      } else {
+          controls.start({
+              x: 0,
+              rotate: 0,
+              transition: { duration: 0.3 }
+          });
+      }
+  };
 
   if (isLoading) {
     return (
@@ -247,33 +233,18 @@ export default function AnasayfaPage() {
                                 drag={isTopCard}
                                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                                 dragElastic={0.2}
-                                onDragEnd={(e, { offset, velocity }) => {
-                                    if (!isTopCard) return;
-
-                                    const power = swipePower(offset.x, velocity.x);
-
-                                    if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
-                                        handleSwipe(profile, 'left');
-                                    } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        handleSwipe(profile, 'right');
-                                    }
-                                }}
-                                exit={{
-                                    x: (direction) => (direction === 'left' ? -500 : 500),
-                                    rotate: (direction) => (direction === 'left' ? -45 : 45),
-                                    opacity: 0,
-                                    transition: { duration: 0.5 }
-                                }}
+                                animate={isTopCard ? controls : {}}
+                                onDragEnd={(e, info) => isTopCard && handleDragEnd(e, info, profile)}
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
                         );
-                    }).reverse() // We reverse to render the top card last (visually on top)
+                    })
                 ) : (
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
                         <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={forceRefetchProfiles}>
+                        <Button onClick={fetchProfiles}>
                             Tekrar Dene
                         </Button>
                     </div>
