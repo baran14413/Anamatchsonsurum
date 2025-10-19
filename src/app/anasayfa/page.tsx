@@ -474,7 +474,7 @@ export default function AnasayfaPage() {
 
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4">
+    <div className="flex-1 flex items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) {
               setShowUndoLimitModal(false);
