@@ -7,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Icons } from '@/components/icons';
+import { Icons } from '@/components/ui/icons';
 import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -79,7 +79,7 @@ export default function AnasayfaPage() {
         });
 
       setProfiles(fetchedProfiles);
-    } catch (error: any) => {
+    } catch (error: any) {
       console.error("Profil getirme hatası:", error);
       toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
     } finally {
@@ -283,5 +283,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
