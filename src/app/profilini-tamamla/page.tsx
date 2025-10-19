@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/firebase/provider';
@@ -11,14 +12,13 @@ export default function ProfileCompletionPage() {
     const router = useRouter();
 
     useEffect(() => {
-        // This effect handles redirection for already-completed users trying to access this page.
         if (!isUserLoading && user && userProfile?.gender) {
             router.replace('/anasayfa');
         }
     }, [isUserLoading, user, userProfile, router]);
     
-    // If the user object is loading, or if the user is already fully registered, show a loader.
-    // This prevents a flash of the form for users who should be redirected.
+    // This page is now primarily for users who have an account but haven't finished signup.
+    // The main entry point is now /login which uses the same form.
     if (isUserLoading || (user && userProfile?.gender)) {
         return (
             <div className="flex h-dvh items-center justify-center">
@@ -27,6 +27,5 @@ export default function ProfileCompletionPage() {
         );
     }
     
-    // If there's no user and it's not loading, they can start the signup process.
     return <ProfileCompletionForm />;
 }

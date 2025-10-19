@@ -6,11 +6,8 @@ import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import googleLogo from '@/img/googlelogin.png';
 import { langTr } from '@/languages/tr';
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useUser } from '@/firebase/provider';
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
@@ -18,10 +15,8 @@ import { Mail } from 'lucide-react';
 
 export default function WelcomePage() {
   const t = langTr;
-  const { auth, firestore, user, userProfile, isUserLoading } = useUser();
+  const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && user && userProfile?.gender) {
@@ -29,57 +24,7 @@ export default function WelcomePage() {
     }
   }, [user, userProfile, isUserLoading, router]);
 
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    if (!auth || !firestore) {
-        toast({
-            title: t.common.error,
-            description: t.login.errors.authServiceError,
-            variant: "destructive"
-        });
-        setIsGoogleLoading(false);
-        return;
-    }
-    const provider = new GoogleAuthProvider();
-    try {
-        const result = await signInWithPopup(auth, provider);
-        const signedInUser = result.user;
-
-        const userDocRef = doc(firestore, "users", signedInUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        const byEmailDocRef = doc(firestore, "users_by_email", signedInUser.email!);
-        const byEmailDoc = await getDoc(byEmailDocRef);
-        
-        if (!byEmailDoc.exists()) {
-             await setDoc(byEmailDocRef, { uid: signedInUser.uid });
-        }
-
-        if (!userDoc.exists()) {
-            const initialProfileData = {
-                uid: signedInUser.uid,
-                email: signedInUser.email || '',
-                fullName: signedInUser.displayName || '',
-                images: signedInUser.photoURL ? [{ url: signedInUser.photoURL, public_id: `google_${signedInUser.uid}` }] : [],
-                profilePicture: signedInUser.photoURL || '',
-                isBot: false, 
-            };
-            await setDoc(userDocRef, initialProfileData, { merge: true });
-        }
-        router.push("/profilini-tamamla");
-
-    } catch (error: any) {
-        console.error("Google Sign-In Error:", error);
-        toast({
-            title: t.login.errors.googleLoginFailedTitle,
-            description: error.message || t.login.errors.googleLoginFailed,
-            variant: "destructive",
-        });
-    } finally {
-        setIsGoogleLoading(false);
-    }
-  };
-
-  if (isUserLoading || (user && userProfile)) {
+  if (isUserLoading || (user && userProfile?.gender)) {
       return (
            <div className="flex h-dvh items-center justify-center bg-background">
              <Icons.logo width={48} height={48} className="animate-pulse" />
@@ -114,19 +59,6 @@ export default function WelcomePage() {
           </div>
 
           <div className="space-y-3">
-             <Button
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-                variant="outline"
-                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
-              >
-                {isGoogleLoading ? (
-                   <Icons.logo width={24} height={24} className="animate-pulse mr-4" />
-                ) : (
-                   <Image src={googleLogo} alt="Google logo" width={24} height={24} className="mr-4" />
-                )}
-                {t.welcome.continueWithGoogle}
-              </Button>
                <Button
                 onClick={() => router.push('/login')}
                 variant="outline"
