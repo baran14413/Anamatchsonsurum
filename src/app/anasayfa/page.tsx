@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
-import type { UserProfile, Match } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -102,7 +103,6 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
@@ -118,7 +118,6 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
-    setExitDirection(direction);
     // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
@@ -216,7 +215,6 @@ export default function AnasayfaPage() {
       <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
           <AnimatePresence>
           {profiles.length > 0 ? (
-            // Render only the top 3 cards to improve performance
             profiles.slice(-3).map((profile, index, arr) => {
               const isTopCard = index === arr.length - 1;
               const cardIndex = arr.length - 1 - index;
@@ -244,12 +242,14 @@ export default function AnasayfaPage() {
                     scale: 1 - cardIndex * 0.05,
                     y: cardIndex * 10,
                   }}
-                  exit={{
-                    x: exitDirection === 'right' ? 500 : -500,
+                  exit={ (custom) => ({
+                    x: custom.direction === 'right' ? 500 : -500,
+                    rotate: custom.direction === 'right' ? 30 : -30,
                     opacity: 0,
                     scale: 0.5,
                     transition: { duration: 0.5 },
-                  }}
+                  })}
+                  custom={{ direction: profiles.find(p => p.uid === profile.uid) ? (offset.x > 0 ? 'right' : 'left') : 'left' }}
                   dragElastic={0.5}
                 >
                   <ProfileCard profile={profile} isTopCard={isTopCard} />

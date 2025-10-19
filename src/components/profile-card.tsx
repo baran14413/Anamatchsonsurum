@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, ChevronDown, Volume2, VolumeX, X } from 'lucide-react';
+import { MapPin, Heart, X as XIcon, ChevronUp, ChevronDown, Volume2, VolumeX, X } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -17,6 +17,7 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -64,13 +65,18 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 
 const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
   
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-30, 30]);
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
+
   useEffect(() => {
     setActiveImageIndex(0);
+    x.set(0);
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
-  }, [profile.uid]);
+  }, [profile.uid, x]);
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -119,11 +125,23 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   }, [profile.interests]);
   
   const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
-  
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group">
+    <motion.div 
+      className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
+      style={{ x, rotate }}
+    >
+        {isTopCard && (
+            <>
+                 <motion.div style={{ opacity: likeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                    <Heart className="w-32 h-32 text-green-400 fill-green-400" />
+                </motion.div>
+                <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                    <XIcon className="w-32 h-32 text-red-500" strokeWidth={3} />
+                </motion.div>
+            </>
+        )}
+        
         {profile.images && profile.images.length > 0 && (
           <>
             {profile.images.map((image, index) => (
@@ -163,7 +181,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
             </>
         )}
 
-         <Sheet onOpenChange={(open) => {setShowAllInterests(false); setIsSheetOpen(open)}}>
+         <Sheet>
             <div
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
             >
@@ -319,12 +337,10 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                 </ScrollArea>
             </SheetContent>
         </Sheet>
-      </div>
+      </motion.div>
   );
 };
 
-// Memoize ProfileCard to prevent unnecessary re-renders.
-// The custom comparison function ensures it only re-renders when the profile UID changes.
 const MemoizedProfileCard = memo(ProfileCardComponent, (prevProps, nextProps) => {
     return prevProps.profile.uid === nextProps.profile.uid && prevProps.isTopCard === nextProps.isTopCard;
 });
