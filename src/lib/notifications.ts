@@ -6,6 +6,8 @@ import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps } from 'firebase/app';
+import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 // Ensure Firebase is initialized
 if (!getApps().length) {
@@ -14,7 +16,7 @@ if (!getApps().length) {
 
 // Function to check if notification is supported
 export const isNotificationSupported = () => {
-    return isSupported();
+    return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && isSupported();
 };
 
 export const requestNotificationPermission = async () => {
@@ -29,7 +31,7 @@ export const requestNotificationPermission = async () => {
 
         if (permission === 'granted') {
             console.log('Notification permission granted.');
-            const fcmToken = await getToken(messaging, { vapidKey: 'BBRyH4L_Z-Y-9LhYmY2Qp8fQz2eE8fX_jY_6bJzXo_k9Y_9jHhJ_o_P_wZ_kHjFjE_l_G_h_J' });
+            const fcmToken = await getToken(messaging, { vapidKey: 'BAMb49b5Bi3M6MwKz8PZMoYTtLOheAfAiXc4nhxbYwCBll-nKVZdpC4v3PoGP44JjuAXzBzXS8sPoJMtyC_bcb0' });
             if (fcmToken) {
                 return { permission, fcmToken };
             } else {
