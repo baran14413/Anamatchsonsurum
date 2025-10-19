@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase/provider';
+import { useFirebase } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, Trash2, Pencil, Image as ImageIcon, Star } from 'lucide-react';
@@ -45,14 +46,12 @@ const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
 export default function GalleryPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { user, userProfile, firebaseApp } = useUser();
-    const firestore = useFirestore();
+    const { user, userProfile, firestore, storage } = useFirebase();
     const t = langTr.ayarlarGaleri;
 
     const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(userProfile));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const storage = firebaseApp ? getStorage(firebaseApp) : null;
 
     useEffect(() => {
         if (userProfile) {
