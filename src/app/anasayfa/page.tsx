@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Undo2, Star, Heart, X as XIcon, Send } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase/provider';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, updateDoc, deleteField, increment, orderBy, collectionGroup } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
@@ -164,15 +164,19 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         
         if (!resetInteractions) {
-             const userMatchesSnapshot = await getDocs(collectionGroup(firestore, 'matches'));
-             userMatchesSnapshot.forEach(matchDoc => {
+             const userInteractionsQuery = query(collectionGroup(firestore, 'matches'), where('user1Id', '==', user.uid));
+             const userInteractionsSnapshot = await getDocs(userInteractionsQuery);
+             userInteractionsSnapshot.forEach(matchDoc => {
                 const matchData = matchDoc.data();
-                if (matchData.user1Id === user.uid) {
-                    interactedUids.add(matchData.user2Id);
-                } else if (matchData.user2Id === user.uid) {
-                    interactedUids.add(matchData.user1Id);
-                }
-            });
+                interactedUids.add(matchData.user2Id);
+             });
+             
+             const otherInteractionsQuery = query(collectionGroup(firestore, 'matches'), where('user2Id', '==', user.uid));
+             const otherInteractionsSnapshot = await getDocs(otherInteractionsQuery);
+             otherInteractionsSnapshot.forEach(matchDoc => {
+                const matchData = matchDoc.data();
+                interactedUids.add(matchData.user1Id);
+             });
         }
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
@@ -310,7 +314,7 @@ export default function AnasayfaPage() {
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) { setShowUndoLimitModal(false); setShowSuperlikeModal(false); }
       }}>
-           <div className="relative w-full aspect-[3/4] max-w-sm">
+           <div className="relative w-full max-w-sm aspect-[3/4]">
               <AnimatePresence>
                   {isLoading ? (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -325,7 +329,6 @@ export default function AnasayfaPage() {
                             className="absolute w-full h-full"
                             style={{
                                 zIndex: index,
-                                y: (profiles.length - 1 - index) * -8,
                             }}
                             drag={isTopCard}
                             onDragEnd={(event, info) => {
@@ -338,8 +341,6 @@ export default function AnasayfaPage() {
                             }}
                             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                             dragElastic={0.2}
-                            animate={{ y: 0, scale: 1 - (profiles.length - 1 - index) * 0.05 }}
-                            transition={{ duration: 0.3 }}
                         >
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
                         </motion.div>
@@ -357,24 +358,7 @@ export default function AnasayfaPage() {
                   )}
                </AnimatePresence>
           </div>
-          <div className="flex w-full items-center justify-evenly py-6 max-w-sm">
-              <Button onClick={handleUndo} disabled={!lastDislikedProfile} variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
-                  <Undo2 className="h-8 w-8 text-yellow-500" />
-              </Button>
-              <Button onClick={() => handleSwipeAction('disliked')} disabled={profiles.length === 0} variant="ghost" className="h-20 w-20 rounded-full bg-background shadow-lg">
-                  <XIcon className="h-10 w-10 text-red-500" />
-              </Button>
-               <Button onClick={() => handleSwipeAction('superliked')} disabled={profiles.length === 0} variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
-                  <Star className="h-8 w-8 text-blue-500" />
-              </Button>
-              <Button onClick={() => handleSwipeAction('liked')} disabled={profiles.length === 0} variant="ghost" className="h-20 w-20 rounded-full bg-background shadow-lg">
-                  <Heart className="h-10 w-10 text-green-500" />
-              </Button>
-               <Button variant="ghost" className="h-16 w-16 rounded-full bg-background shadow-lg">
-                  <Send className="h-8 w-8 text-purple-500" />
-              </Button>
-          </div>
-
+          
            {showUndoLimitModal && (
               <AlertDialogContent>
                   <AlertDialogHeader className="items-center text-center">
