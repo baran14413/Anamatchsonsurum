@@ -341,32 +341,32 @@ export default function AnasayfaPage() {
                     }
                 }
                 
-                if (!p.isBot && !isGlobalMode) {
-                    if (!p.location?.latitude || !p.location?.longitude) return false;
+                // Calculate distance for everyone who has a location
+                if (p.location?.latitude && p.location?.longitude) {
                     const distance = getDistance(
                         userProfile.location!.latitude!,
                         userProfile.location!.longitude!,
                         p.location.latitude,
                         p.location.longitude
                     );
-                    (p as ProfileWithDistance).distance = distance;
-                    const userDistancePref = userProfile.distancePreference || 50;
-                    if (distance > userDistancePref) {
-                        return false;
+                    (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
+                }
+
+                // Apply distance filter ONLY if global mode is OFF
+                if (!isGlobalMode) {
+                    // If user is not a bot, they must have a location and be within range
+                    if (!p.isBot) {
+                        if (!(p as ProfileWithDistance).distance) return false; // No location
+                        
+                        const userDistancePref = userProfile.distancePreference || 50;
+                        if ((p as ProfileWithDistance).distance! > userDistancePref) {
+                            return false; // Out of range
+                        }
                     }
-                } else {
-                     if (p.location?.latitude && p.location?.longitude) {
-                        const distance = getDistance(
-                            userProfile.location!.latitude!,
-                            userProfile.location!.longitude!,
-                            p.location.latitude,
-                            p.location.longitude
-                        );
-                        (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
-                     }
+                    // Bots in non-global mode are always included if they have a location
                 }
                 
-                return true;
+                return true; // Include profile if it passed all checks
             });
         
         fetchedProfiles.sort((a, b) => {
