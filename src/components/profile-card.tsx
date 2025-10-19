@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -16,7 +15,7 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo, animate } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -99,11 +98,14 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
     const ySwipePower = swipePower(info.offset.y, info.velocity.y);
 
     if (ySwipePower > swipeConfidenceThreshold && info.offset.y < -50) {
+        animate(y, -1000, { duration: 0.3 });
         onSwipe(profile, 'up');
     } else if (xSwipePower > swipeConfidenceThreshold) {
         if (info.offset.x > 50) {
+            animate(x, 1000, { duration: 0.3 });
             onSwipe(profile, 'right');
         } else if (info.offset.x < -50) {
+            animate(x, -1000, { duration: 0.3 });
             onSwipe(profile, 'left');
         }
     }
@@ -151,17 +153,18 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
     <motion.div
         className={cn(
             "absolute w-full h-full cursor-grab",
-             !isTopCard && "scale-95 pointer-events-none",
-             !isTopCard && { filter: 'blur(4px)' }
+            !isTopCard && "scale-95 pointer-events-none",
+            !isTopCard && { filter: 'blur(4px)' }
         )}
         drag={isTopCard}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
         initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1, transition: { duration: 0.4 } }}
-        exit={{ 
-            x: x.get() > 0 ? 500 : -500,
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ scale: { duration: 0.2 }, opacity: { duration: 0.4 } }}
+        exit={{
+            x: x.get() > 0 ? 500 : (x.get() < 0 ? -500 : 0),
             y: y.get() < -50 ? -500 : y.get(),
             opacity: 0,
             transition: { duration: 0.3 }

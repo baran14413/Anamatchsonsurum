@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
@@ -14,7 +13,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -82,8 +81,10 @@ const fetchProfiles = async (
 
         fetchedProfiles.sort((a, b) => {
             if (userProfile.globalModeEnabled) {
+                 // Sort by distance if global mode is enabled
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
+            // Otherwise, shuffle randomly
             return Math.random() - 0.5;
         });
 
@@ -121,6 +122,7 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
+    // Immediately remove the card from the UI for a snappy feel
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -134,6 +136,8 @@ export default function AnasayfaPage() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
+            // Re-add the profile to the top of the stack if the action fails
+            setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
@@ -216,8 +220,8 @@ export default function AnasayfaPage() {
                 status: updateData.status,
                 timestamp: serverTimestamp(),
                 fullName: userProfile?.fullName,
-                profilePicture: userProfile?.profilePicture || userProfile?.images?.[0]?.url || '',
-                isSuperLike: updateData.isSuperLike,
+                profilePicture: userProfile?.profilePicture || '',
+                isSuperLike: updateData.isSuperLike || false,
                 superLikeInitiator: updateData.superLikeInitiator || null,
                 lastMessage: lastMessage,
             }, { merge: true });
@@ -230,8 +234,8 @@ export default function AnasayfaPage() {
             status: updateData.status,
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
-            profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
-            isSuperLike: updateData.isSuperLike,
+            profilePicture: profileToSwipe.profilePicture || '',
+            isSuperLike: updateData.isSuperLike || false,
             superLikeInitiator: updateData.superLikeInitiator || null,
             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : (action === 'superliked' ? `Super Like gönderildi` : ''),
         }, { merge: true });
@@ -251,6 +255,8 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
+        // If there's an error, put the card back on the stack
+        setProfiles(prev => [profileToSwipe, ...prev]);
     }
   }, [user, firestore, toast, userProfile, router]);
 
@@ -267,23 +273,23 @@ export default function AnasayfaPage() {
       loadProfiles(true);
   }
   
-  const MemoizedProfileCard = memo(ProfileCard);
-  
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-         <AnimatePresence>
-            {profiles.map((profile, index) => {
-                const isTopCard = index === profiles.length - 1;
-                return (
-                    <MemoizedProfileCard
-                        key={profile.uid}
-                        profile={profile}
-                        isTopCard={isTopCard}
-                        onSwipe={handleSwipe}
-                    />
-                );
-            })}
+        <AnimatePresence>
+            {profiles.length > 0 ? (
+                profiles.map((profile, index) => {
+                    const isTopCard = index === profiles.length - 1;
+                    return (
+                        <ProfileCard
+                            key={profile.uid}
+                            profile={profile}
+                            isTopCard={isTopCard}
+                            onSwipe={handleSwipe}
+                        />
+                    );
+                })
+            ) : null}
         </AnimatePresence>
         {profiles.length === 0 && !isLoading && (
             <div
