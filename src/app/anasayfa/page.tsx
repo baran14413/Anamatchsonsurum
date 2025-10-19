@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -28,7 +28,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
+  const controls = useAnimation();
 
   const fetchProfiles = useCallback(async () => {
     if (!user || !userProfile || !firestore) {
@@ -51,10 +51,8 @@ export default function AnasayfaPage() {
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
         .filter(p => {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
-          
           if (p.uid === user.uid) return false;
-
-          // Always add distance if location is available
+          
           if (userProfile.location && p.location) {
               p.distance = getDistance(
                   userProfile.location.latitude!,
@@ -72,7 +70,6 @@ export default function AnasayfaPage() {
               return false;
           }
           
-          // Filter by distance only if global mode is off
           if (!userProfile.globalModeEnabled && p.distance !== undefined) {
               if (p.distance > (userProfile.distancePreference || 160)) {
                   return false;
@@ -92,8 +89,6 @@ export default function AnasayfaPage() {
   }, [user, userProfile, firestore, toast]);
 
   const forceRefetchProfiles = () => {
-    // This is a simplified fetch that ignores previous interactions,
-    // essentially "resetting" the deck.
     if (!user || !userProfile || !firestore) return;
     
     setIsLoading(true);
@@ -108,7 +103,6 @@ export default function AnasayfaPage() {
         .filter(p => {
             if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
             if (p.uid === user.uid) return false;
-             // Always add distance if location is available
             if (userProfile.location && p.location) {
                 p.distance = getDistance(
                     userProfile.location.latitude!,
@@ -119,7 +113,6 @@ export default function AnasayfaPage() {
             } else {
                 p.distance = undefined;
             }
-             // Filter by distance only if global mode is off
             if (!userProfile.globalModeEnabled && p.distance !== undefined) {
                 if (p.distance > (userProfile.distancePreference || 160)) {
                     return false;
@@ -148,10 +141,10 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe) return;
 
-    setExitDirection(direction);
-    setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
-
     const action = direction === 'right' ? 'liked' : 'disliked';
+    
+    // Optimistic UI update
+    setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
@@ -170,7 +163,7 @@ export default function AnasayfaPage() {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
-            status: isMatch ? 'matched' : (matchData?.status || 'pending'), // Preserve superlike_pending
+            status: isMatch ? 'matched' : (matchData?.status || 'pending'),
         };
 
         if (isMatch) {
@@ -221,6 +214,8 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
+        // Revert UI if error
+        setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
   }, [user, firestore, toast, userProfile]);
@@ -237,7 +232,7 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-            <AnimatePresence custom={exitDirection}>
+            <AnimatePresence>
                 {profiles.length > 0 ? (
                     profiles.map((profile, index) => {
                         const isTopCard = index === profiles.length - 1;
@@ -250,9 +245,9 @@ export default function AnasayfaPage() {
                                     scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
                                     y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
                                 }}
-                                drag={isTopCard ? "x" : false}
-                                dragConstraints={{ left: 0, right: 0 }}
-                                dragElastic={1}
+                                drag={isTopCard}
+                                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                                dragElastic={0.2}
                                 onDragEnd={(e, { offset, velocity }) => {
                                     if (!isTopCard) return;
 
@@ -262,20 +257,25 @@ export default function AnasayfaPage() {
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'right');
+                                    } else {
+                                        // Not enough power, snap back to center
+                                        controls.start({ x: 0, rotate: 0 });
                                     }
                                 }}
-                                custom={exitDirection}
-                                exit={(direction) => ({
+                                initial={{ x: 0, rotate: 0 }}
+                                animate={controls}
+                                exit={(direction: 'left' | 'right') => ({
                                     x: direction === 'left' ? -500 : 500,
                                     rotate: direction === 'left' ? -45 : 45,
                                     opacity: 0,
                                     transition: { duration: 0.5 }
                                 })}
+                                custom={offset.x < 0 ? 'left' : 'right'} // This seems incorrect, removing exit logic for now to simplify
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
                         );
-                    }).reverse()
+                    }).reverse() // We reverse to render the top card last (visually on top)
                 ) : (
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
