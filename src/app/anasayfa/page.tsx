@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -279,7 +280,7 @@ export default function AnasayfaPage() {
       loadProfiles(true);
   }
   
-  const MemoizedProfileCard = React.memo(ProfileCard);
+  const MemoizedProfileCard = memo(ProfileCard);
   
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
