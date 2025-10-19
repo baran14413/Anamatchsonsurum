@@ -5,7 +5,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import FooterNav from './footer-nav';
-import { ShieldCheck, Settings, ChevronRight, AtSign } from 'lucide-react';
+import { ShieldCheck, Settings, AtSign } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -16,7 +16,7 @@ const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/
 const publicAuthRoutes = ['/', '/giris', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/profilini-tamamla';
 const rulesRoute = '/kurallar';
-const adminRoutes = '/admin';
+const adminRoutePrefix = '/admin';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, userProfile, isUserLoading } = useUser();
@@ -27,19 +27,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
-  // Determine current route type more granularly
+  // Determine current route type
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
   const isRegistrationRoute = pathname.startsWith(registrationRoute);
   const isRulesRoute = pathname.startsWith(rulesRoute);
-  const isAdminRoute = pathname.startsWith(adminRoutes);
+  const isAdminRoute = pathname.startsWith(adminRoutePrefix);
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
 
-  // Effect for notifications
+  // Effect for notifications (likes and messages)
   useEffect(() => {
     if (!user || !firestore) return;
 
-    // --- Check for new likes ---
     const likesQuery = query(
       collection(firestore, "matches"),
       where('user2Id', '==', user.uid),
@@ -50,7 +49,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setHasNewLikes(!snapshot.empty);
     });
 
-    // --- Check for unread messages ---
     const matchesQuery = query(
         collection(firestore, `users/${user.uid}/matches`),
         where('unreadCount', '>', 0)
@@ -64,52 +62,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         unsubscribeMatches();
     };
   }, [user, firestore]);
-
-  // --- NEW, SIMPLIFIED ROUTING LOGIC ---
+  
+  // --- Simplified and Corrected Routing Logic ---
   useEffect(() => {
-    // 1. Wait until authentication state is resolved.
+    // If auth state is still loading, do nothing to prevent premature redirects.
     if (isUserLoading) {
       return;
     }
 
-    // 2. Handle LOGGED-IN users
     if (user) {
-      // 2a. Profile is incomplete -> force to registration
+      // User is logged in.
+      // 1. Check for incomplete profile.
       if (!userProfile?.gender) {
         if (!isRegistrationRoute) {
           router.replace(registrationRoute);
         }
-        return; // Stop further checks
+        return; // Stop further checks.
       }
-      
-      // 2b. Rules not agreed -> force to rules page
+      // 2. Check for rules agreement.
       if (!userProfile.rulesAgreed) {
         if (!isRulesRoute) {
           router.replace(rulesRoute);
         }
-        return; // Stop further checks
+        return; // Stop further checks.
       }
-
-      // 2c. Fully onboarded, but on a public/auth/reg page -> redirect to app
+      // 3. User is fully onboarded. If they are on a public/auth/reg page, redirect to app.
       if (isPublicAuthRoute || isRegistrationRoute || isRulesRoute) {
         router.replace('/anasayfa');
       }
-      return; // Stop further checks
-    }
-
-    // 3. Handle GUEST users (NOT logged in)
-    if (!user) {
-      // 3a. If guest tries to access a protected area, redirect to home.
-      // We specifically EXCLUDE the registration route from this check.
+    } else {
+      // User is NOT logged in.
+      // Protect routes that require authentication.
       if (isProtectedRoute || isRulesRoute || isAdminRoute) {
         router.replace('/');
       }
-      // Otherwise, do nothing. Let them stay on public pages like /, /login, /giris, /profilini-tamamla, etc.
+      // Guests are allowed on publicAuthRoutes and registrationRoute, so no 'else' block is needed.
     }
-  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isPublicAuthRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
+  }, [user, userProfile, isUserLoading, pathname, router, isProtectedRoute, isPublicAuthRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
 
 
-  // Show a global loader while resolving auth/profile state.
+  // Show a global loader for protected areas while auth is resolving.
   if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute)) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
@@ -119,7 +111,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   // Determine if the header and footer should be shown
-  const showHeaderAndFooter = userProfile?.gender && userProfile?.rulesAgreed && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
+  const showHeaderAndFooter = user && userProfile?.gender && userProfile?.rulesAgreed && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';
@@ -130,11 +122,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <>
                 <Icons.logo width={80} height={26} className="text-pink-500" />
                 <div className="flex items-center gap-2">
-                    <Link href="/admin/dashboard">
-                        <Button variant="ghost" size="icon">
-                            <AtSign className="h-6 w-6 text-muted-foreground" />
-                        </Button>
-                    </Link>
+                    {userProfile?.isAdmin && (
+                        <Link href="/admin/dashboard">
+                            <Button variant="ghost" size="icon">
+                                <AtSign className="h-6 w-6 text-muted-foreground" />
+                            </Button>
+                        </Link>
+                    )}
                     <Button variant="ghost" size="icon">
                         <ShieldCheck className="h-6 w-6 text-muted-foreground" />
                     </Button>
@@ -159,6 +153,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // For all other cases (public routes, login, registration, settings, chat), just render the children.
+  // For all other cases (public routes, login, registration, settings, chat, loading), just render the children.
   return <>{children}</>;
 }
