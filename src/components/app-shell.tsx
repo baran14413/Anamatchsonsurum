@@ -13,7 +13,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
-const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies', '/giris'];
+const publicAuthRoutes = ['/', '/giris', '/login', '/tos', '/privacy', '/cookies'];
 const registrationRoute = '/profilini-tamamla';
 const rulesRoute = '/kurallar';
 const adminRoutes = '/admin';
@@ -27,13 +27,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
+  // Determine current route type more granularly
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthFlowRoute = authFlowRoutes.includes(pathname);
+  const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
   const isRegistrationRoute = pathname.startsWith(registrationRoute);
   const isRulesRoute = pathname.startsWith(rulesRoute);
   const isAdminRoute = pathname.startsWith(adminRoutes);
-  
-  // Specific check for the dynamic chat page
   const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
 
   // Effect for notifications
@@ -52,7 +51,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     });
 
     // --- Check for unread messages ---
-    // This now checks the `unreadCount` field on the denormalized match data
     const matchesQuery = query(
         collection(firestore, `users/${user.uid}/matches`),
         where('unreadCount', '>', 0)
@@ -61,60 +59,60 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setHasUnreadMessages(!snapshot.empty);
     }, () => setHasUnreadMessages(false));
 
-
     return () => {
         unsubscribeLikes();
         unsubscribeMatches();
     };
-
   }, [user, firestore]);
 
-
-
+  // --- NEW, SIMPLIFIED ROUTING LOGIC ---
   useEffect(() => {
+    // 1. Wait until authentication state is resolved.
     if (isUserLoading) {
-      return; // Wait until user and profile status is resolved
+      return;
     }
-    
-    // SCENARIO 1: User is logged in
+
+    // 2. Handle LOGGED-IN users
     if (user) {
-      // 1a: But profile is INCOMPLETE (we use 'gender' as the marker for a complete profile)
+      // 2a. Profile is incomplete -> force to registration
       if (!userProfile?.gender) {
-        // If they are not on the registration page, FORCE them to it.
         if (!isRegistrationRoute) {
           router.replace(registrationRoute);
         }
-      } 
-      // 1b: Profile is complete, but they haven't seen the rules
-      else if (!userProfile.rulesAgreed) {
-          if (!isRulesRoute) {
-              router.replace(rulesRoute);
-          }
+        return; // Stop further checks
       }
-      // 1c: And profile is COMPLETE and rules are agreed
-      else {
-        // If they are on a public auth or registration page, redirect to the main app.
-        if (isAuthFlowRoute || isRegistrationRoute || isRulesRoute) {
-          router.replace('/anasayfa');
+      
+      // 2b. Rules not agreed -> force to rules page
+      if (!userProfile.rulesAgreed) {
+        if (!isRulesRoute) {
+          router.replace(rulesRoute);
         }
+        return; // Stop further checks
       }
+
+      // 2c. Fully onboarded, but on a public/auth/reg page -> redirect to app
+      if (isPublicAuthRoute || isRegistrationRoute || isRulesRoute) {
+        router.replace('/anasayfa');
+      }
+      return; // Stop further checks
     }
-    // SCENARIO 2: User is NOT logged in
-    else {
-      // If they are trying to access a protected route, redirect to welcome page.
+
+    // 3. Handle GUEST users (NOT logged in)
+    if (!user) {
+      // 3a. If guest tries to access a protected area, redirect to home.
+      // We specifically EXCLUDE the registration route from this check.
       if (isProtectedRoute || isRulesRoute || isAdminRoute) {
         router.replace('/');
       }
-      // If they are on a public or auth-flow page (including registration), do nothing.
+      // Otherwise, do nothing. Let them stay on public pages like /, /login, /giris, /profilini-tamamla, etc.
     }
-  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
+  }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isPublicAuthRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
 
 
-  // Show a global loader while resolving auth/profile state,
-  // especially on protected routes to prevent content flashing.
+  // Show a global loader while resolving auth/profile state.
   if (isUserLoading && (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute)) {
     return (
-      <div className="flex h-dvh items-center justify-center">
+      <div className="flex h-dvh items-center justify-center bg-background">
         <Icons.logo width={48} height={48} className="animate-pulse" />
       </div>
     );
@@ -122,7 +120,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   
   // Determine if the header and footer should be shown
   const showHeaderAndFooter = userProfile?.gender && userProfile?.rulesAgreed && isProtectedRoute && !pathname.startsWith('/ayarlar/') && !isChatPage;
-
 
   if (showHeaderAndFooter) {
     const isProfilePage = pathname === '/profil';
