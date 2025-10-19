@@ -23,6 +23,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   const fetchProfiles = useCallback(async () => {
     if (!user || !userProfile || !firestore) {
@@ -39,31 +40,25 @@ export default function AnasayfaPage() {
 
       const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
       const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
-      interactedUids.add(user.uid); // Add self to interacted to filter out
+      interactedUids.add(user.uid);
 
       const fetchedProfiles = usersSnapshot.docs
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
         .filter(p => {
-          if (interactedUids.has(p.uid)) return false;
-          if (!p.images || p.images.length === 0) return false;
-          
-           if (userProfile.globalModeEnabled !== true && userProfile.location && p.location) {
-              const distance = getDistance(
-                  userProfile.location.latitude!,
-                  userProfile.location.longitude!,
-                  p.location.latitude!,
-                  p.location.longitude!
-              );
-              if (distance > (userProfile.distancePreference || 160)) {
-                  return false;
-              }
-           }
-          
-          return true;
-        });
-      
-      setProfiles(fetchedProfiles);
+            if (!p.images || p.images.length === 0) return false;
+            if (p.uid === user.uid) return false;
+            
+            // Check if already matched
+            const sortedIds = [user.uid, p.uid].sort();
+            const matchId = sortedIds.join('_');
+            if (interactedUids.has(matchId)) {
+                return false;
+            }
 
+            return true;
+        });
+
+      setProfiles(fetchedProfiles);
     } catch (error: any) {
       console.error("Profil getirme hatası:", error);
       toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
@@ -80,15 +75,16 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, fetchProfiles]);
 
-  const handleSwipe = async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
+  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe) return;
+
+    setExitDirection(direction);
 
     // Remove swiped profile from UI immediately
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     const action = direction === 'left' ? 'disliked' : 'liked';
     
-    // Firestore update
     try {
       const sortedIds = [user.uid, profileToSwipe.uid].sort();
       const matchId = sortedIds.join('_');
@@ -103,8 +99,28 @@ export default function AnasayfaPage() {
               ? { user1_action: action, user1_timestamp: serverTimestamp() } 
               : { user2_action: action, user2_timestamp: serverTimestamp() })
       };
+      
+      const denormalizedMatchForCurrentUser = {
+        id: matchId,
+        matchedWith: profileToSwipe.uid,
+        lastMessage: `You ${action} ${profileToSwipe.fullName}`,
+        timestamp: serverTimestamp(),
+        fullName: profileToSwipe.fullName,
+        profilePicture: profileToSwipe.profilePicture
+      };
+
+      const denormalizedMatchForOtherUser = {
+        id: matchId,
+        matchedWith: user.uid,
+        lastMessage: `${userProfile?.fullName} has made a move!`,
+        timestamp: serverTimestamp(),
+        fullName: userProfile?.fullName,
+        profilePicture: userProfile?.profilePicture
+      };
 
       await setDoc(matchDocRef, updateData, { merge: true });
+      await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), denormalizedMatchForCurrentUser, { merge: true });
+      await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), denormalizedMatchForOtherUser, { merge: true });
 
     } catch (error: any) {
       console.error(`Error handling ${action}:`, error);
@@ -114,9 +130,9 @@ export default function AnasayfaPage() {
         variant: "destructive"
       });
       // Optionally, add the profile back to the stack if the DB write fails
-      setProfiles(prev => [profileToSwipe, ...prev]);
+      // setProfiles(prev => [profileToSwipe, ...prev]);
     }
-  };
+  }, [user, firestore, toast, userProfile]);
 
 
   if (isLoading) {
@@ -134,7 +150,7 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-            <AnimatePresence>
+            <AnimatePresence custom={exitDirection}>
                 {profiles.length > 0 ? (
                     profiles.map((profile, index) => {
                         const isTopCard = index === profiles.length - 1;
@@ -152,7 +168,7 @@ export default function AnasayfaPage() {
                                 }}
                                 animate={{
                                     scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
-                                    y: index * -CARD_STACK_OFFSET,
+                                    y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
                                     transition: { duration: 0.3, ease: 'easeOut' },
                                 }}
                                 drag="x"
@@ -164,22 +180,21 @@ export default function AnasayfaPage() {
                                     const power = swipePower(offset.x, velocity.x);
 
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
-                                        // Swipe left (dislike)
                                         handleSwipe(profile, 'left');
                                     }
                                 }}
-                                exit={{
-                                    x: offset.x < 0 ? -500 : 500,
-                                    rotate: offset.x < 0 ? -45 : 45,
+                                custom={exitDirection}
+                                exit={(direction) => ({
+                                    x: direction === 'left' ? -500 : 500,
+                                    rotate: direction === 'left' ? -45 : 45,
                                     opacity: 0,
                                     transition: { duration: 0.5 }
-                                }}
-                                
+                                })}
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
                         );
-                    }).reverse() // Render from back to front
+                    }).reverse()
                 ) : (
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
@@ -194,5 +209,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
