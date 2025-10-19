@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -86,7 +86,7 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, userProfile, firestore, toast]);
+  }, [user, firestore, toast, userProfile]);
 
   useEffect(() => {
     if (user && firestore && userProfile) {
