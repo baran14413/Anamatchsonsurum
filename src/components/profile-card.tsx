@@ -21,6 +21,8 @@ import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   onSwipe: (profile: UserProfile, direction: 'left' | 'right' | 'up') => void;
+  onExitComplete: (uid: string) => void;
+  isTopCard: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -62,7 +64,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
+const ProfileCard = ({ profile, onSwipe, onExitComplete, isTopCard }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
@@ -140,18 +142,24 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   return (
     <motion.div
-        className="absolute w-full h-full cursor-grab"
-        drag
+        className={cn(
+            "absolute w-full h-full cursor-grab transition-all duration-300",
+            !isTopCard && "scale-95 blur-sm"
+        )}
+        drag={isTopCard}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ scale: { duration: 0.2 }, opacity: { duration: 0.4 } }}
+        onAnimationComplete={() => {
+            if (!isTopCard) { // This will fire when the exit animation completes
+                onExitComplete(profile.uid);
+            }
+        }}
         exit={{
             x: x.get() > 0 ? 500 : (x.get() < 0 ? -500 : 0),
             y: y.get() < -50 ? -500 : y.get(),
             opacity: 0,
+            scale: 0.8,
             transition: { duration: 0.3 }
         }}
     >
@@ -188,6 +196,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             )}
             
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            
+            {isNewUser && (
+                <Badge className="absolute top-10 left-4 z-20 bg-blue-500 text-white border-blue-500">
+                    Yeni Üye
+                </Badge>
+            )}
 
             {profile.images && profile.images.length > 1 && (
                 <>
@@ -210,10 +224,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                 >
                     <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                            {(profile.distance || profile.distance === 0) && (
-                                <div className="flex items-center gap-1.5 bg-black/40 text-white backdrop-blur-sm border-none rounded-full px-3 py-1 text-sm font-medium">
+                             {(profile.distance || profile.distance === 0) && (
+                                <div className="flex items-center gap-1 text-sm font-medium">
                                     <MapPin className="w-4 h-4" />
                                     <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
                                 </div>
@@ -367,3 +381,5 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
+
+    
