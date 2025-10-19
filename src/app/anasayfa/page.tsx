@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -306,8 +305,6 @@ export default function AnasayfaPage() {
 
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-200, 200], [-30, 30]);
-    const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-    const dislikeOpacity = useTransform(x, [-100, 0], [1, 0]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -344,12 +341,6 @@ export default function AnasayfaPage() {
                                 }
                             }}
                         >
-                            <motion.div style={{ opacity: likeOpacity }} className="absolute top-8 right-8 z-10">
-                                <Heart className="w-24 h-24 text-green-500 fill-green-500" />
-                            </motion.div>
-                            <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-8 left-8 z-10">
-                                <XIcon className="w-24 h-24 text-red-500" strokeWidth={3} />
-                            </motion.div>
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
                         </motion.div>
                        )
