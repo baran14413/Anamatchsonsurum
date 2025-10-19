@@ -164,7 +164,7 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         const userMatchesQuery = query(
             collection(firestore, `users/${user.uid}/matches`),
-            where('status', 'in', ['matched', 'superlike_pending'])
+            where('status', '==', 'matched')
         );
         const userMatchesSnap = await getDocs(userMatchesQuery);
         userMatchesSnap.forEach(doc => {
@@ -189,6 +189,13 @@ export default function AnasayfaPage() {
                 const maxAge = userProfile.ageRange?.max || 80;
                 if (age < minAge || age > maxAge) {
                     if (!userProfile.expandAgeRange) return false;
+                }
+
+                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                    if (distance > userProfile.distancePreference!) {
+                        return false;
+                    }
                 }
                 
                 return true;
@@ -392,3 +399,4 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
