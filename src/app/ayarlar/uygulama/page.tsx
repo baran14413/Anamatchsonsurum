@@ -36,7 +36,7 @@ export default function AppSettingsPage() {
     const checkSupportAndPermission = async () => {
         const supported = await isNotificationSupported();
         setIsSupported(supported);
-        if (supported) {
+        if (supported && typeof window !== 'undefined' && 'Notification' in window) {
             setNotificationPermission(Notification.permission);
         }
     };

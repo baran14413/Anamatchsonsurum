@@ -15,12 +15,23 @@ if (!getApps().length) {
 }
 
 // Function to check if notification is supported
-export const isNotificationSupported = () => {
-    return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && isSupported();
+export const isNotificationSupported = async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        return false;
+    }
+    try {
+        const supported = await isSupported();
+        return supported;
+    } catch (e) {
+        console.error("Error checking notification support:", e);
+        // Fallback for some WebViews where isSupported() might fail but basic APIs exist.
+        return true;
+    }
 };
 
 export const requestNotificationPermission = async () => {
-    if (!isNotificationSupported()) {
+    const supported = await isNotificationSupported();
+    if (!supported) {
         console.log('Firebase Messaging is not supported in this browser.');
         return null;
     }
@@ -78,18 +89,25 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
     const { firebaseApp } = useFirebase();
 
     useEffect(() => {
-        if (!firebaseApp || !isNotificationSupported()) return;
+        const checkSupportAndListen = async () => {
+            if (firebaseApp && await isNotificationSupported()) {
+                const messaging = getMessaging(firebaseApp);
+                const unsubscribe = onMessage(messaging, (payload) => {
+                    console.log('Foreground message received. ', payload);
+                    toast({
+                        title: payload.notification?.title,
+                        description: payload.notification?.body,
+                    });
+                });
+                return () => unsubscribe();
+            }
+        };
 
-        const messaging = getMessaging(firebaseApp);
-        const unsubscribe = onMessage(messaging, (payload) => {
-            console.log('Foreground message received. ', payload);
-            toast({
-                title: payload.notification?.title,
-                description: payload.notification?.body,
-            });
-        });
+        const unsubscribePromise = checkSupportAndListen();
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+        };
     }, [firebaseApp, toast]);
 };
 
