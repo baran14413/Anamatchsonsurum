@@ -52,6 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // --- START: ROUTING LOGIC ---
   useEffect(() => {
+    // Wait until user status is fully resolved before attempting any redirects.
     if (isUserLoading) {
       return;
     }
@@ -61,20 +62,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isRulesRoute = pathname === rulesRoute;
 
     if (user) {
-      if(userProfile && userProfile.isAdmin && pathname.startsWith('/admin')) {
-        return;
+      if (userProfile && userProfile.isAdmin && pathname.startsWith('/admin')) {
+        return; // Admin on admin page, do nothing.
       }
       
+      // If user is logged in but hasn't agreed to rules, force them to the rules page.
       if (userProfile && !userProfile.rulesAgreed && !isRulesRoute) {
         router.replace(rulesRoute);
         return;
       }
+      
+      // If user is fully onboarded, but is on a public, auth, or rules page, redirect to home.
       if (userProfile?.rulesAgreed && (publicRoutes.includes(pathname) || isAuthRoute || isRulesRoute)) {
         router.replace('/anasayfa');
         return;
       }
     } 
     else {
+      // If user is not logged in, but is trying to access a protected page, redirect to welcome page.
       if (isProtectedRoute) {
         router.replace('/');
         return;
@@ -127,8 +132,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
   
-
-  if (isUserLoading) {
+  // This is the most crucial part. While user status is loading,
+  // or if the user is logged in but profile data is not yet available, show a full-screen loader.
+  // This prevents any "flicker" of other pages.
+  if (isUserLoading || (user && !userProfile && pathname !== rulesRoute && !authRoutes.includes(pathname) && pathname !== '/')) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
         <Icons.logo width={48} height={48} className="animate-pulse" />
@@ -140,9 +147,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isWelcomePage = pathname === '/';
   const isAdminPage = pathname.startsWith('/admin');
 
-  const showAppUI = user && userProfile?.rulesAgreed && !isAuthPage && !isWelcomePage && !isAdminPage;
+  const showAppUI = user && userProfile?.rulesAgreed && !isAuthPage && !isWelcomePage;
 
-  if (showAppUI) {
+  // Render the main app UI only when the user is fully authenticated and onboarded.
+  if (showAppUI && !isAdminPage) {
     const navItems = [
       { href: '/anasayfa', icon: Flame, label: t.footerNav.home, hasNotification: false },
       { href: '/begeniler', icon: Heart, label: t.footerNav.likes, hasNotification: hasNewLikes },
@@ -216,5 +224,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If none of the above conditions are met, render the children directly.
+  // This handles the welcome page, auth pages, rules page, and the admin layout.
   return <>{children}</>;
 }
