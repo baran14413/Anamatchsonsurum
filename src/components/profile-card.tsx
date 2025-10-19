@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X, PlayCircle, VolumeX, Volume2 } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, Clock, ChevronDown, HeartCrack, X } from 'lucide-react';
 import { motion, useTransform, MotionValue } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
@@ -67,12 +67,9 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setActiveImageIndex(0);
-    setIsMuted(false);
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
   
@@ -80,20 +77,13 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev + 1) % (profile.media?.length || 1));
-    setIsMuted(true);
+    setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
   };
   
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setActiveImageIndex((prev) => (prev - 1 + (profile.media?.length || 1)) % (profile.media?.length || 1));
-    setIsMuted(true);
+    setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
-
-  const handleVideoClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(prev => !prev);
-  }
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -106,8 +96,6 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
     'whatever': 'Her şeye açık',
   };
   const lookingForText = profile.lookingFor ? lookingForMap[profile.lookingFor] : null;
-
-  const validImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
   
   const displayedInterests = useMemo(() => {
     if (!profile.interests || profile.interests.length === 0) {
@@ -134,7 +122,6 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
     const displayed: string[] = [];
     const categories = Object.keys(groupedInterests);
     
-    // Pick one interest from the first 5 categories that have interests
     let count = 0;
     for (const category of categories) {
       if (count >= 5) break;
@@ -180,59 +167,33 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const CardView = (
     <>
       <div className="relative w-full h-full rounded-[14px] overflow-hidden">
-        {profile.media && profile.media.length > 0 && profile.media.map((media, index) => {
+        {profile.images && profile.images.length > 0 && profile.images.map((image, index) => {
             const isActive = index === activeImageIndex;
             return (
-              media.url && (
-                  media.type === 'image' ? (
-                    <Image
-                        key={`${media.url}-${index}`}
-                        src={media.url}
-                        alt={`${profile.fullName} profile media ${index + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                        style={{ objectFit: 'cover' }}
-                        className={cn(
-                            "absolute inset-0 transition-opacity duration-300",
-                            isActive ? "opacity-100" : "opacity-0 pointer-events-none"
-                        )}
-                        priority={isTopCard && index === 0}
-                    />
-                  ) : (
-                    <div 
-                        key={`${media.url}-${index}`}
-                        className={cn(
-                          "absolute inset-0 w-full h-full transition-opacity duration-300 group",
-                          isActive ? "opacity-100" : "opacity-0 pointer-events-none"
-                        )}
-                        onClick={handleVideoClick}
-                    >
-                        <video
-                          ref={videoRef}
-                          src={media.url}
-                          muted={isMuted}
-                          autoPlay
-                          loop
-                          playsInline
-                          className="w-full h-full object-cover"
-                        />
-                         {isActive && (
-                           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100'>
-                            {isMuted ? <VolumeX className='w-6 h-6' /> : <Volume2 className='w-6 h-6' />}
-                           </div>
-                        )}
-                    </div>
-                  )
+              image.url && (
+                <Image
+                    key={`${image.url}-${index}`}
+                    src={image.url}
+                    alt={`${profile.fullName} profile image ${index + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                    style={{ objectFit: 'cover' }}
+                    className={cn(
+                        "absolute inset-0 transition-opacity duration-300",
+                        isActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                    )}
+                    priority={isTopCard && index === 0}
+                />
               )
           )
         })}
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
-        {profile.media && profile.media.length > 1 && (
+        {profile.images && profile.images.length > 1 && (
             <>
                 <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
-                    {profile.media.map((_, index) => (
+                    {profile.images.map((_, index) => (
                         <div key={index} className='h-1 flex-1 rounded-full bg-white/40 group'>
                             <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                         </div>
@@ -296,27 +257,19 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                         </SheetHeader>
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
-                                {profile.media && profile.media.length > 0 && (
+                                {profile.images && profile.images.length > 0 && (
                                      <Carousel className="w-full">
                                         <CarouselContent>
-                                            {profile.media
-                                                .map((media, index) => (
+                                            {profile.images
+                                                .map((image, index) => (
                                                 <CarouselItem key={index}>
                                                     <div className="relative w-full aspect-[4/3]">
-                                                         {media.type === 'image' ? (
-                                                            <Image
-                                                                src={media.url}
-                                                                alt={`${profile.fullName} profil medyası ${index + 1}`}
-                                                                fill
-                                                                className="object-cover"
-                                                            />
-                                                          ) : (
-                                                            <video
-                                                              src={media.url}
-                                                              controls
-                                                              className="w-full h-full object-cover"
-                                                             />
-                                                          )}
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${profile.fullName} profil medyası ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
                                                     </div>
                                                 </CarouselItem>
                                             ))}
@@ -428,11 +381,6 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
       </div>
     </>
   );
-
-  const cardWrapperClass = cn(
-    "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group",
-    profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
-  );
   
   const x = useMemo(() => new MotionValue(0), []);
   const y = useMemo(() => new MotionValue(0), []);
@@ -444,7 +392,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
 
   if (!isTopCard) {
       return (
-        <div className={cardWrapperClass}>
+        <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group">
              {CardView}
         </div>
       );
@@ -453,19 +401,17 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   return (
     <motion.div
       style={{ rotate, x, y }}
-      className={cardWrapperClass}
+      className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
     >
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-          <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
-              <Heart className="w-16 h-16 text-green-500 fill-green-500" />
-          </motion.div>
-          <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
-              <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-          </motion.div>
-           <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-500 text-blue-500">
-              <Star className="w-16 h-16 fill-transparent" />
-          </motion.div>
-      </div>
+      <motion.div style={{ opacity: likeOpacity }} className="absolute top-16 left-4 z-40 p-4 rounded-full border-4 border-green-500 text-green-500">
+        <Heart className="w-16 h-16 text-green-500 fill-green-500" />
+      </motion.div>
+      <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-16 right-4 z-40 p-4 rounded-full border-4 border-red-500 text-red-500">
+          <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
+      </motion.div>
+       <motion.div style={{ opacity: superlikeOpacity }} className="absolute bottom-32 left-1/2 -translate-x-1/2 z-40 p-4 rounded-full border-4 border-blue-500 text-blue-500">
+          <Star className="w-16 h-16 fill-transparent" />
+      </motion.div>
       {CardView}
     </motion.div>
   );

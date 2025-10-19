@@ -1,9 +1,8 @@
 
 
-export interface UserMedia {
+export interface UserImage {
   url: string;
   public_id: string;
-  type: 'image' | 'video';
 }
 
 export type UserProfile = {
@@ -14,7 +13,7 @@ export type UserProfile = {
   botPassword?: string;
   dateOfBirth?: string;
   profilePicture?: string;
-  media: UserMedia[];
+  images: UserImage[];
   bio?: string;
   interests?: string[];
   gender: 'male' | 'female' | 'other';

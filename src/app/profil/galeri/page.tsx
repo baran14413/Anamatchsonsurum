@@ -7,34 +7,32 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Trash2, Pencil, Star, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Star } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
 import { langTr } from '@/languages/tr';
 import { Progress } from "@/components/ui/progress";
-import type { UserMedia } from "@/lib/types";
+import type { UserImage } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-type MediaSlot = {
+type ImageSlot = {
     file: File | null;
     preview: string | null;
     public_id?: string | null;
-    type: 'image' | 'video';
     isUploading: boolean;
 };
 
-const getInitialMediaSlots = (userProfile: any): MediaSlot[] => {
-    const slots: MediaSlot[] = Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, type: 'image', isUploading: false }));
+const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
+    const slots: ImageSlot[] = Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 
-    if (userProfile?.media) {
-        userProfile.media.forEach((item: UserMedia, index: number) => {
+    if (userProfile?.images) {
+        userProfile.images.forEach((item: UserImage, index: number) => {
             if (index < 10) {
                 slots[index] = {
                     file: null,
                     preview: item.url,
                     public_id: item.public_id,
-                    type: item.type,
                     isUploading: false
                 };
             }
@@ -51,18 +49,17 @@ export default function GalleryPage() {
     const { user, userProfile, firestore, storage } = useFirebase();
     const t = langTr.ayarlarGaleri;
 
-    const [mediaSlots, setMediaSlots] = useState<MediaSlot[]>(() => getInitialMediaSlots(userProfile));
+    const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(userProfile));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (userProfile) {
-            setMediaSlots(getInitialMediaSlots(userProfile));
+            setImageSlots(getInitialImageSlots(userProfile));
         }
     }, [userProfile]);
 
-    const uploadedMediaCount = useMemo(() => mediaSlots.filter(p => p.preview).length, [mediaSlots]);
-    const uploadedVideoCount = useMemo(() => mediaSlots.filter(p => p.preview && p.type === 'video').length, [mediaSlots]);
+    const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
 
     const handleFileSelect = (index: number) => {
         if(isSubmitting) return;
@@ -77,99 +74,74 @@ export default function GalleryPage() {
         const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
 
         if (slotIndex !== -1) {
-             // Validate file type
-            const fileType = file.type.startsWith('video/') ? 'video' : 'image';
-            
-            if (fileType === 'video') {
-                 if (uploadedVideoCount >= 4) {
-                    toast({ title: "Video Limiti Doldu", description: "En fazla 4 video yükleyebilirsiniz.", variant: "destructive" });
-                    return;
-                }
-                if (file.size > 100 * 1024 * 1024) { // 100 MB limit
-                    toast({ title: "Dosya Boyutu Çok Büyük", description: "Video dosyası 100MB'dan küçük olmalıdır.", variant: "destructive" });
-                    return;
-                }
-                 const video = document.createElement('video');
-                video.preload = 'metadata';
-                video.onloadedmetadata = () => {
-                    window.URL.revokeObjectURL(video.src);
-                    if (video.duration > 60) {
-                         toast({ title: "Video Çok Uzun", description: "Video süresi 60 saniyeden az olmalıdır.", variant: "destructive" });
-                    } else {
-                        uploadFile(file, slotIndex, fileType);
-                    }
-                };
-                video.src = URL.createObjectURL(file);
-            } else {
-                uploadFile(file, slotIndex, fileType);
-            }
+             uploadFile(file, slotIndex);
         }
         if (e.target) e.target.value = '';
     };
 
-    const uploadFile = async (file: File, slotIndex: number, type: 'image' | 'video') => {
+    const uploadFile = async (file: File, slotIndex: number) => {
         if (!storage || !user) return;
         
-        const isReplacing = !!mediaSlots[slotIndex].preview;
-        if (isReplacing && mediaSlots[slotIndex].public_id) {
-            const oldSlot = mediaSlots[slotIndex];
+        const isReplacing = !!imageSlots[slotIndex].preview;
+        if (isReplacing && imageSlots[slotIndex].public_id) {
+            const oldSlot = imageSlots[slotIndex];
             const imageRefToDelete = storageRef(storage, oldSlot.public_id!);
             await deleteObject(imageRefToDelete).catch(err => {
                 if (err.code !== 'storage/object-not-found') {
-                    console.error("Failed to delete old media from storage:", err);
+                    console.error("Failed to delete old image from storage:", err);
                 }
             });
         }
         
-        handleMediaUpload(file, slotIndex, type);
+        handleImageUpload(file, slotIndex);
     }
 
 
-    const handleMediaUpload = async (file: File, slotIndex: number, type: 'image' | 'video') => {
+    const handleImageUpload = async (file: File, slotIndex: number) => {
         if (!storage || !user) {
             toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
             return;
         }
 
-        setMediaSlots(prev => {
+        setImageSlots(prev => {
             const newSlots = [...prev];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true, type };
+            newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
             return newSlots;
         });
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-        const mediaRef = storageRef(storage, uniqueFileName);
+        const imageRef = storageRef(storage, uniqueFileName);
 
         try {
-            const snapshot = await uploadBytes(mediaRef, file);
+            const snapshot = await uploadBytes(imageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            setMediaSlots(prev => {
+            setImageSlots(prev => {
                 const newSlots = [...prev];
-                newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null, type };
+                newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
                 return newSlots;
             });
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            setMediaSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialMediaSlots(userProfile)[i] : s));
+            setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots(userProfile)[i] : s));
         }
     };
     
-    const handleDeleteMedia = async (e: React.MouseEvent, index: number) => {
+    const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
         e.stopPropagation();
         if(isSubmitting || !storage) return;
 
-        if (uploadedMediaCount <= 1) {
-            toast({ title: "En Az Bir Medya Gerekli", description: "Profilinde en az 1 fotoğraf veya video bulunmalıdır.", variant: "destructive" });
+        if (uploadedImageCount <= 1) {
+            toast({ title: "En Az Bir Medya Gerekli", description: "Profilinde en az 1 fotoğraf bulunmalıdır.", variant: "destructive" });
             return;
         }
 
-        const slotToDelete = mediaSlots[index];
+        const slotToDelete = imageSlots[index];
         if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
             try {
-                const mediaRef = storageRef(storage, slotToDelete.public_id);
-                await deleteObject(mediaRef);
+                const imageRef = storageRef(storage, slotToDelete.public_id);
+                await deleteObject(imageRef);
             } catch (err: any) {
                  if (err.code !== 'storage/object-not-found') {
                     console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
@@ -179,13 +151,13 @@ export default function GalleryPage() {
             }
         }
         
-        setMediaSlots(prevSlots => {
+        setImageSlots(prevSlots => {
             const newSlots = [...prevSlots];
             if (newSlots[index].preview && newSlots[index].file) {
                  URL.revokeObjectURL(newSlots[index].preview!);
             }
             newSlots.splice(index, 1);
-            newSlots.push({ file: null, preview: null, public_id: null, type: 'image', isUploading: false });
+            newSlots.push({ file: null, preview: null, public_id: null, isUploading: false });
             return newSlots;
         });
 
@@ -194,20 +166,20 @@ export default function GalleryPage() {
 
     const handleSaveChanges = async () => {
         if (!firestore || !user) return;
-        if (uploadedMediaCount < 1) {
-             toast({ title: "Hata", description: "En az 1 fotoğraf veya video yüklemelisiniz.", variant: "destructive" });
+        if (uploadedImageCount < 1) {
+             toast({ title: "Hata", description: "En az 1 fotoğraf yüklemelisiniz.", variant: "destructive" });
              return;
         }
 
         setIsSubmitting(true);
         try {
-            const finalMedia = mediaSlots
+            const finalImages = imageSlots
                 .filter(p => p.preview && p.public_id)
-                .map(p => ({ url: p.preview!, public_id: p.public_id!, type: p.type }));
+                .map(p => ({ url: p.preview!, public_id: p.public_id! }));
 
             await updateDoc(doc(firestore, "users", user.uid), {
-                media: finalMedia,
-                profilePicture: finalMedia.length > 0 ? finalMedia[0].url : '',
+                images: finalImages,
+                profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
             });
             
             toast({
@@ -231,31 +203,27 @@ export default function GalleryPage() {
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
                 <h1 className="text-lg font-semibold">{t.title}</h1>
-                <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedMediaCount < 1}>
+                <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedImageCount < 1}>
                     {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : langTr.common.save}
                 </Button>
             </header>
 
             <main className="flex-1 overflow-y-auto p-6 space-y-6">
                  <div>
-                    <p className="text-muted-foreground text-sm mb-4">Profilinde göstereceğin fotoğraf ve videoları yönet. En az 1, en fazla 10 medya ekleyebilirsin. (Video: {uploadedVideoCount}/4)</p>
+                    <p className="text-muted-foreground text-sm mb-4">Profilinde göstereceğin fotoğrafları yönet. En az 1, en fazla 10 fotoğraf ekleyebilirsin.</p>
                     <div className="space-y-2">
-                        <Progress value={(uploadedMediaCount / 10) * 100} className="h-2" />
-                        <p className="text-sm font-medium text-muted-foreground text-right">{uploadedMediaCount} / 10</p>
+                        <Progress value={(uploadedImageCount / 10) * 100} className="h-2" />
+                        <p className="text-sm font-medium text-muted-foreground text-right">{uploadedImageCount} / 10</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    {mediaSlots.map((slot, index) => (
+                    {imageSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
                              <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-muted")}>
                                 {slot.preview ? (
                                     <>
-                                        {slot.type === 'image' ? (
-                                          <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                        ) : (
-                                           <video src={slot.preview} muted loop playsInline className="w-full h-full object-cover rounded-lg" />
-                                        )}
+                                        <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
                                         {slot.isUploading && (
                                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                                 <div className="w-16 h-16">
@@ -269,15 +237,10 @@ export default function GalleryPage() {
                                                 Profil Fotoğrafı
                                             </Badge>
                                         )}
-                                        {slot.type === 'video' && !slot.isUploading && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                <PlayCircle className="w-10 h-10 text-white/80" />
-                                            </div>
-                                        )}
                                         {!isSubmitting && !slot.isUploading && (
                                             <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                                 <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
-                                                {uploadedMediaCount > 1 && <button type="button" onClick={(e) => handleDeleteMedia(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
+                                                {uploadedImageCount > 1 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
                                             </div>
                                         )}
                                     </>
@@ -292,7 +255,7 @@ export default function GalleryPage() {
                         </div>
                     ))}
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,video/*" />
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
             </main>
         </div>
     );

@@ -45,7 +45,7 @@ type ImageSlot = {
 };
 
 const getInitialImageSlots = (): ImageSlot[] => {
-    return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
+    return Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 };
 
 const formSchema = z.object({
@@ -173,7 +173,7 @@ export default function ProfileCompletionForm() {
   // --- Photo Upload State ---
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(getInitialImageSlots);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview && !p.isUploading).length, [imageSlots]);
+  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
 
 
   const form = useForm<SignupFormValues>({
@@ -198,7 +198,6 @@ export default function ProfileCompletionForm() {
   }, [imageSlots, form]);
   
   useEffect(() => {
-    // If user exists and profile is complete, redirect
     if (user && userProfile?.gender) {
         router.replace('/anasayfa');
     }
@@ -277,7 +276,6 @@ export default function ProfileCompletionForm() {
     );
   };
   
-  // --- Photo Upload Logic ---
   const handleFileSelect = (index: number) => {
     if(isSubmitting) return;
     fileInputRef.current?.setAttribute('data-slot-index', String(index));
@@ -310,10 +308,6 @@ export default function ProfileCompletionForm() {
   };
 
   const handleImageUpload = async (file: File, slotIndex: number) => {
-      // User is not created yet, so we can't use user.uid
-      // We will upload to a temporary path, and then move it after user creation.
-      // For simplicity here, we'll just show preview and upload on final submit.
-      // Let's change this to upload immediately to a temp path.
       if (!storage) {
           toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
           return;
@@ -374,7 +368,6 @@ export default function ProfileCompletionForm() {
                 URL.revokeObjectURL(newSlots[index].preview!);
           }
           newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
-          // Re-order slots
           const filledSlots = newSlots.filter(s => s.preview);
           const emptySlots = newSlots.filter(s => !s.preview);
           return [...filledSlots, ...emptySlots];
@@ -455,7 +448,7 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 9;
+  const totalSteps = 8;
   const progressValue = ((step) / totalSteps) * 100;
   
   const handleDistanceChange = (value: number[]) => {
@@ -492,11 +485,11 @@ export default function ProfileCompletionForm() {
       case 0: fieldsToValidate = ['email', 'password']; break;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'images'; break;
-      case 3: fieldsToValidate = 'location'; break;
-      case 4: fieldsToValidate = 'interests'; break;
-      case 5: fieldsToValidate = 'dateOfBirth'; break;
-      case 6: fieldsToValidate = 'gender'; break;
-      case 7: fieldsToValidate = 'lookingFor'; break;
+      case 3: fieldsToValidate = 'dateOfBirth'; break;
+      case 4: fieldsToValidate = 'gender'; break;
+      case 5: fieldsToValidate = 'lookingFor'; break;
+      case 6: fieldsToValidate = 'interests'; break;
+      case 7: fieldsToValidate = 'location'; break;
       case 8: fieldsToValidate = 'distancePreference'; break;
       case totalSteps:
         await form.trigger();
@@ -600,7 +593,7 @@ export default function ProfileCompletionForm() {
                               {t.step12.description.replace('{count}', String(uploadedImageCount))}
                             </p>
                              <div className="space-y-2 mt-4">
-                                <Progress value={(uploadedImageCount / 6) * 100} className="h-2" />
+                                <Progress value={(uploadedImageCount / 10) * 100} className="h-2" />
                                 <FormMessage />
                             </div>
                           </div>
@@ -651,34 +644,71 @@ export default function ProfileCompletionForm() {
                 </div>
               )}
               {step === 3 && (
-                 <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <MapPin className="w-20 h-20 text-primary" />
-                    <div className="space-y-2">
-                      <h1 className="text-3xl font-bold">{t.step6.title}</h1>
-                      <p className="text-muted-foreground">{t.step6.description}</p>
-                    </div>
-                    {locationStatus === 'idle' && (
-                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full">
-                            {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />}
-                            {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
-                        </Button>
+                <>
+                  <h1 className="text-3xl font-bold">{t.step3.title}</h1>
+                  <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
+                      <FormItem className="pt-8">
+                        <FormControl>
+                          <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} t={t.step3} />
+                        </FormControl>
+                        <FormLabel className="text-muted-foreground pt-2 block">{t.step3.label}</FormLabel>
+                        <FormDescription>Doğum tarihinizi yalnızca bir kez ayarlayabilirsiniz ve bu daha sonra değiştirilemez.</FormDescription>
+                         {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2"><CheckCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageConfirm}</p></div>}
+                         {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2"><XCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageError}</p></div>}
+                         {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
+                      </FormItem>
                     )}
-                    {locationStatus === 'success' && (
-                        <div className="flex flex-col items-center gap-2 text-green-600">
-                           <CheckCircle className="w-12 h-12" />
-                           <p className="font-semibold text-lg">Konum Başarıyla Alındı!</p>
-                        </div>
-                    )}
-                    {locationStatus === 'error' && (
-                         <div className="flex flex-col items-center gap-2 text-destructive">
-                           <XCircle className="w-12 h-12" />
-                           <p className="font-semibold text-lg">{locationError}</p>
-                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
-                        </div>
-                    )}
-                 </div>
+                  />
+                </>
               )}
-               {step === 4 && (
+              {step === 4 && (
+                <>
+                  <h1 className="text-3xl font-bold">{t.step4.title}</h1>
+                  <FormField control={form.control} name="gender" render={({ field }) => (
+                      <FormItem className="space-y-4 pt-8">
+                        <FormControl>
+                          <div className="space-y-3">
+                            <Button type="button" variant={field.value === 'female' ? 'default' : 'outline'} className="w-full h-14 rounded-full text-lg" onClick={() => field.onChange('female')}>{t.step4.woman}</Button>
+                            <Button type="button" variant={field.value === 'male' ? 'default' : 'outline'} className="w-full h-14 rounded-full text-lg" onClick={() => field.onChange('male')}>{t.step4.man}</Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+              {step === 5 && (
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="shrink-0">
+                    <h1 className="text-3xl font-bold">{t.step5.title}</h1>
+                    <p className="text-muted-foreground">{t.step5.label}</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
+                  <FormField control={form.control} name="lookingFor" render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormControl>
+                          <div className="grid grid-cols-2 gap-3">
+                            {t.step5.options.map((option: {id: string, label: string}, index: number) => {
+                              const Icon = lookingForOptions[index].icon;
+                              const isSelected = field.value === option.id;
+                              return (
+                                <button key={option.id} type="button" onClick={() => field.onChange(option.id)} className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors aspect-square ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}>
+                                  <Icon className="w-8 h-8" />
+                                  <span className="text-sm font-semibold text-center">{option.label}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  </div>
+                </div>
+              )}
+              {step === 6 && (
                 <div className="flex-1 flex flex-col min-h-0">
                     <FormField
                         control={form.control}
@@ -729,70 +759,33 @@ export default function ProfileCompletionForm() {
                     />
                 </div>
               )}
-              {step === 5 && (
-                <>
-                  <h1 className="text-3xl font-bold">{t.step3.title}</h1>
-                  <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
-                      <FormItem className="pt-8">
-                        <FormControl>
-                          <DateInput value={field.value} onChange={handleDateOfBirthChange} disabled={field.disabled} t={t.step3} />
-                        </FormControl>
-                        <FormLabel className="text-muted-foreground pt-2 block">{t.step3.label}</FormLabel>
-                        <FormDescription>Doğum tarihinizi yalnızca bir kez ayarlayabilirsiniz ve bu daha sonra değiştirilemez.</FormDescription>
-                         {ageStatus === 'valid' && <div className="flex items-center text-green-600 mt-2"><CheckCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageConfirm}</p></div>}
-                         {ageStatus === 'invalid' && <div className="flex items-center text-red-600 mt-2"><XCircle className="mr-2 h-5 w-5" /><p>{t.step3.ageError}</p></div>}
-                         {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
-                      </FormItem>
+               {step === 7 && (
+                 <div className="flex flex-col items-center justify-center text-center h-full gap-6">
+                    <MapPin className="w-20 h-20 text-primary" />
+                    <div className="space-y-2">
+                      <h1 className="text-3xl font-bold">{t.step6.title}</h1>
+                      <p className="text-muted-foreground">{t.step6.description}</p>
+                    </div>
+                    {locationStatus === 'idle' && (
+                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full">
+                            {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />}
+                            {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
+                        </Button>
                     )}
-                  />
-                </>
-              )}
-              {step === 6 && (
-                <>
-                  <h1 className="text-3xl font-bold">{t.step4.title}</h1>
-                  <FormField control={form.control} name="gender" render={({ field }) => (
-                      <FormItem className="space-y-4 pt-8">
-                        <FormControl>
-                          <div className="space-y-3">
-                            <Button type="button" variant={field.value === 'female' ? 'default' : 'outline'} className="w-full h-14 rounded-full text-lg" onClick={() => field.onChange('female')}>{t.step4.woman}</Button>
-                            <Button type="button" variant={field.value === 'male' ? 'default' : 'outline'} className="w-full h-14 rounded-full text-lg" onClick={() => field.onChange('male')}>{t.step4.man}</Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                    {locationStatus === 'success' && (
+                        <div className="flex flex-col items-center gap-2 text-green-600">
+                           <CheckCircle className="w-12 h-12" />
+                           <p className="font-semibold text-lg">Konum Başarıyla Alındı!</p>
+                        </div>
                     )}
-                  />
-                </>
-              )}
-              {step === 7 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="shrink-0">
-                    <h1 className="text-3xl font-bold">{t.step5.title}</h1>
-                    <p className="text-muted-foreground">{t.step5.label}</p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto -mr-6 pr-6 pt-4">
-                  <FormField control={form.control} name="lookingFor" render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormControl>
-                          <div className="grid grid-cols-2 gap-3">
-                            {t.step5.options.map((option: {id: string, label: string}, index: number) => {
-                              const Icon = lookingForOptions[index].icon;
-                              const isSelected = field.value === option.id;
-                              return (
-                                <button key={option.id} type="button" onClick={() => field.onChange(option.id)} className={`p-4 border rounded-lg flex flex-col items-center justify-center gap-2 transition-colors aspect-square ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"}`}>
-                                  <Icon className="w-8 h-8" />
-                                  <span className="text-sm font-semibold text-center">{option.label}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                    {locationStatus === 'error' && (
+                         <div className="flex flex-col items-center gap-2 text-destructive">
+                           <XCircle className="w-12 h-12" />
+                           <p className="font-semibold text-lg">{locationError}</p>
+                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
+                        </div>
                     )}
-                  />
-                  </div>
-                </div>
+                 </div>
               )}
               {step === 8 && (
                 <div className="flex flex-col h-full">
@@ -824,7 +817,7 @@ export default function ProfileCompletionForm() {
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
-              {step === 9 && (
+               {step === totalSteps && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <Globe className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -844,9 +837,10 @@ export default function ProfileCompletionForm() {
               className="w-full h-14 rounded-full text-lg font-bold"
               disabled={
                 isSubmitting ||
-                (step === 3 && locationStatus !== 'success') ||
-                (step === 4 && (form.getValues('interests')?.length ?? 0) < 10) ||
-                (step === 5 && ageStatus !== 'valid')
+                (step === 2 && uploadedImageCount < 2) ||
+                (step === 3 && ageStatus !== 'valid') ||
+                (step === 6 && (form.getValues('interests')?.length ?? 0) < 10) ||
+                (step === 7 && locationStatus !== 'success')
               }
             >
               {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}
