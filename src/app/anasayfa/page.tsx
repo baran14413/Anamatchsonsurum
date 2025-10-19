@@ -32,6 +32,7 @@ export default function AnasayfaPage() {
     }
 
     setIsLoading(true);
+    setProfiles([]);
 
     try {
       const usersRef = collection(firestore, 'users');
@@ -59,7 +60,6 @@ export default function AnasayfaPage() {
               return false;
           }
 
-          // Mesafe filtresi
           if (userProfile.location && p.location && !userProfile.globalModeEnabled) {
               const distance = getDistance(
                   userProfile.location.latitude!,
@@ -70,6 +70,7 @@ export default function AnasayfaPage() {
               if (distance > (userProfile.distancePreference || 160)) {
                   return false;
               }
+              p.distance = distance;
           }
 
           return true;
@@ -84,10 +85,8 @@ export default function AnasayfaPage() {
     }
   }, [user, userProfile, firestore, toast]);
 
-  // Butonun çağıracağı özel fonksiyon
   const forceRefetchProfiles = () => {
-    setProfiles([]); // Arayüzü anında temizle
-    fetchProfiles(true); // Etkileşimleri görmezden gelerek profilleri getir
+    fetchProfiles(true);
   };
 
   useEffect(() => {
@@ -122,7 +121,6 @@ export default function AnasayfaPage() {
         };
         await setDoc(matchDocRef, updateData, { merge: true });
 
-        // Also record interaction in user's subcollection for filtering
         const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(userInteractionRef, { 
             matchedWith: profileToSwipe.uid, 
@@ -177,7 +175,7 @@ export default function AnasayfaPage() {
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        // handleSwipe(profile, 'right'); // Sağ swipe şimdilik devre dışı
+                                        // handleSwipe(profile, 'right'); // Right swipe is disabled for now
                                     }
                                 }}
                                 custom={exitDirection}
