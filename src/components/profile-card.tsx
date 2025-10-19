@@ -21,7 +21,6 @@ import { Icons } from './icons';
 interface ProfileCardProps {
   profile: UserProfile;
   x: ReturnType<typeof useMotionValue>;
-  y: ReturnType<typeof useMotionValue>;
   isTopCard?: boolean;
 }
 
@@ -64,15 +63,11 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, x, isTopCard = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-
+  
   useEffect(() => {
     setActiveImageIndex(0);
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
@@ -89,15 +84,6 @@ const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardP
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
-    
-  const handleVideoClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if(videoRef.current) {
-        const newMutedState = !videoRef.current.muted;
-        videoRef.current.muted = newMutedState;
-        setIsMuted(newMutedState);
-      }
-  }
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -178,10 +164,9 @@ const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardP
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-  const superlikeOpacity = useTransform(y, [0, -100], [0, 1]);
-  
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const SWIPE_THRESHOLD = 80;
+
   const CardContent = (
     <div className="relative w-full h-full rounded-[14px] overflow-hidden">
         {profile.images && profile.images.length > 0 && profile.images.map((image, index) => {
@@ -194,11 +179,11 @@ const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardP
                     alt={`${profile.fullName} profile image ${index + 1}`}
                     fill
                     sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                    style={{ objectFit: 'cover' }}
-                    className={cn(
-                        "absolute inset-0 transition-opacity duration-200",
-                        isActive ? "opacity-100" : "opacity-0 pointer-events-none"
-                    )}
+                    style={{ 
+                        objectFit: 'cover',
+                        opacity: isActive ? 1 : 0,
+                        transition: 'opacity 300ms ease-in-out'
+                    }}
                     priority={isTopCard && index === 0}
                 />
               )
@@ -398,34 +383,25 @@ const ProfileCardComponent = ({ profile, x, y, isTopCard = false }: ProfileCardP
       </div>
   );
 
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  const SWIPE_THRESHOLD = 50;
-
   return (
     <motion.div
-      style={{ rotate, x, y }}
+      style={{ rotate, x }}
       drag={isTopCard}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.2}
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 group"
     >
       <motion.div
-        style={{ opacity: likeOpacity }}
-        className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12"
+        style={{ display: x.get() > SWIPE_THRESHOLD ? 'flex' : 'none' }}
+        className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
       >
         <Heart className="w-16 h-16 text-green-500 fill-green-500" />
       </motion.div>
       <motion.div
-        style={{ opacity: dislikeOpacity }}
-        className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12"
+        style={{ display: x.get() < -SWIPE_THRESHOLD ? 'flex' : 'none' }}
+        className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
       >
         <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-      </motion.div>
-      <motion.div
-        style={{ opacity: superlikeOpacity }}
-        className="pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 z-50 p-4 rounded-full border-4 border-blue-500 text-blue-500"
-      >
-        <Star className="w-16 h-16 text-blue-500 fill-blue-500" />
       </motion.div>
       {CardContent}
     </motion.div>
@@ -436,5 +412,7 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
+
+    
 
     

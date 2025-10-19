@@ -405,7 +405,6 @@ export default function AnasayfaPage() {
     return visibleProfiles.map((profile, i) => {
         const isTopCard = i === visibleProfiles.length - 1;
         const x = useMotionValue(0);
-        const y = useMotionValue(0);
         
         const dragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
             if (!isTopCard) return;
@@ -432,7 +431,6 @@ export default function AnasayfaPage() {
                 style={{
                   zIndex: i,
                   x,
-                  y
                 }}
                 initial={{
                   scale: 1 - (visibleProfiles.length - 1 - i) * 0.05,
@@ -453,7 +451,7 @@ export default function AnasayfaPage() {
                     transition: { duration: 0.3 }
                 }}
             >
-                <ProfileCard profile={profile} x={x} y={y} isTopCard={isTopCard} />
+                <ProfileCard profile={profile} x={x} isTopCard={isTopCard} />
             </motion.div>
         );
     });
@@ -544,5 +542,7 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
 
     
