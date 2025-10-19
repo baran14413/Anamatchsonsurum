@@ -330,7 +330,7 @@ export default function AnasayfaPage() {
                             style={{
                                 zIndex: index,
                             }}
-                            drag={isTopCard}
+                            drag={isTopCard ? "x" : false}
                             onDragEnd={(event, info) => {
                                 if (!isTopCard) return;
                                 if (info.offset.x > 100) {
