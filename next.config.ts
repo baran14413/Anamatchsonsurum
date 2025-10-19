@@ -1,10 +1,6 @@
 
 import type {NextConfig} from 'next';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -69,7 +65,7 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
         // Ensures the service worker is copied to the public folder
-        config.resolve.alias['firebase/messaging'] = path.resolve(__dirname, 'node_modules/firebase/messaging/dist/index.esm.js');
+        config.resolve.alias['firebase/messaging'] = path.resolve(__dirname, 'node_modules/firebase/messaging/dist/index.mjs');
     }
     return config;
   }
