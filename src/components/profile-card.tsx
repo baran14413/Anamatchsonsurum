@@ -16,7 +16,7 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -101,20 +101,14 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
     const xSwipePower = swipePower(info.offset.x, info.velocity.x);
     const ySwipePower = swipePower(info.offset.y, info.velocity.y);
 
-    let direction: 'left' | 'right' | 'up' | null = null;
-
     if (ySwipePower > swipeConfidenceThreshold && info.offset.y < -50) {
-        direction = 'up';
+        onSwipe(profile, 'up');
     } else if (xSwipePower > swipeConfidenceThreshold) {
         if (info.offset.x > 50) {
-            direction = 'right';
-        } else if (info.offset.x < -50) { // Corrected this line
-            direction = 'left';
+            onSwipe(profile, 'right');
+        } else if (info.offset.x < -50) {
+            onSwipe(profile, 'left');
         }
-    }
-    
-    if (direction) {
-        onSwipe(profile, direction);
     }
   };
 
@@ -167,9 +161,9 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
-        initial={{ scale: isTopCard ? 1 : 0.95 }}
+        initial={{ scale: 1 }}
         animate={{ scale: 1 }}
-        transition={{ duration: 0.3 }}
+        exit={{ opacity: 0, transition: { duration: 0.2 } }}
     >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
             <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
