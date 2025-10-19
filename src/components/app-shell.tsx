@@ -63,42 +63,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, firestore]);
   
-  // --- Simplified and Corrected Routing Logic ---
+  // --- REDESIGNED ROUTING LOGIC ---
   useEffect(() => {
-    // If auth state is still loading, do nothing to prevent premature redirects.
+    // 1. Do nothing while auth state is resolving. This is the most important guard.
     if (isUserLoading) {
       return;
     }
 
+    // 2. Handle signed-in users
     if (user) {
-      // User is logged in.
-      // 1. Check for incomplete profile.
-      if (!userProfile?.gender) {
-        if (!isRegistrationRoute) {
-          router.replace(registrationRoute);
-        }
-        return; // Stop further checks.
+      // Profile is incomplete -> force registration
+      if (!userProfile?.gender && !isRegistrationRoute) {
+        router.replace(registrationRoute);
+        return;
       }
-      // 2. Check for rules agreement.
-      if (!userProfile.rulesAgreed) {
-        if (!isRulesRoute) {
-          router.replace(rulesRoute);
-        }
-        return; // Stop further checks.
+      // Rules are not agreed to -> force rules page
+      if (userProfile?.gender && !userProfile.rulesAgreed && !isRulesRoute) {
+        router.replace(rulesRoute);
+        return;
       }
-      // 3. User is fully onboarded. If they are on a public/auth/reg page, redirect to app.
-      if (isPublicAuthRoute || isRegistrationRoute || isRulesRoute) {
+      // User is fully onboarded, but on a public/auth page -> redirect to app
+      if (userProfile?.rulesAgreed && (isPublicAuthRoute || isRegistrationRoute || isRulesRoute)) {
         router.replace('/anasayfa');
+        return;
       }
-    } else {
-      // User is NOT logged in.
-      // Protect routes that require authentication.
-      if (isProtectedRoute || isRulesRoute || isAdminRoute) {
+    } 
+    // 3. Handle signed-out users
+    else {
+      // If a logged-out user tries to access a protected page, redirect to home.
+      // This allows them to stay on public pages like /login, /profilini-tamamla, /tos etc.
+      if (isProtectedRoute || isAdminRoute) {
         router.replace('/');
+        return;
       }
-      // Guests are allowed on publicAuthRoutes and registrationRoute, so no 'else' block is needed.
     }
-  }, [user, userProfile, isUserLoading, pathname, router, isProtectedRoute, isPublicAuthRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
+  }, [isUserLoading, user, userProfile, pathname, router]);
 
 
   // Show a global loader for protected areas while auth is resolving.
