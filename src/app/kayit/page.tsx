@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -156,34 +157,26 @@ export default function SignUpPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
       const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
       const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
 
-      if (slotIndex !== -1) {
-          handleImageUpload(file, slotIndex);
-      }
-
-      if (e.target) e.target.value = '';
-  };
-
-  const handleImageUpload = async (file: File, slotIndex: number) => {
+      if (slotIndex === -1) return;
       if (!storage) {
           toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
           return;
       }
       
-      const tempId = 'temp_' + Date.now();
-
       setImageSlots(prev => {
           const newSlots = [...prev];
           newSlots[slotIndex] = { file, preview: URL.createObjectURL(file), isUploading: true, public_id: null };
           return newSlots;
       });
 
-      const uniqueFileName = 'bematch_profiles/' + tempId + '/' + Date.now() + '-' + file.name.replace(/\s+/g, '_');
+      const tempId = `temp_${Date.now()}`;
+      const uniqueFileName = `bematch_profiles/${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
       const imageRef = storageRef(storage, uniqueFileName);
 
       try {
@@ -198,8 +191,11 @@ export default function SignUpPage() {
       } catch (error: any) {
           toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
           setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots()[i] : s));
+      } finally {
+        if (e.target) e.target.value = '';
       }
   };
+
 
   const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
       e.stopPropagation();
