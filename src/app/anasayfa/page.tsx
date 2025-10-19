@@ -158,57 +158,70 @@ export default function AnasayfaPage() {
     }
     
     setIsLoading(true);
-    setLastDislikedProfile(null);
 
     try {
-        const interactedUids = new Set<string>([user.uid]);
-        const userMatchesQuery = query(
+        // Get UIDs of already matched users
+        const matchesQuery = query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', '==', 'matched')
         );
-        const userMatchesSnap = await getDocs(userMatchesQuery);
-        userMatchesSnap.forEach(doc => {
-            interactedUids.add(doc.data().matchedWith);
+        const matchesSnap = await getDocs(matchesQuery);
+        const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
+        matchedUids.add(user.uid);
+
+        // Base query to get potential users
+        const usersRef = collection(firestore, 'users');
+        let q = query(usersRef);
+
+        // Filter by gender preference at the database level
+        const genderPref = userProfile.genderPreference;
+        if (genderPref && genderPref !== 'both') {
+            q = query(q, where('gender', '==', genderPref));
+        }
+        
+        q = query(q, limit(50)); // Limit initial fetch
+        
+        const usersSnapshot = await getDocs(q);
+        
+        const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+        
+        const potentialProfiles = allFetchedUsers.filter(p => {
+            if (!p.uid || matchedUids.has(p.uid)) return false;
+            
+            // Age filter
+            const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
+            const minAge = userProfile.ageRange?.min || 18;
+            const maxAge = userProfile.ageRange?.max || 80;
+            if (age < minAge || age > maxAge) {
+                if (!userProfile.expandAgeRange) return false;
+            }
+            
+            return true;
         });
-        
-        const allUsersQuery = query(collection(firestore, 'users'), limit(50));
-        const allUsersSnapshot = await getDocs(allUsersQuery);
-        const allUsers = allUsersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
-        
-        const globalMode = userProfile.globalModeEnabled ?? false;
-        
-        const potentialProfiles = allUsers
-            .filter(p => {
-                if (!p.uid || interactedUids.has(p.uid)) return false;
-                
-                const userGenderPref = userProfile.genderPreference;
-                if (userGenderPref !== 'both' && p.gender !== userGenderPref) return false;
 
-                const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
-                const minAge = userProfile.ageRange?.min || 18;
-                const maxAge = userProfile.ageRange?.max || 80;
-                if (age < minAge || age > maxAge) {
-                    if (!userProfile.expandAgeRange) return false;
-                }
+        // Map profiles with distance and filter
+        const profilesWithDistance = potentialProfiles.map(p => {
+            let distance: number | undefined = undefined;
+            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+            }
+            return { ...p, distance };
+        });
 
-                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                    if (distance > userProfile.distancePreference!) {
-                        return false;
-                    }
-                }
-                
-                return true;
-            })
-            .map(p => {
-                let distance;
-                if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                }
-                return { ...p, distance };
+        let finalProfiles = profilesWithDistance;
+
+        // Filter by distance if global mode is off
+        if (!userProfile.globalModeEnabled) {
+            finalProfiles = profilesWithDistance.filter(p => {
+                if (p.distance === undefined) return false;
+                return p.distance <= (userProfile.distancePreference || 160);
             });
+        }
+        
+        // Shuffle the final list
+        finalProfiles.sort(() => Math.random() - 0.5);
 
-        setProfiles(potentialProfiles.slice(0, 20));
+        setProfiles(finalProfiles.slice(0, 20)); // Take the first 20 after shuffling
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -328,7 +341,7 @@ export default function AnasayfaPage() {
                                     handleSwipeAction('disliked');
                                 }
                             }}
-                             exit={{
+                            exit={{
                                 x: 300,
                                 y: -100,
                                 opacity: 0,
@@ -399,4 +412,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
