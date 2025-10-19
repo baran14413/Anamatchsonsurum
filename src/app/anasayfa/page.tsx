@@ -163,22 +163,16 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        const user1Query = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
-        const user2Query = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
-
-        const [user1Snap, user2Snap] = await Promise.all([
-            getDocs(user1Query),
-            getDocs(user2Query)
-        ]);
-
-        user1Snap.forEach(doc => {
-            const matchData = doc.data() as Match;
-            interactedUids.add(matchData.user2Id);
-        });
-
-        user2Snap.forEach(doc => {
-            const matchData = doc.data() as Match;
-            interactedUids.add(matchData.user1Id);
+        // This is the correct, simplified logic. We only filter out people we have already
+        // definitively matched with or have a pending superlike with. Disliked profiles can reappear.
+        const userMatchesQuery = query(
+            collection(firestore, `users/${user.uid}/matches`),
+            where('status', 'in', ['matched', 'superlike_pending'])
+        );
+        
+        const userMatchesSnap = await getDocs(userMatchesQuery);
+        userMatchesSnap.forEach(doc => {
+            interactedUids.add(doc.data().matchedWith);
         });
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
@@ -311,6 +305,9 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
   }, [lastDislikedProfile, user, firestore, userProfile]);
 
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-30, 30]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -333,6 +330,8 @@ export default function AnasayfaPage() {
                                 zIndex: index,
                                 scale: 1 - (profiles.length - 1 - index) * 0.05,
                                 top: (profiles.length - 1 - index) * 10,
+                                x: isTopCard ? x : 0,
+                                rotate: isTopCard ? rotate: 0,
                             }}
                             drag={isTopCard}
                             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
@@ -343,11 +342,11 @@ export default function AnasayfaPage() {
                                     handleSwipeAction('liked');
                                 } else if (info.offset.x < -100) {
                                     handleSwipeAction('disliked');
+                                } else {
+                                     motion.animate(x, 0, { duration: 0.2 });
                                 }
                             }}
                             animate={{
-                                x: 0,
-                                y: 0,
                                 scale: 1 - (profiles.length - 1 - index) * 0.05,
                                 top: (profiles.length - 1 - index) * 10,
                                 opacity: 1,
@@ -424,7 +423,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
-
-    
