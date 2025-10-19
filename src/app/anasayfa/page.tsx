@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -25,7 +24,66 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
-  const fetchProfiles = useCallback(async (ignoreInteractions = false) => {
+  const fetchProfiles = useCallback(async () => {
+    if (!user || !userProfile || !firestore) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const usersRef = collection(firestore, 'users');
+      let q = query(usersRef, limit(50));
+
+      const usersSnapshot = await getDocs(q);
+
+      const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+      const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+      
+      const fetchedProfiles = usersSnapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+        .filter(p => {
+          if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
+          
+          if (p.uid === user.uid) return false;
+
+          const sortedIds = [user.uid, p.uid].sort();
+          const matchId = sortedIds.join('_');
+          if (interactedUids.has(matchId)) {
+              return false;
+          }
+          
+          // Step 1: Always calculate distance if location is available
+          if (userProfile.location && p.location) {
+              p.distance = getDistance(
+                  userProfile.location.latitude!,
+                  userProfile.location.longitude!,
+                  p.location.latitude!,
+                  p.location.longitude!
+              );
+          }
+
+          // Step 2: Filter by distance only if global mode is off
+          if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+              if (p.distance > (userProfile.distancePreference || 160)) {
+                  return false;
+              }
+          }
+
+          return true;
+        });
+
+      setProfiles(fetchedProfiles);
+    } catch (error: any) {
+      console.error("Profil getirme hatası:", error);
+      toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, userProfile, firestore, toast]);
+
+  const forceRefetchProfiles = useCallback(async (ignoreInteractions = false) => {
     if (!user || !userProfile || !firestore) {
       setIsLoading(false);
       return;
@@ -55,26 +113,31 @@ export default function AnasayfaPage() {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
           
           // Use the matchId format for checking interactions, which is more robust
-          const sortedIds = [user.uid, p.uid].sort();
-          const matchId = sortedIds.join('_');
-          if (interactedUids.has(matchId)) {
-              return false;
+          if (!ignoreInteractions) {
+            const sortedIds = [user.uid, p.uid].sort();
+            const matchId = sortedIds.join('_');
+            if (interactedUids.has(matchId)) {
+                return false;
+            }
           }
           
           if (!p.isBot && p.uid === user.uid) return false;
 
-
-          if (userProfile.location && p.location && !userProfile.globalModeEnabled) {
-              const distance = getDistance(
+          // Step 1: Always calculate distance if location is available
+          if (userProfile.location && p.location) {
+              p.distance = getDistance(
                   userProfile.location.latitude!,
                   userProfile.location.longitude!,
                   p.location.latitude!,
                   p.location.longitude!
               );
-              if (distance > (userProfile.distancePreference || 160)) {
+          }
+
+          // Step 2: Filter by distance only if global mode is off
+          if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+              if (p.distance > (userProfile.distancePreference || 160)) {
                   return false;
               }
-              p.distance = distance;
           }
 
           return true;
@@ -88,10 +151,6 @@ export default function AnasayfaPage() {
       setIsLoading(false);
     }
   }, [user, userProfile, firestore, toast]);
-
-  const forceRefetchProfiles = () => {
-    fetchProfiles(true); // Pass true to ignore previous interactions and "reset" the deck
-  };
 
   useEffect(() => {
     if (user && firestore) {
@@ -107,15 +166,20 @@ export default function AnasayfaPage() {
     setExitDirection(direction);
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
-    const action = direction === 'left' ? 'disliked' : 'liked';
+    const action = 'disliked';
     
     try {
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
         const matchId = sortedIds.join('_');
         const matchDocRef = doc(firestore, 'matches', matchId);
 
+        const matchDoc = await getDoc(matchDocRef);
+        const matchData = matchDoc.data();
+
         const user1IsCurrentUser = user.uid === sortedIds[0];
+
         const updateData: Partial<Match> = {
+            id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
             status: 'pending',
@@ -128,6 +192,7 @@ export default function AnasayfaPage() {
         // Record the interaction in the user's subcollection as well to filter them out easily next time
         const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(userInteractionRef, { 
+            id: matchId,
             matchedWith: profileToSwipe.uid, 
             status: 'pending', // A general status for any interaction
             action: action, // Store the specific action
@@ -135,6 +200,16 @@ export default function AnasayfaPage() {
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || '',
         }, { merge: true });
+        
+         const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
+         await setDoc(otherUserInteractionRef, { 
+             id: matchId,
+             matchedWith: user.uid, 
+             status: 'pending',
+             timestamp: serverTimestamp(),
+             fullName: userProfile?.fullName,
+             profilePicture: userProfile?.profilePicture || '',
+         }, { merge: true });
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
@@ -189,7 +264,7 @@ export default function AnasayfaPage() {
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        handleSwipe(profile, 'right');
+                                        // handleSwipe(profile, 'right');
                                     }
                                 }}
                                 custom={exitDirection}
@@ -208,7 +283,7 @@ export default function AnasayfaPage() {
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
                         <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={forceRefetchProfiles}>
+                        <Button onClick={() => forceRefetchProfiles(true)}>
                             Tekrar Dene
                         </Button>
                     </div>
