@@ -149,7 +149,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
-         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
             <Link href="/anasayfa">
               <Icons.logo width={32} height={32} />
             </Link>
@@ -160,10 +160,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <Tooltip key={item.href}>
                         <TooltipTrigger asChild>
                           <Link href={item.href}>
-                            <Button variant='ghost' size='icon' className={cn("relative rounded-full h-11 w-11", pathname.startsWith(item.href) && "bg-muted")}>
-                                <item.icon className={cn("h-6 w-6", pathname.startsWith(item.href) ? "text-primary" : "text-muted-foreground")} />
+                            <Button variant='ghost' size='icon' className={cn("relative rounded-full h-10 w-10", pathname.startsWith(item.href) && "bg-muted")}>
+                                <item.icon className={cn("h-5 w-5", pathname.startsWith(item.href) ? "text-primary" : "text-muted-foreground")} />
                                 {item.hasNotification && (
-                                    <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
+                                    <span className="absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
                                 )}
                             </Button>
                           </Link>
@@ -177,8 +177,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full h-11 w-11">
-                            <Settings className="h-6 w-6 text-muted-foreground" />
+                        <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                            <Settings className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
