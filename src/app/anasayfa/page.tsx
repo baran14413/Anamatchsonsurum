@@ -180,8 +180,7 @@ export default function AnasayfaPage() {
         const potentialProfiles = allUsers
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
-                if (!p.images || p.images.length === 0) return false;
-
+                
                 const userGenderPref = userProfile.genderPreference;
                 if (userGenderPref !== 'both' && p.gender !== userGenderPref) return false;
 
@@ -356,44 +355,7 @@ export default function AnasayfaPage() {
                   )}
                </AnimatePresence>
           </div>
-          <div className="flex items-center justify-center gap-4 mt-8">
-              <Button
-                  onClick={() => handleSwipeAction('disliked')}
-                  variant="outline"
-                  size="icon"
-                  className="h-16 w-16 rounded-full border-2 border-red-500 text-red-500"
-                  disabled={profiles.length === 0}
-              >
-                  <XIcon size={32} />
-              </Button>
-              <Button
-                   onClick={() => handleSwipeAction('superliked')}
-                   variant="outline"
-                   size="icon"
-                   className="h-14 w-14 rounded-full border-2 border-blue-500 text-blue-500"
-                   disabled={profiles.length === 0}
-              >
-                  <Star size={24} />
-              </Button>
-              <Button
-                   onClick={() => handleSwipeAction('liked')}
-                   variant="outline"
-                   size="icon"
-                   className="h-16 w-16 rounded-full border-2 border-green-500 text-green-500"
-                   disabled={profiles.length === 0}
-              >
-                  <Heart size={32} />
-              </Button>
-              <Button
-                   onClick={handleUndo}
-                   variant="outline"
-                   size="icon"
-                   className="h-14 w-14 rounded-full border-2 border-yellow-500 text-yellow-500"
-                   disabled={!lastDislikedProfile}
-              >
-                  <Undo2 size={24} />
-              </Button>
-          </div>
+          
            {showUndoLimitModal && (
               <AlertDialogContent>
                   <AlertDialogHeader className="items-center text-center">
@@ -440,5 +402,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
