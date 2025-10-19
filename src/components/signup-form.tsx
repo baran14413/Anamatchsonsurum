@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock, X, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -52,7 +52,6 @@ const getInitialImageSlots = (): ImageSlot[] => {
 const formSchema = z.object({
     email: z.string().email({ message: langTr.signup.errors.form.email }),
     password: z.string().min(6, { message: langTr.signup.errors.form.password }),
-    confirmPassword: z.string().min(6, { message: "Şifre onayı en az 6 karakter olmalıdır." }),
     name: z.string()
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
@@ -79,9 +78,6 @@ const formSchema = z.object({
       max: z.number()
     }),
     interests: z.array(z.string()).min(10, { message: "Devam etmek için en az 10 ilgi alanı seçmelisin." }),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Şifreler eşleşmiyor.",
-    path: ["confirmPassword"],
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -128,7 +124,7 @@ const DateInput = ({ value, onChange, disabled, t }: { value?: Date, onChange: (
         } else { setYear(val); newYear = val; }
 
         if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
-            const date = new Date(`${newYear}-${newMonth}-${newDay}`);
+            const date = new Date(\`\${newYear}-\${newMonth}-\${newDay}\`);
             if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
                 onChange(date);
             } else { onChange(new Date('invalid')); }
@@ -180,16 +176,11 @@ export default function ProfileCompletionForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
-      confirmPassword: '',
       name: "",
       images: [],
       lookingFor: "",
@@ -255,7 +246,7 @@ export default function ProfileCompletionForm() {
         form.setValue('location', { latitude, longitude }, { shouldValidate: true });
         
         try {
-          const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+          const response = await fetch(\`/api/geocode?lat=\${latitude}&lon=\${longitude}\`);
           if(response.ok) {
             const data = await response.json();
             if (data.address) {
@@ -322,7 +313,7 @@ export default function ProfileCompletionForm() {
           return;
       }
       
-      const tempId = form.getValues('email') || `temp_${Date.now()}`;
+      const tempId = form.getValues('email') || \`temp_\${Date.now()}\`;
 
       setImageSlots(prev => {
           const newSlots = [...prev];
@@ -330,7 +321,7 @@ export default function ProfileCompletionForm() {
           return newSlots;
       });
 
-      const uniqueFileName = `bematch_profiles/temp_${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const uniqueFileName = \`bematch_profiles/temp_\${tempId}/\${Date.now()}-\${file.name.replace(/\s+/g, '_')}\`;
       const imageRef = storageRef(storage, uniqueFileName);
 
       try {
@@ -446,7 +437,6 @@ export default function ProfileCompletionForm() {
         };
         
         delete (userProfileData as any).password;
-        delete (userProfileData as any).confirmPassword;
         
         await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
         router.push('/kurallar');
@@ -479,7 +469,7 @@ export default function ProfileCompletionForm() {
       } else {
         toast({
           title: "Limit Aşıldı",
-          description: `Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.`,
+          description: \`Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.\`,
           variant: 'destructive',
         });
       }
@@ -492,7 +482,7 @@ export default function ProfileCompletionForm() {
     let isValid = true;
     
     switch (step) {
-      case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
+      case 0: fieldsToValidate = ['email', 'password']; break;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'images'; break;
       case 3: fieldsToValidate = 'dateOfBirth'; break;
@@ -509,7 +499,7 @@ export default function ProfileCompletionForm() {
             const firstErrorField = Object.keys(form.formState.errors)[0];
             toast({
                 title: "Form Eksik",
-                description: `Lütfen tüm alanları doğru bir şekilde doldurun. Hata: ${firstErrorField}`,
+                description: \`Lütfen tüm alanları doğru bir şekilde doldurun. Hata: \${firstErrorField}\`,
                 variant: "destructive"
             });
         }
@@ -566,25 +556,7 @@ export default function ProfileCompletionForm() {
                             <FormControl>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
-                                    <Input type={showPassword ? 'text' : 'password'} placeholder={langTr.login.passwordPlaceholder} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
-                                    </button>
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                        <FormItem>
-                             <FormLabel>{t.step1.confirmPasswordLabel}</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
-                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.step1.confirmPasswordLabel} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
-                                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
-                                    </button>
+                                    <Input type="password" placeholder={langTr.login.passwordPlaceholder} className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -632,7 +604,7 @@ export default function ProfileCompletionForm() {
                                         <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed border-white/50 bg-white/10 rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-white/20 group", slot.preview && "border-solid border-white/30")}>
                                             {slot.preview ? (
                                                 <>
-                                                    <Image src={slot.preview} alt={`Önizleme ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
+                                                    <Image src={slot.preview} alt={\`Önizleme \${index}\`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
                                                     {slot.isUploading && (
                                                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                                             <div className="w-16 h-16">
@@ -879,5 +851,3 @@ export default function ProfileCompletionForm() {
     </div>
   );
 }
-
-    
