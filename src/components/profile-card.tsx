@@ -214,21 +214,19 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                 >
                     <div className="space-y-2">
-                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                             {(profile.distance || profile.distance === 0) && (
-                                <div className="flex items-center gap-1 text-sm font-medium">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
-                                </div>
-                            )}
-                        </div>
+                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                         <div className="flex items-end justify-between gap-4">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
                                     <span className="font-semibold text-white/80 text-3xl">{age}</span>
                                 </div>
+                                 {(profile.distance || profile.distance === 0) && (
+                                    <div className="flex items-center gap-1.5 text-base font-medium mt-1">
+                                        <MapPin className="w-5 h-5" />
+                                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                    </div>
+                                )}
                             </div>
                             <SheetTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
