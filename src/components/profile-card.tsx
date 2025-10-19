@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -155,14 +154,15 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
     <motion.div
         className={cn(
             "absolute w-full h-full cursor-grab",
-            !isTopCard && "scale-95 blur-sm pointer-events-none"
+             !isTopCard && "scale-95 pointer-events-none",
+             !isTopCard && { filter: 'blur(4px)' }
         )}
         drag={isTopCard}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
-        initial={{ scale: 1 }}
-        animate={{ scale: 1 }}
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1, transition: { duration: 0.4 } }}
         exit={{ opacity: 0, transition: { duration: 0.2 } }}
     >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
