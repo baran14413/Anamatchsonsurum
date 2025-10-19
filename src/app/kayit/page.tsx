@@ -275,7 +275,6 @@ export default function SignUpPage() {
 
         await updateProfile(currentUser, { displayName: data.name, photoURL: finalImages.length > 0 ? finalImages[0].url : '' });
         
-        // We set a default gender and date of birth because they are not collected in this simplified flow.
         const userProfileData = {
             uid: currentUser.uid,
             email: data.email,
@@ -283,7 +282,7 @@ export default function SignUpPage() {
             interests: data.interests,
             images: finalImages,
             location: data.location,
-            address: data.address,
+            address: data.address || null,
             profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
             createdAt: serverTimestamp(),
             dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 25)).toISOString(), // Default age 25
@@ -627,5 +626,7 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    
 
     
