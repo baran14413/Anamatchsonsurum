@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -161,13 +162,13 @@ export default function AnasayfaPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-        const matchesCollectionGroup = collectionGroup(firestore, 'matches');
-        const userInteractionsQuery = query(matchesCollectionGroup, where('id', 'in', [user.uid]));
-        const userInteractionsSnap = await getDocs(userInteractionsQuery);
-
+        const userMatchesCollectionRef = collection(firestore, `users/${user.uid}/matches`);
+        const userInteractionsSnap = await getDocs(userMatchesCollectionRef);
+        
         userInteractionsSnap.forEach(doc => {
-            const uids = doc.id.split('_');
-            const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
+            const matchData = doc.data() as Match;
+            if (matchData.id.startsWith('system')) return;
+            const otherUid = doc.id.replace(user.uid, '').replace('_', '');
             if (otherUid) {
                 interactedUids.add(otherUid);
             }
@@ -345,7 +346,7 @@ export default function AnasayfaPage() {
                                 opacity: 1,
                               }}
                             exit={{
-                                x: (profiles.length - 1 - index) > 0 ? 0 : (profiles[profiles.length - 1].uid === profile.uid ? (Math.sign( (event?.target as any)?.getBoundingClientRect().x || 0) * 300) : 0),
+                                x: 300,
                                 opacity: 0,
                                 scale: 0.8,
                                 transition: { duration: 0.2 },
