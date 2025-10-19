@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
@@ -7,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion, useAnimation } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -69,9 +68,17 @@ const fetchProfiles = async (
 
                 // Standard filters (distance, etc.) are always bypassed when ignoreFilters is true
                 if (!ignoreFilters) {
-                    if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+                    if (userProfile.globalModeEnabled === false && p.distance !== undefined) {
                         if (p.distance > (userProfile.distancePreference || 160)) {
                             return false;
+                        }
+                    }
+                     if(userProfile.ageRange) {
+                        const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
+                        if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                            if(!userProfile.expandAgeRange){
+                                return false;
+                            }
                         }
                     }
                 }
@@ -95,8 +102,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const controls = useAnimation();
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
@@ -112,6 +118,7 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
+    setExitDirection(direction);
     // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
@@ -207,6 +214,7 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
       <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
+          <AnimatePresence>
           {profiles.length > 0 ? (
             // Render only the top 3 cards to improve performance
             profiles.slice(-3).map((profile, index, arr) => {
@@ -225,27 +233,22 @@ export default function AnasayfaPage() {
                     const swipePower = Math.abs(offset.x) * velocity.x;
                     const swipeConfidenceThreshold = 10000;
                     
-                    if (swipePower > swipeConfidenceThreshold) { // Swiped right
-                      controls.start({
-                        x: 500,
-                        rotate: 30,
-                        opacity: 0,
-                        transition: { duration: 0.5 }
-                      }).then(() => handleSwipe(profile, 'right'));
-                    } else { // Return to center
-                      controls.start({
-                        x: 0,
-                        rotate: 0,
-                        transition: { type: 'spring', stiffness: 300, damping: 30 }
-                      });
+                    if (swipePower > swipeConfidenceThreshold) {
+                      handleSwipe(profile, 'right');
+                    } else if (swipePower < -swipeConfidenceThreshold) {
+                      handleSwipe(profile, 'left');
                     }
                   }}
                   initial={{ scale: 1, y: 0, rotate: 0 }}
-                  animate={controls}
-                  style={{
-                    zIndex: index,
+                  animate={{
                     scale: 1 - cardIndex * 0.05,
                     y: cardIndex * 10,
+                  }}
+                  exit={{
+                    x: exitDirection === 'right' ? 500 : -500,
+                    opacity: 0,
+                    scale: 0.5,
+                    transition: { duration: 0.5 },
                   }}
                   dragElastic={0.5}
                 >
@@ -262,6 +265,7 @@ export default function AnasayfaPage() {
               <Button onClick={handleRetry}>Tekrar Dene</Button>
             </div>
           )}
+          </AnimatePresence>
       </div>
     </div>
   );
