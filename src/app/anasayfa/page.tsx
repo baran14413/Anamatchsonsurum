@@ -41,7 +41,10 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
-                if (p.isBot === true) return true; // Bots should always be available
+
+                if (!ignoreFilters) {
+                    if (p.isBot === true) return true; // Bots should always be available
+                }
                 
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
@@ -87,6 +90,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
@@ -94,11 +98,13 @@ export default function AnasayfaPage() {
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, isUserLoading, toast]);
+  }, [user, firestore, userProfile, isUserLoading]);
 
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
+
+    setExitDirection(direction);
 
     const action = direction === 'right' ? 'liked' : 'disliked';
     
@@ -227,7 +233,7 @@ export default function AnasayfaPage() {
                     y: { duration: 0.2 },
                   }}
                   exit={{
-                    x: offset.x < 0 ? -500 : 500,
+                    x: exitDirection === 'left' ? -500 : 500,
                     opacity: 0,
                     scale: 0.5,
                     transition: { duration: 0.5 },
