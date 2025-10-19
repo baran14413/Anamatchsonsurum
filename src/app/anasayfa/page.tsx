@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -100,7 +101,6 @@ export default function AnasayfaPage() {
 
       let interactedUids = new Set<string>();
       if (!ignoreInteractions) {
-        // Fetch all interactions, including dislikes, to prevent them from reappearing
         const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
         interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
       }
@@ -112,7 +112,6 @@ export default function AnasayfaPage() {
         .filter(p => {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
           
-          // Use the matchId format for checking interactions, which is more robust
           if (!ignoreInteractions) {
             const sortedIds = [user.uid, p.uid].sort();
             const matchId = sortedIds.join('_');
@@ -166,7 +165,7 @@ export default function AnasayfaPage() {
     setExitDirection(direction);
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
-    const action = 'disliked';
+    const action = direction === 'right' ? 'liked' : 'disliked';
     
     try {
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
@@ -174,42 +173,56 @@ export default function AnasayfaPage() {
         const matchDocRef = doc(firestore, 'matches', matchId);
 
         const matchDoc = await getDoc(matchDocRef);
-        const matchData = matchDoc.data();
+        const matchData = matchDoc.data() as Match;
 
         const user1IsCurrentUser = user.uid === sortedIds[0];
+
+        // Check for match
+        const otherUserAction = user1IsCurrentUser ? matchData?.user2_action : matchData?.user1_action;
+        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked'));
 
         const updateData: Partial<Match> = {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
-            status: 'pending',
+            status: isMatch ? 'matched' : 'pending',
+            ...(isMatch && { matchDate: serverTimestamp() }),
             ...(user1IsCurrentUser 
                 ? { user1_action: action, user1_timestamp: serverTimestamp() } 
                 : { user2_action: action, user2_timestamp: serverTimestamp() })
         };
         await setDoc(matchDocRef, updateData, { merge: true });
 
-        // Record the interaction in the user's subcollection as well to filter them out easily next time
+        // Record the interaction in the user's subcollection as well
         const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(userInteractionRef, { 
             id: matchId,
             matchedWith: profileToSwipe.uid, 
-            status: 'pending', // A general status for any interaction
-            action: action, // Store the specific action
+            status: isMatch ? 'matched' : 'pending',
+            action: action, 
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || '',
+            lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
         }, { merge: true });
         
          const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
          await setDoc(otherUserInteractionRef, { 
              id: matchId,
              matchedWith: user.uid, 
-             status: 'pending',
+             status: isMatch ? 'matched' : 'pending',
              timestamp: serverTimestamp(),
              fullName: userProfile?.fullName,
              profilePicture: userProfile?.profilePicture || '',
+             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
          }, { merge: true });
+
+        if (isMatch) {
+            toast({
+                title: langTr.anasayfa.matchToastTitle,
+                description: `${profileToSwipe.fullName} ${langTr.anasayfa.matchToastDescription}`
+            })
+        }
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
@@ -264,7 +277,7 @@ export default function AnasayfaPage() {
                                     if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
                                         handleSwipe(profile, 'left');
                                     } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-                                        // handleSwipe(profile, 'right');
+                                        handleSwipe(profile, 'right');
                                     }
                                 }}
                                 custom={exitDirection}
