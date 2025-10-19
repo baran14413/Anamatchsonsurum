@@ -13,7 +13,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
-const publicAuthRoutes = ['/', '/giris', '/login', '/profilini-tamamla', '/tos', '/privacy', '/cookies'];
+const publicRoutes = ['/', '/tos', '/privacy', '/cookies'];
+const authRoutes = ['/giris', '/profilini-tamamla'];
 const rulesRoute = '/kurallar';
 const adminRoutePrefix = '/admin';
 
@@ -33,8 +34,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const isAuthRoute = authRoutes.includes(pathname);
+    const isPublicRoute = publicRoutes.includes(pathname);
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
-    const isPublicAuthRoute = publicAuthRoutes.includes(pathname);
     const isRulesRoute = pathname.startsWith(rulesRoute);
 
     // 2. Handle signed-in users
@@ -50,8 +52,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
       // User is fully onboarded, but on a public/auth page -> redirect to app
-      if (userProfile?.rulesAgreed && (isPublicAuthRoute || isRulesRoute)) {
-        router.replace('/anasayfa');
+      if (userProfile?.rulesAgreed && (isPublicRoute || isAuthRoute || isRulesRoute)) {
+         if (pathname !== '/anasayfa') { // Avoid redundant navigation
+            router.replace('/anasayfa');
+         }
         return;
       }
     } 
