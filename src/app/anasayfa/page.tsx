@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +14,6 @@ import { langTr } from '@/languages/tr';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-
 
 const fetchProfiles = async (
     firestore: Firestore,
@@ -50,8 +50,8 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
-                if (!ignoreFilters && interactedUids.has(p.uid)) return false; // Filter out interacted users
-                 if (p.isBot) return true; // Always include bots if they appear
+                if (!ignoreFilters && interactedUids.has(p.uid)) return false; 
+                 if (p.isBot) return true; 
 
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
@@ -99,6 +99,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
@@ -195,7 +196,7 @@ export default function AnasayfaPage() {
         }
 
     } catch (error: any) {
-        console.error(`Error handling ${action}:`, error);
+        console.error(`Error handling ${direction}:`, error);
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
@@ -220,13 +221,13 @@ export default function AnasayfaPage() {
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
           <AnimatePresence>
           {profiles.length > 0 ? (
-            profiles.slice(-3).map((profile, index) => {
-              const isTopCard = index === profiles.slice(-3).length - 1;
+            profiles.map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
               return (
                 <motion.div
                   key={profile.uid}
                   className="absolute w-full h-full"
-                  drag={isTopCard}
+                  drag={isTopCard ? "x" : false}
                   dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                   onDragEnd={(event, { offset, velocity }) => {
                     if (!isTopCard) return;
@@ -234,22 +235,24 @@ export default function AnasayfaPage() {
                     const swipePower = Math.abs(offset.x) * velocity.x;
                     const swipeConfidenceThreshold = 10000;
                     
-                    if (swipePower > swipeConfidenceThreshold) {
-                      handleSwipe(profile, 'right');
-                    } else if (swipePower < -swipeConfidenceThreshold) {
+                    if (swipePower < -swipeConfidenceThreshold) {
+                      setExitDirection('left');
                       handleSwipe(profile, 'left');
+                    } else if (swipePower > swipeConfidenceThreshold) {
+                      setExitDirection('right');
+                      handleSwipe(profile, 'right');
                     }
                   }}
                   initial={{ scale: 1, y: 0, opacity: 1 }}
                   animate={{
-                    scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05,
-                    y: (profiles.slice(-3).length - 1 - index) * 10,
+                    scale: 1 - (profiles.length - 1 - index) * 0.05,
+                    y: (profiles.length - 1 - index) * 10,
                     opacity: 1
                   }}
                   exit={{
                     opacity: 0,
-                    x: offset.x < 0 ? -500 : 500,
-                    rotate: offset.x < 0 ? -30 : 30,
+                    x: exitDirection === 'left' ? -500 : 500,
+                    rotate: exitDirection === 'left' ? -30 : 30,
                     transition: { duration: 0.3 }
                   }}
                   dragElastic={0.5}
@@ -277,7 +280,4 @@ export default function AnasayfaPage() {
   );
 }
 
-const MemoizedProfileCard = memo(ProfileCard, (prevProps, nextProps) => {
-    return prevProps.profile.uid === nextProps.profile.uid;
-});
-MemoizedProfileCard.displayName = 'ProfileCard';
+    
