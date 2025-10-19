@@ -33,7 +33,6 @@ const fetchProfiles = async (
             const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
             interactedMatchDocsSnap.forEach(doc => {
                 const match = doc.data();
-                // We mark a user as "interacted" only if an action has been taken by the current user
                 if (match.user1Id === user.uid && match.user1_action) {
                     interactedUids.add(match.user2Id);
                 } else if (match.user2Id === user.uid && match.user2_action) {
@@ -55,7 +54,6 @@ const fetchProfiles = async (
                     if (p.gender !== userProfile.genderPreference) return false;
                 }
                 
-                // Calculate distance if location is available
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
                         userProfile.location.latitude!,
@@ -82,13 +80,10 @@ const fetchProfiles = async (
                 return true;
             });
 
-        // Sorting logic based on global mode
         fetchedProfiles.sort((a, b) => {
             if (userProfile.globalModeEnabled) {
-                // Sort by distance ascending if global mode is on
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
-            // Otherwise, shuffle randomly
             return Math.random() - 0.5;
         });
 
@@ -123,11 +118,9 @@ export default function AnasayfaPage() {
     loadProfiles(false);
   }, [loadProfiles]);
 
-
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
-    // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -141,8 +134,6 @@ export default function AnasayfaPage() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
-            // Re-add profile to the top of the stack if the action fails
-            setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
@@ -224,7 +215,6 @@ export default function AnasayfaPage() {
                 matchedWith: user.uid, 
                 status: updateData.status,
                 timestamp: serverTimestamp(),
-                // Denormalized data for performance
                 fullName: userProfile?.fullName,
                 profilePicture: userProfile?.profilePicture || userProfile?.images?.[0]?.url || '',
                 isSuperLike: updateData.isSuperLike,
@@ -239,14 +229,12 @@ export default function AnasayfaPage() {
             matchedWith: profileToSwipe.uid,
             status: updateData.status,
             timestamp: serverTimestamp(),
-             // Denormalized data for performance
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
             isSuperLike: updateData.isSuperLike,
             superLikeInitiator: updateData.superLikeInitiator || null,
             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : (action === 'superliked' ? `Super Like gönderildi` : ''),
         }, { merge: true });
-
 
         if (isMatch) {
             toast({
@@ -263,10 +251,9 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
-        setProfiles(prev => [profileToSwipe, ...prev]);
     }
-
   }, [user, firestore, toast, userProfile, router]);
+
 
   if (isLoading || isUserLoading) {
     return (

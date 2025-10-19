@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -65,7 +66,6 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Motion values for drag animations
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
@@ -92,8 +92,6 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   };
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (!isTopCard) return;
-    
     const swipeConfidenceThreshold = 10000;
     const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
     
@@ -110,7 +108,6 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
         }
     }
   };
-
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -163,7 +160,12 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
         style={{ x, y, rotate }}
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1, transition: { duration: 0.4 } }}
-        exit={{ opacity: 0, transition: { duration: 0.2 } }}
+        exit={{ 
+            x: x.get() > 0 ? 500 : -500,
+            y: y.get() < -50 ? -500 : y.get(),
+            opacity: 0,
+            transition: { duration: 0.3 }
+        }}
     >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
             <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
