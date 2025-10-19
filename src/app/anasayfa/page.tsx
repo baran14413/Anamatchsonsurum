@@ -182,16 +182,15 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const handleSwipe = useCallback((swipedProfile: ProfileWithDistance, action: 'liked' | 'disliked' | 'superliked') => {
+  const handleSwipeAction = useCallback((swipedProfile: ProfileWithDistance, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
 
-    if (action === 'superliked') {
-        if ((userProfile.superLikeBalance || 0) <= 0) {
-            setShowSuperlikeModal(true);
-            return;
-        }
+    if (action === 'superliked' && (userProfile.superLikeBalance || 0) <= 0) {
+        setShowSuperlikeModal(true);
+        return;
     }
     
+    // Remove swiped profile from state immediately for smooth UI
     setProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedProfile.id));
 
     if (action === 'disliked') {
@@ -200,11 +199,10 @@ export default function AnasayfaPage() {
       setLastDislikedProfile(null);
     }
 
-    const user1Id = user.uid;
-    const user2Id = swipedProfile.uid;
-    const matchId = [user1Id, user2Id].sort().join('_');
+    const matchId = [user.uid, swipedProfile.uid].sort().join('_');
     const matchDocRef = doc(firestore, 'matches', matchId);
 
+    // Perform DB action in background
     (async () => {
         try {
             const matchSnap = await getDoc(matchDocRef);
@@ -216,13 +214,14 @@ export default function AnasayfaPage() {
                      toast({ title: t.anasayfa.matchToastTitle, description: `${result.swipedUserName} ${t.anasayfa.matchToastDescription}` });
                 }
             } else if (action === 'disliked') {
-                await handleDislikeAction(firestore, user1Id, user2Id, matchDocRef);
+                await handleDislikeAction(firestore, user.uid, swipedProfile.uid, matchDocRef);
             } else if (action === 'superliked') {
                 await handleSuperlikeAction(firestore, userProfile, swipedProfile, matchDocRef, existingMatchData);
                 toast({ title: "Super Like Gönderildi!", description: `${swipedProfile.fullName} profiline Super Like gönderdin.` });
             }
-
         } catch (error: any) {
+            // If something fails, add the profile back to the stack to be swiped again.
+            setProfiles(currentProfiles => [swipedProfile, ...currentProfiles]);
             toast({
                 title: t.common.error,
                 description: error.message || "Etkileşim kaydedilemedi.",
@@ -230,7 +229,7 @@ export default function AnasayfaPage() {
             });
         }
     })();
-  }, [user, firestore, userProfile, toast, t.anasayfa.matchToastTitle, t.anasayfa.matchToastDescription, t.common.error]);
+  }, [user, firestore, userProfile, toast, t]);
  
   const handleUndo = useCallback(async () => {
     if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
@@ -323,12 +322,10 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                 // Basic filtering: must have UID, not be the current user, have a name, and at least one image.
                 if (!p.uid || interactedUids.has(p.uid) || !p.fullName || !p.images || p.images.length === 0) {
                     return false;
                 }
 
-                // Age range filter
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
                     if (age === null) return false;
@@ -336,14 +333,14 @@ export default function AnasayfaPage() {
                     const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
                     if (age < minAge || age > maxAge) return false;
                 }
-
-                // If global mode is on, we don't apply distance filter.
+                
                 if (isGlobalMode) {
                     return true;
                 }
-
-                // If global mode is off, apply distance filter.
-                if (!p.location?.latitude || !p.location?.longitude) return false;
+                
+                if (!p.location?.latitude || !p.location?.longitude) {
+                    return false;
+                }
                 
                 const distance = getDistance(
                     userProfile.location!.latitude!,
@@ -351,20 +348,22 @@ export default function AnasayfaPage() {
                     p.location.latitude,
                     p.location.longitude
                 );
+
                 (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
                 
                 const userDistancePref = userProfile.distancePreference || 50;
                 return distance <= userDistancePref;
             });
         
-        // Sorting logic based on global mode
         if (isGlobalMode) {
-            fetchedProfiles.sort(() => Math.random() - 0.5); // Random sort for global mode
+            fetchedProfiles.sort(() => Math.random() - 0.5);
         } else {
             fetchedProfiles.sort((a, b) => {
+                const distA = (a as ProfileWithDistance).distance ?? Infinity;
+                const distB = (b as ProfileWithDistance).distance ?? Infinity;
                 if (a.isBot && !b.isBot) return -1;
                 if (!a.isBot && b.isBot) return 1;
-                return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
+                return distA - distB;
             });
         }
         
@@ -380,7 +379,8 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, firestore, toast, t.common.error, userProfile]);
+  }, [user, firestore, userProfile, toast, t.common.error]);
+
 
   useEffect(() => {
     if (user && firestore && userProfile) {
@@ -389,75 +389,55 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
   
   const CardStack = () => {
-    const x = useMotionValue(0);
-    const rotate = useTransform(x, [-200, 200], [-25, 25]);
-    const likeOpacity = useTransform(x, [10, 80], [0, 1]);
-    const dislikeOpacity = useTransform(x, [-80, -10], [1, 0]);
-
     return (
+      <div className="relative w-full h-full">
         <AnimatePresence>
-            {profiles.map((profile, index) => {
-                const isTopCard = index === profiles.length - 1;
-
-                const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
-                    if (!isTopCard) return;
-                    const SWIPE_THRESHOLD = 50;
-
-                    if (info.offset.y < -SWIPE_THRESHOLD * 2) {
-                        handleSwipe(profile, 'superliked');
-                    } else if (info.offset.x > SWIPE_THRESHOLD) {
-                        handleSwipe(profile, 'liked');
-                    } else if (info.offset.x < -SWIPE_THRESHOLD) {
-                        handleSwipe(profile, 'disliked');
-                    }
-                };
-
-                return (
-                    <motion.div
-                        key={profile.id}
-                        drag={isTopCard}
-                        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                        dragElastic={0.2}
-                        onDragEnd={onDragEnd}
-                        className="absolute w-full h-full"
-                        style={{
-                            zIndex: index,
-                            x: isTopCard ? x : 0,
-                            rotate: isTopCard ? rotate : 0,
-                        }}
-                        initial={{ scale: 1 - (profiles.length - 1 - index) * 0.05, y: (profiles.length - 1 - index) * 10 }}
-                        animate={{ scale: 1 - (profiles.length - 1 - index) * 0.05, y: (profiles.length - 1 - index) * 10, opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                        exit={{
-                            x: x.get() > 0 ? 300 : -300,
-                            opacity: 0,
-                            scale: 0.5,
-                            transition: { duration: 0.3 },
-                        }}
-                    >
-                        <motion.div
-                            style={{ opacity: isTopCard ? likeOpacity : 0 }}
-                            className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
-                        >
-                            <Heart className="w-16 h-16 text-green-500 fill-green-500" />
-                        </motion.div>
-                        <motion.div
-                            style={{ opacity: isTopCard ? dislikeOpacity : 0 }}
-                            className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
-                        >
-                            <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-                        </motion.div>
-                        <ProfileCard profile={profile} isTopCard={isTopCard} />
-                    </motion.div>
-                );
-            }).reverse()}
+          {profiles.map((profile, index) => {
+            const isTopCard = index === profiles.length - 1;
+            return (
+              <motion.div
+                key={profile.id}
+                drag={isTopCard ? "x" : false}
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(e, { offset }) => {
+                  if (isTopCard) {
+                    if (offset.y < -100) handleSwipeAction(profile, 'superliked');
+                    else if (offset.x > 100) handleSwipeAction(profile, 'liked');
+                    else if (offset.x < -100) handleSwipeAction(profile, 'disliked');
+                  }
+                }}
+                className="absolute w-full h-full"
+                style={{ zIndex: index }}
+                initial={{
+                  y: index * 10,
+                  scale: 1 - (profiles.length - 1 - index) * 0.05,
+                  opacity: 1,
+                }}
+                animate={{
+                  y: (profiles.length - 1 - index) > 2 ? 2 * 10 : (profiles.length - 1 - index) * 10,
+                  scale: 1 - ((profiles.length - 1 - index) > 2 ? 2 * 0.05 : (profiles.length - 1 - index) * 0.05),
+                  opacity: (profiles.length - 1 - index) > 2 ? 0 : 1,
+                }}
+                exit={{
+                  x: 300,
+                  opacity: 0,
+                  scale: 0.5,
+                  transition: { duration: 0.3 }
+                }}
+              >
+                <ProfileCard profile={profile} isTopCard={isTopCard} />
+              </motion.div>
+            );
+          }).reverse()}
         </AnimatePresence>
+      </div>
     );
 };
 
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
+    <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) {
               setShowUndoLimitModal(false);
@@ -471,6 +451,7 @@ export default function AnasayfaPage() {
                   </div>
               ) : profiles.length > 0 ? (
                   <>
+                      <CardStack />
                       {lastDislikedProfile && (
                           <div className="absolute top-4 right-4 z-40">
                               <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
@@ -478,7 +459,6 @@ export default function AnasayfaPage() {
                               </Button>
                           </div>
                       )}
-                      <CardStack />
                   </>
               ) : (
                   <div className="flex-1 flex items-center justify-center text-center h-full">
@@ -538,3 +518,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
