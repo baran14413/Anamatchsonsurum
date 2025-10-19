@@ -163,8 +163,6 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        // This is the correct, simplified logic. We only filter out people we have already
-        // definitively matched with or have a pending superlike with. Disliked profiles can reappear.
         const userMatchesQuery = query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', 'in', ['matched', 'superlike_pending'])
@@ -185,7 +183,7 @@ export default function AnasayfaPage() {
             .filter(p => {
                 if (!p.uid || interactedUids.has(p.uid)) return false;
                 
-                if (!(p.images && p.images.length > 0)) return false;
+                if (!p.images || p.images.length === 0) return false;
 
                 const userGenderPref = userProfile.genderPreference;
                 if (userGenderPref !== 'both' && p.gender !== userGenderPref) {
@@ -200,20 +198,23 @@ export default function AnasayfaPage() {
                         return false;
                     }
                 }
+
+                if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                    if (distance > (userProfile.distancePreference || 160)) {
+                        return false; 
+                    }
+                }
                 
                 return true;
             })
             .map(p => {
+                let distance;
                 if (!globalMode && userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-                    if (distance > (userProfile.distancePreference || 160)) {
-                         return { ...p, distance: distance, hide: true };
-                    }
-                    return { ...p, distance };
+                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
                 }
-                return { ...p, distance: undefined };
+                return { ...p, distance };
             })
-            .filter(p => !(p as any).hide)
             .slice(0, 20);
 
         setProfiles(fetchedProfiles);
@@ -307,6 +308,8 @@ export default function AnasayfaPage() {
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
+  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -360,6 +363,22 @@ export default function AnasayfaPage() {
                                 transition: { duration: 0.3 },
                             }}
                         >
+                             {isTopCard && (
+                                <>
+                                    <motion.div
+                                        style={{ opacity: dislikeOpacity }}
+                                        className="absolute top-8 left-8 text-red-500 z-50 transform -rotate-20"
+                                    >
+                                        <XIcon size={128} strokeWidth={4} />
+                                    </motion.div>
+                                    <motion.div
+                                        style={{ opacity: likeOpacity }}
+                                        className="absolute top-8 right-8 text-green-500 z-50 transform rotate-20"
+                                    >
+                                        <Heart size={128} strokeWidth={4} fill="currentColor" />
+                                    </motion.div>
+                                </>
+                             )}
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
                         </motion.div>
                        )
@@ -423,3 +442,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
