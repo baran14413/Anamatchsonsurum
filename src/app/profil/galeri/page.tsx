@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -75,9 +74,22 @@ export default function GalleryPage() {
         const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
         const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
 
-        if (slotIndex === -1) return;
-        
-        handleImageUpload(file, slotIndex);
+        if (slotIndex !== -1) {
+            const isReplacing = !!imageSlots[slotIndex].preview;
+            if (isReplacing) {
+                // First, delete the old image if it exists and is not a Google image
+                const oldSlot = imageSlots[slotIndex];
+                if (oldSlot.public_id && !oldSlot.public_id.startsWith('google_')) {
+                    const imageRefToDelete = storageRef(storage!, oldSlot.public_id);
+                    deleteObject(imageRefToDelete).catch(err => {
+                         if (err.code !== 'storage/object-not-found') {
+                            console.error("Failed to delete old image from storage:", err);
+                         }
+                    });
+                }
+            }
+            handleImageUpload(file, slotIndex);
+        }
 
         if (e.target) e.target.value = '';
     };
@@ -88,17 +100,12 @@ export default function GalleryPage() {
             return;
         }
 
+        // Set UI to loading state
         setImageSlots(prev => {
             const newSlots = [...prev];
-            const targetIndex = newSlots.findIndex(slot => !slot.preview);
-            const finalIndex = targetIndex === -1 ? 5 : targetIndex;
-
-            newSlots[finalIndex] = { ...newSlots[finalIndex], file, preview: URL.createObjectURL(file), isUploading: true };
+            newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
             return newSlots;
         });
-
-        let finalIndex = imageSlots.findIndex(slot => !slot.preview);
-        if (finalIndex === -1) finalIndex = 5;
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
         const imageRef = storageRef(storage, uniqueFileName);
@@ -109,13 +116,14 @@ export default function GalleryPage() {
 
             setImageSlots(prev => {
                 const newSlots = [...prev];
-                newSlots[finalIndex] = { ...newSlots[finalIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
+                newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
                 return newSlots;
             });
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            setImageSlots(prev => prev.map((s, i) => i === finalIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
+            // Revert UI on failure
+            setImageSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
         }
     };
     
@@ -245,5 +253,3 @@ export default function GalleryPage() {
         </div>
     );
 }
-
-    

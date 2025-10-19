@@ -1152,5 +1152,3 @@ export default function ChatPage() {
         return senderId === user?.uid;
     }
 }
-
-    
