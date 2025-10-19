@@ -5,14 +5,14 @@ import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
+import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { Heart, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Moved fetchProfiles outside the component to prevent it from being recreated on every render.
 const fetchProfiles = async (
@@ -21,7 +21,8 @@ const fetchProfiles = async (
     userProfile: UserProfile,
     setProfiles: React.Dispatch<React.SetStateAction<UserProfile[]>>,
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
-    toast: (options: any) => void
+    toast: (options: any) => void,
+    ignoreFilters: boolean = false
 ) => {
     setIsLoading(true);
     
@@ -39,6 +40,7 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
                 if (p.uid === user.uid) return false;
+                if (p.isBot === true) return true; // Bots should always be available
                 
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
@@ -57,10 +59,12 @@ const fetchProfiles = async (
                     return false;
                 }
                 
-                if (!userProfile.globalModeEnabled && p.distance !== undefined) {
-                    if (p.distance > (userProfile.distancePreference || 160)) {
-                        return false;
-                    }
+                if (!ignoreFilters) {
+                  if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+                      if (p.distance > (userProfile.distancePreference || 160)) {
+                          return false;
+                      }
+                  }
                 }
 
                 return true;
@@ -184,49 +188,66 @@ export default function AnasayfaPage() {
 
   const handleRetry = () => {
       if (user && firestore && userProfile) {
-        fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast);
+        // Call fetchProfiles with ignoreFilters = true
+        fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, true);
       }
   }
 
-  const currentProfile = profiles.length > 0 ? profiles[profiles.length - 1] : null;
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-        <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
-            {currentProfile ? (
-                <div className="w-full h-full flex flex-col gap-4">
-                    <div className="flex-1 w-full h-full">
-                       <ProfileCard profile={currentProfile} isTopCard={true} />
-                    </div>
-                    <div className="flex justify-center items-center gap-4">
-                        <Button
-                            onClick={() => handleSwipe(currentProfile, 'left')}
-                            variant="outline"
-                            size="icon"
-                            className="w-20 h-20 rounded-full border-destructive text-destructive bg-destructive/10 hover:bg-destructive/20"
-                        >
-                            <X className="h-10 w-10" />
-                        </Button>
-                        <Button
-                            onClick={() => handleSwipe(currentProfile, 'right')}
-                            variant="outline"
-                            size="icon"
-                            className="w-20 h-20 rounded-full border-green-500 text-green-500 bg-green-500/10 hover:bg-green-500/20"
-                        >
-                            <Heart className="h-10 w-10 fill-current" />
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
-                    <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
-                    <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                    <Button onClick={handleRetry}>
-                        Tekrar Dene
-                    </Button>
-                </div>
-            )}
-        </div>
+      <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
+        <AnimatePresence>
+          {profiles.length > 0 ? (
+            profiles.map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              return (
+                <motion.div
+                  key={profile.uid}
+                  className="absolute w-full h-full"
+                  drag={isTopCard}
+                  dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                  onDragEnd={(event, { offset, velocity }) => {
+                    if (!isTopCard) return;
+                    const swipeConfidenceThreshold = 10000;
+                    const swipePower = Math.abs(offset.x) * velocity.x;
+
+                    if (swipePower < -swipeConfidenceThreshold) {
+                      handleSwipe(profile, 'left');
+                    } else if (swipePower > swipeConfidenceThreshold) {
+                      handleSwipe(profile, 'right');
+                    }
+                  }}
+                  initial={{ scale: 1, y: 0 }}
+                  animate={{
+                    scale: 1 - Math.min(profiles.length - 1 - index, 3) * 0.05,
+                    y: Math.min(profiles.length - 1 - index, 3) * 10,
+                  }}
+                  transition={{
+                    scale: { duration: 0.2 },
+                    y: { duration: 0.2 },
+                  }}
+                  exit={{
+                    x: offset.x < 0 ? -500 : 500,
+                    opacity: 0,
+                    scale: 0.5,
+                    transition: { duration: 0.5 },
+                  }}
+                >
+                  <ProfileCard profile={profile} isTopCard={isTopCard} />
+                </motion.div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
+              <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
+              <p className="text-muted-foreground">
+                Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.
+              </p>
+              <Button onClick={handleRetry}>Tekrar Dene</Button>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
