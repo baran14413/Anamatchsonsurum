@@ -161,7 +161,6 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
-        // --- SERVER-SIDE FILTERING ---
         const interactedUids = new Set<string>([user.uid]);
 
         if (!resetInteractions) {
@@ -178,13 +177,9 @@ export default function AnasayfaPage() {
         let usersQuery = query(usersCollectionRef, limit(20));
         const querySnapshot = await getDocs(usersQuery);
         
-        // --- CLIENT-SIDE FILTERING ---
         let fetchedProfiles = querySnapshot.docs
           .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-          .filter(p => 
-            !interactedUids.has(p.uid) && // Keep only profiles user hasn't interacted with
-            p.images && p.images.length > 0 // Keep only profiles with at least one photo
-          );
+          .filter(p => !interactedUids.has(p.uid));
 
         setProfiles(fetchedProfiles);
 
