@@ -7,7 +7,6 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -15,32 +14,25 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
     firestore: Firestore,
     user: User,
     userProfile: UserProfile,
-    setProfiles: React.Dispatch<React.SetStateAction<UserProfile[]>>,
-    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
-    toast: (options: any) => void,
     ignoreFilters: boolean = false
-) => {
-    setIsLoading(true);
-    
+): Promise<UserProfile[]> => {
     try {
-        // 1. Fetch all users from Firestore
         const usersRef = collection(firestore, 'users');
-        let q = query(usersRef, limit(250)); // Limit to a reasonable number to avoid performance issues
+        let q = query(usersRef, limit(250));
         const usersSnapshot = await getDocs(q);
 
-        // 2. Fetch all user interactions to know who to exclude
         let interactedUids = new Set<string>();
         if (!ignoreFilters) {
             const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
             interactedMatchDocsSnap.forEach(doc => {
                 const match = doc.data();
-                // If the current user was involved and took an action, add the other user to the exclusion set
                 if (match.user1Id === user.uid && match.user1_action) {
                     interactedUids.add(match.user2Id);
                 } else if (match.user2Id === user.uid && match.user2_action) {
@@ -48,27 +40,20 @@ const fetchProfiles = async (
                 }
             });
         }
-        
-        // 3. Filter and process the fetched profiles
+
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Basic sanity checks
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
-                if (p.uid === user.uid) return false; // Exclude self
-                if (!ignoreFilters && interactedUids.has(p.uid)) return false; // Exclude already interacted users
+                if (p.uid === user.uid) return false;
+                if (!ignoreFilters && interactedUids.has(p.uid)) return false;
                 
-                // Bot profiles are always included for matching if not ignored
-                if (p.isBot) return true; 
+                if (p.isBot) return true;
 
-                // Gender Preference Filter
                 if (!ignoreFilters && userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                    if (p.gender !== userProfile.genderPreference) {
-                        return false;
-                    }
+                    if (p.gender !== userProfile.genderPreference) return false;
                 }
 
-                // Calculate distance
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
                         userProfile.location.latitude!,
@@ -77,47 +62,35 @@ const fetchProfiles = async (
                         p.location.longitude!
                     );
                 } else {
-                    p.distance = Infinity; // Assign a high distance if location is not available
+                    p.distance = Infinity;
                 }
-                
+
                 if (!ignoreFilters) {
-                     // Distance Preference Filter (only if global mode is off)
-                     if (!userProfile.globalModeEnabled) {
-                         if (p.distance > (userProfile.distancePreference || 160)) {
-                             return false;
-                         }
-                     }
-                      // Age Range Filter
-                      if(userProfile.ageRange) {
-                         const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
-                         if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                             // If the user doesn't want to expand the age range, filter them out
-                             if(!userProfile.expandAgeRange){
-                                 return false;
-                             }
-                         }
-                     }
+                    if (!userProfile.globalModeEnabled) {
+                        if (p.distance > (userProfile.distancePreference || 160)) return false;
+                    }
+                    if (userProfile.ageRange) {
+                        const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
+                        if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                            if (!userProfile.expandAgeRange) return false;
+                        }
+                    }
                 }
 
                 return true;
             });
-        
-        // 4. Sort the profiles
+
         fetchedProfiles.sort((a, b) => {
-            // When global mode is on, sort by distance (nearest first)
             if (userProfile.globalModeEnabled) {
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
-            // Otherwise, randomize the order
             return Math.random() - 0.5;
         });
 
-        setProfiles(fetchedProfiles);
+        return fetchedProfiles;
     } catch (error: any) {
-      console.error("Profil getirme hatası:", error);
-      toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
-    } finally {
-        setIsLoading(false);
+        console.error("Profil getirme hatası:", error);
+        return [];
     }
 };
 
@@ -129,14 +102,21 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
+
+  const loadProfiles = useCallback(async (ignoreFilters = false) => {
     if (user && firestore && userProfile && !isUserLoading) {
-      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
+      setIsLoading(true);
+      const fetched = await fetchProfiles(firestore, user, userProfile, ignoreFilters);
+      setProfiles(fetched);
+      setIsLoading(false);
     } else if (!isUserLoading) {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [user, firestore, userProfile, isUserLoading, toast]);
+  }, [user, firestore, userProfile, isUserLoading]);
+
+  useEffect(() => {
+    loadProfiles(false);
+  }, [loadProfiles]);
 
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
@@ -163,7 +143,6 @@ export default function AnasayfaPage() {
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
     }
     
-    // If the swiped profile is a bot, trigger the webhook for an automatic reply
     if (profileToSwipe.isBot && (direction === 'right' || direction === 'up')) {
       try {
           const res = await fetch('/api/message-webhook', {
@@ -229,7 +208,6 @@ export default function AnasayfaPage() {
 
         await setDoc(matchDocRef, updateData, { merge: true });
         
-        // Denormalize match data for the other user for their "matches" list
         if (profileToSwipe.uid) {
             let lastMessage = '';
             if (isMatch) lastMessage = langTr.eslesmeler.defaultMessage;
@@ -249,7 +227,6 @@ export default function AnasayfaPage() {
             }, { merge: true });
         }
         
-        // Denormalize for the current user as well, to keep the list consistent
         const currentUserInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(currentUserInteractionRef, {
             id: matchId,
@@ -277,10 +254,8 @@ export default function AnasayfaPage() {
             });
         }
 
-
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
-        // If the backend operation fails, add the profile back to the top of the stack
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
@@ -295,28 +270,26 @@ export default function AnasayfaPage() {
   }
 
   const handleRetry = () => {
-      if (user && firestore && userProfile) {
-        // Call fetchProfiles ignoring filters to get a fresh batch of users
-        fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, true);
-      }
+      loadProfiles(true);
   }
   
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-        {profiles.length > 0 ? (
-          profiles.map((profile, index) => {
+        <AnimatePresence>
+          {profiles.map((profile, index) => {
             const isTopCard = index === profiles.length - 1;
             return (
               <ProfileCard
                 key={profile.uid}
                 profile={profile}
                 isTopCard={isTopCard}
-                onSwipe={handleSwipe}
+                onSwipe={(p, dir) => handleSwipe(p, dir)}
               />
             );
-          })
-        ) : (
+          })}
+        </AnimatePresence>
+        {profiles.length === 0 && !isLoading && (
           <motion.div
             className="flex flex-col items-center justify-center text-center p-4 space-y-4"
             initial={{ opacity: 0 }}
@@ -333,3 +306,4 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
