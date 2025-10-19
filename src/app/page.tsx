@@ -128,7 +128,7 @@ export default function WelcomePage() {
                 {t.welcome.continueWithGoogle}
               </Button>
                <Button
-                onClick={() => router.push('/profilini-tamamla')}
+                onClick={() => router.push('/login')}
                 variant="outline"
                 className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
