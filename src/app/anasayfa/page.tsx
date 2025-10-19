@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Undo2, Star, Heart, X as XIcon, Send } from 'lucide-react';
+import { Undo2, Star, Heart, X as XIcon, Send, MapPin } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
@@ -163,9 +163,8 @@ export default function AnasayfaPage() {
     try {
         const interactedUids = new Set<string>([user.uid]);
         
-        // This is a more robust way to query for interactions
-        const user1Query = query(collectionGroup(firestore, 'matches'), where('user1Id', '==', user.uid));
-        const user2Query = query(collectionGroup(firestore, 'matches'), where('user2Id', '==', user.uid));
+        const user1Query = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const user2Query = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
 
         const [user1Snap, user2Snap] = await Promise.all([
             getDocs(user1Query),
