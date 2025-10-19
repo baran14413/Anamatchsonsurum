@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion, useAnimation } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -25,7 +25,6 @@ export default function AnasayfaPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const controls = useAnimation();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,7 +53,6 @@ export default function AnasayfaPage() {
           if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
           if (p.uid === user.uid) return false;
           
-          // Always calculate distance if location is available
           if (userProfile.location && p.location) {
               p.distance = getDistance(
                   userProfile.location.latitude!,
@@ -72,7 +70,6 @@ export default function AnasayfaPage() {
               return false;
           }
           
-          // Only filter by distance if global mode is not enabled
           if (!userProfile.globalModeEnabled && p.distance !== undefined) {
               if (p.distance > (userProfile.distancePreference || 160)) {
                   return false;
@@ -101,6 +98,8 @@ export default function AnasayfaPage() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe) return;
+
+    setExitDirection(direction);
 
     const action = direction === 'right' ? 'liked' : 'disliked';
     
@@ -174,7 +173,6 @@ export default function AnasayfaPage() {
 
     } catch (error: any) {
         console.error(`Error handling ${action}:`, error);
-        // Revert UI if error
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
@@ -184,25 +182,9 @@ export default function AnasayfaPage() {
       const power = swipePower(info.offset.x, info.velocity.x);
 
       if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
-          controls.start({
-              x: -500,
-              rotate: -45,
-              opacity: 0,
-              transition: { duration: 0.5 },
-          }).then(() => handleSwipe(profile, 'left'));
+          handleSwipe(profile, 'left');
       } else if (power > SWIPE_CONFIDENCE_THRESHOLD) {
-          controls.start({
-              x: 500,
-              rotate: 45,
-              opacity: 0,
-              transition: { duration: 0.5 },
-          }).then(() => handleSwipe(profile, 'right'));
-      } else {
-          controls.start({
-              x: 0,
-              rotate: 0,
-              transition: { duration: 0.3 }
-          });
+          handleSwipe(profile, 'right');
       }
   };
 
@@ -233,8 +215,15 @@ export default function AnasayfaPage() {
                                 drag={isTopCard}
                                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                                 dragElastic={0.2}
-                                animate={isTopCard ? controls : {}}
                                 onDragEnd={(e, info) => isTopCard && handleDragEnd(e, info, profile)}
+                                initial={{ opacity: 0, y: 50 }}
+                                animate={{ opacity: 1, y: (profiles.length - 1 - index) * CARD_STACK_OFFSET }}
+                                exit={{
+                                    x: exitDirection === 'right' ? 500 : -500,
+                                    opacity: 0,
+                                    rotate: exitDirection === 'right' ? 25 : -25,
+                                    transition: { duration: 0.5 }
+                                }}
                             >
                                 <ProfileCard profile={profile} isTopCard={isTopCard} />
                             </motion.div>
