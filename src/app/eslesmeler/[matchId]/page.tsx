@@ -30,7 +30,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -723,181 +722,149 @@ export default function ChatPage() {
     const isNewUser = otherUser?.createdAt && (Date.now() - new Date(otherUser.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
     
     return (
-        <Sheet>
-            <div className="flex h-dvh flex-col bg-background">
-                <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-2">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ArrowLeft className="h-6 w-6" />
-                    </Button>
-                    <SheetTrigger asChild disabled={isSystemChat || !otherUser}>
-                        <div className="flex items-center gap-3 cursor-pointer">
-                            {isSystemChat ? (
-                                <>
-                                <Avatar className="h-9 w-9">
-                                    <Icons.bmIcon className="h-full w-full" />
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <span className="font-semibold">BeMatch - Sistem Mesajları</span>
-                                    <span className="text-xs text-green-500">Her zaman aktif</span>
-                                </div>
-                                </>
-                            ) : (otherUser ? (
-                                <>
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={otherUser.profilePicture} />
-                                        <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-1.5">
-                                        <span className="font-semibold">{otherUser.fullName}</span>
-                                        {isOtherUserGold && <Icons.beGold width={20} height={20} />}
-                                        </div>
-                                        {renderOnlineStatus()}
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                <Avatar className="h-9 w-9">
-                                    <Icons.bmIcon className="h-full w-full" />
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <span className="font-semibold">Kullanıcı Bulunamadı</span>
-                                    <span className="text-xs text-muted-foreground">Çevrimdışı</span>
-                                </div>
-                                </>
-                            ))}
-                        </div>
-                    </SheetTrigger>
+        <div className="flex h-dvh flex-col bg-background">
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-2">
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="h-6 w-6" />
+                </Button>
+                <div className="flex items-center gap-3">
                     {isSystemChat ? (
-                        <div className="w-9 h-9"></div>
-                    ) : (
-                        <AlertDialog>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <MoreHorizontal className="h-6 w-6" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem className='text-red-600 focus:text-red-600'>
-                                            <UserX className="mr-2 h-4 w-4" />
-                                            <span>Kullanıcıyı Engelle</span>
-                                        </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                                    {isBlocking ? t.common.loading : 'Engelle'}
-                                </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
-                </header>
-
-                <main className="flex-1 overflow-y-auto p-4">
-                     {isSuperLikePendingAndIsRecipient && (
-                        <div className="text-center my-6 p-4 border rounded-lg bg-blue-500/10 border-blue-500/30 space-y-4">
-                            <div className='flex items-center justify-center gap-2'>
-                                <Star className='w-6 h-6 text-blue-400 fill-blue-400'/>
-                                <p className="font-semibold text-base">{otherUser?.fullName} sana bir Super Like gönderdi!</p>
-                            </div>
-                            <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
-                                {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Heart className="mr-2 h-4 w-4" /> Eşleş</>}
-                            </Button>
+                        <>
+                        <Avatar className="h-9 w-9">
+                            <Icons.bmIcon className="h-full w-full" />
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <span className="font-semibold">BeMatch - Sistem Mesajları</span>
+                            <span className="text-xs text-green-500">Her zaman aktif</span>
                         </div>
-                    )}
-                    <div className="space-y-1">
-                        {messages.map((message, index) => {
-                            const isSender = message.senderId === user?.uid;
-                            const isSystem = message.senderId === 'system' || message.type === 'poll';
-                            const prevMessage = index > 0 ? messages[index - 1] : null;
+                        </>
+                    ) : (otherUser ? (
+                        <>
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={otherUser.profilePicture} />
+                                <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                <span className="font-semibold">{otherUser.fullName}</span>
+                                {isOtherUserGold && <Icons.beGold width={20} height={20} />}
+                                </div>
+                                {renderOnlineStatus()}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                        <Avatar className="h-9 w-9">
+                            <Icons.bmIcon className="h-full w-full" />
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <span className="font-semibold">Kullanıcı Bulunamadı</span>
+                            <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+                        </div>
+                        </>
+                    ))}
+                </div>
+                {isSystemChat ? (
+                    <div className="w-9 h-9"></div>
+                ) : (
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-6 w-6" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className='text-red-600 focus:text-red-600'>
+                                        <UserX className="mr-2 h-4 w-4" />
+                                        <span>Kullanıcıyı Engelle</span>
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+                                {isBlocking ? t.common.loading : 'Engelle'}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </header>
 
-                            if (isSystem) {
-                                const poll = message as SystemMessage;
-                                const isVoted = poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id];
-                                const myVote = isVoted ? (votedPolls[poll.id] || 'voted') : null;
-                                const totalVotes = poll.pollResults ? Object.values(poll.pollResults).reduce((s, c) => s + c, 0) : 0;
-                                
-                                return (
-                                    <div key={message.id}>
-                                        {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
-                                        <div className={cn("flex items-end gap-2 group justify-start")}>
-                                            <Avatar className="h-8 w-8 self-end mb-1">
-                                                <Icons.bmIcon className="h-full w-full" />
-                                            </Avatar>
-                                            <div className="max-w-[70%] rounded-2xl flex flex-col items-start bg-muted rounded-bl-none p-3 space-y-3">
-                                            {poll.type === 'poll' ? (
-                                                <>
-                                                    <p className='break-words font-semibold text-left w-full'>{poll.pollQuestion}</p>
-                                                    <div className='w-full space-y-2'>
-                                                        {poll.pollOptions?.map(option => {
-                                                            const votes = poll.pollResults?.[option] || 0;
-                                                            const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
-                                                            return (
-                                                                <Button 
-                                                                key={option}
-                                                                variant={myVote === option ? 'default' : 'secondary'}
-                                                                className={cn("w-full justify-between h-auto text-wrap py-2", isVoted && "cursor-default")}
-                                                                onClick={() => !isVoted && handleVoteOnPoll(poll.id, option)}
-                                                                disabled={isVoted}
-                                                                >
-                                                                    <span>{option}</span>
-                                                                    {isVoted && <span className='font-bold'>{percentage.toFixed(0)}%</span>}
-                                                                </Button>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
-                                            )}
-                                            </div>
+            <main className="flex-1 overflow-y-auto p-4">
+                 {isSuperLikePendingAndIsRecipient && (
+                    <div className="text-center my-6 p-4 border rounded-lg bg-blue-500/10 border-blue-500/30 space-y-4">
+                        <div className='flex items-center justify-center gap-2'>
+                            <Star className='w-6 h-6 text-blue-400 fill-blue-400'/>
+                            <p className="font-semibold text-base">{otherUser?.fullName} sana bir Super Like gönderdi!</p>
+                        </div>
+                        <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
+                            {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Heart className="mr-2 h-4 w-4" /> Eşleş</>}
+                        </Button>
+                    </div>
+                )}
+                <div className="space-y-1">
+                    {messages.map((message, index) => {
+                        const isSender = message.senderId === user?.uid;
+                        const isSystem = message.senderId === 'system' || message.type === 'poll';
+                        const prevMessage = index > 0 ? messages[index - 1] : null;
+
+                        if (isSystem) {
+                            const poll = message as SystemMessage;
+                            const isVoted = poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id];
+                            const myVote = isVoted ? (votedPolls[poll.id] || 'voted') : null;
+                            const totalVotes = poll.pollResults ? Object.values(poll.pollResults).reduce((s, c) => s + c, 0) : 0;
+                            
+                            return (
+                                <div key={message.id}>
+                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                    <div className={cn("flex items-end gap-2 group justify-start")}>
+                                        <Avatar className="h-8 w-8 self-end mb-1">
+                                            <Icons.bmIcon className="h-full w-full" />
+                                        </Avatar>
+                                        <div className="max-w-[70%] rounded-2xl flex flex-col items-start bg-muted rounded-bl-none p-3 space-y-3">
+                                        {poll.type === 'poll' ? (
+                                            <>
+                                                <p className='break-words font-semibold text-left w-full'>{poll.pollQuestion}</p>
+                                                <div className='w-full space-y-2'>
+                                                    {poll.pollOptions?.map(option => {
+                                                        const votes = poll.pollResults?.[option] || 0;
+                                                        const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+                                                        return (
+                                                            <Button 
+                                                            key={option}
+                                                            variant={myVote === option ? 'default' : 'secondary'}
+                                                            className={cn("w-full justify-between h-auto text-wrap py-2", isVoted && "cursor-default")}
+                                                            onClick={() => !isVoted && handleVoteOnPoll(poll.id, option)}
+                                                            disabled={isVoted}
+                                                            >
+                                                                <span>{option}</span>
+                                                                {isVoted && <span className='font-bold'>{percentage.toFixed(0)}%</span>}
+                                                            </Button>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
+                                        )}
                                         </div>
                                     </div>
-                                );
-                            }
+                                </div>
+                            );
+                        }
 
-                            if (message.type === 'view-once-viewed') {
-                                return (
-                                    <div key={message.id}>
-                                        {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
-                                        <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
-                                            {!isSender && (
-                                                <Avatar className="h-8 w-8 self-end mb-1">
-                                                    <AvatarImage src={otherUser?.profilePicture} />
-                                                    <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                            <div
-                                                className={cn(
-                                                    "max-w-[70%] rounded-2xl flex items-center gap-2 px-3 py-2 italic text-muted-foreground",
-                                                    isSender ? "bg-primary text-primary-foreground/80 rounded-br-none" : "bg-muted rounded-bl-none",
-                                                )}
-                                            >
-                                                <EyeOff className="w-4 h-4" />
-                                                <span>Açıldı</span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 self-end">
-                                                <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
-                                                {isSender && renderMessageStatus(message, isSender)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-
+                        if (message.type === 'view-once-viewed') {
                             return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
@@ -908,243 +875,259 @@ export default function ChatPage() {
                                                 <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                         )}
-                                        {isSender && (
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(message)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                                                {message.text && !message.imageUrl && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
-                                            </div>
-                                        )}
                                         <div
                                             className={cn(
-                                                "max-w-[70%] rounded-2xl flex flex-col items-end",
-                                                isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                                message.type === 'view-once' ? 'p-0' : (message.imageUrl ? 'p-1.5' : 'px-3 py-2'),
-                                                message.audioUrl && 'p-2 w-[250px]'
+                                                "max-w-[70%] rounded-2xl flex items-center gap-2 px-3 py-2 italic text-muted-foreground",
+                                                isSender ? "bg-primary text-primary-foreground/80 rounded-br-none" : "bg-muted rounded-bl-none",
                                             )}
                                         >
-                                            {message.type === 'view-once' ? (
-                                                <button
-                                                    className={cn(
-                                                        "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
-                                                        isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
-                                                        (isSender) && "cursor-not-allowed"
-                                                    )}
-                                                    onClick={() => isSender ? null : handleOpenViewOnce(message)}
-                                                >
-                                                    <History className="w-6 h-6 text-green-400" />
-                                                    <span className="font-medium text-base">{isSender ? "Fotoğraf Gönderildi" : "Fotoğraf"}</span>
-                                                </button>
-                                            ) : message.imageUrl ? (
-                                                <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
-                                            ) : null }
-
-                                            {message.text && message.type !== 'view-once' && (
-                                            <p className={cn('break-words text-left w-full', 
-                                                message.imageUrl && 'px-2 pb-1 pt-2'
-                                            )}>
-                                                {message.text}
-                                            </p>
-                                            )}
-                                            {message.audioUrl && (
-                                                <AudioPlayer src={message.audioUrl} />
-                                            )}
-                                            <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
-                                                {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
-                                                <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
-                                                {isSender && renderMessageStatus(message, isSender)}
-                                            </div>
+                                            <EyeOff className="w-4 h-4" />
+                                            <span>Açıldı</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 self-end">
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(message, isSender)}
                                         </div>
                                     </div>
                                 </div>
                             );
-                        })}
-                    </div>
-                    <div ref={messagesEndRef} />
-                </main>
-                
-                {canSendMessage ? (
-                <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
-                    {recordingStatus === 'idle' && (
-                        <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
-                            {editingMessage && (
-                                <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            )}
-                            {!editingMessage && (
-                                <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
-                                    {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
-                                </Button>
-                            )}
-                            <Input
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder={editingMessage ? "Mesajı düzenle..." : "Mesajını yaz..."}
-                                className="flex-1 rounded-full bg-muted"
-                                disabled={isUploading}
-                            />
-                            {editingMessage ? (
-                                <Button type="submit" size="icon" className="rounded-full bg-green-500 hover:bg-green-600" disabled={isUploading}>
-                                    <Check className="h-5 w-5" />
-                                </Button>
-                            ) : showSendButton ? (
-                                <Button type="submit" size="icon" className="rounded-full" disabled={isUploading}>
-                                    <Send className="h-5 w-5" />
-                                </Button>
-                            ) : (
-                                <Button type="button" size="icon" className="rounded-full" onClick={startRecording} disabled={isUploading}>
-                                    <Mic className="h-5 w-5" />
-                                </Button>
-                            )}
-                        </form>
-                    )}
+                        }
 
-                    {recordingStatus === 'recording' && (
-                        <div className="flex items-center justify-between gap-2">
-                            <Button variant="ghost" size="icon" className="rounded-full text-red-500" onClick={cancelRecording}>
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                            <div className='flex items-center gap-2 font-mono text-sm'>
-                                <div className='w-2 h-2 rounded-full bg-red-500 animate-pulse'></div>
-                                <span>{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
-                            </div>
-                            <Button size="icon" className="rounded-full" onClick={stopRecording}>
-                                <Square className="h-5 w-5 fill-white" />
-                            </Button>
-                        </div>
-                    )}
 
-                    {recordingStatus === 'preview' && audioUrl && (
-                        <div className="flex items-center justify-between gap-2">
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={cancelRecording}>
-                                <Trash2 className="h-5 w-5 text-red-500" />
-                            </Button>
-                            <div className="flex-1">
-                                <AudioPlayer src={audioUrl} />
+                        return (
+                            <div key={message.id}>
+                                {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
+                                    {!isSender && (
+                                        <Avatar className="h-8 w-8 self-end mb-1">
+                                            <AvatarImage src={otherUser?.profilePicture} />
+                                            <AvatarFallback>{otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                    )}
+                                    {isSender && (
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(message)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                                            {message.text && !message.imageUrl && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
+                                        </div>
+                                    )}
+                                    <div
+                                        className={cn(
+                                            "max-w-[70%] rounded-2xl flex flex-col items-end",
+                                            isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
+                                            message.type === 'view-once' ? 'p-0' : (message.imageUrl ? 'p-1.5' : 'px-3 py-2'),
+                                            message.audioUrl && 'p-2 w-[250px]'
+                                        )}
+                                    >
+                                        {message.type === 'view-once' ? (
+                                            <button
+                                                className={cn(
+                                                    "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
+                                                    isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                                                    (isSender) && "cursor-not-allowed"
+                                                )}
+                                                onClick={() => isSender ? null : handleOpenViewOnce(message)}
+                                            >
+                                                <History className="w-6 h-6 text-green-400" />
+                                                <span className="font-medium text-base">{isSender ? "Fotoğraf Gönderildi" : "Fotoğraf"}</span>
+                                            </button>
+                                        ) : message.imageUrl ? (
+                                            <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
+                                        ) : null }
+
+                                        {message.text && message.type !== 'view-once' && (
+                                        <p className={cn('break-words text-left w-full', 
+                                            message.imageUrl && 'px-2 pb-1 pt-2'
+                                        )}>
+                                            {message.text}
+                                        </p>
+                                        )}
+                                        {message.audioUrl && (
+                                            <AudioPlayer src={message.audioUrl} />
+                                        )}
+                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
+                                            {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
+                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(message, isSender)}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <Button size="icon" className="rounded-full" onClick={sendAudioMessage} disabled={isUploading}>
-                            {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send className="h-5 w-5" />}
+                        );
+                    })}
+                </div>
+                <div ref={messagesEndRef} />
+            </main>
+            
+            {canSendMessage ? (
+            <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
+                {recordingStatus === 'idle' && (
+                    <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
+                        {editingMessage && (
+                            <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
+                                <X className="h-5 w-5" />
                             </Button>
+                        )}
+                        {!editingMessage && (
+                            <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleFileSelect} disabled={isUploading}>
+                                {isUploading ? <Icons.logo width={24} height={24} className="h-5 w-5 animate-pulse" /> : <Paperclip className="h-5 w-5" />}
+                            </Button>
+                        )}
+                        <Input
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder={editingMessage ? "Mesajı düzenle..." : "Mesajını yaz..."}
+                            className="flex-1 rounded-full bg-muted"
+                            disabled={isUploading}
+                        />
+                        {editingMessage ? (
+                            <Button type="submit" size="icon" className="rounded-full bg-green-500 hover:bg-green-600" disabled={isUploading}>
+                                <Check className="h-5 w-5" />
+                            </Button>
+                        ) : showSendButton ? (
+                            <Button type="submit" size="icon" className="rounded-full" disabled={isUploading}>
+                                <Send className="h-5 w-5" />
+                            </Button>
+                        ) : (
+                            <Button type="button" size="icon" className="rounded-full" onClick={startRecording} disabled={isUploading}>
+                                <Mic className="h-5 w-5" />
+                            </Button>
+                        )}
+                    </form>
+                )}
+
+                {recordingStatus === 'recording' && (
+                    <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full text-red-500" onClick={cancelRecording}>
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                        <div className='flex items-center gap-2 font-mono text-sm'>
+                            <div className='w-2 h-2 rounded-full bg-red-500 animate-pulse'></div>
+                            <span>{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
                         </div>
-                    )}
-                    
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                </footer>
-                ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
-                    <div className="text-center text-sm text-muted-foreground p-4 border-t">
-                        Yanıt bekleniyor...
+                        <Button size="icon" className="rounded-full" onClick={stopRecording}>
+                            <Square className="h-5 w-5 fill-white" />
+                        </Button>
                     </div>
-                ) : isSystemChat ? (
-                    <div className="text-center text-sm text-muted-foreground p-4 border-t">
-                        Sistem mesajlarına yanıt veremezsiniz.
-                    </div>
-                ) : (
-                    <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
-                        Bu kullanıcı artık mevcut değil.
+                )}
+
+                {recordingStatus === 'preview' && audioUrl && (
+                    <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full" onClick={cancelRecording}>
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                        </Button>
+                        <div className="flex-1">
+                            <AudioPlayer src={audioUrl} />
+                        </div>
+                        <Button size="icon" className="rounded-full" onClick={sendAudioMessage} disabled={isUploading}>
+                        {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send className="h-5 w-5" />}
+                        </Button>
                     </div>
                 )}
                 
-                <AlertDialog open={!!deletingMessage} onOpenChange={(open) => !open && setDeletingMessage(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Mesajı Sil</AlertDialogTitle>
-                            <AlertDialogDescription>Bu mesajı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteMessage} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>Sil</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
-                    <DialogContent className="p-0 border-0 bg-black/90 text-white max-w-full h-full max-h-full sm:rounded-none flex flex-col">
-                        <DialogTitle className="sr-only">Fotoğraf Önizleme ve Gönderme</DialogTitle>
-                        <DialogDescription className="sr-only">Göndermeden önce fotoğrafı önizleyin, başlık ekleyin ve tek seferlik görüntüleme olarak ayarlayın.</DialogDescription>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+            </footer>
+            ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t">
+                    Yanıt bekleniyor...
+                </div>
+            ) : isSystemChat ? (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t">
+                    Sistem mesajlarına yanıt veremezsiniz.
+                </div>
+            ) : (
+                <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
+                    Bu kullanıcı artık mevcut değil.
+                </div>
+            )}
+            
+            <AlertDialog open={!!deletingMessage} onOpenChange={(open) => !open && setDeletingMessage(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Mesajı Sil</AlertDialogTitle>
+                        <AlertDialogDescription>Bu mesajı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteMessage} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>Sil</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
+                <DialogContent className="p-0 border-0 bg-black/90 text-white max-w-full h-full max-h-full sm:rounded-none flex flex-col">
+                    <DialogTitle className="sr-only">Fotoğraf Önizleme ve Gönderme</DialogTitle>
+                    <DialogDescription className="sr-only">Göndermeden önce fotoğrafı önizleyin, başlık ekleyin ve tek seferlik görüntüleme olarak ayarlayın.</DialogDescription>
+                    <DialogClose asChild>
+                        <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-20 rounded-full bg-black/50 hover:bg-black/70">
+                            <X className="h-6 w-6" />
+                        </Button>
+                    </DialogClose>
+                    <div className="flex-1 flex items-center justify-center relative p-8">
+                        {imagePreview && <Image src={imagePreview.url} alt="Önizleme" fill style={{objectFit: 'contain'}}/>}
+                    </div>
+                    <DialogFooter className="p-4 bg-black/50 border-t border-white/20 sm:justify-between">
+                        <div className='flex items-center gap-2 w-full'>
+                            <Input
+                                placeholder="Başlık ekle..."
+                                value={caption}
+                                onChange={(e) => setCaption(e.target.value)}
+                                className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-gray-400"
+                            />
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn(
+                                    "rounded-full border-2 w-10 h-10 font-bold", 
+                                    isViewOnce ? "bg-primary border-primary text-primary-foreground" : "border-white text-white"
+                                )}
+                                onClick={() => {
+                                    setIsViewOnce(!isViewOnce);
+                                    toast({ title: isViewOnce ? "Tek seferlik mod kapatıldı." : "Fotoğraf tek seferlik olarak ayarlandı."});
+                                }}
+                            >
+                                <History className='w-4 h-4'/>
+                            </Button>
+                            <Button type="button" size="icon" className="rounded-full h-12 w-12 shrink-0" onClick={handleSendImage} disabled={isUploading}>
+                                {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send />}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Once Image Dialog */}
+            <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && setViewingOnceImage(null)}>
+                <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
+                    <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
+                    <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
+                    <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
+                        <div className="flex items-center gap-3 text-white">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={isSender(viewingOnceImage?.senderId) ? userProfile?.profilePicture : otherUser?.profilePicture} />
+                            <AvatarFallback>{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName?.charAt(0) : otherUser?.fullName?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
+                    </div>
                         <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-20 rounded-full bg-black/50 hover:bg-black/70">
-                                <X className="h-6 w-6" />
+                            <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white" onClick={() => setViewingOnceImage(null)}>
+                                <X className="h-5 w-5" />
                             </Button>
                         </DialogClose>
-                        <div className="flex-1 flex items-center justify-center relative p-8">
-                            {imagePreview && <Image src={imagePreview.url} alt="Önizleme" fill style={{objectFit: 'contain'}}/>}
-                        </div>
-                        <DialogFooter className="p-4 bg-black/50 border-t border-white/20 sm:justify-between">
-                            <div className='flex items-center gap-2 w-full'>
-                                <Input
-                                    placeholder="Başlık ekle..."
-                                    value={caption}
-                                    onChange={(e) => setCaption(e.target.value)}
-                                    className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-gray-400"
-                                />
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className={cn(
-                                        "rounded-full border-2 w-10 h-10 font-bold", 
-                                        isViewOnce ? "bg-primary border-primary text-primary-foreground" : "border-white text-white"
-                                    )}
-                                    onClick={() => {
-                                        setIsViewOnce(!isViewOnce);
-                                        toast({ title: isViewOnce ? "Tek seferlik mod kapatıldı." : "Fotoğraf tek seferlik olarak ayarlandı."});
-                                    }}
-                                >
-                                    <History className='w-4 h-4'/>
-                                </Button>
-                                <Button type="button" size="icon" className="rounded-full h-12 w-12 shrink-0" onClick={handleSendImage} disabled={isUploading}>
-                                    {isUploading ? <Icons.logo width={24} height={24} className="animate-pulse" /> : <Send />}
-                                </Button>
-                            </div>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* View Once Image Dialog */}
-                <Dialog open={!!viewingOnceImage} onOpenChange={(open) => !open && setViewingOnceImage(null)}>
-                    <DialogContent className="p-0 border-0 bg-black max-w-full h-full max-h-full sm:rounded-none flex flex-col [--protect-layer]">
-                        <DialogTitle className="sr-only">Tek Seferlik Fotoğraf</DialogTitle>
-                        <DialogDescription className="sr-only">{otherUser?.fullName} tarafından gönderilen tek seferlik fotoğraf. Bu fotoğraf belirli bir süre sonra kaybolacak.</DialogDescription>
-                        <DialogHeader className="p-4 flex flex-row items-center justify-between z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
-                            <div className="flex items-center gap-3 text-white">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={isSender(viewingOnceImage?.senderId) ? userProfile?.profilePicture : otherUser?.profilePicture} />
-                                <AvatarFallback>{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName?.charAt(0) : otherUser?.fullName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold text-sm">{isSender(viewingOnceImage?.senderId) ? userProfile?.fullName : otherUser?.fullName}</span>
-                        </div>
-                            <DialogClose asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white" onClick={() => setViewingOnceImage(null)}>
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </DialogClose>
-                        </DialogHeader>
-                        <div className="absolute top-2 left-2 right-2 z-10">
-                            <Progress value={viewOnceProgress} className="h-1 bg-white/30" indicatorClassName="bg-white" />
-                        </div>
-                        <div className="flex-1 flex items-center justify-center relative">
-                            {viewingOnceImage?.imageUrl && <Image src={viewingOnceImage.imageUrl} alt="Tek seferlik fotoğraf" fill style={{objectFit: 'contain'}}/>}
-                        </div>
-                        {viewingOnceImage?.text && (
-                            <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black/70 to-transparent">
-                                <p className="text-white text-center">{viewingOnceImage.text}</p>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
-                
-                {otherUser && (
-                 <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent flex flex-col'>
-                    <SheetHeader className="sr-only">
-                        <SheetTitle>Kullanıcı Profili</SheetTitle>
-                        <SheetDescription>{otherUser.fullName} kullanıcısının profili.</SheetDescription>
-                    </SheetHeader>
-                    <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                        <ProfileCard profile={otherUser} onSwipe={() => {}} />
+                    </DialogHeader>
+                    <div className="absolute top-2 left-2 right-2 z-10">
+                        <Progress value={viewOnceProgress} className="h-1 bg-white/30" indicatorClassName="bg-white" />
                     </div>
-                 </SheetContent>
-                )}
-            </div>
-        </Sheet>
+                    <div className="flex-1 flex items-center justify-center relative">
+                        {viewingOnceImage?.imageUrl && <Image src={viewingOnceImage.imageUrl} alt="Tek seferlik fotoğraf" fill style={{objectFit: 'contain'}}/>}
+                    </div>
+                    {viewingOnceImage?.text && (
+                        <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-black/70 to-transparent">
+                            <p className="text-white text-center">{viewingOnceImage.text}</p>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </div>
     );
     
     function isSender(senderId: string | undefined): boolean {
