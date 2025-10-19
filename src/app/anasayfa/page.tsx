@@ -30,7 +30,7 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
-  const fetchProfiles = useCallback(async (ignoreInteractions = false) => {
+  const fetchProfiles = useCallback(async () => {
     if (!user || !userProfile || !firestore) {
       setIsLoading(false);
       return;
@@ -44,11 +44,8 @@ export default function AnasayfaPage() {
 
       const usersSnapshot = await getDocs(q);
 
-      let interactedUids = new Set<string>();
-      if (!ignoreInteractions) {
-        const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-        interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
-      }
+      const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+      const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
       
       const fetchedProfiles = usersSnapshot.docs
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
@@ -68,13 +65,11 @@ export default function AnasayfaPage() {
           } else {
               p.distance = undefined;
           }
-
-          if (!ignoreInteractions) {
-            const sortedIds = [user.uid, p.uid].sort();
-            const matchId = sortedIds.join('_');
-            if (interactedUids.has(matchId)) {
-                return false;
-            }
+          
+          const sortedIds = [user.uid, p.uid].sort();
+          const matchId = sortedIds.join('_');
+          if (interactedUids.has(matchId)) {
+              return false;
           }
           
           // Filter by distance only if global mode is off
