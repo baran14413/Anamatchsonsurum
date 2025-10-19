@@ -2,17 +2,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
+import { getDistance } from '@/lib/utils';
 
 const CARD_STACK_OFFSET = 10;
 const CARD_STACK_SCALE = 0.05;
+const SWIPE_CONFIDENCE_THRESHOLD = 10000;
 
 export default function AnasayfaPage() {
   const { user, userProfile } = useUser();
@@ -23,7 +25,7 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfiles = useCallback(async () => {
-    if (!user || !firestore) {
+    if (!user || !userProfile || !firestore) {
       setIsLoading(false);
       return;
     }
@@ -37,17 +39,29 @@ export default function AnasayfaPage() {
 
       const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
       const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+      interactedUids.add(user.uid); // Add self to interacted to filter out
 
       const fetchedProfiles = usersSnapshot.docs
         .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
         .filter(p => {
-          // Rule 1: Cannot be the current user
-          if (p.uid === user.uid) return false;
-          // Rule 2: Cannot be someone the user has already matched with
           if (interactedUids.has(p.uid)) return false;
+          if (!p.images || p.images.length === 0) return false;
+          
+           if (userProfile.globalModeEnabled !== true && userProfile.location && p.location) {
+              const distance = getDistance(
+                  userProfile.location.latitude!,
+                  userProfile.location.longitude!,
+                  p.location.latitude!,
+                  p.location.longitude!
+              );
+              if (distance > (userProfile.distancePreference || 160)) {
+                  return false;
+              }
+           }
+          
           return true;
         });
-
+      
       setProfiles(fetchedProfiles);
 
     } catch (error: any) {
@@ -56,7 +70,7 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, firestore, toast]);
+  }, [user, userProfile, firestore, toast]);
 
   useEffect(() => {
     if (user && firestore) {
@@ -66,6 +80,45 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, fetchProfiles]);
 
+  const handleSwipe = async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
+    if (!user || !firestore || !profileToSwipe) return;
+
+    // Remove swiped profile from UI immediately
+    setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
+
+    const action = direction === 'left' ? 'disliked' : 'liked';
+    
+    // Firestore update
+    try {
+      const sortedIds = [user.uid, profileToSwipe.uid].sort();
+      const matchId = sortedIds.join('_');
+      const matchDocRef = doc(firestore, 'matches', matchId);
+      
+      const user1IsCurrentUser = user.uid === sortedIds[0];
+      const updateData: Partial<Match> = {
+          user1Id: sortedIds[0],
+          user2Id: sortedIds[1],
+          status: 'pending',
+          ...(user1IsCurrentUser 
+              ? { user1_action: action, user1_timestamp: serverTimestamp() } 
+              : { user2_action: action, user2_timestamp: serverTimestamp() })
+      };
+
+      await setDoc(matchDocRef, updateData, { merge: true });
+
+    } catch (error: any) {
+      console.error(`Error handling ${action}:`, error);
+      toast({
+        title: "Hata",
+        description: `İşlem kaydedilemedi: ${error.message}`,
+        variant: "destructive"
+      });
+      // Optionally, add the profile back to the stack if the DB write fails
+      setProfiles(prev => [profileToSwipe, ...prev]);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center">
@@ -73,39 +126,64 @@ export default function AnasayfaPage() {
       </div>
     );
   }
+  
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
             <AnimatePresence>
                 {profiles.length > 0 ? (
-                    profiles.map((profile, index) => (
-                        <motion.div
-                            key={profile.uid}
-                            className="absolute w-full h-full"
-                            style={{
-                                transformStyle: 'preserve-3d',
-                                zIndex: profiles.length - index,
-                            }}
-                            initial={{
-                                scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
-                                y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
-                                opacity: index === profiles.length - 1 ? 1 : 0.5,
-                            }}
-                            animate={{
-                                scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
-                                y: (profiles.length - 1 - index) * CARD_STACK_OFFSET,
-                                opacity: 1,
-                            }}
-                             transition={{ duration: 0.3 }}
-                        >
-                            <ProfileCard profile={profile} isTopCard={index === profiles.length - 1} />
-                        </motion.div>
-                    ))
+                    profiles.map((profile, index) => {
+                        const isTopCard = index === profiles.length - 1;
+                        return (
+                            <motion.div
+                                key={profile.uid}
+                                className="absolute w-full h-full"
+                                style={{
+                                    transformStyle: 'preserve-3d',
+                                    zIndex: index,
+                                }}
+                                initial={{
+                                    scale: 1,
+                                    y: 0,
+                                }}
+                                animate={{
+                                    scale: 1 - (profiles.length - 1 - index) * CARD_STACK_SCALE,
+                                    y: index * -CARD_STACK_OFFSET,
+                                    transition: { duration: 0.3, ease: 'easeOut' },
+                                }}
+                                drag="x"
+                                dragConstraints={{ left: 0, right: 0 }}
+                                dragElastic={1}
+                                onDragEnd={(e, { offset, velocity }) => {
+                                    if (!isTopCard) return;
+
+                                    const power = swipePower(offset.x, velocity.x);
+
+                                    if (power < -SWIPE_CONFIDENCE_THRESHOLD) {
+                                        // Swipe left (dislike)
+                                        handleSwipe(profile, 'left');
+                                    }
+                                }}
+                                exit={{
+                                    x: offset.x < 0 ? -500 : 500,
+                                    rotate: offset.x < 0 ? -45 : 45,
+                                    opacity: 0,
+                                    transition: { duration: 0.5 }
+                                }}
+                                
+                            >
+                                <ProfileCard profile={profile} isTopCard={isTopCard} />
+                            </motion.div>
+                        );
+                    }).reverse() // Render from back to front
                 ) : (
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
-                        <h3 className="text-2xl font-bold">Hiç Profil Bulunamadı</h3>
-                        <p className="text-muted-foreground">Veritabanında görüntülenecek hiç kullanıcı yok gibi görünüyor.</p>
+                        <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
+                        <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
                         <Button onClick={fetchProfiles}>
                             Tekrar Dene
                         </Button>
@@ -116,3 +194,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
