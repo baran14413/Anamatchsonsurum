@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion, useAnimation, useMotionValue } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -218,39 +217,32 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-          {profiles.length > 0 ? (
-            profiles.map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              
-              return (
-                <motion.div
+        <AnimatePresence>
+          {profiles.slice(-3).map((profile, index) => {
+            const isTopCard = index === profiles.slice(-3).length - 1;
+            
+            return (
+              <motion.div
                   key={profile.uid}
                   className="absolute w-full h-full"
                   style={{
-                    scale: 1 - (profiles.length - 1 - index) * 0.05,
-                    y: (profiles.length - 1 - index) * 10,
+                    scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05,
+                    y: (profiles.slice(-3).length - 1 - index) * 10,
                   }}
-                  drag={isTopCard ? "x" : false}
-                  dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                  onDragEnd={(event, { offset, velocity }) => {
-                    if (!isTopCard) return;
-
-                    const swipePower = Math.abs(offset.x) * velocity.x;
-                    const swipeConfidenceThreshold = 10000;
-                    
-                    if (swipePower < -swipeConfidenceThreshold) {
-                      handleSwipe(profile, 'left');
-                    } else if (swipePower > swipeConfidenceThreshold) {
-                      handleSwipe(profile, 'right');
-                    }
-                  }}
-                  dragElastic={0.5}
-                >
-                  <ProfileCard profile={profile} />
-                </motion.div>
-              );
-            })
-          ) : (
+                  initial={{ scale: 0.95, y: 20, opacity: 0 }}
+                  animate={{ scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05, y: (profiles.slice(-3).length - 1 - index) * 10, opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              >
+                <ProfileCard
+                  profile={profile}
+                  isTopCard={isTopCard}
+                  onSwipe={(p, dir) => handleSwipe(p, dir)}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+          {profiles.length === 0 && !isLoading && (
             <motion.div 
               className="flex flex-col items-center justify-center text-center p-4 space-y-4"
               initial={{ opacity: 0 }}
@@ -267,5 +259,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    

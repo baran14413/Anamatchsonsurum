@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,6 +19,8 @@ import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
+  isTopCard: boolean;
+  onSwipe: (profile: UserProfile, direction: 'left' | 'right') => void;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -61,15 +62,13 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile }: ProfileCardProps) => {
+const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
-  
-  // Directly map x-offset to rotation and opacity
   const rotate = useTransform(x, [-200, 200], [-30, 30]);
-  const likeOpacity = useTransform(x, [0, 100], [0, 1]);
-  const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
+  const likeOpacity = useTransform(x, [10, 100], [0, 1]);
+  const dislikeOpacity = useTransform(x, [-100, -10], [1, 0]);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -129,6 +128,21 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   return (
     <motion.div 
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
+      drag={isTopCard ? "x" : false}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      onDragEnd={(event, { offset, velocity }) => {
+        if (!isTopCard) return;
+        const swipePower = Math.abs(offset.x) * velocity.x;
+        const swipeConfidenceThreshold = 10000;
+
+        if (swipePower < -swipeConfidenceThreshold) {
+            onSwipe(profile, 'left');
+        } else if (swipePower > swipeConfidenceThreshold) {
+            onSwipe(profile, 'right');
+        } else {
+             x.set(0);
+        }
+      }}
       style={{ x, rotate }}
     >
       <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
@@ -338,5 +352,3 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
-
-    
