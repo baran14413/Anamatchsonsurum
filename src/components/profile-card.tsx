@@ -18,7 +18,7 @@ import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
 
 interface ProfileCardProps {
-  profile: UserProfile;
+  profile: UserProfile & { distance?: number };
   isTopCard?: boolean;
 }
 
@@ -182,10 +182,10 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
                         </SheetTrigger>
                     </div>
                      <div className='flex flex-col gap-1.5 pt-1'>
-                        {(profile.distance || (profile as any).distance === 0) && (
+                        {(profile.distance || profile.distance === 0) && (
                             <div className="flex items-center gap-2">
                                 <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String((profile as any).distance))}</span>
+                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
                             </div>
                         )}
                         <div className="flex items-center gap-2">
