@@ -11,6 +11,7 @@ body {
   overflow: hidden;
   margin: 0;
   padding-top: max(0px, env(safe-area-inset-top));
+  padding-bottom: env(safe-area-inset-bottom);
   background-color: hsl(var(--background));
   box-sizing: border-box;
 }
