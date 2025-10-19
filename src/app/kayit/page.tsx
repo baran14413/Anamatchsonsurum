@@ -599,7 +599,6 @@ export default function SignUpPage() {
                         <p><strong>E-posta:</strong> {form.getValues('email')}</p>
                         <p><strong>İlgi Alanları:</strong> {form.getValues('interests').slice(0,3).join(', ')}...</p>
                         <p><strong>Fotoğraf Sayısı:</strong> {form.getValues('images').length}</p>
-                        <p><strong>Konum:</strong> {form.getValues('address.city') || 'Belirtilmedi'}</p>
                     </div>
                  </div>
               )}
