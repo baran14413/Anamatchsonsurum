@@ -103,6 +103,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [swipedCards, setSwipedCards] = useState<{[key: string]: 'left' | 'right'}>({});
 
   const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
@@ -215,9 +216,9 @@ export default function AnasayfaPage() {
       <div className="relative w-full h-[600px] max-w-md flex items-center justify-center">
           <AnimatePresence>
           {profiles.length > 0 ? (
-            profiles.slice(-3).map((profile, index, arr) => {
-              const isTopCard = index === arr.length - 1;
-              const cardIndex = arr.length - 1 - index;
+            profiles.slice(-3).map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              const cardIndex = profiles.length - 1 - index;
 
               return (
                 <motion.div
@@ -231,6 +232,9 @@ export default function AnasayfaPage() {
                     const swipePower = Math.abs(offset.x) * velocity.x;
                     const swipeConfidenceThreshold = 10000;
                     
+                    const direction = offset.x > 0 ? 'right' : 'left';
+                    setSwipedCards(prev => ({ ...prev, [profile.uid]: direction }));
+
                     if (swipePower > swipeConfidenceThreshold) {
                       handleSwipe(profile, 'right');
                     } else if (swipePower < -swipeConfidenceThreshold) {
@@ -242,14 +246,14 @@ export default function AnasayfaPage() {
                     scale: 1 - cardIndex * 0.05,
                     y: cardIndex * 10,
                   }}
-                  exit={ (custom) => ({
+                  exit={(custom) => ({
                     x: custom.direction === 'right' ? 500 : -500,
-                    rotate: custom.direction === 'right' ? 30 : -30,
+                    rotate: custom.direction === 'right' ? 15 : -15,
                     opacity: 0,
                     scale: 0.5,
                     transition: { duration: 0.5 },
                   })}
-                  custom={{ direction: profiles.find(p => p.uid === profile.uid) ? (offset.x > 0 ? 'right' : 'left') : 'left' }}
+                  custom={{ direction: swipedCards[profile.uid] || 'left' }}
                   dragElastic={0.5}
                 >
                   <ProfileCard profile={profile} isTopCard={isTopCard} />
