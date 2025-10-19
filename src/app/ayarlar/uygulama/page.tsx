@@ -33,14 +33,11 @@ export default function AppSettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const checkSupportAndPermission = async () => {
-        const supported = await isNotificationSupported();
-        setIsSupported(supported);
-        if (supported && typeof window !== 'undefined' && 'Notification' in window) {
-            setNotificationPermission(Notification.permission);
-        }
-    };
-    checkSupportAndPermission();
+    const supported = isNotificationSupported();
+    setIsSupported(supported);
+    if (supported && typeof window !== 'undefined' && 'Notification' in window) {
+        setNotificationPermission(Notification.permission);
+    }
   }, []);
 
   const handlePermissionRequest = async () => {

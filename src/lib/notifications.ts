@@ -15,22 +15,18 @@ if (!getApps().length) {
 }
 
 // Function to check if notification is supported
-export const isNotificationSupported = async (): Promise<boolean> => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+export const isNotificationSupported = (): boolean => {
+    if (typeof window === 'undefined') {
         return false;
     }
-    try {
-        const supported = await isSupported();
-        return supported;
-    } catch (e) {
-        console.error("Error checking notification support:", e);
-        // Fallback for some WebViews where isSupported() might fail but basic APIs exist.
-        return true;
-    }
+    // A more reliable check for PWA/WebView context is the presence of the core APIs.
+    return 'serviceWorker' in navigator &&
+           'PushManager' in window &&
+           'Notification' in window;
 };
 
 export const requestNotificationPermission = async () => {
-    const supported = await isNotificationSupported();
+    const supported = isNotificationSupported();
     if (!supported) {
         console.log('Firebase Messaging is not supported in this browser.');
         return null;
@@ -90,7 +86,7 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
 
     useEffect(() => {
         const checkSupportAndListen = async () => {
-            if (firebaseApp && await isNotificationSupported()) {
+            if (firebaseApp && isNotificationSupported()) {
                 const messaging = getMessaging(firebaseApp);
                 const unsubscribe = onMessage(messaging, (payload) => {
                     console.log('Foreground message received. ', payload);
