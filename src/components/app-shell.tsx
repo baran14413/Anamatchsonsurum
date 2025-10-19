@@ -13,7 +13,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar'];
-const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies'];
+const authFlowRoutes = ['/', '/login', '/tos', '/privacy', '/cookies', '/giris'];
 const registrationRoute = '/profilini-tamamla';
 const rulesRoute = '/kurallar';
 const adminRoutes = '/admin';
@@ -102,10 +102,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // SCENARIO 2: User is NOT logged in
     else {
       // If they are trying to access a protected route, redirect to welcome page.
-      if (isProtectedRoute || isRegistrationRoute || isRulesRoute || isAdminRoute) {
+      if (isProtectedRoute || isRulesRoute || isAdminRoute) {
         router.replace('/');
       }
-      // If they are on a public or auth-flow page, do nothing.
+      // If they are on a public or auth-flow page (including registration), do nothing.
     }
   }, [isUserLoading, user, userProfile, pathname, router, isProtectedRoute, isAuthFlowRoute, isRegistrationRoute, isRulesRoute, isAdminRoute]);
 

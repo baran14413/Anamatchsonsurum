@@ -527,7 +527,7 @@ export default function ProfileCompletionForm() {
   };
   
   return (
-    <div className="flex h-dvh flex-col animated-gradient-bg-signup text-white">
+    <div className="flex h-dvh flex-col animated-gradient-bg text-white">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-white/20 bg-transparent px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
