@@ -37,8 +37,7 @@ export default function AnasayfaPage() {
     }
 
     setIsLoading(true);
-    setProfiles([]); // Clear profiles to force a re-render with new data
-
+    
     try {
       const usersRef = collection(firestore, 'users');
       let q = query(usersRef, limit(50));
@@ -58,6 +57,18 @@ export default function AnasayfaPage() {
           
           if (p.uid === user.uid) return false;
 
+          // Always add distance if location is available
+          if (userProfile.location && p.location) {
+              p.distance = getDistance(
+                  userProfile.location.latitude!,
+                  userProfile.location.longitude!,
+                  p.location.latitude!,
+                  p.location.longitude!
+              );
+          } else {
+              p.distance = undefined;
+          }
+
           if (!ignoreInteractions) {
             const sortedIds = [user.uid, p.uid].sort();
             const matchId = sortedIds.join('_');
@@ -66,17 +77,7 @@ export default function AnasayfaPage() {
             }
           }
           
-          // Step 1: Always calculate distance if location is available
-          if (userProfile.location && p.location) {
-              p.distance = getDistance(
-                  userProfile.location.latitude!,
-                  userProfile.location.longitude!,
-                  p.location.latitude!,
-                  p.location.longitude!
-              );
-          }
-
-          // Step 2: Filter by distance only if global mode is off
+          // Filter by distance only if global mode is off
           if (!userProfile.globalModeEnabled && p.distance !== undefined) {
               if (p.distance > (userProfile.distancePreference || 160)) {
                   return false;
@@ -95,14 +96,59 @@ export default function AnasayfaPage() {
     }
   }, [user, userProfile, firestore, toast]);
 
+  const forceRefetchProfiles = () => {
+    // This is a simplified fetch that ignores previous interactions,
+    // essentially "resetting" the deck.
+    if (!user || !userProfile || !firestore) return;
+    
+    setIsLoading(true);
+    setProfiles([]);
+
+    const usersRef = collection(firestore, 'users');
+    let q = query(usersRef, limit(50));
+
+    getDocs(q).then(usersSnapshot => {
+       const fetchedProfiles = usersSnapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+        .filter(p => {
+            if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
+            if (p.uid === user.uid) return false;
+             // Always add distance if location is available
+            if (userProfile.location && p.location) {
+                p.distance = getDistance(
+                    userProfile.location.latitude!,
+                    userProfile.location.longitude!,
+                    p.location.latitude!,
+                    p.location.longitude!
+                );
+            } else {
+                p.distance = undefined;
+            }
+             // Filter by distance only if global mode is off
+            if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+                if (p.distance > (userProfile.distancePreference || 160)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        setProfiles(fetchedProfiles);
+        setIsLoading(false);
+    }).catch(error => {
+        console.error("Profil getirme hatası (force):", error);
+        toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
+        setIsLoading(false);
+    });
+  }
+
 
   useEffect(() => {
-    if (user && firestore) {
+    if (user && firestore && userProfile) {
       fetchProfiles();
     } else if (!user) {
         setIsLoading(false);
     }
-  }, [user, firestore, fetchProfiles]);
+  }, [user, firestore, userProfile, fetchProfiles]);
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe) return;
@@ -118,32 +164,39 @@ export default function AnasayfaPage() {
         const matchDocRef = doc(firestore, 'matches', matchId);
 
         const matchDoc = await getDoc(matchDocRef);
-        const matchData = matchDoc.data() as Match;
+        const matchData = matchDoc.data() as Match | undefined;
 
         const user1IsCurrentUser = user.uid === sortedIds[0];
 
-        // Check for match
         const otherUserAction = user1IsCurrentUser ? matchData?.user2_action : matchData?.user1_action;
         const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked'));
 
-        const updateData: Partial<Match> = {
+        const updateData: any = {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
-            status: isMatch ? 'matched' : 'pending',
-            ...(isMatch && { matchDate: serverTimestamp() }),
-            ...(user1IsCurrentUser 
-                ? { user1_action: action, user1_timestamp: serverTimestamp() } 
-                : { user2_action: action, user2_timestamp: serverTimestamp() })
+            status: isMatch ? 'matched' : (matchData?.status || 'pending'), // Preserve superlike_pending
         };
+
+        if (isMatch) {
+            updateData.matchDate = serverTimestamp();
+        }
+
+        if (user1IsCurrentUser) {
+            updateData.user1_action = action;
+            updateData.user1_timestamp = serverTimestamp();
+        } else {
+            updateData.user2_action = action;
+            updateData.user2_timestamp = serverTimestamp();
+        }
+
         await setDoc(matchDocRef, updateData, { merge: true });
 
-        // Record the interaction in the user's subcollection as well
         const userInteractionRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(userInteractionRef, { 
             id: matchId,
             matchedWith: profileToSwipe.uid, 
-            status: isMatch ? 'matched' : 'pending',
+            status: isMatch ? 'matched' : (matchData?.status || 'pending'),
             action: action, 
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
@@ -151,16 +204,18 @@ export default function AnasayfaPage() {
             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
         }, { merge: true });
         
-         const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
-         await setDoc(otherUserInteractionRef, { 
-             id: matchId,
-             matchedWith: user.uid, 
-             status: isMatch ? 'matched' : 'pending',
-             timestamp: serverTimestamp(),
-             fullName: userProfile?.fullName,
-             profilePicture: userProfile?.profilePicture || '',
-             lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
-         }, { merge: true });
+        if (profileToSwipe.uid) {
+            const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
+            await setDoc(otherUserInteractionRef, { 
+                id: matchId,
+                matchedWith: user.uid, 
+                status: isMatch ? 'matched' : (matchData?.status || 'pending'),
+                timestamp: serverTimestamp(),
+                fullName: userProfile?.fullName,
+                profilePicture: userProfile?.profilePicture || '',
+                lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
+            }, { merge: true });
+        }
 
         if (isMatch) {
             toast({
@@ -230,7 +285,7 @@ export default function AnasayfaPage() {
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
                         <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={() => fetchProfiles(true)}>
+                        <Button onClick={forceRefetchProfiles}>
                             Tekrar Dene
                         </Button>
                     </div>
