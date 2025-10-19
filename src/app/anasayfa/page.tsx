@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -303,49 +304,47 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-        <AnimatePresence>
-          {profiles.length > 0 ? (
-            profiles.slice(0, 3).reverse().map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              return (
-                <motion.div
-                    key={profile.uid}
-                    className="absolute w-full h-full"
-                    initial={{ scale: 0.95, y: 20, opacity: 0 }}
-                    animate={{ 
-                      scale: 1, 
-                      y: 0, 
-                      opacity: 1,
-                    }}
-                    exit={{
-                      opacity: 0,
-                      scale: 0.9,
-                      transition: { duration: 0.2 }
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                >
-                  <ProfileCard
-                    profile={profile}
-                    isTopCard={isTopCard}
-                    onSwipe={(p, dir) => handleSwipe(p, dir)}
-                  />
-                </motion.div>
-              );
-            })
-          ) : (
-            <motion.div 
-              className="flex flex-col items-center justify-center text-center p-4 space-y-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-              <p className="text-muted-foreground">
-                {langTr.anasayfa.outOfProfilesDescription}
-              </p>
-              <Button onClick={handleRetry}>Tekrar Dene</Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {profiles.length > 0 ? (
+          profiles.slice(0, 3).reverse().map((profile, index) => {
+            const isTopCard = index === profiles.length - 1;
+            return (
+              <motion.div
+                key={profile.uid}
+                className="absolute w-full h-full"
+                initial={{ scale: 0.95, y: 20, opacity: 0 }}
+                animate={{
+                  scale: 1,
+                  y: 0,
+                  opacity: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.9,
+                  transition: { duration: 0.2 },
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
+                <ProfileCard
+                  profile={profile}
+                  isTopCard={isTopCard}
+                  onSwipe={(p, dir) => handleSwipe(p, dir)}
+                />
+              </motion.div>
+            );
+          })
+        ) : (
+          <motion.div
+            className="flex flex-col items-center justify-center text-center p-4 space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+            <p className="text-muted-foreground">
+              {langTr.anasayfa.outOfProfilesDescription}
+            </p>
+            <Button onClick={handleRetry}>Tekrar Dene</Button>
+          </motion.div>
+        )}
       </div>
     </div>
   );
