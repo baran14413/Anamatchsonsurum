@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock, X } from "lucide-react";
+import { ArrowLeft, Heart, GlassWater, Users, Briefcase, Sparkles, Hand, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Globe, Star, Mail, Lock, X, Eye, EyeOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import Image from "next/image";
@@ -51,6 +51,7 @@ const getInitialImageSlots = (): ImageSlot[] => {
 const formSchema = z.object({
     email: z.string().email({ message: langTr.signup.errors.form.email }),
     password: z.string().min(6, { message: langTr.signup.errors.form.password }),
+    confirmPassword: z.string().min(6, { message: "Şifre onayı en az 6 karakter olmalıdır." }),
     name: z.string()
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
@@ -77,6 +78,9 @@ const formSchema = z.object({
       max: z.number()
     }),
     interests: z.array(z.string()).min(10, { message: "Devam etmek için en az 10 ilgi alanı seçmelisin." }),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Şifreler eşleşmiyor.",
+    path: ["confirmPassword"],
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -175,12 +179,16 @@ export default function ProfileCompletionForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
       name: "",
       images: [],
       lookingFor: "",
@@ -437,6 +445,7 @@ export default function ProfileCompletionForm() {
         };
         
         delete (userProfileData as any).password;
+        delete (userProfileData as any).confirmPassword;
         
         await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
         router.push('/kurallar');
@@ -482,7 +491,7 @@ export default function ProfileCompletionForm() {
     let isValid = true;
     
     switch (step) {
-      case 0: fieldsToValidate = ['email', 'password']; break;
+      case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
       case 1: fieldsToValidate = 'name'; break;
       case 2: fieldsToValidate = 'images'; break;
       case 3: fieldsToValidate = 'dateOfBirth'; break;
@@ -556,7 +565,25 @@ export default function ProfileCompletionForm() {
                             <FormControl>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                    <Input type="password" placeholder={langTr.login.passwordPlaceholder} className="pl-10 h-12" {...field} />
+                                    <Input type={showPassword ? 'text' : 'password'} placeholder={langTr.login.passwordPlaceholder} className="pl-10 pr-10 h-12" {...field} />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                    </button>
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                        <FormItem>
+                             <FormLabel>{t.login.confirmPasswordLabel}</FormLabel>
+                            <FormControl>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder={t.login.confirmPasswordLabel} className="pl-10 pr-10 h-12" {...field} />
+                                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                    </button>
                                 </div>
                             </FormControl>
                             <FormMessage />

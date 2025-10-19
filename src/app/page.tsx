@@ -9,7 +9,8 @@ import { motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { useUser } from '@/firebase/provider';
 import { useEffect } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -57,14 +58,24 @@ export default function WelcomePage() {
           </div>
 
           <div className="space-y-3">
-               <Button
-                onClick={() => router.push('/login')}
-                variant="outline"
-                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
-              >
-                <Mail className="mr-4 h-6 w-6" />
-                {t.welcome.continueWithEmail}
-              </Button>
+               <Link href="/giris" className='w-full'>
+                <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+                >
+                    <Mail className="mr-4 h-6 w-6" />
+                    E-posta ile Giriş Yap
+                </Button>
+               </Link>
+               <Link href="/profilini-tamamla" className='w-full'>
+                 <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-full bg-white/90 border-white/30 text-black hover:bg-white text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+                >
+                    <UserPlus className="mr-4 h-6 w-6" />
+                    Yeni Hesap Oluştur
+                </Button>
+               </Link>
           </div>
         </div>
       </main>
