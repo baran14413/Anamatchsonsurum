@@ -21,8 +21,7 @@ import { Icons } from './icons';
 
 interface ProfileCardProps {
   profile: UserProfile;
-  x?: MotionValue<number>;
-  y?: MotionValue<number>;
+  isTopCard?: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -64,7 +63,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
+const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
@@ -73,11 +72,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     setActiveImageIndex(0);
     setLikeRatio(Math.floor(Math.random() * (98 - 70 + 1)) + 70);
   }, [profile.uid]);
-  
-  const likeOpacity = x ? useTransform(x, [0, 50], [0, 1]) : 0;
-  const dislikeOpacity = x ? useTransform(x, [0, -50], [0, 1]) : 0;
-  const superlikeOpacity = y ? useTransform(y, [-3, -50], [0, 1]) : 0;
-  const rotate = x ? useTransform(x, [-200, 200], [-20, 20]) : 0;
   
   const age = calculateAge(profile.dateOfBirth);
 
@@ -190,7 +184,7 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
                         "pointer-events-none absolute inset-0 transition-opacity duration-300",
                         index === activeImageIndex ? "opacity-100" : "opacity-0"
                     )}
-                    priority={index === 0}
+                    priority={isTopCard && index === 0}
                 />
               ) : (
                 <video
@@ -208,17 +202,6 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
               )
           )
         ))}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
-                <Heart className="w-16 h-16 fill-transparent" />
-            </motion.div>
-            <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
-                <HeartCrack className="w-16 h-16 fill-transparent" />
-            </motion.div>
-             <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-500 text-blue-500">
-                <Star className="w-16 h-16 fill-transparent" />
-            </motion.div>
-        </div>
       
         <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
@@ -426,8 +409,16 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
     "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
     profile.membershipType === 'gold' && "gold-member-card-wrapper p-1"
   );
+  
+  const x = useMemo(() => new MotionValue(0), []);
+  const y = useMemo(() => new MotionValue(0), []);
+  const likeOpacity = useTransform(x, [0, 50], [0, 1]);
+  const dislikeOpacity = useTransform(x, [0, -50], [0, 1]);
+  const superlikeOpacity = useTransform(y, [0, -50], [0, 1]);
+  const rotate = useTransform(x, [-200, 200], [-20, 20]);
+  
 
-  if (!x || !y) {
+  if (!isTopCard) {
       return (
         <div className={cardWrapperClass}>
              {CardView}
@@ -437,9 +428,20 @@ const ProfileCardComponent = ({ profile, x, y }: ProfileCardProps) => {
 
   return (
     <motion.div
-      style={{ rotate }}
+      style={{ rotate, x, y }}
       className={cardWrapperClass}
     >
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+          <motion.div style={{ opacity: likeOpacity }} className="p-4 rounded-full border-4 border-green-500 text-green-500">
+              <Heart className="w-16 h-16 fill-transparent" />
+          </motion.div>
+          <motion.div style={{ opacity: dislikeOpacity }} className="p-4 rounded-full border-4 border-red-500 text-red-500">
+              <HeartCrack className="w-16 h-16 fill-transparent" />
+          </motion.div>
+           <motion.div style={{ opacity: superlikeOpacity }} className="p-4 rounded-full border-4 border-blue-500 text-blue-500">
+              <Star className="w-16 h-16 fill-transparent" />
+          </motion.div>
+      </div>
       {CardView}
     </motion.div>
   );

@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, PanInfo, useMotionValue } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
@@ -399,20 +399,16 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
   
   const CardStack = useCallback(() => {
-    // We only render the top 2 cards for performance reasons
     const reversedProfiles = [...profiles].reverse();
   
-    return reversedProfiles.slice(0, 2).map((profile, i) => {
-        const isTopCard = i === 0;
-        const x = useMotionValue(0);
-        const y = useMotionValue(0);
-
-        const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    return reversedProfiles.slice(-2).map((profile, i) => {
+        const isTopCard = i === reversedProfiles.slice(-2).length - 1;
+        const dragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
             if (!isTopCard) return;
             const SWIPE_THRESHOLD = 50;
             const swipedIndex = profiles.findIndex(p => p.id === profile.id);
 
-            if (info.offset.y < -SWIPE_THRESHOLD) {
+            if (info.offset.y < -SWIPE_THRESHOLD * 2) {
                 handleSwipe(swipedIndex, 'superliked');
             } else if (info.offset.x > SWIPE_THRESHOLD) {
                 handleSwipe(swipedIndex, 'liked');
@@ -427,25 +423,23 @@ export default function AnasayfaPage() {
                 drag={isTopCard}
                 dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                 dragElastic={0.2}
-                onDragEnd={onDragEnd}
+                onDragEnd={dragEnd}
                 className="absolute w-full h-full"
                 style={{
-                  x,
-                  y,
-                  zIndex: profiles.length - i,
+                  zIndex: i,
                 }}
                 initial={{
-                  scale: 1 - i * 0.05,
-                  y: i * 10,
+                  scale: 1 - (reversedProfiles.slice(-2).length - 1 - i) * 0.05,
+                  y: (reversedProfiles.slice(-2).length - 1 - i) * 10,
                   opacity: 1
                 }}
                 animate={{
-                  scale: 1 - i * 0.05,
-                  y: i * 10,
+                  scale: 1 - (reversedProfiles.slice(-2).length - 1 - i) * 0.05,
+                  y: (reversedProfiles.slice(-2).length - 1 - i) * 10,
                   opacity: 1
                 }}
                 transition={{ duration: 0.3 }}
-                exit={{
+                 exit={{
                     x: (info: any) => info.offset.x > 80 ? 300 : (info.offset.x < -80 ? -300 : 0),
                     y: (info: any) => info.offset.y < -80 ? -400 : 0,
                     opacity: 0,
@@ -453,7 +447,7 @@ export default function AnasayfaPage() {
                     transition: { duration: 0.3 }
                 }}
             >
-                <ProfileCard profile={profile} x={x} y={y} />
+                <ProfileCard profile={profile} isTopCard={isTopCard} />
             </motion.div>
         );
     });
