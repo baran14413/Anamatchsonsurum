@@ -5,9 +5,9 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,15 +27,26 @@ import { langTr } from "@/languages/tr";
 import Image from "next/image";
 import { Icons } from "./icons";
 import { Slider } from "./ui/slider";
-import googleLogo from '@/img/googlelogin.png';
 import type { UserImage } from "@/lib/types";
 import { Badge } from "./ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import * as LucideIcons from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
+type ImageSlot = {
+    file: File | null;
+    preview: string | null;
+    public_id?: string | null;
+    isUploading: boolean;
+};
+
+const getInitialImageSlots = (): ImageSlot[] => {
+    return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
+};
 
 const formSchema = z.object({
     email: z.string().email({ message: langTr.signup.errors.form.email }),
@@ -44,6 +55,10 @@ const formSchema = z.object({
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
       .regex(/^[a-zA-Z\sçÇğĞıİöÖşŞüÜ]+$/, { message: "İsim sadece harf içerebilir." }),
+    images: z.array(z.object({
+        url: z.string(),
+        public_id: z.string(),
+    })).min(2, { message: langTr.signup.errors.form.photos }),
     dateOfBirth: z.date().max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
         .refine(date => !isNaN(date.getTime()), { message: "Lütfen geçerli bir tarih girin." }),
     gender: z.enum(['male', 'female'], { required_error: "Lütfen cinsiyetini seç." }),
@@ -155,18 +170,32 @@ export default function ProfileCompletionForm() {
 
   const [distanceValue, setDistanceValue] = useState(80);
 
+  // --- Photo Upload State ---
+  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(getInitialImageSlots);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview && !p.isUploading).length, [imageSlots]);
+
+
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
       name: "",
+      images: [],
       lookingFor: "",
       distancePreference: 80,
       interests: [],
     },
     mode: "onChange",
   });
+
+   useEffect(() => {
+    const finalImages = imageSlots
+        .filter(p => p.preview && p.public_id && !p.isUploading)
+        .map(p => ({ url: p.preview!, public_id: p.public_id! }));
+    form.setValue('images', finalImages, { shouldValidate: true });
+  }, [imageSlots, form]);
   
   useEffect(() => {
     // If user exists and profile is complete, redirect
@@ -196,7 +225,7 @@ export default function ProfileCompletionForm() {
     } else {
         setAgeStatus('invalid');
     }
-};
+  };
 
  const handleLocationRequest = () => {
     setIsLocationLoading(true);
@@ -247,6 +276,110 @@ export default function ProfileCompletionForm() {
       }
     );
   };
+  
+  // --- Photo Upload Logic ---
+  const handleFileSelect = (index: number) => {
+    if(isSubmitting) return;
+    fileInputRef.current?.setAttribute('data-slot-index', String(index));
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
+      const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
+
+      if (slotIndex !== -1) {
+          const isReplacing = !!imageSlots[slotIndex].preview;
+          if (isReplacing) {
+              const oldSlot = imageSlots[slotIndex];
+              if (oldSlot.public_id && storage) {
+                  const imageRefToDelete = storageRef(storage, oldSlot.public_id);
+                  deleteObject(imageRefToDelete).catch(err => {
+                        if (err.code !== 'storage/object-not-found') {
+                          console.error("Failed to delete old image from storage:", err);
+                        }
+                  });
+              }
+          }
+          handleImageUpload(file, slotIndex);
+      }
+
+      if (e.target) e.target.value = '';
+  };
+
+  const handleImageUpload = async (file: File, slotIndex: number) => {
+      // User is not created yet, so we can't use user.uid
+      // We will upload to a temporary path, and then move it after user creation.
+      // For simplicity here, we'll just show preview and upload on final submit.
+      // Let's change this to upload immediately to a temp path.
+      if (!storage) {
+          toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
+          return;
+      }
+      
+      const tempId = form.getValues('email') || `temp_${Date.now()}`;
+
+      setImageSlots(prev => {
+          const newSlots = [...prev];
+          newSlots[slotIndex] = { file, preview: URL.createObjectURL(file), isUploading: true, public_id: null };
+          return newSlots;
+      });
+
+      const uniqueFileName = `bematch_profiles/temp_${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const imageRef = storageRef(storage, uniqueFileName);
+
+      try {
+          const snapshot = await uploadBytes(imageRef, file);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+          
+          setImageSlots(prev => {
+              const newSlots = [...prev];
+              newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
+              return newSlots;
+          });
+      } catch (error: any) {
+          toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
+          setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots()[i] : s));
+      }
+  };
+
+  const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
+      e.stopPropagation();
+      if(isSubmitting || !storage) return;
+
+      if (uploadedImageCount <= 1 && form.getValues('images').length <=1 ) {
+          toast({ title: "Hata", description: "En az 1 fotoğraf olmalı.", variant: "destructive" });
+          return;
+      }
+
+      const slotToDelete = imageSlots[index];
+      if (slotToDelete.public_id) {
+          try {
+              const imageRef = storageRef(storage, slotToDelete.public_id);
+              await deleteObject(imageRef);
+          } catch (err: any) {
+                if (err.code !== 'storage/object-not-found') {
+                  console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
+                  toast({ title: langTr.ayarlarGaleri.toasts.deleteErrorTitle, description: langTr.ayarlarGaleri.toasts.deleteErrorDesc, variant: 'destructive' });
+                  return;
+                }
+          }
+      }
+      
+      setImageSlots(prevSlots => {
+          const newSlots = [...prevSlots];
+          if (newSlots[index].preview && newSlots[index].file) {
+                URL.revokeObjectURL(newSlots[index].preview!);
+          }
+          newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
+          // Re-order slots
+          const filledSlots = newSlots.filter(s => s.preview);
+          const emptySlots = newSlots.filter(s => !s.preview);
+          return [...filledSlots, ...emptySlots];
+      });
+  };
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
@@ -262,7 +395,6 @@ export default function ProfileCompletionForm() {
     let currentUser = user;
 
     try {
-        // Step 1: Create user if not already logged in
         if (!currentUser) {
             if (!auth || !data.email || !data.password) {
                 throw new Error("Kimlik doğrulama bilgileri eksik.");
@@ -292,9 +424,10 @@ export default function ProfileCompletionForm() {
         if (!firestore || !currentUser) {
             throw new Error(t.errors.dbConnectionError);
         }
+        
+        const finalImages = data.images;
 
-        // Update profile displayName just in case
-        await updateProfile(currentUser, { displayName: data.name, photoURL: '' });
+        await updateProfile(currentUser, { displayName: data.name, photoURL: finalImages.length > 0 ? finalImages[0].url : '' });
         
         const userProfileData = {
             ...data,
@@ -303,8 +436,8 @@ export default function ProfileCompletionForm() {
             createdAt: serverTimestamp(),
             fullName: data.name,
             dateOfBirth: data.dateOfBirth.toISOString(),
-            images: [], // No images on initial signup
-            profilePicture: '',
+            images: finalImages,
+            profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
             globalModeEnabled: true,
             expandAgeRange: true,
             isBot: false,
@@ -322,7 +455,7 @@ export default function ProfileCompletionForm() {
     }
   }
   
-  const totalSteps = 8;
+  const totalSteps = 9;
   const progressValue = ((step) / totalSteps) * 100;
   
   const handleDistanceChange = (value: number[]) => {
@@ -358,12 +491,13 @@ export default function ProfileCompletionForm() {
     switch (step) {
       case 0: fieldsToValidate = ['email', 'password']; break;
       case 1: fieldsToValidate = 'name'; break;
-      case 2: fieldsToValidate = 'location'; break;
-      case 3: fieldsToValidate = 'interests'; break;
-      case 4: fieldsToValidate = 'dateOfBirth'; break;
-      case 5: fieldsToValidate = 'gender'; break;
-      case 6: fieldsToValidate = 'lookingFor'; break;
-      case 7: fieldsToValidate = 'distancePreference'; break;
+      case 2: fieldsToValidate = 'images'; break;
+      case 3: fieldsToValidate = 'location'; break;
+      case 4: fieldsToValidate = 'interests'; break;
+      case 5: fieldsToValidate = 'dateOfBirth'; break;
+      case 6: fieldsToValidate = 'gender'; break;
+      case 7: fieldsToValidate = 'lookingFor'; break;
+      case 8: fieldsToValidate = 'distancePreference'; break;
       case totalSteps:
         await form.trigger();
         if(form.formState.isValid) {
@@ -453,7 +587,70 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 2 && (
+               {step === 2 && (
+                <div className="flex-1 flex flex-col min-h-0">
+                    <FormField
+                      control={form.control}
+                      name="images"
+                      render={() => (
+                        <FormItem className="flex-1 flex flex-col min-h-0">
+                          <div className="shrink-0">
+                            <h1 className="text-3xl font-bold">{t.step12.title}</h1>
+                            <p className="text-muted-foreground">
+                              {t.step12.description.replace('{count}', String(uploadedImageCount))}
+                            </p>
+                             <div className="space-y-2 mt-4">
+                                <Progress value={(uploadedImageCount / 6) * 100} className="h-2" />
+                                <FormMessage />
+                            </div>
+                          </div>
+                          <div className="flex-1 overflow-y-auto pt-4 -mr-6 pr-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                {imageSlots.map((slot, index) => (
+                                    <div key={index} className="relative aspect-square">
+                                        <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-muted")}>
+                                            {slot.preview ? (
+                                                <>
+                                                    <Image src={slot.preview} alt={`Önizleme ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
+                                                    {slot.isUploading && (
+                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                            <div className="w-16 h-16">
+                                                                <Icons.logo width={64} height={64} className="animate-pulse" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {index === 0 && (
+                                                        <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
+                                                            <Star className="w-3 h-3"/>
+                                                            Profil Fotoğrafı
+                                                        </Badge>
+                                                    )}
+                                                    {!isSubmitting && !slot.isUploading && (
+                                                        <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                            <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
+                                                            {uploadedImageCount > 1 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
+                                                    <div className='h-12 w-12 rounded-full flex items-center justify-center bg-primary/20 text-primary'>
+                                                        <Plus className="w-8 h-8" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                </div>
+              )}
+              {step === 3 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <MapPin className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -481,7 +678,7 @@ export default function ProfileCompletionForm() {
                     )}
                  </div>
               )}
-               {step === 3 && (
+               {step === 4 && (
                 <div className="flex-1 flex flex-col min-h-0">
                     <FormField
                         control={form.control}
@@ -532,7 +729,7 @@ export default function ProfileCompletionForm() {
                     />
                 </div>
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step3.title}</h1>
                   <Controller control={form.control} name="dateOfBirth" render={({ field, fieldState }) => (
@@ -550,7 +747,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <>
                   <h1 className="text-3xl font-bold">{t.step4.title}</h1>
                   <FormField control={form.control} name="gender" render={({ field }) => (
@@ -567,7 +764,7 @@ export default function ProfileCompletionForm() {
                   />
                 </>
               )}
-              {step === 6 && (
+              {step === 7 && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <div className="shrink-0">
                     <h1 className="text-3xl font-bold">{t.step5.title}</h1>
@@ -597,7 +794,7 @@ export default function ProfileCompletionForm() {
                   </div>
                 </div>
               )}
-              {step === 7 && (
+              {step === 8 && (
                 <div className="flex flex-col h-full">
                     <div className="shrink-0">
                         <h1 className="text-3xl font-bold">{t.step7.title}</h1>
@@ -627,7 +824,7 @@ export default function ProfileCompletionForm() {
                      <FormMessage>{form.formState.errors.distancePreference?.message}</FormMessage>
                 </div>
               )}
-              {step === 8 && (
+              {step === 9 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <Globe className="w-20 h-20 text-primary" />
                     <div className="space-y-2">
@@ -647,9 +844,9 @@ export default function ProfileCompletionForm() {
               className="w-full h-14 rounded-full text-lg font-bold"
               disabled={
                 isSubmitting ||
-                (step === 2 && locationStatus !== 'success') ||
-                (step === 3 && (form.getValues('interests')?.length ?? 0) < 10) ||
-                (step === 4 && ageStatus !== 'valid')
+                (step === 3 && locationStatus !== 'success') ||
+                (step === 4 && (form.getValues('interests')?.length ?? 0) < 10) ||
+                (step === 5 && ageStatus !== 'valid')
               }
             >
               {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}

@@ -1,16 +1,14 @@
 
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { useUser } from '@/firebase/provider';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Mail } from 'lucide-react';
 
 export default function WelcomePage() {
