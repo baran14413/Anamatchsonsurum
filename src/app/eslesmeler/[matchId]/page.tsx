@@ -10,7 +10,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -511,12 +511,6 @@ export default function ChatPage() {
             const user2MatchRef = doc(firestore, `users/${otherUserId}/matches`, matchId);
             batch.update(user2MatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
             
-            const systemMessage = messages.find(m => m.type === 'system_superlike_prompt');
-            if (systemMessage) {
-                const systemMessageRef = doc(firestore, `matches/${matchId}/messages`, systemMessage.id);
-                batch.update(systemMessageRef, { action: 'accepted', actionTaken: true });
-            }
-            
             await batch.commit();
 
             toast({
@@ -811,22 +805,22 @@ export default function ChatPage() {
                 </header>
 
                 <main className="flex-1 overflow-y-auto p-4">
+                     {isSuperLikePendingAndIsRecipient && (
+                        <div className="text-center my-6 p-4 border rounded-lg bg-blue-500/10 border-blue-500/30 space-y-4">
+                            <div className='flex items-center justify-center gap-2'>
+                                <Star className='w-6 h-6 text-blue-400 fill-blue-400'/>
+                                <p className="font-semibold text-base">{otherUser?.fullName} sana bir Super Like gönderdi!</p>
+                            </div>
+                            <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
+                                {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Heart className="mr-2 h-4 w-4" /> Eşleş</>}
+                            </Button>
+                        </div>
+                    )}
                     <div className="space-y-1">
                         {messages.map((message, index) => {
                             const isSender = message.senderId === user?.uid;
                             const isSystem = message.senderId === 'system' || message.type === 'poll';
                             const prevMessage = index > 0 ? messages[index - 1] : null;
-
-                            if (message.type === 'system_superlike_prompt' && !message.actionTaken && isSuperLikePendingAndIsRecipient) {
-                                return (
-                                    <div key={message.id} className="text-center my-6 p-4 border rounded-lg bg-muted/50 space-y-4">
-                                        <p className="text-sm">{message.text}</p>
-                                        <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
-                                            {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Check className="mr-2 h-4 w-4" /> Kabul Et</>}
-                                        </Button>
-                                    </div>
-                                )
-                            }
 
                             if (isSystem) {
                                 const poll = message as SystemMessage;
@@ -1140,7 +1134,7 @@ export default function ChatPage() {
                 {otherUser && (
                  <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent flex flex-col'>
                     <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                        <ProfileCard profile={otherUser} />
+                        <ProfileCard profile={otherUser} onSwipe={() => {}} isTopCard={false}/>
                     </div>
                  </SheetContent>
                 )}

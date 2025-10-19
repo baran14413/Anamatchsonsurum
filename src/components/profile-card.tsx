@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X as XIcon, ChevronUp, X } from 'lucide-react';
+import { MapPin, Heart, X as XIcon, ChevronUp, X, Star } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -15,12 +15,12 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   isTopCard: boolean;
-  onSwipe: (profile: UserProfile, direction: 'left' | 'right') => void;
+  onSwipe: (profile: UserProfile, direction: 'left' | 'right' | 'up') => void;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -66,9 +66,11 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
+  const y = useMotionValue(0);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const likeOpacity = useTransform(x, [10, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, -10], [1, 0]);
+  const superLikeOpacity = useTransform(y, [-10, -100], [0, 1]);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -84,6 +86,26 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!isTopCard) return;
+
+    const swipeConfidenceThreshold = 10000;
+    const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
+    
+    const xSwipePower = swipePower(info.offset.x, info.velocity.x);
+    const ySwipePower = swipePower(info.offset.y, info.velocity.y);
+
+    if (ySwipePower > swipeConfidenceThreshold && info.offset.y < -50) {
+        onSwipe(profile, 'up');
+    } else if (xSwipePower > swipeConfidenceThreshold) {
+        if (info.offset.x > 50) {
+            onSwipe(profile, 'right');
+        } else if (info.offset.x < -50) {
+            onSwipe(profile, 'left');
+        }
+    }
   };
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
@@ -128,28 +150,19 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   return (
     <motion.div 
       className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200"
-      drag={isTopCard ? "x" : false}
+      drag={isTopCard}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      onDragEnd={(event, { offset, velocity }) => {
-        if (!isTopCard) return;
-        const swipePower = Math.abs(offset.x) * velocity.x;
-        const swipeConfidenceThreshold = 10000;
-
-        if (swipePower < -swipeConfidenceThreshold) {
-            onSwipe(profile, 'left');
-        } else if (swipePower > swipeConfidenceThreshold) {
-            onSwipe(profile, 'right');
-        } else {
-             x.set(0);
-        }
-      }}
-      style={{ x, rotate }}
+      onDragEnd={handleDragEnd}
+      style={{ x, y, rotate }}
     >
       <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
           <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
       </motion.div>
       <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-10 left-10 z-30 pointer-events-none rotate-[20deg]">
           <XIcon className="w-32 h-32 text-red-500" strokeWidth={4} />
+      </motion.div>
+       <motion.div style={{ opacity: superLikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+          <Star className="w-40 h-40 text-blue-400 fill-blue-400" strokeWidth={2} />
       </motion.div>
         
       {profile.images && profile.images.length > 0 && (

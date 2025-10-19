@@ -18,12 +18,14 @@ import { Icons } from '@/components/icons';
 import { DenormalizedMatch, ChatMessage, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function EslesmelerPage() {
   const t = langTr.eslesmeler;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   const [matches, setMatches] = useState<(DenormalizedMatch & { userProfile?: UserProfile })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -161,13 +163,6 @@ export default function EslesmelerPage() {
         
         const otherUserMatchRef = doc(firestore, `users/${match.matchedWith}/matches`, match.id);
         batch.update(otherUserMatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
-
-        const messagesColRef = collection(firestore, `matches/${match.id}/messages`);
-        const q = query(messagesColRef, where('type', '==', 'system_superlike_prompt'));
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-            batch.update(doc.ref, { action: 'accepted', actionTaken: true });
-        });
         
         await batch.commit();
         
@@ -175,6 +170,8 @@ export default function EslesmelerPage() {
             title: 'Super Like Kabul Edildi!',
             description: `${match.fullName} ile artık eşleştiniz.`,
         });
+        
+        router.push(`/eslesmeler/${match.id}`);
 
     } catch (error) {
         console.error("Error accepting super like:", error);
@@ -239,7 +236,7 @@ export default function EslesmelerPage() {
                                             <div className="flex justify-between items-center">
                                                 <h3 className={cn("font-semibold flex items-center gap-1.5 truncate", hasUnread && "text-foreground")}>
                                                   {isUserDeleted ? 'Kullanıcı Bulunamadı' : match.fullName}
-                                                  {!isSystemChat && match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+                                                  {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
                                                 </h3>
                                                 {match.timestamp && (
                                                     <p className="text-xs text-muted-foreground shrink-0 pl-2">
@@ -249,19 +246,21 @@ export default function EslesmelerPage() {
                                             </div>
                                             <p className={cn(
                                                 "text-sm truncate", 
-                                                isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium" : "text-muted-foreground",
+                                                isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium italic" : "text-muted-foreground",
                                                 hasUnread && "text-foreground font-medium"
-                                                )}>{match.lastMessage}</p>
+                                                )}>
+                                                {isSuperLikeInitiator && isSuperLikePending ? "Yanıt bekleniyor..." : match.lastMessage}
+                                            </p>
                                         </div>
                                         {showAcceptButton && (
-                                            <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
-                                                <Check className="h-6 w-6" />
+                                            <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
+                                                <Star className="h-6 w-6 fill-current" />
                                             </Button>
                                         )}
                                     </div>
                                 );
                                 
-                                const isClickable = !isUserDeleted && (!(isSuperLikePending && isSuperLikeInitiator) || isSystemChat);
+                                const isClickable = !isUserDeleted && (!isSuperLikePending || !isSuperLikeInitiator);
 
                                 return (
                                     <motion.div

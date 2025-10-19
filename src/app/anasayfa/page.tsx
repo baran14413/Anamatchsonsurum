@@ -4,15 +4,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -80,7 +81,7 @@ const fetchProfiles = async (
                 
                 if (!ignoreFilters) {
                      // Distance Preference Filter (only if global mode is off)
-                     if (userProfile.globalModeEnabled === false) {
+                     if (!userProfile.globalModeEnabled) {
                          if (p.distance > (userProfile.distancePreference || 160)) {
                              return false;
                          }
@@ -123,6 +124,7 @@ export default function AnasayfaPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,14 +138,32 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, isUserLoading, toast]);
 
 
-  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
+  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
     // Optimistically remove the profile from the UI
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
+
+    if (direction === 'up') {
+        const currentUserRef = doc(firestore, 'users', user.uid);
+        const currentUserSnap = await getDoc(currentUserRef);
+        const currentUserData = currentUserSnap.data();
+        
+        if (!currentUserData || (currentUserData.superLikeBalance ?? 0) < 1) {
+            toast({
+                title: "Super Like Hakkın Kalmadı!",
+                description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
+                action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
+            });
+            // Re-add profile to the top of the stack if the action fails
+            setProfiles(prev => [profileToSwipe, ...prev]);
+            return;
+        }
+        await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
+    }
     
     // If the swiped profile is a bot, trigger the webhook for an automatic reply
-    if (profileToSwipe.isBot && direction === 'right') {
+    if (profileToSwipe.isBot && (direction === 'right' || direction === 'up')) {
       try {
           const res = await fetch('/api/message-webhook', {
               method: 'POST',
@@ -167,7 +187,7 @@ export default function AnasayfaPage() {
     }
     
     try {
-        const action = direction === 'right' ? 'liked' : 'disliked';
+        const action = direction === 'up' ? 'superliked' : (direction === 'right' ? 'liked' : 'disliked');
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
         const matchId = sortedIds.join('_');
         const matchDocRef = doc(firestore, 'matches', matchId);
@@ -180,14 +200,19 @@ export default function AnasayfaPage() {
         const otherUserKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         const otherUserAction = matchData[otherUserKey];
 
-        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked'));
+        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || (action === 'superliked' && otherUserAction === 'liked');
 
         const updateData: any = {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
-            status: isMatch ? 'matched' : (matchData.status || 'pending'),
+            isSuperLike: matchData.isSuperLike || action === 'superliked',
+            status: isMatch ? 'matched' : (action === 'superliked' ? 'superlike_pending' : (matchData.status || 'pending')),
         };
+
+        if(action === 'superliked') {
+            updateData.superLikeInitiator = user.uid;
+        }
 
         if (isMatch) {
             updateData.matchDate = serverTimestamp();
@@ -205,15 +230,21 @@ export default function AnasayfaPage() {
         
         // Denormalize match data for the other user for their "matches" list
         if (profileToSwipe.uid) {
+            let lastMessage = '';
+            if (isMatch) lastMessage = langTr.eslesmeler.defaultMessage;
+            if (action === 'superliked') lastMessage = `${userProfile.fullName} sana bir Super Like gönderdi!`;
+
             const otherUserInteractionRef = doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId);
             await setDoc(otherUserInteractionRef, { 
                 id: matchId,
                 matchedWith: user.uid, 
-                status: isMatch ? 'matched' : (matchData.status || 'pending'),
+                status: updateData.status,
                 timestamp: serverTimestamp(),
                 fullName: userProfile?.fullName,
                 profilePicture: userProfile?.profilePicture || userProfile?.images?.[0]?.url || '',
-                lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
+                isSuperLike: updateData.isSuperLike,
+                superLikeInitiator: updateData.superLikeInitiator,
+                lastMessage: lastMessage,
             }, { merge: true });
         }
         
@@ -222,11 +253,13 @@ export default function AnasayfaPage() {
         await setDoc(currentUserInteractionRef, {
             id: matchId,
             matchedWith: profileToSwipe.uid,
-            status: isMatch ? 'matched' : (matchData.status || 'pending'),
+            status: updateData.status,
             timestamp: serverTimestamp(),
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
-            lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : '',
+            isSuperLike: updateData.isSuperLike,
+            superLikeInitiator: updateData.superLikeInitiator,
+            lastMessage: isMatch ? langTr.eslesmeler.defaultMessage : (action === 'superliked' ? `Super Like gönderildi` : ''),
         }, { merge: true });
 
 
@@ -236,6 +269,13 @@ export default function AnasayfaPage() {
                 description: `${profileToSwipe.fullName} ${langTr.anasayfa.matchToastDescription}`
             })
         }
+         if (action === 'superliked') {
+            toast({
+                title: "Super Like Gönderildi!",
+                description: `${profileToSwipe.fullName} kabul ederse eşleşeceksiniz.`
+            });
+        }
+
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
@@ -243,7 +283,7 @@ export default function AnasayfaPage() {
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
 
-  }, [user, firestore, toast, userProfile]);
+  }, [user, firestore, toast, userProfile, router]);
 
   if (isLoading || isUserLoading) {
     return (
@@ -264,35 +304,35 @@ export default function AnasayfaPage() {
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
         <AnimatePresence>
-          {profiles.slice(0, 3).reverse().map((profile) => {
-            const isTopCard = profiles[profiles.length - 1]?.uid === profile.uid;
-            return (
-              <motion.div
-                  key={profile.uid}
-                  className="absolute w-full h-full"
-                  initial={{ scale: 0.95, y: 20, opacity: 0 }}
-                  animate={{ 
-                    scale: 1, 
-                    y: 0, 
-                    opacity: 1,
-                  }}
-                  exit={{
-                    opacity: 0,
-                    scale: 0.9,
-                    transition: { duration: 0.2 }
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              >
-                <ProfileCard
-                  profile={profile}
-                  isTopCard={isTopCard}
-                  onSwipe={(p, dir) => handleSwipe(p, dir)}
-                />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-          {profiles.length === 0 && !isLoading && (
+          {profiles.length > 0 ? (
+            profiles.slice(0, 3).reverse().map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              return (
+                <motion.div
+                    key={profile.uid}
+                    className="absolute w-full h-full"
+                    initial={{ scale: 0.95, y: 20, opacity: 0 }}
+                    animate={{ 
+                      scale: 1, 
+                      y: 0, 
+                      opacity: 1,
+                    }}
+                    exit={{
+                      opacity: 0,
+                      scale: 0.9,
+                      transition: { duration: 0.2 }
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                  <ProfileCard
+                    profile={profile}
+                    isTopCard={isTopCard}
+                    onSwipe={(p, dir) => handleSwipe(p, dir)}
+                  />
+                </motion.div>
+              );
+            })
+          ) : (
             <motion.div 
               className="flex flex-col items-center justify-center text-center p-4 space-y-4"
               initial={{ opacity: 0 }}
@@ -305,6 +345,7 @@ export default function AnasayfaPage() {
               <Button onClick={handleRetry}>Tekrar Dene</Button>
             </motion.div>
           )}
+        </AnimatePresence>
       </div>
     </div>
   );
