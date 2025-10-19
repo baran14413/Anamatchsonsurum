@@ -160,18 +160,18 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
-      const interactedUids = new Set<string>([user.uid]);
-      const matchesQuery = query(collectionGroup(firestore, 'matches'), where('id', 'in', [user.uid]));
-      const userInteractionsSnap = await getDocs(matchesQuery);
+        const interactedUids = new Set<string>([user.uid]);
+        const matchesCollectionGroup = collectionGroup(firestore, 'matches');
+        const userInteractionsQuery = query(matchesCollectionGroup, where('id', 'in', [user.uid]));
+        const userInteractionsSnap = await getDocs(userInteractionsQuery);
 
-      userInteractionsSnap.forEach(doc => {
-          const data = doc.data();
-          const uids = doc.id.split('_');
-          const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
-          if (otherUid) {
-              interactedUids.add(otherUid);
-          }
-      });
+        userInteractionsSnap.forEach(doc => {
+            const uids = doc.id.split('_');
+            const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
+            if (otherUid) {
+                interactedUids.add(otherUid);
+            }
+        });
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
         const querySnapshot = await getDocs(usersQuery);
@@ -303,9 +303,6 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
   }, [lastDislikedProfile, user, firestore, userProfile]);
 
-    const x = useMotionValue(0);
-    const rotate = useTransform(x, [-200, 200], [-30, 30]);
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -326,10 +323,10 @@ export default function AnasayfaPage() {
                             className="absolute w-full h-full"
                             style={{
                                 zIndex: index,
-                                x: isTopCard ? x : 0,
-                                rotate: isTopCard ? rotate : 0,
+                                scale: 1 - (profiles.length - 1 - index) * 0.05,
+                                top: (profiles.length - 1 - index) * 10,
                             }}
-                            drag={isTopCard ? true : false}
+                            drag={isTopCard}
                             dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                             dragElastic={0.5}
                             onDragEnd={(event, info) => {
@@ -338,9 +335,20 @@ export default function AnasayfaPage() {
                                     handleSwipeAction('liked');
                                 } else if (info.offset.x < -100) {
                                     handleSwipeAction('disliked');
-                                } else {
-                                    x.set(0);
                                 }
+                            }}
+                            animate={{
+                                x: 0,
+                                y: 0,
+                                scale: 1 - (profiles.length - 1 - index) * 0.05,
+                                top: (profiles.length - 1 - index) * 10,
+                                opacity: 1,
+                              }}
+                            exit={{
+                                x: (profiles.length - 1 - index) > 0 ? 0 : (profiles[profiles.length - 1].uid === profile.uid ? (Math.sign( (event?.target as any)?.getBoundingClientRect().x || 0) * 300) : 0),
+                                opacity: 0,
+                                scale: 0.8,
+                                transition: { duration: 0.2 },
                             }}
                         >
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
