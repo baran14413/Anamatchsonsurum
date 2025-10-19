@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -15,6 +14,7 @@ import { langTr } from '@/languages/tr';
 import { Progress } from "@/components/ui/progress";
 import type { UserImage } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type ImageSlot = {
     file: File | null;
@@ -99,7 +99,6 @@ export default function GalleryPage() {
             return;
         }
 
-        // Set UI to loading state
         setImageSlots(prev => {
             const newSlots = [...prev];
             newSlots[slotIndex] = { ...newSlots[slotIndex], file, preview: URL.createObjectURL(file), isUploading: true };
@@ -121,8 +120,7 @@ export default function GalleryPage() {
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            // Revert UI on failure
-            setImageSlots(prev => prev.map((s, i) => i === slotIndex ? { file: null, preview: null, isUploading: false, public_id: null } : s));
+            setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots(userProfile)[i] : s));
         }
     };
     
@@ -208,7 +206,7 @@ export default function GalleryPage() {
 
             <main className="flex-1 overflow-y-auto p-6 space-y-6">
                  <div>
-                    <p className="text-muted-foreground text-sm mb-4">{t.description.replace('9', '6')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t.description.replace('{count}', String(uploadedImageCount))}</p>
                     <div className="space-y-2">
                         <Progress value={(uploadedImageCount / 6) * 100} className="h-2" />
                         <p className="text-sm font-medium text-muted-foreground text-right">{uploadedImageCount} / 6</p>
@@ -218,21 +216,27 @@ export default function GalleryPage() {
                 <div className="grid grid-cols-2 gap-4">
                     {imageSlots.map((slot, index) => (
                         <div key={index} className="relative aspect-square">
-                            {index === 0 && slot.preview && (
-                                <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5">
-                                    <Star className="w-3 h-3"/>
-                                    Profil Fotoğrafı
-                                </Badge>
-                            )}
-                            <div onClick={() => handleFileSelect(index)} className="cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted">
+                             <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-muted")}>
                                 {slot.preview ? (
                                     <>
                                         <Image src={slot.preview} alt={`Preview ${index}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                        {slot.isUploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Icons.logo width={48} height={48} className="animate-pulse" /></div>}
-                                        {!isSubmitting && (
-                                            <div className="absolute bottom-2 right-2 flex gap-2 z-10">
-                                                <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"><Pencil className="w-4 h-4" /></button>
-                                                {uploadedImageCount > 1 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600"><Trash2 className="w-4 h-4" /></button>}
+                                        {slot.isUploading && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                <div className="w-16 h-16">
+                                                   <Icons.logo width={64} height={64} className="animate-pulse" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {index === 0 && (
+                                            <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
+                                                <Star className="w-3 h-3"/>
+                                                Profil Fotoğrafı
+                                            </Badge>
+                                        )}
+                                        {!isSubmitting && !slot.isUploading && (
+                                            <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
+                                                {uploadedImageCount > 1 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
                                             </div>
                                         )}
                                     </>
