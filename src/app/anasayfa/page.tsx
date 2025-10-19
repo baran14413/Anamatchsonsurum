@@ -7,7 +7,7 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, setDoc, serverTimestamp, getDoc, addDoc, writeBatch, DocumentReference, DocumentData, WriteBatch, Firestore, SetOptions, updateDoc, deleteField, increment, orderBy } from 'firebase/firestore';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,19 +19,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 
 type ProfileWithDistance = UserProfile & { distance?: number };
-
-const calculateAge = (dateString?: string): number | null => {
-    if (!dateString) return null;
-    const birthDate = new Date(dateString);
-    if (isNaN(birthDate.getTime())) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    return age;
-};
 
 // --- Eşleşme Mantığı Optimizasyonu ---
 
@@ -190,7 +177,7 @@ export default function AnasayfaPage() {
         return;
     }
     
-    setProfiles(currentProfiles => currentProfiles.slice(0, -1));
+    setProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedProfile.id));
 
 
     if (action === 'disliked') {
@@ -280,12 +267,25 @@ export default function AnasayfaPage() {
 
 
  const fetchProfiles = useCallback(async (resetInteractions = false) => {
-    if (!user || !firestore || !userProfile?.location?.latitude || !userProfile?.location?.longitude) {
+    if (!user || !firestore || !userProfile) {
         setIsLoading(false);
         return;
     }
+    
+    if (!userProfile?.location?.latitude || !userProfile?.location?.longitude) {
+         if (!userProfile.globalModeEnabled) {
+            // User needs location for distance filtering, but doesn't have it
+            toast({
+                title: t.ayarlarKonum.locationMissingTitle,
+                description: t.ayarlarKonum.locationMissingDesc,
+                variant: 'destructive'
+            });
+         }
+    }
+
     setIsLoading(true);
     setLastDislikedProfile(null);
+    setProfiles([]);
 
     try {
         const interactedUids = new Set<string>([user.uid]);
@@ -304,6 +304,14 @@ export default function AnasayfaPage() {
         }
 
         const qConstraints = [];
+        
+        const isGlobalMode = userProfile.globalModeEnabled ?? false;
+        
+        const genderPreference = userProfile.genderPreference;
+        if(genderPreference && genderPreference !== 'both'){
+          qConstraints.push(where('gender', '==', genderPreference));
+        }
+        
         qConstraints.push(limit(20));
         
         const usersCollectionRef = collection(firestore, 'users');
@@ -311,12 +319,55 @@ export default function AnasayfaPage() {
 
         const querySnapshot = await getDocs(usersQuery);
         
-        let fetchedProfiles = querySnapshot.docs
-            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+        let fetchedProfiles = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
 
-        // Temporary: Disable all filters for debugging
+        const currentUserAge = userProfile.dateOfBirth ? new Date().getFullYear() - new Date(userProfile.dateOfBirth).getFullYear() : 0;
+        const minAge = userProfile.ageRange?.min ?? 18;
+        const maxAge = userProfile.ageRange?.max ?? 99;
+
+        const calculateAge = (dateString?: string): number | null => {
+            if (!dateString) return null;
+            const birthDate = new Date(dateString);
+            if (isNaN(birthDate.getTime())) return null;
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        };
+
+        let processedProfiles = fetchedProfiles
+            .filter(p => {
+                if (interactedUids.has(p.uid)) return false;
+                if (!p.fullName || !p.images || p.images.length === 0) return false;
+                
+                const age = calculateAge(p.dateOfBirth);
+                if (age === null || age < minAge || age > maxAge) {
+                    if (!userProfile.expandAgeRange) return false;
+                }
+                
+                if (isGlobalMode) {
+                    return true;
+                }
+
+                if (p.location?.latitude && p.location?.longitude && userProfile.location?.latitude && userProfile.location.longitude) {
+                    const distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                    (p as ProfileWithDistance).distance = distance;
+                    return distance <= (userProfile.distancePreference ?? 80);
+                }
+
+                return false;
+            });
         
-        setProfiles(fetchedProfiles);
+        if (isGlobalMode) {
+            processedProfiles.sort(() => Math.random() - 0.5);
+        } else {
+            processedProfiles.sort((a, b) => (a as ProfileWithDistance).distance! - (b as ProfileWithDistance).distance!);
+        }
+
+        setProfiles(processedProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -328,7 +379,7 @@ export default function AnasayfaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, firestore, userProfile, toast, t.common.error]);
+  }, [user, firestore, userProfile, toast, t]);
 
 
   useEffect(() => {
@@ -346,69 +397,56 @@ export default function AnasayfaPage() {
               setShowSuperlikeModal(false);
           }
       }}>
-          <div className="relative w-full max-w-sm aspect-[9/16]">
-              {isLoading ? (
-                  <div className="flex-1 flex items-center justify-center h-full">
-                      <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-                  </div>
-              ) : profiles.length > 0 ? (
-                  <AnimatePresence>
-                    {profiles.map((profile, index) => {
-                      const isTopCard = index === profiles.length - 1;
-                      return (
-                        <motion.div
-                          key={profile.id}
-                          drag={isTopCard}
-                          onDragEnd={(event, info) => {
-                            if (!isTopCard) return;
-                            if (info.offset.x > 100) {
-                              handleSwipeAction(profile, 'liked');
-                            } else if (info.offset.x < -100) {
-                              handleSwipeAction(profile, 'disliked');
-                            } else if (info.offset.y < -100) {
-                               handleSwipeAction(profile, 'superliked');
-                            }
-                          }}
-                          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                          dragElastic={0.2}
-                          className="absolute w-full h-full"
-                          style={{
-                            zIndex: index,
-                          }}
-                          animate={{
-                             scale: 1 - (profiles.length - 1 - index) * 0.05,
-                             y: (profiles.length - 1 - index) * 10
-                          }}
-                          exit={{
-                            x: 300,
-                            opacity: 0,
-                            scale: 0.5,
-                            transition: { duration: 0.3 }
-                          }}
-                        >
-                          <ProfileCard profile={profile} isTopCard={isTopCard} />
-                        </motion.div>
-                      )
-                    }).reverse()}
-                  </AnimatePresence>
-              ) : (
-                  <div className="flex-1 flex items-center justify-center text-center h-full">
-                      <div className='space-y-4'>
-                          <p>{t.anasayfa.outOfProfilesDescription}</p>
-                          <Button onClick={() => fetchProfiles(true)}>
-                              <Undo2 className="mr-2 h-4 w-4" />
-                              Tekrar Dene
-                          </Button>
+           <div className="relative w-full aspect-[3/4]">
+              <AnimatePresence>
+                  {isLoading ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                          <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
                       </div>
-                  </div>
-              )}
-               {profiles.length > 0 && lastDislikedProfile && (
+                  ) : profiles.length > 0 ? (
+                    profiles.map((profile, index) => (
+                      <motion.div
+                        key={profile.id}
+                        className="absolute w-full h-full"
+                        style={{
+                          zIndex: profiles.length - index,
+                        }}
+                        drag={index === profiles.length - 1}
+                        onDragEnd={(event, info) => {
+                          if (index !== profiles.length - 1) return;
+                          if (info.offset.x > 100) {
+                            handleSwipeAction(profile, 'liked');
+                          } else if (info.offset.x < -100) {
+                            handleSwipeAction(profile, 'disliked');
+                          } else if (info.offset.y < -100) {
+                            handleSwipeAction(profile, 'superliked');
+                          }
+                        }}
+                        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                        dragElastic={0.2}
+                      >
+                        <ProfileCard profile={profile} isTopCard={index === profiles.length - 1} />
+                      </motion.div>
+                    ))
+                  ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-center">
+                          <div className='space-y-4'>
+                              <p>{t.anasayfa.outOfProfilesDescription}</p>
+                              <Button onClick={() => fetchProfiles(true)}>
+                                  <Undo2 className="mr-2 h-4 w-4" />
+                                  Tekrar Dene
+                              </Button>
+                          </div>
+                      </div>
+                  )}
+               </AnimatePresence>
+                {profiles.length > 0 && lastDislikedProfile && (
                   <div className="absolute top-4 right-4 z-40">
                       <Button onClick={handleUndo} variant="ghost" size="icon" className="h-10 w-10 rounded-full text-yellow-500 bg-white/20 backdrop-blur-sm hover:bg-white/30">
                           <Undo2 className="h-5 w-5" />
                       </Button>
                   </div>
-              )}
+                )}
           </div>
            {showUndoLimitModal && (
               <AlertDialogContent>
@@ -456,3 +494,5 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
