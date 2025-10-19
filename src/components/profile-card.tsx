@@ -75,7 +75,10 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   
   useEffect(() => {
     setActiveImageIndex(0);
-  }, [profile.uid]);
+    // Reset motion values when profile changes
+    x.set(0);
+    y.set(0);
+  }, [profile.uid, x, y]);
 
   const age = calculateAge(profile.dateOfBirth);
 
@@ -153,234 +156,223 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   
   const likeRatio = useMemo(() => Math.floor(Math.random() * (98 - 70 + 1)) + 70, [profile.uid]);
 
-  const swipeExit = (info: PanInfo) => {
-    const swipeVelocity = swipePower(info.offset.x, info.velocity.x);
-    if (swipeVelocity > 10000) {
-        const direction = info.offset.x < 0 ? -1 : 1;
-        onSwipe(profile, direction > 0 ? 'right' : 'left');
-    }
-  };
-
   return (
     <motion.div
-        className="absolute w-full h-full"
+        className={cn(
+            "absolute w-full h-full",
+            !isTopCard && "scale-95 blur-sm pointer-events-none"
+        )}
         drag={isTopCard}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
-        exit={{ 
-            opacity: 0,
-            x: (x.get() > 0 ? 500 : -500),
-            y: (y.get() < 0 ? -500 : 0),
-            transition: { duration: 0.3 }
-        }}
     >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
-        <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
-            <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
-        </motion.div>
-        <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-10 left-10 z-30 pointer-events-none rotate-[20deg]">
-            <XIcon className="w-32 h-32 text-red-500" strokeWidth={4} />
-        </motion.div>
-        <motion.div style={{ opacity: superLikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-            <Star className="w-40 h-40 text-blue-400 fill-blue-400" strokeWidth={2} />
-        </motion.div>
+            <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
+                <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
+            </motion.div>
+            <motion.div style={{ opacity: dislikeOpacity }} className="absolute top-10 left-10 z-30 pointer-events-none rotate-[20deg]">
+                <XIcon className="w-32 h-32 text-red-500" strokeWidth={4} />
+            </motion.div>
+            <motion.div style={{ opacity: superLikeOpacity }} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+                <Star className="w-40 h-40 text-blue-400 fill-blue-400" strokeWidth={2} />
+            </motion.div>
             
-        {profile.images && profile.images.length > 0 && (
-            <>
-                {profile.images.map((image, index) => (
-                    <div
-                    key={`${profile.uid}-img-${index}`}
-                    className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
-                    style={{ opacity: index === activeImageIndex ? 1 : 0 }}
-                    >
-                    <Image
-                        src={image.url}
-                        alt={`${profile.fullName} profile image ${index + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                        className="object-cover"
-                        priority={index === 0}
-                    />
-                    </div>
-                ))}
-            </>
-        )}
-        
-        <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
-
-        {profile.images && profile.images.length > 1 && (
-            <>
-                <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
-                    {profile.images.map((_, index) => (
-                        <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                            <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+            {profile.images && profile.images.length > 0 && (
+                <>
+                    {profile.images.map((image, index) => (
+                        <div
+                        key={`${profile.uid}-img-${index}`}
+                        className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
+                        style={{ opacity: index === activeImageIndex ? 1 : 0 }}
+                        >
+                        <Image
+                            src={image.url}
+                            alt={`${profile.fullName} profile image ${index + 1}`}
+                            fill
+                            sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                            className="object-cover"
+                            priority={index === 0}
+                        />
                         </div>
                     ))}
-                </div>
-                <div className='absolute inset-0 flex z-20'>
-                    <div className='flex-1 h-full' onClick={handlePrevImage} />
-                    <div className='flex-1 h-full' onClick={handleNextImage} />
-                </div>
-            </>
-        )}
+                </>
+            )}
+            
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
-        <Sheet>
-            <div
-                className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
-            >
-                <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                        {(profile.distance || profile.distance === 0) && (
-                            <div className="flex items-center gap-1.5 bg-black/40 text-white backdrop-blur-sm border-none rounded-full px-3 py-1 text-sm font-medium">
-                                <MapPin className="w-4 h-4" />
-                                <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+            {profile.images && profile.images.length > 1 && (
+                <>
+                    <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
+                        {profile.images.map((_, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                             </div>
-                        )}
+                        ))}
                     </div>
-                    <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
-                                <span className="font-semibold text-white/80 text-3xl">{age}</span>
-                            </div>
+                    <div className='absolute inset-0 flex z-20'>
+                        <div className='flex-1 h-full' onClick={handlePrevImage} />
+                        <div className='flex-1 h-full' onClick={handleNextImage} />
+                    </div>
+                </>
+            )}
+
+            <Sheet>
+                <div
+                    className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
+                >
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
+                            {(profile.distance || profile.distance === 0) && (
+                                <div className="flex items-center gap-1.5 bg-black/40 text-white backdrop-blur-sm border-none rounded-full px-3 py-1 text-sm font-medium">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                </div>
+                            )}
                         </div>
-                        <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                <ChevronUp className="h-6 w-6" />
-                            </Button>
-                        </SheetTrigger>
-                    </div>
-                    <div className='flex flex-col gap-1.5 pt-1'>
-                        <div className="flex items-center gap-2">
-                            <span>🤔</span>
-                            <span>{lookingForText}</span>
+                        <div className="flex items-end justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                                    <span className="font-semibold text-white/80 text-3xl">{age}</span>
+                                </div>
+                            </div>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                    <ChevronUp className="h-6 w-6" />
+                                </Button>
+                            </SheetTrigger>
+                        </div>
+                        <div className='flex flex-col gap-1.5 pt-1'>
+                            <div className="flex items-center gap-2">
+                                <span>🤔</span>
+                                <span>{lookingForText}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-                
-            <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
-                        <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
-                        <SheetClose asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full">
-                            <X className="w-5 h-5"/>
-                        </Button>
-                    </SheetClose>
-                </SheetHeader>
-                <ScrollArea className='flex-1'>
-                    <div className="space-y-6">
-                        {profile.images && profile.images.length > 0 && (
-                                <Carousel className="w-full">
-                                <CarouselContent>
-                                    {profile.images
-                                        .map((image, index) => (
-                                        <CarouselItem key={index}>
-                                            <div className="relative w-full aspect-[4/3]">
-                                                <Image
-                                                    src={image.url}
-                                                    alt={`${profile.fullName} profil medyası ${index + 1}`}
-                                                    fill
-                                                    className="object-cover"
-                                                />
+                    
+                <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
+                    <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                            <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
+                            <SheetClose asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full">
+                                <X className="w-5 h-5"/>
+                            </Button>
+                        </SheetClose>
+                    </SheetHeader>
+                    <ScrollArea className='flex-1'>
+                        <div className="space-y-6">
+                            {profile.images && profile.images.length > 0 && (
+                                    <Carousel className="w-full">
+                                    <CarouselContent>
+                                        {profile.images
+                                            .map((image, index) => (
+                                            <CarouselItem key={index}>
+                                                <div className="relative w-full aspect-[4/3]">
+                                                    <Image
+                                                        src={image.url}
+                                                        alt={`${profile.fullName} profil medyası ${index + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                            </CarouselItem>
+                                        ))}
+                                    </CarouselContent>
+                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                </Carousel>
+                            )}
+                            
+                            <div className="p-6 space-y-6 !pt-2">
+                                <div className="text-left space-y-2">
+                                        <div className='flex flex-col items-start'>
+                                        {profile.membershipType === 'gold' && (
+                                            <div className='flex items-center gap-2'>
+                                            <Icons.beGold width={24} height={24} />
+                                            <p className="font-semibold text-yellow-500">Gold Üye</p>
                                             </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                            </Carousel>
-                        )}
-                        
-                        <div className="p-6 space-y-6 !pt-2">
-                            <div className="text-left space-y-2">
-                                    <div className='flex flex-col items-start'>
-                                    {profile.membershipType === 'gold' && (
-                                        <div className='flex items-center gap-2'>
-                                        <Icons.beGold width={24} height={24} />
-                                        <p className="font-semibold text-yellow-500">Gold Üye</p>
+                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-3xl font-bold">
+                                                {profile.fullName}
+                                            </h3>
+                                            <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                        </div>
+                                    </div>
+                                    {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                    
+                                    {(profile.address?.city && profile.address?.country) && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <MapPin className="w-4 h-4" />
+                                            <span>
+                                                {profile.address.city}, {profile.address.country}
+                                            </span>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-3xl font-bold">
-                                            {profile.fullName}
-                                        </h3>
-                                        <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                </div>
+                                
+                                {likeRatio && (
+                                    <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
+                                    <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
+                                    <div className='flex-1'>
+                                        <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
+                                        <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
                                     </div>
                                 </div>
-                                {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                )}
                                 
-                                {(profile.address?.city && profile.address?.country) && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <MapPin className="w-4 h-4" />
-                                        <span>
-                                            {profile.address.city}, {profile.address.country}
-                                        </span>
+                                {profile.bio && (
+                                    <div>
+                                        <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                        <p className='text-muted-foreground'>{profile.bio}</p>
                                     </div>
                                 )}
-                            </div>
-                            
-                            {likeRatio && (
-                                <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
-                                <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
-                                <div className='flex-1'>
-                                    <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
-                                    <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
-                                </div>
-                            </div>
-                            )}
-                            
-                            {profile.bio && (
-                                <div>
-                                    <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
-                                    <p className='text-muted-foreground'>{profile.bio}</p>
-                                </div>
-                            )}
-                            
-                            {(lookingForText || interestEntries.length > 0) && (
-                                <div>
-                                    <h4 className='text-lg font-semibold mb-4'>Tercihler</h4>
-                                    <div className="space-y-4">
+                                
+                                {(lookingForText || interestEntries.length > 0) && (
+                                    <div>
+                                        <h4 className='text-lg font-semibold mb-4'>Tercihler</h4>
+                                        <div className="space-y-4">
+                                            
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                    <Heart className="w-6 h-6 text-primary" />
+                                                </div>
+                                                <div className='flex flex-col'>
+                                                    <span className="font-medium text-sm">İlişki Tercihi</span>
+                                                    <Badge variant="secondary" className='text-base py-1 px-3 mt-1 w-fit'>{lookingForText}</Badge>
+                                                </div>
+                                            </div>
                                         
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                <Heart className="w-6 h-6 text-primary" />
-                                            </div>
-                                            <div className='flex flex-col'>
-                                                <span className="font-medium text-sm">İlişki Tercihi</span>
-                                                <Badge variant="secondary" className='text-base py-1 px-3 mt-1 w-fit'>{lookingForText}</Badge>
-                                            </div>
-                                        </div>
-                                    
-                                        {interestEntries.map(([category, { icon, interests }]) => {
-                                            const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
-                                            return (
-                                                <div key={category} className="flex items-start gap-3">
-                                                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                        <IconComponent className="w-6 h-6 text-primary" />
-                                                    </div>
-                                                    <div className='flex flex-col'>
-                                                            <span className="font-medium text-sm">{category}</span>
-                                                        <div className="flex flex-wrap gap-2 mt-1">
-                                                            {interests.map(interest => (
-                                                                <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
-                                                            ))}
+                                            {interestEntries.map(([category, { icon, interests }]) => {
+                                                const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
+                                                return (
+                                                    <div key={category} className="flex items-start gap-3">
+                                                        <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                            <IconComponent className="w-6 h-6 text-primary" />
+                                                        </div>
+                                                        <div className='flex flex-col'>
+                                                                <span className="font-medium text-sm">{category}</span>
+                                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                                {interests.map(interest => (
+                                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
+                            </div>
                         </div>
-                    </div>
-                </ScrollArea>
-            </SheetContent>
-        </Sheet>
+                    </ScrollArea>
+                </SheetContent>
+            </Sheet>
         </div>
     </motion.div>
   );

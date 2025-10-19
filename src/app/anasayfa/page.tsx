@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +14,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -276,7 +276,6 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-        <AnimatePresence>
           {profiles.map((profile, index) => {
             const isTopCard = index === profiles.length - 1;
             return (
@@ -288,7 +287,6 @@ export default function AnasayfaPage() {
               />
             );
           })}
-        </AnimatePresence>
         {profiles.length === 0 && !isLoading && (
           <motion.div
             className="flex flex-col items-center justify-center text-center p-4 space-y-4"
@@ -306,4 +304,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
