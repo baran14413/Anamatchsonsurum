@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -188,7 +189,6 @@ export default function AnasayfaPage() {
 
   const handleRetry = () => {
       if (user && firestore && userProfile) {
-        // Call fetchProfiles with ignoreFilters = true
         fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, true);
       }
   }
