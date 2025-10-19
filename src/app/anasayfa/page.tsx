@@ -474,14 +474,14 @@ export default function AnasayfaPage() {
 
 
   return (
-    <div className="flex flex-col h-full items-center justify-center py-4">
+    <div className="flex flex-col flex-1 items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
           if (!open) {
               setShowUndoLimitModal(false);
               setShowSuperlikeModal(false);
           }
       }}>
-          <div className="relative w-full max-w-sm h-full">
+          <div className="relative w-full max-w-sm aspect-[9/16]">
               {isLoading ? (
                   <div className="flex-1 flex items-center justify-center h-full">
                       <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -557,9 +557,3 @@ export default function AnasayfaPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
