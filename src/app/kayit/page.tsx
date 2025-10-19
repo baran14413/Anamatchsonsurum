@@ -277,25 +277,25 @@ export default function SignUpPage() {
         
         // We set a default gender and date of birth because they are not collected in this simplified flow.
         const userProfileData = {
-            ...data,
             uid: currentUser.uid,
-            createdAt: serverTimestamp(),
+            email: data.email,
             fullName: data.name,
+            interests: data.interests,
+            images: finalImages,
+            location: data.location,
+            address: data.address,
+            profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
+            createdAt: serverTimestamp(),
             dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 25)).toISOString(), // Default age 25
             gender: 'male', // Default gender
             genderPreference: 'female',
             lookingFor: 'whatever',
             ageRange: {min: 18, max: 40},
-            images: finalImages,
-            profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
             globalModeEnabled: true,
             expandAgeRange: true,
             isBot: false,
             rulesAgreed: false,
         };
-        
-        delete (userProfileData as any).password;
-        delete (userProfileData as any).confirmPassword;
         
         await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
         router.push('/kurallar');
@@ -627,3 +627,5 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    
