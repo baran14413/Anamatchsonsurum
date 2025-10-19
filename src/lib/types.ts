@@ -61,6 +61,7 @@ export type UserProfile = {
   goldMembershipExpiresAt?: any;
   dailyUndoCount?: number;
   lastUndoTimestamp?: any;
+  fcmTokens?: string[];
 };
 
 export type Match = {

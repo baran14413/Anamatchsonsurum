@@ -25,7 +25,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import { useNotificationHandler } from '@/lib/notifications';
 
 
 // Define route categories
@@ -42,6 +43,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr;
+
+  useNotificationHandler(toast);
 
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
