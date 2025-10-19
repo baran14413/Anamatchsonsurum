@@ -182,11 +182,8 @@ export default function AnasayfaPage() {
   const [showUndoLimitModal, setShowUndoLimitModal] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   
-  const handleSwipe = useCallback((index: number, action: 'liked' | 'disliked' | 'superliked') => {
+  const handleSwipe = useCallback((swipedProfile: ProfileWithDistance, action: 'liked' | 'disliked' | 'superliked') => {
     if (!user || !firestore || !userProfile) return;
-    
-    const swipedProfile = profiles[index];
-    if (!swipedProfile) return;
 
     if (action === 'superliked') {
         if ((userProfile.superLikeBalance || 0) <= 0) {
@@ -195,7 +192,7 @@ export default function AnasayfaPage() {
         }
     }
     
-    setProfiles(currentProfiles => currentProfiles.filter((_, i) => i !== index));
+    setProfiles(currentProfiles => currentProfiles.filter(p => p.id !== swipedProfile.id));
 
     if (action === 'disliked') {
       setLastDislikedProfile(swipedProfile);
@@ -233,7 +230,7 @@ export default function AnasayfaPage() {
             });
         }
     })();
-  }, [user, firestore, userProfile, profiles, toast, t.anasayfa.matchToastTitle, t.anasayfa.matchToastDescription, t.common.error]);
+  }, [user, firestore, userProfile, toast, t.anasayfa.matchToastTitle, t.anasayfa.matchToastDescription, t.common.error]);
  
   const handleUndo = useCallback(async () => {
     if (!lastDislikedProfile || !user || !firestore || !userProfile) return;
@@ -326,46 +323,50 @@ export default function AnasayfaPage() {
         let fetchedProfiles = querySnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
+                 // Basic filtering: must have UID, not be the current user, have a name, and at least one image.
                 if (!p.uid || interactedUids.has(p.uid) || !p.fullName || !p.images || p.images.length === 0) {
                     return false;
                 }
 
+                // Age range filter
                 if (ageRange) {
                     const age = calculateAge(p.dateOfBirth);
                     if (age === null) return false;
-
                     const minAge = userProfile.expandAgeRange ? ageRange.min - 5 : ageRange.min;
                     const maxAge = userProfile.expandAgeRange ? ageRange.max + 5 : ageRange.max;
-                    
                     if (age < minAge || age > maxAge) return false;
                 }
 
+                // If global mode is on, we don't apply distance filter.
                 if (isGlobalMode) {
                     return true;
-                } else {
-                    if (!p.location?.latitude || !p.location?.longitude) return false;
-                    
-                    const distance = getDistance(
-                        userProfile.location!.latitude!,
-                        userProfile.location!.longitude!,
-                        p.location.latitude,
-                        p.location.longitude
-                    );
-                    (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
-
-                    const userDistancePref = userProfile.distancePreference || 50;
-                    return distance <= userDistancePref;
                 }
+
+                // If global mode is off, apply distance filter.
+                if (!p.location?.latitude || !p.location?.longitude) return false;
+                
+                const distance = getDistance(
+                    userProfile.location!.latitude!,
+                    userProfile.location!.longitude!,
+                    p.location.latitude,
+                    p.location.longitude
+                );
+                (p as ProfileWithDistance).distance = p.isBot ? Math.floor(Math.random() * 15) + 1 : distance;
+                
+                const userDistancePref = userProfile.distancePreference || 50;
+                return distance <= userDistancePref;
             });
         
-        fetchedProfiles.sort((a, b) => {
-            if (isGlobalMode) {
-                return Math.random() - 0.5;
-            }
-            if (a.isBot && !b.isBot) return -1;
-            if (!a.isBot && b.isBot) return 1;
-            return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
-        });
+        // Sorting logic based on global mode
+        if (isGlobalMode) {
+            fetchedProfiles.sort(() => Math.random() - 0.5); // Random sort for global mode
+        } else {
+            fetchedProfiles.sort((a, b) => {
+                if (a.isBot && !b.isBot) return -1;
+                if (!a.isBot && b.isBot) return 1;
+                return ((a as ProfileWithDistance).distance || Infinity) - ((b as ProfileWithDistance).distance || Infinity);
+            });
+        }
         
         setProfiles(fetchedProfiles.slice(0, 20));
 
@@ -387,77 +388,72 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
   
-  const CardStack = useCallback(() => {
-    return profiles.map((profile, i) => {
-        const isTopCard = i === profiles.length - 1;
-        const x = useMotionValue(0);
-        const rotate = useTransform(x, [-200, 200], [-25, 25]);
-        const likeOpacity = useTransform(x, [10, 80], [0, 1]);
-        const dislikeOpacity = useTransform(x, [-80, -10], [1, 0]);
+  const CardStack = () => {
+    const x = useMotionValue(0);
+    const rotate = useTransform(x, [-200, 200], [-25, 25]);
+    const likeOpacity = useTransform(x, [10, 80], [0, 1]);
+    const dislikeOpacity = useTransform(x, [-80, -10], [1, 0]);
 
-        const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
-            if (!isTopCard) return;
-            const SWIPE_THRESHOLD = 50;
-            const swipedIndex = profiles.findIndex(p => p.id === profile.id);
+    return (
+        <AnimatePresence>
+            {profiles.map((profile, index) => {
+                const isTopCard = index === profiles.length - 1;
 
-            if (info.offset.y < -SWIPE_THRESHOLD * 2) {
-                handleSwipe(swipedIndex, 'superliked');
-            } else if (info.offset.x > SWIPE_THRESHOLD) {
-                handleSwipe(swipedIndex, 'liked');
-            } else if (info.offset.x < -SWIPE_THRESHOLD) {
-                handleSwipe(swipedIndex, 'disliked');
-            }
-        };
+                const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number; y: number; }; }) => {
+                    if (!isTopCard) return;
+                    const SWIPE_THRESHOLD = 50;
 
-        return (
-            <motion.div
-                key={profile.id}
-                drag={isTopCard}
-                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={onDragEnd}
-                className="absolute w-full h-full"
-                style={{
-                    zIndex: i,
-                    x: isTopCard ? x : 0,
-                    rotate: isTopCard ? rotate : 0,
-                    scale: 1 - (profiles.length - 1 - i) * 0.05,
-                    y: (profiles.length - 1 - i) * 10,
-                }}
-                initial={{
-                  scale: 1 - (profiles.length - 1 - i) * 0.05,
-                  y: (profiles.length - 1 - i) * 10,
-                }}
-                animate={{
-                    scale: 1 - (profiles.length - 1 - i) * 0.05,
-                    y: (profiles.length - 1 - i) * 10,
-                    opacity: 1
-                }}
-                transition={{ duration: 0.3 }}
-                exit={{
-                    x: x.get() > 0 ? 300 : -300,
-                    opacity: 0,
-                    scale: 0.5,
-                    transition: { duration: 0.3 },
-                }}
-            >
-                <motion.div
-                    style={{ opacity: isTopCard ? likeOpacity : 0 }}
-                    className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
-                >
-                    <Heart className="w-16 h-16 text-green-500 fill-green-500" />
-                </motion.div>
-                <motion.div
-                    style={{ opacity: isTopCard ? dislikeOpacity : 0 }}
-                    className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
-                >
-                    <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
-                </motion.div>
-                <ProfileCard profile={profile} isTopCard={isTopCard} />
-            </motion.div>
-        );
-    }).reverse();
-}, [profiles, handleSwipe]);
+                    if (info.offset.y < -SWIPE_THRESHOLD * 2) {
+                        handleSwipe(profile, 'superliked');
+                    } else if (info.offset.x > SWIPE_THRESHOLD) {
+                        handleSwipe(profile, 'liked');
+                    } else if (info.offset.x < -SWIPE_THRESHOLD) {
+                        handleSwipe(profile, 'disliked');
+                    }
+                };
+
+                return (
+                    <motion.div
+                        key={profile.id}
+                        drag={isTopCard}
+                        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                        dragElastic={0.2}
+                        onDragEnd={onDragEnd}
+                        className="absolute w-full h-full"
+                        style={{
+                            zIndex: index,
+                            x: isTopCard ? x : 0,
+                            rotate: isTopCard ? rotate : 0,
+                        }}
+                        initial={{ scale: 1 - (profiles.length - 1 - index) * 0.05, y: (profiles.length - 1 - index) * 10 }}
+                        animate={{ scale: 1 - (profiles.length - 1 - index) * 0.05, y: (profiles.length - 1 - index) * 10, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        exit={{
+                            x: x.get() > 0 ? 300 : -300,
+                            opacity: 0,
+                            scale: 0.5,
+                            transition: { duration: 0.3 },
+                        }}
+                    >
+                        <motion.div
+                            style={{ opacity: isTopCard ? likeOpacity : 0 }}
+                            className="pointer-events-none absolute top-16 left-8 z-50 p-4 rounded-full border-4 border-green-500 text-green-500 transform -rotate-12 items-center justify-center"
+                        >
+                            <Heart className="w-16 h-16 text-green-500 fill-green-500" />
+                        </motion.div>
+                        <motion.div
+                            style={{ opacity: isTopCard ? dislikeOpacity : 0 }}
+                            className="pointer-events-none absolute top-16 right-8 z-50 p-4 rounded-full border-4 border-red-500 text-red-500 transform rotate-12 items-center justify-center"
+                        >
+                            <HeartCrack className="w-16 h-16 text-red-500 fill-red-500" />
+                        </motion.div>
+                        <ProfileCard profile={profile} isTopCard={isTopCard} />
+                    </motion.div>
+                );
+            }).reverse()}
+        </AnimatePresence>
+    );
+};
 
 
   return (
@@ -482,9 +478,7 @@ export default function AnasayfaPage() {
                               </Button>
                           </div>
                       )}
-                      <AnimatePresence>
-                          <CardStack />
-                      </AnimatePresence>
+                      <CardStack />
                   </>
               ) : (
                   <div className="flex-1 flex items-center justify-center text-center h-full">
