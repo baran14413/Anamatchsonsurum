@@ -162,15 +162,24 @@ export default function AnasayfaPage() {
 
     try {
         const interactedUids = new Set<string>([user.uid]);
-        const userMatchesQuery = query(collectionGroup(firestore, 'matches'), where(user.uid, 'in', ['user1Id', 'user2Id']));
-        const userInteractionsSnap = await getDocs(userMatchesQuery);
+        
+        // This is a more robust way to query for interactions
+        const user1Query = query(collectionGroup(firestore, 'matches'), where('user1Id', '==', user.uid));
+        const user2Query = query(collectionGroup(firestore, 'matches'), where('user2Id', '==', user.uid));
 
-        userInteractionsSnap.forEach(doc => {
+        const [user1Snap, user2Snap] = await Promise.all([
+            getDocs(user1Query),
+            getDocs(user2Query)
+        ]);
+
+        user1Snap.forEach(doc => {
             const matchData = doc.data() as Match;
-            const otherUid = matchData.user1Id === user.uid ? matchData.user2Id : matchData.user1Id;
-            if (otherUid) {
-                interactedUids.add(otherUid);
-            }
+            interactedUids.add(matchData.user2Id);
+        });
+
+        user2Snap.forEach(doc => {
+            const matchData = doc.data() as Match;
+            interactedUids.add(matchData.user1Id);
         });
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
@@ -416,5 +425,7 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+    
 
     
