@@ -34,15 +34,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const isAuthRoute = authRoutes.includes(pathname);
-    const isPublicRoute = publicRoutes.includes(pathname);
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
-    const isRulesRoute = pathname.startsWith(rulesRoute);
+    const isPublicRoute = publicRoutes.includes(pathname);
+    const isAuthRoute = authRoutes.includes(pathname);
+    const isRulesRoute = pathname === rulesRoute;
 
     // 2. Handle signed-in users
     if (user) {
-      // Profile is incomplete -> force registration
-      if (!userProfile?.gender && pathname !== '/profilini-tamamla') {
+      // Profile is incomplete -> force registration steps
+      if (!userProfile?.gender && !isAuthRoute) {
         router.replace('/profilini-tamamla');
         return;
       }
@@ -51,11 +51,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         router.replace(rulesRoute);
         return;
       }
-      // User is fully onboarded, but on a public/auth page -> redirect to app
+      // User is fully onboarded, but on a public/auth/rules page -> redirect to app main page
       if (userProfile?.rulesAgreed && (isPublicRoute || isAuthRoute || isRulesRoute)) {
-         if (pathname !== '/anasayfa') { // Avoid redundant navigation
-            router.replace('/anasayfa');
-         }
+         router.replace('/anasayfa');
         return;
       }
     } 
