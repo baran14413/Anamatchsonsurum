@@ -53,7 +53,8 @@ const fetchProfiles = async (
                 } else {
                     p.distance = undefined;
                 }
-
+                
+                // Only filter interacted users if ignoreFilters is false
                 if (!ignoreFilters) {
                     const sortedIds = [user.uid, p.uid].sort();
                     const matchId = sortedIds.join('_');
@@ -87,10 +88,11 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const controls = useAnimation();
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
-      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast);
+      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
@@ -198,7 +200,6 @@ export default function AnasayfaPage() {
           {profiles.length > 0 ? (
             profiles.map((profile, index) => {
               const isTopCard = index === profiles.length - 1;
-              const controls = useAnimation();
 
               return (
                 <motion.div
