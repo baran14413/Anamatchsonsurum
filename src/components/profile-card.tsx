@@ -21,8 +21,6 @@ import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
   onSwipe: (profile: UserProfile, direction: 'left' | 'right' | 'up') => void;
-  onExitComplete: (uid: string) => void;
-  isTopCard: boolean;
 }
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
@@ -64,7 +62,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile, onSwipe, onExitComplete, isTopCard }: ProfileCardProps) => {
+const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
@@ -142,19 +140,11 @@ const ProfileCard = ({ profile, onSwipe, onExitComplete, isTopCard }: ProfileCar
 
   return (
     <motion.div
-        className={cn(
-            "absolute w-full h-full cursor-grab transition-all duration-300",
-            !isTopCard && "scale-95 blur-sm"
-        )}
-        drag={isTopCard}
+        className="absolute w-full h-full cursor-grab"
+        drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
-        onAnimationComplete={() => {
-            if (!isTopCard) { // This will fire when the exit animation completes
-                onExitComplete(profile.uid);
-            }
-        }}
         exit={{
             x: x.get() > 0 ? 500 : (x.get() < 0 ? -500 : 0),
             y: y.get() < -50 ? -500 : y.get(),
@@ -381,5 +371,3 @@ const ProfileCard = ({ profile, onSwipe, onExitComplete, isTopCard }: ProfileCar
 };
 
 export default ProfileCard;
-
-    
