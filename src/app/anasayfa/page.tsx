@@ -30,74 +30,45 @@ export default function AnasayfaPage() {
     }
 
     setIsLoading(true);
-    setProfiles([]); // Clear previous profiles before fetching new ones
+    setProfiles([]);
 
     try {
         // 1. Get UIDs of users we have already matched with.
         const matchesSnap = await getDocs(query(collection(firestore, `users/${user.uid}/matches`), where('status', '==', 'matched')));
         const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
-        matchedUids.add(user.uid);
 
-        // 2. Build the base query to get users who are NOT bots.
-        // This is a simple query that doesn't require a composite index.
+        // 2. Build the simplest possible query: get all users.
         const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where('isBot', '!=', true), limit(50));
+        const q = query(usersRef, limit(50));
         const usersSnapshot = await getDocs(q);
         
         const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
 
-        // 3. Perform client-side filtering for complex logic (gender, age, distance).
-        const potentialProfiles = allFetchedUsers.filter(p => {
-            if (!p.uid || matchedUids.has(p.uid)) {
+        // 3. Perform ONLY the most essential client-side filtering.
+        const finalProfiles = allFetchedUsers.filter(p => {
+            // Filter out the current user
+            if (p.uid === user.uid) {
                 return false;
             }
-            
-            // Gender preference filter (now done on the client)
-            const genderPref = userProfile.genderPreference;
-            if (genderPref && genderPref !== 'both' && p.gender !== genderPref) {
+            // Filter out users already matched with
+            if (matchedUids.has(p.uid)) {
                 return false;
             }
-
-            const age = p.dateOfBirth ? new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear() : 0;
-            const minAge = userProfile.ageRange?.min || 18;
-            const maxAge = userProfile.ageRange?.max || 80;
-
-            if (age < minAge || age > maxAge) {
-                if (!userProfile.expandAgeRange) return false;
-            }
-            
             return true;
-        });
-
-
-        // 4. Calculate distance and apply distance filter.
-        const profilesWithDistance = potentialProfiles.map(p => {
-            let distance: number | undefined = undefined;
+        }).map(p => {
+            // Calculate distance but don't filter by it yet
+             let distance: number | undefined = undefined;
             if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
                 distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
             }
             return { ...p, distance };
         });
 
-        const finalProfiles = profilesWithDistance
-            .filter(p => {
-                // If global mode is on, don't filter by distance.
-                if (userProfile.globalModeEnabled) {
-                    return true;
-                }
-                // If global mode is off, a distance must be calculated and within preference.
-                if (p.distance === undefined) {
-                    return false;
-                }
-                return p.distance <= (userProfile.distancePreference || 160);
-            })
-            .sort(() => Math.random() - 0.5); // Shuffle the final list
-
         setProfiles(finalProfiles);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
-      toast({ title: t.common.error, description: "Potansiyel eşleşmeler getirilemedi.", variant: "destructive" });
+      toast({ title: t.common.error, description: "Profiller getirilemedi.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
