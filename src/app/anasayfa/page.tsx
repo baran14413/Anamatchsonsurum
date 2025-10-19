@@ -103,24 +103,20 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [swipedCards, setSwipedCards] = useState<{[key: string]: 'left' | 'right'}>({});
-
-  const memoizedFetchProfiles = useCallback(fetchProfiles, []);
 
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
-      memoizedFetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
+      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, isUserLoading, toast, memoizedFetchProfiles]);
+  }, [user, firestore, userProfile, isUserLoading, toast]);
 
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
     // Optimistically remove the profile from the UI
-    setSwipedCards(prev => ({ ...prev, [profileToSwipe.uid]: direction }));
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     try {
@@ -218,8 +214,8 @@ export default function AnasayfaPage() {
           <AnimatePresence>
           {profiles.length > 0 ? (
             profiles.slice(-3).map((profile, index) => {
-              const isTopCard = index === profiles.length - 1;
-              const cardIndex = profiles.length - 1 - index;
+              const isTopCard = index === profiles.slice(-3).length - 1;
+              const cardIndex = profiles.slice(-3).length - 1 - index;
 
               return (
                 <motion.div
@@ -239,19 +235,16 @@ export default function AnasayfaPage() {
                       handleSwipe(profile, 'left');
                     }
                   }}
-                  initial={{ scale: 1, y: 0, rotate: 0 }}
+                  initial={{ scale: 1, y: 0 }}
                   animate={{
                     scale: 1 - cardIndex * 0.05,
                     y: cardIndex * 10,
                   }}
-                  exit={(custom) => ({
-                    x: custom.direction === 'right' ? 500 : -500,
-                    rotate: custom.direction === 'right' ? 15 : -15,
-                    opacity: 0,
-                    scale: 0.5,
-                    transition: { duration: 0.5 },
-                  })}
-                  custom={{ direction: swipedCards[profile.uid] || 'left' }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    scale: { duration: 0.2 },
+                    y: { duration: 0.2 },
+                  }}
                   dragElastic={0.5}
                 >
                   <ProfileCard profile={profile} />
@@ -272,3 +265,8 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
+const MemoizedProfileCard = memo(ProfileCard, (prevProps, nextProps) => {
+    return prevProps.profile.uid === nextProps.profile.uid;
+});
+MemoizedProfileCard.displayName = 'ProfileCard';
