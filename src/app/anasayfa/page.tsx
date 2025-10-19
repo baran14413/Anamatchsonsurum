@@ -160,18 +160,18 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
 
     try {
-        const interactedUids = new Set<string>([user.uid]);
-        
-        const userMatchesQuery = query(collectionGroup(firestore, 'matches'), where('id', 'in', [user.uid]));
-        const userInteractionsSnap = await getDocs(userMatchesQuery);
-        userInteractionsSnap.forEach(doc => {
-            const data = doc.data();
-            const uids = doc.id.split('_');
-            const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
-            if (otherUid) {
-                interactedUids.add(otherUid);
-            }
-        });
+      const interactedUids = new Set<string>([user.uid]);
+      const matchesQuery = query(collectionGroup(firestore, 'matches'), where('id', 'in', [user.uid]));
+      const userInteractionsSnap = await getDocs(matchesQuery);
+
+      userInteractionsSnap.forEach(doc => {
+          const data = doc.data();
+          const uids = doc.id.split('_');
+          const otherUid = uids[0] === user.uid ? uids[1] : uids[0];
+          if (otherUid) {
+              interactedUids.add(otherUid);
+          }
+      });
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
         const querySnapshot = await getDocs(usersQuery);
@@ -338,6 +338,8 @@ export default function AnasayfaPage() {
                                     handleSwipeAction('liked');
                                 } else if (info.offset.x < -100) {
                                     handleSwipeAction('disliked');
+                                } else {
+                                    x.set(0);
                                 }
                             }}
                         >
@@ -356,23 +358,6 @@ export default function AnasayfaPage() {
                       </div>
                   )}
                </AnimatePresence>
-          </div>
-          <div className="flex justify-center items-center gap-4 mt-6">
-                <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-amber-400 text-amber-400" onClick={handleUndo} disabled={!lastDislikedProfile}>
-                    <Undo2 className="h-8 w-8" />
-                </Button>
-                <Button variant="outline" className="w-20 h-20 rounded-full border-2 border-red-500 text-red-500" onClick={() => handleSwipeAction('disliked')}>
-                    <XIcon className="h-10 w-10" />
-                </Button>
-                <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-blue-400 text-blue-400" onClick={() => handleSwipeAction('superliked')}>
-                    <Star className="h-8 w-8" />
-                </Button>
-                 <Button variant="outline" className="w-20 h-20 rounded-full border-2 border-green-400 text-green-400" onClick={() => handleSwipeAction('liked')}>
-                    <Heart className="h-10 w-10" />
-                </Button>
-                 <Button variant="outline" className="w-16 h-16 rounded-full border-2 border-purple-400 text-purple-400" onClick={() => toast({ title: "Çok yakında!", description: "Bu özellik şu an geliştirme aşamasındadır."})}>
-                    <Send className="h-8 w-8" />
-                </Button>
           </div>
           
            {showUndoLimitModal && (
