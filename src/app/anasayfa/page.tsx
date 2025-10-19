@@ -10,7 +10,6 @@ import { collection, query, getDocs, where, limit, doc, getDoc, collectionGroup,
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 
@@ -45,8 +44,8 @@ export default function AnasayfaPage() {
         const allFetchedUsers = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                if (p.uid === user.uid) return false;
-                if (interactedUids.has(p.id)) return false;
+                if (p.uid === user.uid) return false; // Exclude self
+                if (interactedUids.has(p.id)) return false; // Exclude already matched
                 return true; 
             })
             .map(p => {
@@ -55,7 +54,21 @@ export default function AnasayfaPage() {
                     distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
                 }
                 return { ...p, distance };
+            })
+            .filter(p => {
+                // Apply distance filter
+                if (userProfile.globalModeEnabled) {
+                    return true; // Global mode is on, don't filter by distance
+                }
+                if (p.distance === undefined) {
+                    return false; // If distance couldn't be calculated, hide the profile
+                }
+                if (userProfile.distancePreference && p.distance > userProfile.distancePreference) {
+                    return false; // Exclude if distance is greater than preference
+                }
+                return true;
             });
+
 
         setProfiles(allFetchedUsers);
 
@@ -88,22 +101,31 @@ export default function AnasayfaPage() {
       ) : profiles.length > 0 ? (
         <div className="relative w-full h-[600px] max-w-md max-h-[85vh] flex items-center justify-center">
             <AnimatePresence>
-                {profiles.map((profile, index) => (
-                    <motion.div
-                        key={profile.uid}
-                        className="absolute w-full h-full"
-                        style={{
-                            zIndex: profiles.length - index,
-                            transform: `scale(${1 - (index * 0.03)}) translateY(${index * 10}px)`,
-                        }}
-                        initial={{ scale: 0.95, y: 30, opacity: 0 }}
-                        animate={{ scale: 1 - (index * 0.03), y: index * 10, opacity: 1 }}
-                        exit={{ x: 300, opacity: 0, transition: { duration: 0.3 } }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    >
-                        <ProfileCard profile={profile} isTopCard={index === 0} />
-                    </motion.div>
-                )).reverse() // Show top of the stack
+                {profiles.map((profile, index) => {
+                    // Fallback for missing data
+                    const safeProfile = {
+                        ...profile,
+                        fullName: profile.fullName || "İsimsiz Kullanıcı",
+                        gender: profile.gender || "other",
+                        images: profile.images || []
+                    };
+                    return (
+                        <motion.div
+                            key={safeProfile.uid}
+                            className="absolute w-full h-full"
+                            style={{
+                                zIndex: profiles.length - index,
+                                transform: `scale(${1 - (index * 0.03)}) translateY(${index * 10}px)`,
+                            }}
+                            initial={{ scale: 0.95, y: 30, opacity: 0 }}
+                            animate={{ scale: 1 - (index * 0.03), y: index * 10, opacity: 1 }}
+                            exit={{ x: 300, opacity: 0, transition: { duration: 0.3 } }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        >
+                            <ProfileCard profile={safeProfile} isTopCard={index === 0} />
+                        </motion.div>
+                    );
+                }).reverse() // Show top of the stack
             }
             </AnimatePresence>
         </div>
