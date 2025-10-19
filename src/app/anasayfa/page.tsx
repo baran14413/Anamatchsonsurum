@@ -36,25 +36,25 @@ export default function AnasayfaPage() {
         // 1. Get UIDs of users we have already matched with.
         const matchesSnap = await getDocs(query(collection(firestore, `users/${user.uid}/matches`), where('status', '==', 'matched')));
         const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
-        matchedUids.add(user.uid); // Don't show the current user's own profile
+        matchedUids.add(user.uid);
 
-        // 2. Build the base query with server-side filters.
+        // 2. Build the base query to get users who are NOT bots.
+        // This is a simple query that doesn't require a composite index.
         const usersRef = collection(firestore, 'users');
-        const queryConstraints: QueryConstraint[] = [where('isBot', '!=', true)];
-
-        const genderPref = userProfile.genderPreference;
-        if (genderPref && genderPref !== 'both') {
-            queryConstraints.push(where('gender', '==', genderPref));
-        }
-
-        const q = query(usersRef, ...queryConstraints, limit(50));
+        const q = query(usersRef, where('isBot', '!=', true), limit(50));
         const usersSnapshot = await getDocs(q);
         
         const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
 
-        // 3. Perform client-side filtering for complex logic (age, distance).
+        // 3. Perform client-side filtering for complex logic (gender, age, distance).
         const potentialProfiles = allFetchedUsers.filter(p => {
             if (!p.uid || matchedUids.has(p.uid)) {
+                return false;
+            }
+            
+            // Gender preference filter (now done on the client)
+            const genderPref = userProfile.genderPreference;
+            if (genderPref && genderPref !== 'both' && p.gender !== genderPref) {
                 return false;
             }
 
