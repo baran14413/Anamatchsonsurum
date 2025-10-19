@@ -4,11 +4,21 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Settings, AtSign } from 'lucide-react';
+import { ShieldCheck, Settings, AtSign, Plus, Flame, Heart, MessageSquare, User } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { cn } from '@/lib/utils';
+import { langTr } from '@/languages/tr';
+
 
 // Define route categories
 const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar', '/market'];
@@ -104,7 +114,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const isChatPage = /^\/eslesmeler\/[^/]+$/.test(pathname);
   const isAuthPage = authRoutes.includes(pathname);
   const isWelcomePage = pathname === '/';
   const isAdminPage = pathname.startsWith('/admin');
@@ -112,36 +121,54 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const showAppUI = user && userProfile?.rulesAgreed && !isAuthPage && !isWelcomePage && !isAdminPage;
 
   if (showAppUI) {
-    const isProfilePage = pathname === '/profil';
+    const navItems = [
+      { href: '/anasayfa', icon: Flame, label: langTr.footerNav.home, hasNotification: false },
+      { href: '/begeniler', icon: Heart, label: langTr.footerNav.likes, hasNotification: hasNewLikes },
+      { href: '/eslesmeler', icon: MessageSquare, label: langTr.footerNav.chats, hasNotification: hasUnreadMessages },
+      { href: '/profil', icon: User, label: langTr.footerNav.profile, hasNotification: false },
+    ];
+
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
-         <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b px-4">
-          {isProfilePage ? (
-            <>
-                <Icons.logo width={80} height={26} className="text-pink-500" />
-                <div className="flex items-center gap-2">
-                    {userProfile?.isAdmin && (
-                        <Link href="/admin/dashboard">
-                            <Button variant="ghost" size="icon">
-                                <AtSign className="h-6 w-6 text-muted-foreground" />
-                            </Button>
-                        </Link>
-                    )}
+         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b px-4">
+            <div className="flex items-center gap-2">
+                <Link href="/ayarlar">
                     <Button variant="ghost" size="icon">
-                        <ShieldCheck className="h-6 w-6 text-muted-foreground" />
+                        <Settings className="h-6 w-6 text-muted-foreground" />
                     </Button>
-                    <Link href="/ayarlar">
-                      <Button variant="ghost" size="icon">
-                          <Settings className="h-6 w-6 text-muted-foreground" />
-                      </Button>
+                </Link>
+                {userProfile?.isAdmin && (
+                    <Link href="/admin/dashboard">
+                        <Button variant="ghost" size="icon">
+                            <AtSign className="h-6 w-6 text-muted-foreground" />
+                        </Button>
                     </Link>
-                </div>
-            </>
-          ) : (
-            <div className='flex-1 flex justify-center'>
-                 <Icons.logo width={80} height={26} />
+                )}
             </div>
-          )}
+
+            <Icons.logo width={80} height={26} />
+
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-full">
+                        <Plus className="h-5 w-5" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                    {navItems.map((item) => (
+                         <Link href={item.href} key={item.href}>
+                            <DropdownMenuItem className={cn("py-2.5", pathname.startsWith(item.href) && "bg-accent")}>
+                                <item.icon className="mr-3 h-5 w-5" />
+                                <span>{item.label}</span>
+                                {item.hasNotification && (
+                                    <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
+                                )}
+                            </DropdownMenuItem>
+                        </Link>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+
         </header>
         <main className="flex-1 flex flex-col overflow-hidden">
            {children}
