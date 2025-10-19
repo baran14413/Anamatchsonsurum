@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, Star, ChevronUp, ChevronDown, Volume2, VolumeX } from 'lucide-react';
+import { MapPin, Heart, Star, ChevronUp, ChevronDown, Volume2, VolumeX, X } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -65,6 +65,7 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showAllInterests, setShowAllInterests] = useState(false);
   const [likeRatio, setLikeRatio] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -82,6 +83,11 @@ const ProfileCardComponent = ({ profile, isTopCard = false }: ProfileCardProps) 
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
+  
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(prev => !prev);
+  }
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -383,5 +389,3 @@ const ProfileCard = memo(ProfileCardComponent);
 ProfileCard.displayName = 'ProfileCard';
 
 export default ProfileCard;
-
-    
