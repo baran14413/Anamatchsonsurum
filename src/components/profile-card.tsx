@@ -102,16 +102,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
-  const lookingForMap: { [key: string]: string } = {
-    'long-term': 'Uzun süreli ilişki',
-    'short-term': 'Kısa süreli ilişki',
-    'friends': 'Yeni arkadaşlar',
-    'casual': 'Takılmak için',
-    'not-sure': "Emin değilim",
-    'whatever': 'Her şeye açığım',
-  };
-  const lookingForText = profile.lookingFor ? lookingForMap[profile.lookingFor] : "Henüz karar vermedim";
-  
   const groupedInterests = useMemo(() => {
     if (!profile.interests) return {};
 
@@ -324,21 +314,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                     </div>
                                 )}
                                 
-                                {(lookingForText || interestEntries.length > 0) && (
+                                {interestEntries.length > 0 && (
                                     <div>
-                                        <h4 className='text-lg font-semibold mb-4'>Tercihler</h4>
+                                        <h4 className='text-lg font-semibold mb-4'>İlgi Alanları</h4>
                                         <div className="space-y-4">
-                                            
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                    <Heart className="w-6 h-6 text-primary" />
-                                                </div>
-                                                <div className='flex flex-col'>
-                                                    <span className="font-medium text-sm">İlişki Tercihi</span>
-                                                    <Badge variant="secondary" className='text-base py-1 px-3 mt-1 w-fit'>{lookingForText}</Badge>
-                                                </div>
-                                            </div>
-                                        
                                             {interestEntries.map(([category, { icon, interests }]) => {
                                                 const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
                                                 return (
@@ -372,5 +351,3 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
-
-    
