@@ -234,12 +234,15 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 </Button>
                             </SheetTrigger>
                         </div>
-                        <div className='flex flex-col gap-1.5 pt-1'>
-                            <div className="flex items-center gap-2">
-                                <span>🤔</span>
-                                <span>{lookingForText}</span>
+                        {profile.interests && profile.interests.length > 0 && (
+                            <div className='flex flex-wrap gap-2 pt-2'>
+                                {profile.interests.slice(0, 5).map(interest => (
+                                    <Badge key={interest} variant="secondary" className='bg-white/20 text-white backdrop-blur-sm border-none'>
+                                        {interest}
+                                    </Badge>
+                                ))}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
                     
@@ -369,3 +372,5 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
+
+    
