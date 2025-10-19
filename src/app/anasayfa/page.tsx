@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -12,6 +11,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
+import type { Firestore } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 
 const CARD_STACK_OFFSET = 10;
 const CARD_STACK_SCALE = 0.05;
@@ -19,6 +20,67 @@ const SWIPE_CONFIDENCE_THRESHOLD = 10000;
 
 const swipePower = (offset: number, velocity: number) => {
   return Math.abs(offset) * velocity;
+};
+
+// Moved fetchProfiles outside the component to prevent it from being recreated on every render.
+const fetchProfiles = async (
+    firestore: Firestore,
+    user: User,
+    userProfile: UserProfile,
+    setProfiles: React.Dispatch<React.SetStateAction<UserProfile[]>>,
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    toast: (options: any) => void
+) => {
+    setIsLoading(true);
+    
+    try {
+        const usersRef = collection(firestore, 'users');
+        let q = query(usersRef, limit(50));
+
+        const usersSnapshot = await getDocs(q);
+
+        const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+        const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
+        
+        const fetchedProfiles = usersSnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            .filter(p => {
+                if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
+                if (p.uid === user.uid) return false;
+                
+                if (userProfile.location && p.location) {
+                    p.distance = getDistance(
+                        userProfile.location.latitude!,
+                        userProfile.location.longitude!,
+                        p.location.latitude!,
+                        p.location.longitude!
+                    );
+                } else {
+                    p.distance = undefined;
+                }
+
+                const sortedIds = [user.uid, p.uid].sort();
+                const matchId = sortedIds.join('_');
+                if (interactedUids.has(matchId)) {
+                    return false;
+                }
+                
+                if (!userProfile.globalModeEnabled && p.distance !== undefined) {
+                    if (p.distance > (userProfile.distancePreference || 160)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+        setProfiles(fetchedProfiles);
+    } catch (error: any) {
+        console.error("Profil getirme hatası:", error);
+        toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
 };
 
 export default function AnasayfaPage() {
@@ -30,74 +92,17 @@ export default function AnasayfaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
 
-  const fetchProfiles = useCallback(async () => {
-    if (!user || !userProfile || !firestore) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      const usersRef = collection(firestore, 'users');
-      let q = query(usersRef, limit(50));
-
-      const usersSnapshot = await getDocs(q);
-
-      const interactedUsersSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-      const interactedUids = new Set(interactedUsersSnap.docs.map(doc => doc.id));
-      
-      const fetchedProfiles = usersSnapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-        .filter(p => {
-          if (!p.uid || !p.images || p.images.length === 0 || !p.fullName) return false;
-          if (p.uid === user.uid) return false;
-          
-          if (userProfile.location && p.location) {
-              p.distance = getDistance(
-                  userProfile.location.latitude!,
-                  userProfile.location.longitude!,
-                  p.location.latitude!,
-                  p.location.longitude!
-              );
-          } else {
-              p.distance = undefined;
-          }
-
-          const sortedIds = [user.uid, p.uid].sort();
-          const matchId = sortedIds.join('_');
-          if (interactedUids.has(matchId)) {
-              return false;
-          }
-          
-          if (!userProfile.globalModeEnabled && p.distance !== undefined) {
-              if (p.distance > (userProfile.distancePreference || 160)) {
-                  return false;
-              }
-          }
-
-          return true;
-        });
-
-      setProfiles(fetchedProfiles);
-    } catch (error: any) {
-      console.error("Profil getirme hatası:", error);
-      toast({ title: "Hata", description: `Profiller getirilemedi: ${error.message}`, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, firestore, toast, userProfile]);
-
   useEffect(() => {
-    if (user && firestore && userProfile) {
-      fetchProfiles();
+    if (user && firestore && userProfile && !isUserLoading) {
+      fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast);
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
-  }, [user, firestore, userProfile, fetchProfiles, isUserLoading]);
+  }, [user, firestore, userProfile, isUserLoading, toast]);
+
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
-    if (!user || !firestore || !profileToSwipe) return;
+    if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
     setExitDirection(direction);
 
@@ -188,12 +193,18 @@ export default function AnasayfaPage() {
       }
   };
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center">
         <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       </div>
     );
+  }
+
+  const handleRetry = () => {
+      if (user && firestore && userProfile) {
+        fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast);
+      }
   }
 
   return (
@@ -233,7 +244,7 @@ export default function AnasayfaPage() {
                     <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
                         <h3 className="text-2xl font-bold">Çevrendeki Herkes Tükendi!</h3>
                         <p className="text-muted-foreground">Daha sonra tekrar kontrol et veya arama ayarlarını genişlet.</p>
-                        <Button onClick={fetchProfiles}>
+                        <Button onClick={handleRetry}>
                             Tekrar Dene
                         </Button>
                     </div>
