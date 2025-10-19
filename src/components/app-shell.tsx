@@ -148,26 +148,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <Icons.logo width={80} height={26} />
 
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-full">
-                        <Plus className="h-5 w-5" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                    {navItems.map((item) => (
-                         <Link href={item.href} key={item.href}>
-                            <DropdownMenuItem className={cn("py-2.5", pathname.startsWith(item.href) && "bg-accent")}>
-                                <item.icon className="mr-3 h-5 w-5" />
-                                <span>{item.label}</span>
-                                {item.hasNotification && (
-                                    <span className="ml-auto w-2 h-2 rounded-full bg-primary" />
-                                )}
-                            </DropdownMenuItem>
-                        </Link>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href="/profil">
+                <Button variant="ghost" size="icon">
+                    <User className="h-6 w-6 text-muted-foreground" />
+                </Button>
+            </Link>
 
         </header>
         <main className="flex-1 flex flex-col overflow-hidden">
