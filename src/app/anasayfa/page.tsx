@@ -13,7 +13,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -34,7 +34,7 @@ const fetchProfiles = async (
                 const match = doc.data();
                 if (match.user1Id === user.uid && match.user1_action) {
                     interactedUids.add(match.user2Id);
-                } else if (match.user2Id === user.uid && match.user2_action) {
+                } else if (match.user2Id === user.uid && match.user1_action) {
                     interactedUids.add(match.user1Id);
                 }
             });
@@ -81,10 +81,8 @@ const fetchProfiles = async (
 
         fetchedProfiles.sort((a, b) => {
             if (userProfile.globalModeEnabled) {
-                 // Sort by distance if global mode is enabled
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
-            // Otherwise, shuffle randomly
             return Math.random() - 0.5;
         });
 
@@ -273,25 +271,21 @@ export default function AnasayfaPage() {
       loadProfiles(true);
   }
   
+  const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
         <AnimatePresence>
-            {profiles.length > 0 ? (
-                profiles.map((profile, index) => {
-                    const isTopCard = index === profiles.length - 1;
-                    return (
-                        <ProfileCard
-                            key={profile.uid}
-                            profile={profile}
-                            isTopCard={isTopCard}
-                            onSwipe={handleSwipe}
-                        />
-                    );
-                })
+            {topCard ? (
+                <ProfileCard
+                    key={topCard.uid}
+                    profile={topCard}
+                    onSwipe={handleSwipe}
+                />
             ) : null}
         </AnimatePresence>
-        {profiles.length === 0 && !isLoading && (
+        {!topCard && !isLoading && (
             <div
                 className="flex flex-col items-center justify-center text-center p-4 space-y-4"
             >

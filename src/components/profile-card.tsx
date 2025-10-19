@@ -15,11 +15,10 @@ import { formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform, PanInfo, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo, animate, AnimatePresence } from 'framer-motion';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
-  isTopCard: boolean;
   onSwipe: (profile: UserProfile, direction: 'left' | 'right' | 'up') => void;
 }
 
@@ -62,7 +61,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
-const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
+const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
@@ -91,23 +90,12 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   };
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const swipeConfidenceThreshold = 10000;
-    const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
-    
-    const xSwipePower = swipePower(info.offset.x, info.velocity.x);
-    const ySwipePower = swipePower(info.offset.y, info.velocity.y);
-
-    if (ySwipePower > swipeConfidenceThreshold && info.offset.y < -50) {
-        animate(y, -1000, { duration: 0.3 });
+    if (info.offset.y < -50) {
         onSwipe(profile, 'up');
-    } else if (xSwipePower > swipeConfidenceThreshold) {
-        if (info.offset.x > 50) {
-            animate(x, 1000, { duration: 0.3 });
-            onSwipe(profile, 'right');
-        } else if (info.offset.x < -50) {
-            animate(x, -1000, { duration: 0.3 });
-            onSwipe(profile, 'left');
-        }
+    } else if (info.offset.x > 50) {
+        onSwipe(profile, 'right');
+    } else if (info.offset.x < -50) {
+        onSwipe(profile, 'left');
     }
   };
 
@@ -151,12 +139,8 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
 
   return (
     <motion.div
-        className={cn(
-            "absolute w-full h-full cursor-grab",
-            !isTopCard && "scale-95 pointer-events-none",
-            !isTopCard && { filter: 'blur(4px)' }
-        )}
-        drag={isTopCard}
+        className="absolute w-full h-full cursor-grab"
+        drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
