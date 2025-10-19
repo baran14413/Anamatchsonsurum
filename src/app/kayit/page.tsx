@@ -163,7 +163,7 @@ export default function SignUpPage() {
         setLocationStatus('error');
         setIsLocationLoading(false);
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      { timeout: 10000, enableHighAccuracy: false }
     );
   };
   

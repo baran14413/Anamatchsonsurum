@@ -71,7 +71,7 @@ export default function LocationSettingsPage() {
                 setLocationError(message);
                 setIsLocationLoading(false);
             },
-            { timeout: 10000, enableHighAccuracy: true }
+            { timeout: 10000, enableHighAccuracy: false }
         );
     };
 
