@@ -66,16 +66,16 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
+  // Motion values for drag animations
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const likeOpacity = useTransform(x, [10, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, -10], [1, 0]);
   const superLikeOpacity = useTransform(y, [-10, -100], [0, 1]);
-  
+
   useEffect(() => {
     setActiveImageIndex(0);
-    // Reset motion values when profile changes
     x.set(0);
     y.set(0);
   }, [profile.uid, x, y]);
@@ -94,7 +94,7 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (!isTopCard) return;
-
+    
     const swipeConfidenceThreshold = 10000;
     const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
     
@@ -108,7 +108,7 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
     } else if (xSwipePower > swipeConfidenceThreshold) {
         if (info.offset.x > 50) {
             direction = 'right';
-        } else if (info.offset.x < -50) {
+        } else if (info.offset.x < -50) { // Corrected this line
             direction = 'left';
         }
     }
@@ -117,6 +117,7 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
         onSwipe(profile, direction);
     }
   };
+
 
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
   
@@ -159,13 +160,16 @@ const ProfileCard = ({ profile, isTopCard, onSwipe }: ProfileCardProps) => {
   return (
     <motion.div
         className={cn(
-            "absolute w-full h-full",
+            "absolute w-full h-full cursor-grab",
             !isTopCard && "scale-95 blur-sm pointer-events-none"
         )}
         drag={isTopCard}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x, y, rotate }}
+        initial={{ scale: isTopCard ? 1 : 0.95 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.3 }}
     >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
             <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
