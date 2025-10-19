@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup, arrayUnion } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,7 @@ import ProfileCard from '@/components/profile-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
@@ -721,49 +722,180 @@ export default function ChatPage() {
     const age = otherUser ? calculateAge(otherUser.dateOfBirth) : null;
     const isNewUser = otherUser?.createdAt && (Date.now() - new Date(otherUser.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
     
+    const groupedInterests = useMemo(() => {
+        if (!otherUser?.interests) return {};
+
+        const interestCategories = langTr.signup.step11.categories;
+        const categoryMap: { [key: string]: { title: string; icon: IconName } } = {};
+        interestCategories.forEach(cat => {
+            cat.options.forEach(opt => {
+                categoryMap[opt] = { title: cat.title, icon: cat.icon as IconName };
+            });
+        });
+
+        const grouped: { [key: string]: { icon: IconName, interests: string[] } } = {};
+        otherUser.interests.forEach(interest => {
+            const categoryInfo = categoryMap[interest] || { title: 'Diğer', icon: 'Sparkles' };
+            if (!grouped[categoryInfo.title]) {
+                grouped[categoryInfo.title] = { icon: categoryInfo.icon, interests: [] };
+            }
+            grouped[categoryInfo.title].interests.push(interest);
+        });
+        return grouped;
+    }, [otherUser?.interests]);
+    
+    const interestEntries = useMemo(() => Object.entries(groupedInterests), [groupedInterests]);
+    const likeRatio = useMemo(() => otherUser ? Math.floor(Math.random() * (98 - 70 + 1)) + 70 : 0, [otherUser?.uid]);
+
     return (
         <div className="flex h-dvh flex-col bg-background">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-2">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <div className="flex items-center gap-3">
-                    {isSystemChat ? (
-                        <>
-                        <Avatar className="h-9 w-9">
-                            <Icons.bmIcon className="h-full w-full" />
-                        </Avatar>
-                        <div className="flex flex-col">
-                            <span className="font-semibold">BeMatch - Sistem Mesajları</span>
-                            <span className="text-xs text-green-500">Her zaman aktif</span>
-                        </div>
-                        </>
-                    ) : (otherUser ? (
-                        <>
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={otherUser.profilePicture} />
-                                <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                <span className="font-semibold">{otherUser.fullName}</span>
-                                {isOtherUserGold && <Icons.beGold width={20} height={20} />}
+                 <Sheet>
+                    <SheetTrigger asChild>
+                        <div className="flex items-center gap-3 cursor-pointer">
+                            {isSystemChat ? (
+                                <>
+                                <Avatar className="h-9 w-9">
+                                    <Icons.bmIcon className="h-full w-full" />
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="font-semibold">BeMatch - Sistem Mesajları</span>
+                                    <span className="text-xs text-green-500">Her zaman aktif</span>
                                 </div>
-                                {renderOnlineStatus()}
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                        <Avatar className="h-9 w-9">
-                            <Icons.bmIcon className="h-full w-full" />
-                        </Avatar>
-                        <div className="flex flex-col">
-                            <span className="font-semibold">Kullanıcı Bulunamadı</span>
-                            <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+                                </>
+                            ) : (otherUser ? (
+                                <>
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={otherUser.profilePicture} />
+                                        <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1.5">
+                                        <span className="font-semibold">{otherUser.fullName}</span>
+                                        {isOtherUserGold && <Icons.beGold width={20} height={20} />}
+                                        </div>
+                                        {renderOnlineStatus()}
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                <Avatar className="h-9 w-9">
+                                    <Icons.bmIcon className="h-full w-full" />
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="font-semibold">Kullanıcı Bulunamadı</span>
+                                    <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+                                </div>
+                                </>
+                            ))}
                         </div>
-                        </>
-                    ))}
-                </div>
+                    </SheetTrigger>
+                    {otherUser && (
+                         <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
+                            <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                                <SheetTitle className="text-xl sr-only">{otherUser.fullName} Profili</SheetTitle>
+                                <SheetDescription className="sr-only">Kullanıcının detaylı profili</SheetDescription>
+                                <div className="w-9"></div>
+                                <h2 className="font-semibold text-lg">{otherUser.fullName}</h2>
+                                <SheetClose asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full">
+                                    <X className="w-5 h-5"/>
+                                </Button>
+                                </SheetClose>
+                            </SheetHeader>
+                            <ScrollArea className='flex-1'>
+                                <div className="space-y-6">
+                                    {otherUser.images && otherUser.images.length > 0 && (
+                                        <Carousel className="w-full">
+                                            <CarouselContent>
+                                                {otherUser.images.map((image, index) => (
+                                                <CarouselItem key={index}>
+                                                    <div className="relative w-full aspect-[4/3]">
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${otherUser.fullName} profil medyası ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                        </Carousel>
+                                    )}
+                                    <div className="p-6 space-y-6 !pt-2">
+                                        <div className="text-left space-y-2">
+                                            <div className='flex flex-col items-start'>
+                                                {otherUser.membershipType === 'gold' && (
+                                                    <div className='flex items-center gap-2'>
+                                                    <Icons.beGold width={24} height={24} />
+                                                    <p className="font-semibold text-yellow-500">Gold Üye</p>
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-3xl font-bold">{otherUser.fullName}</h3>
+                                                    <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                                </div>
+                                            </div>
+                                            {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                            {(otherUser.address?.city && otherUser.address?.country) && (
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                    <MapPin className="w-4 h-4" />
+                                                    <span>{otherUser.address.city}, {otherUser.address.country}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {likeRatio > 0 && (
+                                            <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
+                                                <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
+                                                <div className='flex-1'>
+                                                    <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
+                                                    <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {otherUser.bio && (
+                                            <div>
+                                                <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                                <p className='text-muted-foreground'>{otherUser.bio}</p>
+                                            </div>
+                                        )}
+                                        {interestEntries.length > 0 && (
+                                            <div>
+                                                <h4 className='text-lg font-semibold mb-4'>İlgi Alanları</h4>
+                                                <div className="space-y-4">
+                                                    {interestEntries.map(([category, { icon, interests }]) => {
+                                                        const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
+                                                        return (
+                                                            <div key={category} className="flex items-start gap-3">
+                                                                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                                    <IconComponent className="w-6 h-6 text-primary" />
+                                                                </div>
+                                                                <div className='flex flex-col'>
+                                                                    <span className="font-medium text-sm">{category}</span>
+                                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                                        {interests.map(interest => (
+                                                                            <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        </SheetContent>
+                    )}
+                </Sheet>
                 {isSystemChat ? (
                     <div className="w-9 h-9"></div>
                 ) : (

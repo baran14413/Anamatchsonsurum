@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
-import { requestNotificationPermission, isNotificationSupported } from '@/lib/notifications';
+import { requestNotificationPermission, isNotificationSupported, saveTokenToFirestore } from '@/lib/notifications';
 import { Icons } from '@/components/icons';
+import { useUser, useFirestore } from '@/firebase/provider';
+
 
 // You can get this from package.json in a real build process
 const appVersion = '0.1.0';
@@ -21,6 +23,8 @@ export default function AppSettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const t = langTr;
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const [mounted, setMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -29,28 +33,35 @@ export default function AppSettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    if (isNotificationSupported()) {
-        setIsSupported(true);
-        setNotificationPermission(Notification.permission);
-    }
+    const checkSupportAndPermission = async () => {
+        const supported = await isNotificationSupported();
+        setIsSupported(supported);
+        if (supported) {
+            setNotificationPermission(Notification.permission);
+        }
+    };
+    checkSupportAndPermission();
   }, []);
 
   const handlePermissionRequest = async () => {
       setIsRequestingPermission(true);
       try {
-          const permission = await requestNotificationPermission();
-          setNotificationPermission(permission || 'default');
-          if (permission === 'granted') {
-              toast({
-                  title: "Bildirimlere İzin Verildi",
-                  description: "Yeni mesaj ve eşleşmelerden anında haberdar olacaksın."
-              });
-          } else if (permission === 'denied') {
-              toast({
-                  title: "Bildirimler Engellendi",
-                  description: "Bildirimleri almak için tarayıcı ayarlarından izin vermen gerekecek.",
-                  variant: 'destructive'
-              });
+          const result = await requestNotificationPermission();
+          if (result) {
+              setNotificationPermission(result.permission);
+              if (result.permission === 'granted' && result.fcmToken) {
+                  await saveTokenToFirestore(firestore, user, result.fcmToken);
+                  toast({
+                      title: "Bildirimlere İzin Verildi",
+                      description: "Yeni mesaj ve eşleşmelerden anında haberdar olacaksın."
+                  });
+              } else if (result.permission === 'denied') {
+                  toast({
+                      title: "Bildirimler Engellendi",
+                      description: "Bildirimleri almak için tarayıcı ayarlarından izin vermen gerekecek.",
+                      variant: 'destructive'
+                  });
+              }
           }
       } catch (error) {
           console.error("Error requesting notification permission:", error);
@@ -102,7 +113,7 @@ export default function AppSettingsPage() {
         <div className="space-y-4">
             <h2 className="text-xl font-bold">Bildirimler</h2>
             <p className="text-muted-foreground">Yeni eşleşmelerden ve mesajlardan anında haberdar ol.</p>
-            {isSupported && (
+            {isSupported ? (
                  <div className="flex items-center justify-between rounded-lg border bg-background p-4">
                     <div className="flex flex-col space-y-1">
                         <span>Anlık Bildirimler</span>
@@ -130,6 +141,15 @@ export default function AppSettingsPage() {
                             <span className='font-semibold text-sm'>Engellendi</span>
                         </div>
                      )}
+                </div>
+            ) : (
+                 <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+                    <div className="flex flex-col space-y-1">
+                        <span>Anlık Bildirimler</span>
+                        <span className="font-normal text-xs leading-snug text-muted-foreground">
+                            Tarayıcınız anlık bildirimleri desteklemiyor.
+                        </span>
+                    </div>
                 </div>
             )}
         </div>
