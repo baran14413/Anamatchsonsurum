@@ -7,7 +7,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, useAnimation, useMotionValue } from 'framer-motion';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
@@ -99,8 +99,7 @@ export default function AnasayfaPage() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
-
+  
   useEffect(() => {
     if (user && firestore && userProfile && !isUserLoading) {
       fetchProfiles(firestore, user, userProfile, setProfiles, setIsLoading, toast, false);
@@ -113,7 +112,6 @@ export default function AnasayfaPage() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
-    setExitDirection(direction);
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
     
     if (profileToSwipe.isBot) {
@@ -220,14 +218,18 @@ export default function AnasayfaPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-          <AnimatePresence>
           {profiles.length > 0 ? (
-            profiles.slice(-3).map((profile, index) => {
-              const isTopCard = index === profiles.slice(-3).length - 1;
+            profiles.map((profile, index) => {
+              const isTopCard = index === profiles.length - 1;
+              
               return (
                 <motion.div
                   key={profile.uid}
                   className="absolute w-full h-full"
+                  style={{
+                    scale: 1 - (profiles.length - 1 - index) * 0.05,
+                    y: (profiles.length - 1 - index) * 10,
+                  }}
                   drag={isTopCard ? "x" : false}
                   dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                   onDragEnd={(event, { offset, velocity }) => {
@@ -241,18 +243,6 @@ export default function AnasayfaPage() {
                     } else if (swipePower > swipeConfidenceThreshold) {
                       handleSwipe(profile, 'right');
                     }
-                  }}
-                  initial={{ scale: 1, y: 0, opacity: 1 }}
-                  animate={{
-                    scale: 1 - (profiles.slice(-3).length - 1 - index) * 0.05,
-                    y: (profiles.slice(-3).length - 1 - index) * 10,
-                    opacity: 1
-                  }}
-                  exit={{
-                    opacity: 0,
-                    x: exitDirection === 'left' ? -500 : 500,
-                    rotate: exitDirection === 'left' ? -30 : 30,
-                    transition: { duration: 0.3 }
                   }}
                   dragElastic={0.5}
                 >
@@ -273,8 +263,9 @@ export default function AnasayfaPage() {
               <Button onClick={handleRetry}>Tekrar Dene</Button>
             </motion.div>
           )}
-          </AnimatePresence>
       </div>
     </div>
   );
 }
+
+    

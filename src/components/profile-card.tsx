@@ -65,9 +65,11 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const x = useMotionValue(0);
+  
+  // Directly map x-offset to rotation and opacity
+  const rotate = useTransform(x, [-200, 200], [-30, 30]);
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [0, -100], [0, 1]);
-  const rotate = useTransform(x, [-200, 200], [-30, 30]);
   
   useEffect(() => {
     setActiveImageIndex(0);
@@ -336,3 +338,5 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
+
+    
