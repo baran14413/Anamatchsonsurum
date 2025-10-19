@@ -221,7 +221,7 @@ export default function EslesmelerPage() {
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
-                                const profilePictureUrl = match.userProfile?.profilePicture || match.profilePicture;
+                                const profilePictureUrl = match.profilePicture;
 
 
                                 const MatchItemContent = () => (
