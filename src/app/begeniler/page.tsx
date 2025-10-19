@@ -50,27 +50,17 @@ export default function BegenilerPage() {
         );
     }, [user, firestore]);
     
-    const allLikesQuery = useMemo(() => {
-    if (!user || !firestore) return null;
-        return query(
-            collection(firestore, `users/${user.uid}/matches`),
-            where('status', 'in', ['pending', 'superlike_pending']),
-        );
-    }, [user, firestore]);
-
 
     useEffect(() => {
-        if (!allLikesQuery) {
+        if (!likesQuery) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
-        const unsubscribe = onSnapshot(allLikesQuery, (snapshot) => {
+        const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
             const likerProfiles = snapshot.docs
-                .map(doc => doc.data() as DenormalizedMatch)
-                // Filter out actions initiated by the current user
-                .filter(match => match.superLikeInitiator !== user?.uid); 
+                .map(doc => doc.data() as DenormalizedMatch);
             
             setLikers(likerProfiles);
             setIsLoading(false);
@@ -85,7 +75,7 @@ export default function BegenilerPage() {
         });
 
         return () => unsubscribe();
-    }, [allLikesQuery, toast, user]);
+    }, [likesQuery, toast]);
 
     const handleCardClick = async (liker: DenormalizedMatch) => {
         if (isGoldMember) {
