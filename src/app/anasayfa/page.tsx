@@ -6,11 +6,13 @@ import { langTr } from '@/languages/tr';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, getDoc, collectionGroup, QueryConstraint } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, getDoc, collectionGroup, QueryConstraint, orderBy } from 'firebase/firestore';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AnimatePresence, motion } from 'framer-motion';
+import ProfileCard from '@/components/profile-card';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
@@ -33,38 +35,29 @@ export default function AnasayfaPage() {
     setProfiles([]);
 
     try {
-        // 1. Get UIDs of users we have already matched with.
-        const matchesSnap = await getDocs(query(collection(firestore, `users/${user.uid}/matches`), where('status', '==', 'matched')));
-        const matchedUids = new Set(matchesSnap.docs.map(d => d.data().matchedWith));
-
-        // 2. Build the simplest possible query: get all users.
         const usersRef = collection(firestore, 'users');
         const q = query(usersRef, limit(50));
         const usersSnapshot = await getDocs(q);
         
-        const allFetchedUsers = usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile));
+        const matchesSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
+        const interactedUids = new Set(matchesSnap.docs.map(d => d.id));
 
-        // 3. Perform ONLY the most essential client-side filtering.
-        const finalProfiles = allFetchedUsers.filter(p => {
-            // Filter out the current user
-            if (p.uid === user.uid) {
-                return false;
-            }
-            // Filter out users already matched with
-            if (matchedUids.has(p.uid)) {
-                return false;
-            }
-            return true;
-        }).map(p => {
-            // Calculate distance but don't filter by it yet
-             let distance: number | undefined = undefined;
-            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-            }
-            return { ...p, distance };
-        });
+        const allFetchedUsers = usersSnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+            .filter(p => {
+                if (p.uid === user.uid) return false;
+                if (interactedUids.has(p.id)) return false;
+                return true; 
+            })
+            .map(p => {
+                let distance: number | undefined = undefined;
+                if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                }
+                return { ...p, distance };
+            });
 
-        setProfiles(finalProfiles);
+        setProfiles(allFetchedUsers);
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
@@ -81,28 +74,38 @@ export default function AnasayfaPage() {
     }
   }, [user, firestore, userProfile, fetchProfiles]);
 
+  const removeTopCard = () => {
+    setProfiles(prev => prev.slice(1));
+  };
+
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
       {isLoading ? (
         <div className="flex items-center justify-center">
           <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
         </div>
       ) : profiles.length > 0 ? (
-        <div className="w-full max-w-md space-y-4">
-            <h2 className="text-xl font-bold text-center">Profil Listesi ({profiles.length})</h2>
-            {profiles.map(profile => (
-                <Card key={profile.uid}>
-                    <CardHeader>
-                        <CardTitle>{profile.fullName}, {profile.dateOfBirth ? new Date().getFullYear() - new Date(profile.dateOfBirth).getFullYear() : ''}</CardTitle>
-                        <CardDescription>UID: {profile.uid}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Cinsiyet: {profile.gender}</p>
-                        <p>Mesafe: {profile.distance !== undefined ? `${profile.distance} km` : 'Hesaplanamadı'}</p>
-                        <p>Konum: {profile.location ? `${profile.location.latitude.toFixed(2)}, ${profile.location.longitude.toFixed(2)}` : 'Bilinmiyor'}</p>
-                    </CardContent>
-                </Card>
-            ))}
+        <div className="relative w-full h-[600px] max-w-md max-h-[85vh] flex items-center justify-center">
+            <AnimatePresence>
+                {profiles.map((profile, index) => (
+                    <motion.div
+                        key={profile.uid}
+                        className="absolute w-full h-full"
+                        style={{
+                            zIndex: profiles.length - index,
+                            transform: `scale(${1 - (index * 0.03)}) translateY(${index * 10}px)`,
+                        }}
+                        initial={{ scale: 0.95, y: 30, opacity: 0 }}
+                        animate={{ scale: 1 - (index * 0.03), y: index * 10, opacity: 1 }}
+                        exit={{ x: 300, opacity: 0, transition: { duration: 0.3 } }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    >
+                        <ProfileCard profile={profile} isTopCard={index === 0} />
+                    </motion.div>
+                )).reverse() // Show top of the stack
+            }
+            </AnimatePresence>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
