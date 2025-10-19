@@ -199,19 +199,9 @@ export default function AnasayfaPage() {
                     distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
                 }
                 return { ...p, distance };
-            })
-            .sort((a, b) => {
-                if (a.distance === undefined) return 1;
-                if (b.distance === undefined) return -1;
-                return a.distance - b.distance;
             });
 
-        const finalProfiles = globalMode 
-            ? potentialProfiles
-            : potentialProfiles.filter(p => p.distance !== undefined && p.distance <= (userProfile.distancePreference || 160));
-
-
-        setProfiles(finalProfiles.slice(0, 20));
+        setProfiles(potentialProfiles.slice(0, 20));
 
     } catch (error) {
       console.error("Error fetching profiles:", error);
