@@ -32,7 +32,7 @@ export type UserProfile = {
   school?: string;
   lookingFor?: string;
   distancePreference?: number;
-  distance?: number;
+  distance?: number; // Calculated property, not stored in DB
   ageRange?: {
     min: number;
     max: number;

@@ -274,7 +274,7 @@ export default function SignUpPage() {
             genderPreference: 'female',
             lookingFor: 'whatever',
             ageRange: {min: 18, max: 40},
-            globalModeEnabled: true,
+            globalModeEnabled: true, // Global mode is ON by default for new users
             expandAgeRange: true,
             isBot: false,
             rulesAgreed: false,
