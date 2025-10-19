@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -65,7 +64,7 @@ type ImageSlot = {
 };
 
 const getInitialImageSlots = (): ImageSlot[] => {
-    return Array.from({ length: 6 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
+    return Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
 };
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
@@ -176,7 +175,7 @@ export default function SignUpPage() {
           return;
       }
       
-      const tempId = form.getValues('email') || 'temp_' + Date.now();
+      const tempId = 'temp_' + Date.now();
 
       setImageSlots(prev => {
           const newSlots = [...prev];
@@ -184,7 +183,7 @@ export default function SignUpPage() {
           return newSlots;
       });
 
-      const uniqueFileName = 'bematch_profiles/temp_' + tempId + '/' + Date.now() + '-' + file.name.replace(/\s+/g, '_');
+      const uniqueFileName = 'bematch_profiles/' + tempId + '/' + Date.now() + '-' + file.name.replace(/\s+/g, '_');
       const imageRef = storageRef(storage, uniqueFileName);
 
       try {
