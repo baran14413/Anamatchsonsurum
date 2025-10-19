@@ -156,11 +156,14 @@ export default function SignUpPage() {
         let message = "Konum alınırken bir hata oluştu.";
         if (error.code === error.PERMISSION_DENIED) {
           message = "Konum izni reddedildi. Lütfen tarayıcı ayarlarınızı kontrol edin.";
+        } else if (error.code === error.TIMEOUT) {
+            message = "Konum alma isteği zaman aşımına uğradı. Lütfen tekrar deneyin.";
         }
         setLocationError(message);
         setLocationStatus('error');
         setIsLocationLoading(false);
-      }
+      },
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
   

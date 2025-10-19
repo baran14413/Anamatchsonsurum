@@ -65,6 +65,8 @@ export default function LocationSettingsPage() {
                 let message = tc.errors.positionUnavailable;
                 if (error.code === error.PERMISSION_DENIED) {
                     message = tc.errors.permissionDenied;
+                } else if (error.code === error.TIMEOUT) {
+                    message = tc.errors.timeout;
                 }
                 setLocationError(message);
                 setIsLocationLoading(false);
@@ -95,10 +97,12 @@ export default function LocationSettingsPage() {
                         <CardDescription>{tc.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {lastUpdatedDate && (
+                        {lastUpdatedDate ? (
                             <p className="text-sm text-muted-foreground">
                                 Son Güncelleme: {format(lastUpdatedDate, "d MMMM yyyy, HH:mm", { locale: tr })}
                             </p>
+                        ) : (
+                           <p className="text-sm text-destructive mt-2">Konum bilgisi mevcut değil.</p>
                         )}
                        
                         <Button onClick={handleLocationRequest} disabled={isLocationLoading}>
