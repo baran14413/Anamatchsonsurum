@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { langTr } from '@/languages/tr';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, Match } from '@/lib/types';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, where, limit, doc, getDoc, collectionGroup, QueryConstraint, orderBy, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit, doc, getDoc, setDoc, serverTimestamp, QueryConstraint } from 'firebase/firestore';
 import { getDistance } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -36,29 +37,32 @@ export default function AnasayfaPage() {
 
     try {
         const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, limit(50));
-        const usersSnapshot = await getDocs(q);
+        const queryConstraints: QueryConstraint[] = [where('isBot', '!=', true), limit(50)];
         
+        const genderPref = userProfile.genderPreference;
+        if (genderPref && genderPref !== 'both') {
+            queryConstraints.push(where('gender', '==', genderPref));
+        }
+        
+        const q = query(usersRef, ...queryConstraints);
+        const usersSnapshot = await getDocs(q);
+
         const matchesSnap = await getDocs(collection(firestore, `users/${user.uid}/matches`));
-        const interactedUids = new Set(matchesSnap.docs.map(d => d.id));
+        const interactedUids = new Set(matchesSnap.docs.map(d => d.id.replace(user.uid, '').replace('_', '')));
 
         const allFetchedUsers = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (p.uid === user.uid) return false; // Exclude self
-                if (interactedUids.has(p.id)) return false; // Exclude already interacted
-                if (!p.images || p.images.length === 0) return false;
+                if (interactedUids.has(p.id)) return false;
+                
+                // Age preference filter
+                const age = p.dateOfBirth ? new Date(Date.now() - new Date(p.dateOfBirth).getTime()).getUTCFullYear() - 1970 : 0;
+                if(userProfile.ageRange && (age < userProfile.ageRange.min || age > userProfile.ageRange.max)) {
+                    return false;
+                }
 
-                // Gender preference filter
-                const userGender = userProfile.gender;
-                const userPref = userProfile.genderPreference;
-                const profileGender = p.gender;
-
-                if (userPref === 'both') return true;
-                if (userPref === 'male' && profileGender === 'male') return true;
-                if (userPref === 'female' && profileGender === 'female') return true;
-
-                return false;
+                return true;
             })
             .map(p => {
                 let distance: number | undefined = undefined;
@@ -68,14 +72,8 @@ export default function AnasayfaPage() {
                 return { ...p, distance };
             })
             .filter(p => {
-                // Apply distance filter
-                if (userProfile.globalModeEnabled) {
-                    return true;
-                }
-                if (p.distance === undefined) {
-                    return false;
-                }
-                if (userProfile.distancePreference && p.distance > userProfile.distancePreference) {
+                // Apply distance filter only if global mode is off
+                if (!userProfile.globalModeEnabled && p.distance !== undefined && userProfile.distancePreference && p.distance > userProfile.distancePreference) {
                     return false;
                 }
                 return true;
@@ -100,11 +98,11 @@ export default function AnasayfaPage() {
   }, [user, firestore, userProfile, fetchProfiles]);
 
   const removeTopCard = () => {
-    setProfiles(prev => prev.slice(1));
+    setProfiles(prev => prev.slice(0, prev.length - 1));
   };
   
-  const handleSwipe = async (direction: 'left' | 'right' | 'up', swipedProfile: UserProfile) => {
-    if (!user || !firestore) return;
+ const handleSwipe = async (direction: 'left' | 'right' | 'up', swipedProfile: UserProfile) => {
+    if (!user || !firestore || !userProfile) return;
 
     removeTopCard();
 
@@ -115,38 +113,45 @@ export default function AnasayfaPage() {
 
     try {
         const matchDoc = await getDoc(matchDocRef);
-        let status = 'pending';
+        let status: Match['status'] = 'pending';
         let isMatch = false;
 
-        const updateData: any = {
+        const updateData: Partial<Match> = {
+            id: matchId,
             user1Id: user1Id,
             user2Id: user2Id,
         };
 
-        if (user.uid === user1Id) {
+        const isUser1 = user.uid === user1Id;
+        if (isUser1) {
             updateData.user1_action = action;
             updateData.user1_timestamp = serverTimestamp();
-            if (matchDoc.exists() && (matchDoc.data().user2_action === 'liked' || matchDoc.data().user2_action === 'superliked') && action === 'liked') {
+            if (matchDoc.exists() && (matchDoc.data().user2_action === 'liked' || matchDoc.data().user2_action === 'superliked') && (action === 'liked' || action === 'superliked')) {
                 isMatch = true;
-                status = 'matched';
             }
         } else { // user.uid === user2Id
             updateData.user2_action = action;
             updateData.user2_timestamp = serverTimestamp();
-            if (matchDoc.exists() && (matchDoc.data().user1_action === 'liked' || matchDoc.data().user1_action === 'superliked') && action === 'liked') {
+            if (matchDoc.exists() && (matchDoc.data().user1_action === 'liked' || matchDoc.data().user1_action === 'superliked') && (action === 'liked' || action === 'superliked')) {
                 isMatch = true;
-                status = 'matched';
             }
+        }
+
+        if (isMatch) {
+            status = 'matched';
+            updateData.matchDate = serverTimestamp();
+        } else if (action === 'superliked') {
+            status = 'superlike_pending';
+            updateData.isSuperLike = true;
+            updateData.superLikeInitiator = user.uid;
         }
         
         updateData.status = status;
-        if(isMatch) {
-          updateData.matchDate = serverTimestamp();
-        }
 
         await setDoc(matchDocRef, updateData, { merge: true });
 
-        // Denormalize for both users' subcollections
+        const lastMessage = isMatch ? "Eşleştiniz! Bir merhaba de." : (action === 'liked' ? 'Beğendin' : 'Pas geçtin');
+        
         const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         await setDoc(currentUserMatchRef, {
             id: matchId,
@@ -154,9 +159,11 @@ export default function AnasayfaPage() {
             status: status,
             fullName: swipedProfile.fullName,
             profilePicture: swipedProfile.profilePicture,
-            lastMessage: isMatch ? "Eşleştiniz! Bir merhaba de." : `Beğendin`,
+            lastMessage: lastMessage,
             timestamp: serverTimestamp(),
-            unreadCount: isMatch ? 1 : 0
+            unreadCount: isMatch ? 1 : 0,
+            isSuperLike: action === 'superliked',
+            superLikeInitiator: action === 'superliked' ? user.uid : undefined
         }, {merge: true});
 
         if (isMatch) {
@@ -171,6 +178,21 @@ export default function AnasayfaPage() {
                 lastMessage: "Yeni bir eşleşmen var!",
                 timestamp: serverTimestamp(),
                 unreadCount: 1,
+            }, {merge: true});
+        }
+        
+        if (status === 'superlike_pending') {
+             const otherUserMatchRef = doc(firestore, `users/${swipedProfile.uid}/matches`, matchId);
+             await setDoc(otherUserMatchRef, {
+                id: matchId,
+                matchedWith: user.uid,
+                status: status,
+                fullName: userProfile?.fullName,
+                profilePicture: userProfile?.profilePicture,
+                lastMessage: `${userProfile.fullName} sana Super Like gönderdi!`,
+                timestamp: serverTimestamp(),
+                isSuperLike: true,
+                superLikeInitiator: user.uid
             }, {merge: true});
         }
 
@@ -251,3 +273,4 @@ export default function AnasayfaPage() {
     </div>
   );
 }
+
