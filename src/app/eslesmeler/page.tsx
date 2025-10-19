@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -26,11 +25,9 @@ export default function EslesmelerPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const [matches, setMatches] = useState<(DenormalizedMatch & { userProfile?: UserProfile })[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [chatToInteract, setChatToInteract] = useState<DenormalizedMatch | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const matchesQuery = useMemo(() => {
     if (!user || !firestore) return null;
@@ -39,64 +36,12 @@ export default function EslesmelerPage() {
         orderBy('timestamp', 'desc')
     );
   }, [user, firestore]);
-
-  useEffect(() => {
-    if (!matchesQuery || !firestore) {
-      setIsLoading(false);
-      return;
-    }
-    
-    setIsLoading(true);
-
-    const unsubMatches = onSnapshot(matchesQuery, async (snapshot) => {
-      const matchesDataPromises = snapshot.docs.map(async (docSnapshot) => {
-          const data = docSnapshot.data() as DenormalizedMatch;
-          
-          if(data.id !== 'system' && data.matchedWith) {
-             const userDoc = await getDoc(doc(firestore, `users/${data.matchedWith}`));
-             if (userDoc.exists()) {
-                (data as any).userProfile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
-             }
-          }
-          return data;
-      });
-      
-      const resolvedMatches = await Promise.all(matchesDataPromises);
-
-      let systemMatchExists = false;
-      resolvedMatches.forEach(match => {
-          if (match.id === 'system') systemMatchExists = true;
-      });
-
-      // Ensure system match exists for the user
-      if (resolvedMatches.length > 0 && !systemMatchExists && user) {
-          const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-          await setDoc(systemMatchRef, {
-              id: 'system',
-              matchedWith: 'system',
-              lastMessage: "BeMatch'e hoş geldin!",
-              timestamp: serverTimestamp(),
-              fullName: 'BeMatch - Sistem Mesajları',
-              profilePicture: '',
-              hasUnreadSystemMessage: false,
-          }, { merge: true });
-      }
-
-      setMatches(resolvedMatches);
-      setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching matches:", error);
-        setIsLoading(false);
-    });
-
-    return () => {
-      unsubMatches();
-    };
-
-  }, [matchesQuery, user, firestore]);
+  
+  const { data: matches, isLoading } = useCollection<DenormalizedMatch>(matchesQuery);
 
 
   const filteredMatches = useMemo(() => {
+    if (!matches) return [];
     const systemMatch = matches.find(m => m.id === 'system');
     const otherMatches = matches.filter(m => m.id !== 'system' && (!searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())));
 
@@ -194,7 +139,7 @@ export default function EslesmelerPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-        {(matches.length === 0 && !isLoading) ? (
+        {(!matches || matches.length === 0) && !isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
                 <h2 className="text-2xl font-semibold text-foreground mb-2">{t.noChatsTitle}</h2>

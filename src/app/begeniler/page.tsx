@@ -28,7 +28,7 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 export default function BegenilerPage() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
-    const [likers, setLikers] = useState<(DenormalizedMatch & { profile?: UserProfile })[]>([]);
+    const [likers, setLikers] = useState<DenormalizedMatch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr;
     const { toast } = useToast();
@@ -54,29 +54,8 @@ export default function BegenilerPage() {
         }
         setIsLoading(true);
 
-        const unsubscribe = onSnapshot(superLikesQuery, async (snapshot) => {
-            const potentialLikerTasks = snapshot.docs.map(async (matchDoc) => {
-                const matchData = matchDoc.data() as DenormalizedMatch;
-                const likerId = matchData.matchedWith;
-
-                if (!likerId) return null;
-
-                const userDocSnap = await getDoc(doc(firestore, 'users', likerId));
-                if (userDocSnap.exists()) {
-                    const profileData = userDocSnap.data() as UserProfile;
-                    if (!profileData.images || profileData.images.length === 0) return null;
-
-                    return {
-                        ...matchData,
-                        profile: { ...profileData, uid: likerId, id: likerId }
-                    };
-                }
-                return null;
-            });
-            
-            const likerProfiles = (await Promise.all(potentialLikerTasks))
-              .filter((p): p is (DenormalizedMatch & { profile: UserProfile }) => p !== null && !!p.profile?.profilePicture);
-              
+        const unsubscribe = onSnapshot(superLikesQuery, (snapshot) => {
+            const likerProfiles = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
             setLikers(likerProfiles);
             setIsLoading(false);
         }, (error) => {
@@ -90,10 +69,19 @@ export default function BegenilerPage() {
         });
 
         return () => unsubscribe();
-    }, [superLikesQuery, firestore, toast]);
+    }, [superLikesQuery, toast]);
 
-    const handleInstantMatch = async (liker: DenormalizedMatch & { profile: UserProfile }) => {
+    const handleInstantMatch = async (liker: DenormalizedMatch) => {
         if (!user || !firestore || !userProfile || liker.status === 'matched') return;
+
+        const otherUserDocRef = doc(firestore, 'users', liker.matchedWith);
+        const otherUserSnap = await getDoc(otherUserDocRef);
+        if (!otherUserSnap.exists()) {
+             toast({ title: "Hata", description: "Kullanıcı bulunamadı.", variant: 'destructive'});
+             return;
+        }
+        const otherUserProfile = { ...otherUserSnap.data(), uid: otherUserSnap.id } as UserProfile;
+
 
         setIsMatching(liker.matchedWith);
         try {
@@ -138,8 +126,8 @@ export default function BegenilerPage() {
         );
     }
 
-    const LikerCard = ({ liker }: { liker: DenormalizedMatch & { profile?: UserProfile } }) => {
-        const age = liker.profile ? calculateAge(liker.profile.dateOfBirth) : null;
+    const LikerCard = ({ liker, profile }: { liker: DenormalizedMatch, profile?: UserProfile }) => {
+        const age = profile ? calculateAge(profile.dateOfBirth) : null;
         return (
             <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
                 <Avatar className="h-full w-full rounded-lg">
@@ -177,12 +165,24 @@ export default function BegenilerPage() {
                     <div className="flex-1 overflow-y-auto p-4">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {likers.map(liker => {
-                                if (!liker.profile) return null;
+                                 const [profile, setProfile] = useState<UserProfile | null>(null);
+
+                                 useEffect(() => {
+                                     if (isGoldMember && firestore) {
+                                         const unsub = onSnapshot(doc(firestore, 'users', liker.matchedWith), (doc) => {
+                                             if (doc.exists()) {
+                                                 setProfile({ ...doc.data(), uid: doc.id } as UserProfile);
+                                             }
+                                         });
+                                         return () => unsub();
+                                     }
+                                 }, [isGoldMember, firestore, liker.matchedWith]);
+
                                 return (
                                 isGoldMember ? (
                                     <Sheet key={liker.id}>
-                                        <SheetTrigger disabled={liker.status === 'matched'}>
-                                            <LikerCard liker={liker} />
+                                        <SheetTrigger disabled={liker.status === 'matched' || !profile}>
+                                            <LikerCard liker={liker} profile={profile!} />
                                         </SheetTrigger>
                                         <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent'>
                                             <SheetHeader className='sr-only'>
@@ -192,12 +192,12 @@ export default function BegenilerPage() {
                                                 </SheetDescription>
                                             </SheetHeader>
                                             <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
-                                                <ProfileCard profile={liker.profile} />
+                                                {profile && <ProfileCard profile={profile} onSwipe={() => {}} isTopCard={false}/>}
                                                 <div className='absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent z-30'>
                                                      {liker.status !== 'matched' && (
                                                          <Button 
                                                             className='w-full h-14 rounded-full bg-green-500 hover:bg-green-600 text-white' 
-                                                            onClick={() => handleInstantMatch(liker as DenormalizedMatch & { profile: UserProfile })}
+                                                            onClick={() => handleInstantMatch(liker)}
                                                             disabled={isMatching === liker.matchedWith}
                                                         >
                                                             {isMatching === liker.matchedWith ? (

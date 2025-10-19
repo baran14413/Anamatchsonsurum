@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +13,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -33,6 +32,7 @@ const fetchProfiles = async (
             const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
             interactedMatchDocsSnap.forEach(doc => {
                 const match = doc.data();
+                // We mark a user as "interacted" only if an action has been taken by the current user
                 if (match.user1Id === user.uid && match.user1_action) {
                     interactedUids.add(match.user2Id);
                 } else if (match.user2Id === user.uid && match.user2_action) {
@@ -53,7 +53,8 @@ const fetchProfiles = async (
                 if (!ignoreFilters && userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                     if (p.gender !== userProfile.genderPreference) return false;
                 }
-
+                
+                // Calculate distance if location is available
                 if (userProfile.location && p.location) {
                     p.distance = getDistance(
                         userProfile.location.latitude!,
@@ -67,12 +68,12 @@ const fetchProfiles = async (
 
                 if (!ignoreFilters) {
                     if (!userProfile.globalModeEnabled) {
-                        if (p.distance > (userProfile.distancePreference || 160)) return false;
+                         if (p.distance > (userProfile.distancePreference || 160)) return false;
                     }
                     if (userProfile.ageRange) {
                         const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
                         if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                            if (!userProfile.expandAgeRange) return false;
+                             if (!userProfile.expandAgeRange) return false;
                         }
                     }
                 }
@@ -80,10 +81,13 @@ const fetchProfiles = async (
                 return true;
             });
 
+        // Sorting logic based on global mode
         fetchedProfiles.sort((a, b) => {
             if (userProfile.globalModeEnabled) {
+                // Sort by distance ascending if global mode is on
                 return (a.distance ?? Infinity) - (b.distance ?? Infinity);
             }
+            // Otherwise, shuffle randomly
             return Math.random() - 0.5;
         });
 
@@ -219,6 +223,7 @@ export default function AnasayfaPage() {
                 matchedWith: user.uid, 
                 status: updateData.status,
                 timestamp: serverTimestamp(),
+                // Denormalized data for performance
                 fullName: userProfile?.fullName,
                 profilePicture: userProfile?.profilePicture || userProfile?.images?.[0]?.url || '',
                 isSuperLike: updateData.isSuperLike,
@@ -233,6 +238,7 @@ export default function AnasayfaPage() {
             matchedWith: profileToSwipe.uid,
             status: updateData.status,
             timestamp: serverTimestamp(),
+             // Denormalized data for performance
             fullName: profileToSwipe.fullName,
             profilePicture: profileToSwipe.profilePicture || profileToSwipe.images?.[0]?.url || '',
             isSuperLike: updateData.isSuperLike,
@@ -273,32 +279,34 @@ export default function AnasayfaPage() {
       loadProfiles(true);
   }
   
+  const MemoizedProfileCard = React.memo(ProfileCard);
+  
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4 pt-0 overflow-hidden">
       <div className="relative w-full h-full max-w-md flex items-center justify-center">
-          {profiles.map((profile, index) => {
-            const isTopCard = index === profiles.length - 1;
-            return (
-              <ProfileCard
-                key={profile.uid}
-                profile={profile}
-                isTopCard={isTopCard}
-                onSwipe={(p, dir) => handleSwipe(p, dir)}
-              />
-            );
-          })}
+         <AnimatePresence>
+            {profiles.map((profile, index) => {
+                const isTopCard = index === profiles.length - 1;
+                return (
+                    <MemoizedProfileCard
+                        key={profile.uid}
+                        profile={profile}
+                        isTopCard={isTopCard}
+                        onSwipe={handleSwipe}
+                    />
+                );
+            })}
+        </AnimatePresence>
         {profiles.length === 0 && !isLoading && (
-          <motion.div
-            className="flex flex-col items-center justify-center text-center p-4 space-y-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-            <p className="text-muted-foreground">
-              {langTr.anasayfa.outOfProfilesDescription}
-            </p>
-            <Button onClick={handleRetry}>Tekrar Dene</Button>
-          </motion.div>
+            <div
+                className="flex flex-col items-center justify-center text-center p-4 space-y-4"
+            >
+                <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                <p className="text-muted-foreground">
+                {langTr.anasayfa.outOfProfilesDescription}
+                </p>
+                <Button onClick={handleRetry}>Tekrar Dene</Button>
+            </div>
         )}
       </div>
     </div>
