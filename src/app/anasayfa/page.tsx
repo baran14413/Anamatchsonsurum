@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BOT_GREETINGS } from '@/lib/bot-data';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
 type ProfileWithDistance = UserProfile & { distance?: number };
 
@@ -164,19 +164,12 @@ export default function AnasayfaPage() {
         const interactedUids = new Set<string>([user.uid]);
         
         if (!resetInteractions) {
-             const userInteractionsQuery = query(collectionGroup(firestore, 'matches'), where('user1Id', '==', user.uid));
-             const userInteractionsSnapshot = await getDocs(userInteractionsQuery);
-             userInteractionsSnapshot.forEach(matchDoc => {
-                const matchData = matchDoc.data();
-                interactedUids.add(matchData.user2Id);
-             });
-             
-             const otherInteractionsQuery = query(collectionGroup(firestore, 'matches'), where('user2Id', '==', user.uid));
-             const otherInteractionsSnapshot = await getDocs(otherInteractionsQuery);
-             otherInteractionsSnapshot.forEach(matchDoc => {
-                const matchData = matchDoc.data();
-                interactedUids.add(matchData.user1Id);
-             });
+            const matchesQuery1 = query(collection(firestore, 'matches'), where('user1Id', '==', user.uid));
+            const matchesQuery2 = query(collection(firestore, 'matches'), where('user2Id', '==', user.uid));
+            
+            const [query1Snapshot, query2Snapshot] = await Promise.all([ getDocs(matchesQuery1), getDocs(matchesQuery2) ]);
+            query1Snapshot.forEach(doc => interactedUids.add(doc.data().user2Id));
+            query2Snapshot.forEach(doc => interactedUids.add(doc.data().user1Id));
         }
         
         let usersQuery = query(collection(firestore, 'users'), limit(50));
@@ -309,6 +302,9 @@ export default function AnasayfaPage() {
     setLastDislikedProfile(null);
   }, [lastDislikedProfile, user, firestore, userProfile]);
 
+    const x = useMotionValue(0);
+    const rotate = useTransform(x, [-200, 200], [-30, 30]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <AlertDialog open={showUndoLimitModal || showSuperlikeModal} onOpenChange={(open) => {
@@ -329,8 +325,12 @@ export default function AnasayfaPage() {
                             className="absolute w-full h-full"
                             style={{
                                 zIndex: index,
+                                x: isTopCard ? x : 0,
+                                rotate: isTopCard ? rotate : 0,
                             }}
-                            drag={isTopCard ? "x" : false}
+                            drag={isTopCard ? true : false}
+                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                            dragElastic={0.5}
                             onDragEnd={(event, info) => {
                                 if (!isTopCard) return;
                                 if (info.offset.x > 100) {
@@ -339,8 +339,6 @@ export default function AnasayfaPage() {
                                     handleSwipeAction('disliked');
                                 }
                             }}
-                            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                            dragElastic={0.2}
                         >
                             <ProfileCard profile={profile} isTopCard={isTopCard} />
                         </motion.div>
