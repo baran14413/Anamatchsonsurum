@@ -9,11 +9,12 @@ import { products, getProductById } from '@/lib/products';
 import { initializeBilling, getBilling } from '@/lib/billing';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, increment, serverTimestamp, Timestamp, addDoc, collection } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { add } from 'date-fns';
 import { Capacitor } from '@capacitor/core';
+import { verifyPurchaseFlow } from '@/ai/flows/verify-purchase-flow';
 
 export default function MarketPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function MarketPage() {
   }, []);
 
   const handlePurchase = async (productId: string) => {
-    // First, check if the platform is native. This is a clear check for the user.
+    // This check provides a clear message to web users.
     if (!Capacitor.isNativePlatform()) {
         toast({
             title: 'Web Tarayıcısı',
@@ -43,7 +44,7 @@ export default function MarketPage() {
         });
         return;
     }
-
+    
     if (!isBillingReady) {
       toast({ title: 'Hata', description: 'Faturalandırma servisi henüz hazır değil. Lütfen bir an bekleyin.', variant: 'destructive' });
       return;
@@ -58,43 +59,43 @@ export default function MarketPage() {
 
     try {
       const Billing = getBilling();
+      // The purchase call will now correctly wait for the native plugin to be ready.
       const result = await Billing.purchase({ productId });
+      
       const product = getProductById(productId);
 
       if (result.purchaseState === 'PURCHASED' && product) {
-        const userRef = doc(firestore, 'users', user.uid);
-        let updateData: any = {};
-
-        if (product.type === 'gold') {
-          let expiryDate: Date | null = new Date();
-           if (productId.includes('1month')) expiryDate = add(new Date(), { months: 1 });
-           else if (productId.includes('6months')) expiryDate = add(new Date(), { months: 6 });
-           else if (productId.includes('1year')) expiryDate = add(new Date(), { years: 1 });
-          
-          updateData = {
-            membershipType: 'gold',
-            goldMembershipExpiresAt: Timestamp.fromDate(expiryDate)
-          };
-        } else if (product.type === 'superlike') {
-          const amount = parseInt(productId.split('.').pop() || '0');
-          updateData = {
-            superLikeBalance: increment(amount)
-          };
-        }
-
-        await updateDoc(userRef, updateData);
-        
-        toast({
-          title: 'Satın Alma Başarılı!',
-          description: `${product.title} paketi hesabınıza eklendi.`,
+        // Since the purchase was successful on the client, we now verify it on the server.
+        // We no longer update Firestore directly from the client.
+        const verificationResult = await verifyPurchaseFlow({
+            userId: user.uid,
+            productId: productId,
+            // Assuming the purchase result from your plugin has a token
+            // This property name might be different, e.g., 'receipt', 'purchaseToken', etc.
+            // You MUST adjust this based on the actual object returned by your Capacitor plugin.
+            transaction: (result as any).transaction,
         });
 
+        if (verificationResult.success) {
+            toast({
+              title: 'Satın Alma Başarılı!',
+              description: `${product.title} paketi hesabınıza eklendi.`,
+            });
+        } else {
+             throw new Error(verificationResult.error || 'Sunucu tarafında doğrulama başarısız oldu.');
+        }
+
       } else {
-         throw new Error('Satın alma tamamlanamadı veya kullanıcı tarafından iptal edildi.');
+         // This handles user cancellation and other failures gracefully.
+         // No toast is shown for cancellation.
+         if(result.purchaseState === 'FAILED') {
+            throw new Error('Satın alma tamamlanamadı.');
+         }
       }
 
     } catch (error: any) {
       console.error('Satın alma hatası:', error);
+      // Avoid showing a toast if the user just cancelled the flow.
       if (error.message && !error.message.toLowerCase().includes('cancel')) {
           toast({
               title: 'Satın Alma Başarısız',

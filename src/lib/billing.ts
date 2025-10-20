@@ -21,6 +21,10 @@ export interface BillingPlugin {
   checkSubscriptions(): Promise<{ activeSubscriptions: any[] }>;
 }
 
+// A singleton instance of our billing plugin.
+let billingInstance: BillingPlugin | null = null;
+let isInitializing = false;
+
 // Default implementation for web or when the plugin is not available.
 const unavailableBilling: BillingPlugin = {
   initialize: async () => console.warn('Billing plugin not available on this platform.'),
@@ -38,10 +42,6 @@ const unavailableBilling: BillingPlugin = {
     return { activeSubscriptions: [] };
   },
 };
-
-// A singleton instance of our billing plugin.
-let billingInstance: BillingPlugin | null = null;
-let isInitializing = false;
 
 // This function safely initializes and returns the billing plugin.
 export const initializeBilling = async (): Promise<BillingPlugin> => {
@@ -85,7 +85,9 @@ export const initializeBilling = async (): Promise<BillingPlugin> => {
 // Export a getter to access the instance if needed, though initialization should be primary.
 export const getBilling = (): BillingPlugin => {
     if (!billingInstance) {
-        console.warn("Billing plugin has not been initialized. Call initializeBilling() first.");
+        // This is a safeguard. In a well-structured app, initializeBilling should always be called first.
+        // We return the unavailableBilling mock to prevent crashes, but warn the developer.
+        console.warn("Billing plugin has not been initialized. Returning unavailable mock. Call initializeBilling() at app startup.");
         return unavailableBilling;
     }
     return billingInstance;
