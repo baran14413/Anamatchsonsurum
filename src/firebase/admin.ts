@@ -1,9 +1,11 @@
+'use server';
+
 import * as admin from 'firebase-admin';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
 
-// Ensure this file is only run on the server
+// Ensure this file is only run on the server, though 'use server' directive handles this.
 if (typeof window !== 'undefined') {
   throw new Error('Firebase Admin SDK must only be used on the server.');
 }
