@@ -59,9 +59,7 @@ function ProfilePageContent() {
     const fetchInteractions = async () => {
         const userUid = user.uid;
         
-        // Query where the user is user1 and was rated by user2
         const query1 = query(collection(firestore, 'matches'), where('user1Id', '==', userUid));
-        // Query where the user is user2 and was rated by user1
         const query2 = query(collection(firestore, 'matches'), where('user2Id', '==', userUid));
 
         try {
@@ -94,11 +92,9 @@ function ProfilePageContent() {
                 const ratio = Math.round((totalLikes / totalInteractions) * 100);
                 setLikeRatio(ratio);
             }
-            // If no interactions, keep the default encouraging value
             
         } catch (error) {
             console.error("Error fetching like ratio data:", error);
-            // In case of error, fallback to the default value
         }
     };
     

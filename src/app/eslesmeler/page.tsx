@@ -37,6 +37,7 @@ function EslesmelerPageContent() {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, `users/${user.uid}/matches`),
+        where('status', '==', 'matched'),
         orderBy('timestamp', 'desc')
     );
   }, [user, firestore]);
@@ -68,9 +69,14 @@ function EslesmelerPageContent() {
 
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
+    // Temporarily, we will also show system chat here if it exists.
+    // A more robust solution might handle this differently.
     const systemMatch = matches.find(m => m.id === 'system');
     const otherMatches = matches.filter(m => m.id !== 'system' && (!searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())));
 
+    // If there is a system message, it should always be at the top.
+    // The query already orders by timestamp, so we prepend the system match if it exists.
+    // This logic might need refinement based on desired UX for system messages.
     return systemMatch ? [systemMatch, ...otherMatches] : otherMatches;
   }, [matches, searchTerm]);
 
@@ -93,7 +99,6 @@ function EslesmelerPageContent() {
         const mainMatchRef = doc(firestore, 'matches', matchId);
         batch.delete(mainMatchRef);
 
-        // This part is optional but good for cleanup: delete all messages in the subcollection
         const messagesRef = collection(firestore, `matches/${matchId}/messages`);
         const messagesSnap = await getDocs(messagesRef);
         messagesSnap.forEach(doc => batch.delete(doc.ref));
@@ -185,9 +190,6 @@ function EslesmelerPageContent() {
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
                             {filteredMatches.map(match => {
-                                const isSuperLikePending = match.status === 'superlike_pending';
-                                const isSuperLikeInitiator = match.superLikeInitiator === user?.uid;
-                                const showAcceptButton = isSuperLikePending && !isSuperLikeInitiator;
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
@@ -217,23 +219,14 @@ function EslesmelerPageContent() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <p className={cn(
-                                                "text-sm truncate", 
-                                                isSuperLikeInitiator && isSuperLikePending ? "text-blue-500 font-medium italic" : "text-muted-foreground",
-                                                hasUnread && "text-foreground font-medium"
-                                                )}>
-                                                {isSuperLikeInitiator && isSuperLikePending ? "Yanıt bekleniyor..." : match.lastMessage}
+                                            <p className={cn("text-sm truncate", hasUnread && "text-foreground font-medium", "text-muted-foreground")}>
+                                                {match.lastMessage}
                                             </p>
                                         </div>
-                                        {showAcceptButton && (
-                                            <Button variant="ghost" size="icon" className="ml-2 h-10 w-10 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200" onClick={(e) => handleAcceptSuperLike(e, match)}>
-                                                <Star className="h-6 w-6 fill-current" />
-                                            </Button>
-                                        )}
                                     </div>
                                 );
                                 
-                                const isClickable = !isUserDeleted && (!isSuperLikePending || !isSuperLikeInitiator);
+                                const isClickable = !isUserDeleted;
 
                                 return (
                                     <motion.div

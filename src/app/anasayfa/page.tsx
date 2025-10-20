@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -16,8 +16,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { Undo } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { differenceInCalendarDays } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -52,8 +52,7 @@ const fetchProfiles = async (
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // If it's a bot, always include it (as long as it's not already in the deck)
-                if (p.isBot) {
+                 if (p.isBot) {
                     return !currentProfileIds.has(p.uid) && p.uid !== user.uid;
                 }
 
@@ -153,7 +152,7 @@ function AnasayfaPageContent() {
     }
   }, [profiles.length, loadProfiles]);
 
-  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
+ const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
     setLastSwipedProfile({ profile: profileToSwipe, direction });
@@ -285,6 +284,7 @@ function AnasayfaPageContent() {
 
         } else if (action !== 'disliked') {
              if (profileToSwipe.uid) { 
+                // CRUCIAL: Add to the OTHER user's subcollection for "Likes You" page
                 await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
             }
              if (action === 'superliked') {
@@ -323,16 +323,14 @@ function AnasayfaPageContent() {
     }
 
     try {
-        setProfiles(prev => [...prev, lastSwipedProfile.profile]);
-        setLastSwipedProfile(null);
-
         const batch = writeBatch(firestore);
         const sortedIds = [user.uid, lastSwipedProfile.profile.uid].sort();
         const matchId = sortedIds.join('_');
 
         const mainMatchRef = doc(firestore, 'matches', matchId);
+        
+        // This is important: check if the doc exists before trying to delete
         const matchDoc = await getDoc(mainMatchRef);
-
         if (matchDoc.exists()) {
              batch.delete(mainMatchRef);
         }
@@ -361,6 +359,10 @@ function AnasayfaPageContent() {
 
         setShowUndoMessage(true);
         setTimeout(() => setShowUndoMessage(false), 2000);
+        
+        // Correctly restore the profile to the end of the array
+        setProfiles(prev => [...prev, lastSwipedProfile.profile]);
+        setLastSwipedProfile(null);
 
     } catch (error: any) {
         console.error("Error undoing swipe:", error);

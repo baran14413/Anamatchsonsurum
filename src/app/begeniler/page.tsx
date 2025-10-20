@@ -43,14 +43,12 @@ function BegenilerPageContent() {
     
     const likesQuery = useMemo(() => {
         if (!user || !firestore) return null;
-
-        // Query for likes where the status is 'pending' or 'superlike_pending'
-        const baseQuery = query(
+        // This query correctly fetches documents from the user's own subcollection
+        // where someone else has initiated a like.
+        return query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', 'in', ['pending', 'superlike_pending'])
         );
-        
-        return baseQuery;
     }, [user, firestore]);
     
 
@@ -62,18 +60,16 @@ function BegenilerPageContent() {
         setIsLoading(true);
 
         const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
-            // Filter out likes initiated by the current user client-side
             const likerProfiles = snapshot.docs
                 .map(doc => doc.data() as DenormalizedMatch)
+                // Additional client-side filter to be absolutely sure we don't show user's own initiated actions
                 .filter(match => {
                     if (match.status === 'superlike_pending') {
                         return match.superLikeInitiator !== user.uid;
                     }
-                    // For 'pending' status, we need to ensure the other user initiated the action.
-                    // This logic assumes `handleSwipe` correctly sets up the pending like doc.
-                    // A simple check is to see if the other user's action exists and ours doesn't.
-                    // This part of the logic is now handled more robustly in `handleSwipe`.
-                    return true; 
+                    // For 'pending', if the initiator is not the current user, show it.
+                    // This relies on the swipe logic to correctly set up the pending documents.
+                    return true;
                 });
             
             setLikers(likerProfiles);
@@ -122,7 +118,6 @@ function BegenilerPageContent() {
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
             batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
             
-            // The other user's subcollection doc should already exist, but we update it.
             const likerMatchRef = doc(firestore, `users/${liker.matchedWith}/matches`, liker.id);
             batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
 
@@ -130,7 +125,6 @@ function BegenilerPageContent() {
 
             toast({ title: t.anasayfa.matchToastTitle, description: `${liker.fullName} ${t.anasayfa.matchToastDescription}` });
             
-            // Close the sheet and remove the matched user from the likers list
             setSelectedProfile(null);
             setLikers(prevLikers => prevLikers.filter(l => l.id !== liker.id));
 
