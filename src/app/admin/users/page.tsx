@@ -164,7 +164,7 @@ export default function AdminUsersPage() {
        <Dialog open={!!userToManage} onOpenChange={(isOpen) => !isOpen && setUserToManage(null)}>
         <div className="space-y-6">
             <h1 className="text-2xl font-bold">Kullanıcılar ({users.length})</h1>
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
                 <Table>
                 <TableHeader>
                     <TableRow>
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
                           <TableCell className="font-medium">{user.fullName}</TableCell>
                           <TableCell>{user.email}</TableCell>
                            <TableCell>
-                              <div className='flex items-center gap-2'>
+                              <div className='flex items-center gap-2 min-w-max'>
                                 <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManage(user)}>
                                     <Gem className={isGold ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-500'} />
                                 </Button>
@@ -226,7 +226,7 @@ export default function AdminUsersPage() {
                               {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
                           </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[150px]">
                           {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                           </TableCell>
                           <TableCell className='text-right'>
