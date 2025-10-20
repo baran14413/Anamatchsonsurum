@@ -2,9 +2,9 @@
 'use client';
 
 import { useUser, useFirestore } from '@/firebase/provider';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Settings, AtSign, Plus, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
+import { Settings, AtSign, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -29,18 +29,10 @@ import {
 import { useNotificationHandler } from '@/lib/notifications';
 
 
-// Define route categories
-const protectedRoutes = ['/anasayfa', '/begeniler', '/eslesmeler', '/profil', '/ayarlar', '/market'];
-const publicRoutes = ['/', '/tos', '/privacy', '/cookies'];
-const authRoutes = ['/giris', '/kayit'];
-const rulesRoute = '/kurallar';
-const adminRoutePrefix = '/admin';
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, auth, isUserLoading } = useUser();
+  const { user, userProfile, auth } = useUser();
   const firestore = useFirestore();
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   const t = langTr;
 
@@ -48,46 +40,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // --- START: ROUTING LOGIC ---
-  useEffect(() => {
-    // Wait until user status is fully resolved before attempting any redirects.
-    if (isUserLoading) {
-      return;
-    }
-
-    const isAuthRoute = authRoutes.includes(pathname);
-    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith(adminRoutePrefix);
-    const isRulesRoute = pathname === rulesRoute;
-
-    if (user) {
-      if (userProfile && userProfile.isAdmin && pathname.startsWith('/admin')) {
-        return; // Admin on admin page, do nothing.
-      }
-      
-      // If user is logged in but hasn't agreed to rules, force them to the rules page.
-      if (userProfile && !userProfile.rulesAgreed && !isRulesRoute) {
-        router.replace(rulesRoute);
-        return;
-      }
-      
-      // If user is fully onboarded, but is on a public, auth, or rules page, redirect to home.
-      if (userProfile?.rulesAgreed && (publicRoutes.includes(pathname) || isAuthRoute || isRulesRoute)) {
-        router.replace('/anasayfa');
-        return;
-      }
-    } 
-    else {
-      // If user is not logged in, but is trying to access a protected page, redirect to welcome page.
-      if (isProtectedRoute) {
-        router.replace('/');
-        return;
-      }
-    }
-  }, [isUserLoading, user, userProfile, pathname, router]);
-  // --- END: ROUTING LOGIC ---
-
 
   // Effect for notifications (likes and messages)
   useEffect(() => {
@@ -118,9 +70,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
    const handleLogout = async () => {
     if (!auth) return;
-    setIsLoggingOut(true);
     try {
       await signOut(auth);
+      // The redirect is handled by the layout now
     } catch (error) {
       console.error("Logout error:", error);
       toast({
@@ -128,27 +80,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         description: t.ayarlar.toasts.logoutErrorDesc,
         variant: "destructive"
       });
-      setIsLoggingOut(false);
     }
   };
   
-  if (isUserLoading) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-background">
-        <Icons.logo width={48} height={48} className="animate-pulse" />
-      </div>
-    );
-  }
-  
-  const isAuthPage = authRoutes.includes(pathname);
-  const isWelcomePage = pathname === '/';
-  const isAdminPage = pathname.startsWith('/admin');
-
-  // The main app UI is shown only if the user is fully onboarded (logged in AND agreed to rules)
-  const showAppUI = user && userProfile?.rulesAgreed && !isAuthPage && !isWelcomePage;
-
-  // Render the main app UI only when the user is fully authenticated and onboarded.
-  if (showAppUI && !isAdminPage) {
     const navItems = [
       { href: '/anasayfa', icon: Flame, label: t.footerNav.home, hasNotification: false },
       { href: '/begeniler', icon: Heart, label: t.footerNav.likes, hasNotification: hasNewLikes },
@@ -220,10 +154,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     );
-  }
-
-  // If none of the above conditions are met, render the children directly.
-  // This handles the welcome page, auth pages, rules page, and the admin layout.
-  // The loader at the top of the component prevents this from rendering until data is ready.
-  return <>{children}</>;
 }
