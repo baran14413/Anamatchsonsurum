@@ -47,8 +47,8 @@ input, textarea {
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 340 82% 52%; /* Pink */
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 0 84.2% 60.2%; /* Red */
+    --primary-foreground: 0 0% 98%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
@@ -59,7 +59,7 @@ input, textarea {
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 340 82% 52%; /* Pink */
+    --ring: 0 84.2% 60.2%; /* Red */
     --radius: 0.5rem;
   }
   .dark {
@@ -69,8 +69,8 @@ input, textarea {
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 348 70.3% 47.5%;
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
@@ -81,7 +81,7 @@ input, textarea {
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 348 70.3% 47.5%;
+    --ring: 0 72.2% 50.6%;
   }
 }
 
@@ -99,9 +99,9 @@ input, textarea {
     background: linear-gradient(
       -45deg,
       #ffffff,
-      #f9a8d4, /* light pink */
+      #ffebee, /* very light red */
       #ffffff,
-      #f472b6  /* medium pink */
+      #ffcdd2  /* light red */
     );
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;
