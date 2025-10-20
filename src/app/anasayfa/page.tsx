@@ -86,7 +86,15 @@ const fetchProfiles = async (
                 return true;
             });
 
-        fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle
+        // Sort: Real users first, then bots. Then shuffle within each group.
+        fetchedProfiles.sort((a, b) => {
+            const aIsBot = a.isBot ?? false;
+            const bIsBot = b.isBot ?? false;
+            if (aIsBot === bIsBot) {
+                return Math.random() - 0.5; // Shuffle within the same group
+            }
+            return aIsBot ? 1 : -1; // Non-bots come first
+        });
 
         return fetchedProfiles.slice(0, 10); // Return a smaller slice to keep the deck fresh
     } catch (error: any) {
@@ -326,6 +334,8 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
 
     
 
