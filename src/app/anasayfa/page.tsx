@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -27,18 +26,21 @@ const fetchProfiles = async (
     try {
         const usersRef = collection(firestore, 'users');
         
-        // To avoid showing already seen users, we can fetch matches.
-        // This is a simplified approach. For large scale, a more robust system is needed.
         const interactedUids = new Set<string>();
-        const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
-        interactedMatchDocsSnap.forEach(doc => {
-            const match = doc.data();
-            if (match.user1Id === user.uid) {
-                interactedUids.add(match.user2Id);
-            } else if (match.user2Id === user.uid) {
-                interactedUids.add(match.user1Id);
-            }
-        });
+        
+        // Only check for previous interactions if we are NOT ignoring filters
+        if (!ignoreFilters) {
+            const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
+            interactedMatchDocsSnap.forEach(doc => {
+                const match = doc.data();
+                if (match.user1Id === user.uid) {
+                    interactedUids.add(match.user2Id);
+                } else if (match.user2Id === user.uid) {
+                    interactedUids.add(match.user1Id);
+                }
+            });
+        }
+
 
         let q = query(usersRef, limit(100)); // Fetch a larger batch to have more options
         const usersSnapshot = await getDocs(q);
@@ -48,7 +50,7 @@ const fetchProfiles = async (
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
                 if (p.uid === user.uid) return false;
-                if (interactedUids.has(p.uid)) return false;
+                if (interactedUids.has(p.uid)) return false; // This will be empty if ignoreFilters is true
                 if (currentProfileIds.has(p.uid)) return false; // Don't add if already in the state
                 
                 if (p.isBot) return true;
@@ -110,14 +112,17 @@ function AnasayfaPageContent() {
     isFetching.current = true;
     setIsLoading(true);
 
+    // Pass the current profile IDs directly to fetchProfiles
     const currentProfileIds = new Set(profiles.map(p => p.uid));
     const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, currentProfileIds);
     
+    // Append new profiles to the existing ones
     setProfiles(prev => [...prev, ...newProfiles]);
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, firestore, userProfile]);
 
   // Initial load
   useEffect(() => {
@@ -279,7 +284,7 @@ function AnasayfaPageContent() {
         description: langTr.anasayfa.resetToastDescription,
       });
       setProfiles([]);
-      loadProfiles();
+      loadProfiles(true); // Call with ignoreFilters = true
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
