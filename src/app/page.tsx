@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { useUser } from '@/firebase/provider';
 import { useEffect } from 'react';
-import { Mail, UserPlus, Trash2 } from 'lucide-react';
+import { Mail, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import AppShell from '@/components/app-shell';
@@ -25,26 +25,6 @@ export default function WelcomePage() {
         router.replace('/anasayfa');
     }
   }, [user, userProfile, isUserLoading, router]);
-
-  const handleClearCache = () => {
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-      toast({
-        title: "Önbellek Temizlendi",
-        description: "Uygulama verileri başarıyla temizlendi. Sayfa yenileniyor.",
-      });
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Önbellek temizlenirken bir sorun oluştu.",
-        variant: 'destructive',
-      });
-    }
-  };
 
   // While loading, show a loader to prevent any flicker or premature rendering.
   if (isUserLoading) {
@@ -111,10 +91,6 @@ export default function WelcomePage() {
               </Button>
             </Link>
           </div>
-            <Button variant="link" className="text-muted-foreground hover:text-foreground" onClick={handleClearCache}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Önbelleği Temizle
-          </Button>
         </div>
       </div>
     );
