@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,6 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import useSWR from 'swr';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -106,37 +105,44 @@ function AnasayfaPageContent() {
   const router = useRouter();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  
-  const fetcher = (ignoreFilters: boolean) => {
-    if (user && firestore && userProfile && !isUserLoading) {
-        return fetchProfiles(firestore, user, userProfile, ignoreFilters);
-    }
-    return Promise.resolve([]);
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const isFetching = useRef(false);
 
-  const { data: fetchedProfiles, error, isLoading, mutate } = useSWR(
-      user && userProfile ? ['profiles', user.uid] : null,
-      () => fetcher(false),
-      { revalidateOnFocus: false }
-  );
+  const loadProfiles = useCallback(async (ignoreFilters = false) => {
+    if (!user || !firestore || !userProfile || isFetching.current) return;
 
+    isFetching.current = true;
+    setIsLoading(true);
+
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters);
+    
+    // Filter out profiles that are already in the list to avoid duplicates
+    const uniqueNewProfiles = newProfiles.filter(np => !profiles.some(p => p.uid === np.uid));
+
+    setProfiles(prev => [...prev, ...uniqueNewProfiles]);
+    setIsLoading(false);
+    isFetching.current = false;
+  }, [user, firestore, userProfile, profiles]);
+
+  // Initial load
   useEffect(() => {
-    if (fetchedProfiles) {
-      setProfiles(fetchedProfiles);
+    if (!isUserLoading && user && userProfile) {
+      loadProfiles();
     }
-  }, [fetchedProfiles]);
-  
-  useEffect(() => {
-      // Prefetch next batch of profiles when the current stack is low
-      if (profiles.length > 0 && profiles.length < 5) {
-          mutate(); // Re-trigger fetcher
-      }
-  }, [profiles.length, mutate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUserLoading, user, userProfile]);
 
+  // Prefetch when deck is low
+  useEffect(() => {
+    if (profiles.length > 0 && profiles.length < 5 && !isFetching.current) {
+        loadProfiles();
+    }
+  }, [profiles.length, loadProfiles]);
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
     
+    // Immediately remove the swiped profile from the state to make the UI feel fast
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -150,6 +156,7 @@ function AnasayfaPageContent() {
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
+            // Re-add the profile to the top of the stack if the action failed
             setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
@@ -261,11 +268,12 @@ function AnasayfaPageContent() {
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
+        // If an error occurs, re-add the profile to the top of the stack
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
   }, [user, firestore, toast, userProfile, router]);
   
-  if (isLoading || isUserLoading) {
+  if (isUserLoading || (isLoading && profiles.length === 0)) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
         <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
@@ -274,7 +282,7 @@ function AnasayfaPageContent() {
   }
 
   const handleRetry = () => {
-      mutate();
+      loadProfiles();
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
@@ -297,7 +305,9 @@ function AnasayfaPageContent() {
                         <p className="text-muted-foreground">
                         {langTr.anasayfa.outOfProfilesDescription}
                         </p>
-                        <Button onClick={handleRetry}>Tekrar Dene</Button>
+                        <Button onClick={handleRetry} disabled={isFetching.current}>
+                            {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
+                        </Button>
                     </div>
                 )
             )}

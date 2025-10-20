@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import useSWR from 'swr';
 
 function EslesmelerPageContent() {
   const t = langTr.eslesmeler;
@@ -28,6 +27,8 @@ function EslesmelerPageContent() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
+  const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [chatToInteract, setChatToInteract] = useState<DenormalizedMatch | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -40,23 +41,29 @@ function EslesmelerPageContent() {
     );
   }, [user, firestore]);
   
-  const { data: matches, error, isLoading } = useSWR(
-      matchesQuery ? `matches/${user?.uid}` : null,
-      () => new Promise((resolve) => {
-          if (!matchesQuery) return resolve([]);
-          const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
-              const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
-              resolve(matchesData);
-              // We don't unsubscribe here if we want real-time updates,
-              // but for SWR's model, we resolve the promise and let SWR manage revalidation.
-              // For a chat app, you might stick with the raw onSnapshot.
-              // For simplicity here, we resolve once. Let's make it real-time.
-          });
-          // This part is tricky with SWR. For a true real-time app,
-          // you'd manage state outside SWR or use a library that integrates SWR with Firestore's real-time features.
-          // Let's stick to a simpler fetch for now.
-      })
-  );
+  useEffect(() => {
+    if (!matchesQuery) {
+        setIsLoading(false);
+        return;
+    }
+    
+    setIsLoading(true);
+    const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
+        const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
+        setMatches(matchesData);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching matches:", error);
+        setIsLoading(false);
+        toast({
+            title: "Hata",
+            description: "Eşleşmeler getirilirken bir hata oluştu.",
+            variant: "destructive"
+        })
+    });
+    
+    return () => unsubscribe();
+  }, [matchesQuery, toast]);
 
 
   const filteredMatches = useMemo(() => {
