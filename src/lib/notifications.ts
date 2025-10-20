@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
@@ -7,10 +8,16 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps } from 'firebase/app';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications, Token } from '@capacitor/push-notifications';
 
 // Ensure Firebase is initialized
 if (!getApps().length) {
-    initializeApp(firebaseConfig);
+    try {
+      initializeApp(firebaseConfig);
+    } catch(e) {
+      console.error("Firebase already initialized.")
+    }
 }
 
 // Function to check if notification is supported
@@ -81,11 +88,33 @@ export const removeTokenFromFirestore = async (firestore: any, user: any, fcmTok
 };
 
 export const useNotificationHandler = (toast: (options: any) => void) => {
-    const { firebaseApp } = useFirebase();
+    const { firebaseApp, firestore, user } = useFirebase();
 
     useEffect(() => {
-        const checkSupportAndListen = async () => {
-            if (firebaseApp && isNotificationSupported()) {
+        if (!firebaseApp) return;
+
+        const setupListeners = async () => {
+            if (Capacitor.isNativePlatform()) {
+                // Handle mobile push notifications
+                PushNotifications.addListener('registration', async (token: Token) => {
+                    console.log('Push registration success, token: ' + token.value);
+                    await saveTokenToFirestore(firestore, user, token.value);
+                });
+
+                PushNotifications.addListener('registrationError', (error: any) => {
+                    console.error('Error on registration: ' + JSON.stringify(error));
+                });
+
+                PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                    console.log('Push received: ' + JSON.stringify(notification));
+                     toast({
+                        title: notification.title,
+                        description: notification.body,
+                    });
+                });
+
+            } else if (isNotificationSupported()) {
+                // Handle web push notifications
                 const messaging = getMessaging(firebaseApp);
                 const unsubscribe = onMessage(messaging, (payload) => {
                     console.log('Foreground message received. ', payload);
@@ -98,18 +127,15 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
             }
         };
 
-        const unsubscribePromise = checkSupportAndListen();
+        const unsubscribePromise = setupListeners();
 
         return () => {
-            unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+            if (Capacitor.isNativePlatform()) {
+                PushNotifications.removeAllListeners();
+            } else {
+                 unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+            }
         };
-    }, [firebaseApp, toast]);
-};
 
-// This function needs to be called from a component that uses the useUser hook
-export const manageNotificationPermission = async (firestore: any, user: any) => {
-    const permissionResult = await requestNotificationPermission();
-    if (permissionResult?.permission === 'granted' && permissionResult.fcmToken) {
-        await saveTokenToFirestore(firestore, user, permissionResult.fcmToken);
-    }
+    }, [firebaseApp, firestore, user, toast]);
 };

@@ -10,9 +10,11 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
-import { requestNotificationPermission, isNotificationSupported, saveTokenToFirestore } from '@/lib/notifications';
+import { requestNotificationPermission, isNotificationSupported, saveTokenToFirestore, useNotificationHandler } from '@/lib/notifications';
 import { Icons } from '@/components/icons';
 import { useUser, useFirestore } from '@/firebase/provider';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 
 // You can get this from package.json in a real build process
@@ -30,18 +32,56 @@ export default function AppSettingsPage() {
   const [notificationPermission, setNotificationPermission] = useState('default');
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  
+  useNotificationHandler(toast);
 
   useEffect(() => {
     setMounted(true);
-    const supported = isNotificationSupported();
-    setIsSupported(supported);
-    if (supported && typeof window !== 'undefined' && 'Notification' in window) {
-        setNotificationPermission(Notification.permission);
-    }
+    const checkSupport = async () => {
+        if (Capacitor.isNativePlatform()) {
+            setIsSupported(true);
+            const permStatus = await PushNotifications.checkPermissions();
+            setNotificationPermission(permStatus.receive);
+        } else {
+            const webSupported = isNotificationSupported();
+            setIsSupported(webSupported);
+            if (webSupported && typeof window !== 'undefined' && 'Notification' in window) {
+                setNotificationPermission(Notification.permission);
+            }
+        }
+    };
+    checkSupport();
   }, []);
+  
+  const requestMobilePushPermissions = async () => {
+    try {
+      let permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive === 'prompt') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+      setNotificationPermission(permStatus.receive);
 
-  const handlePermissionRequest = async () => {
-      setIsRequestingPermission(true);
+      if (permStatus.receive !== 'granted') {
+        throw new Error('Kullanıcı bildirim iznini reddetti!');
+      }
+
+      await PushNotifications.register();
+      toast({
+          title: "Bildirimlere Abone Olundu",
+          description: "Mobil bildirimler için başarıyla abone oldunuz."
+      });
+      
+    } catch (error: any) {
+      toast({
+          title: "Mobil Bildirim Hatası",
+          description: `İzin alınırken hata oluştu: ${error.message}`,
+          variant: "destructive"
+      });
+      console.error("Error requesting mobile push permissions:", error);
+    }
+  };
+
+  const requestWebPushPermissions = async () => {
       try {
           const result = await requestNotificationPermission();
           if (result) {
@@ -61,16 +101,26 @@ export default function AppSettingsPage() {
               }
           }
       } catch (error) {
-          console.error("Error requesting notification permission:", error);
+          console.error("Error requesting web notification permission:", error);
            toast({
               title: "Hata",
-              description: "Bildirim izni istenirken bir sorun oluştu.",
+              description: "Web bildirim izni istenirken bir sorun oluştu.",
               variant: 'destructive'
           });
-      } finally {
-        setIsRequestingPermission(false);
       }
-  }
+  };
+
+
+  const handleEnableNotificationsClick = async () => {
+      setIsRequestingPermission(true);
+      if (Capacitor.isNativePlatform()) {
+        await requestMobilePushPermissions();
+      } else {
+        await requestWebPushPermissions();
+      }
+      setIsRequestingPermission(false);
+  };
+
 
   const handleClearCache = () => {
     try {
@@ -117,11 +167,11 @@ export default function AppSettingsPage() {
                         <span className="font-normal text-xs leading-snug text-muted-foreground">
                              {notificationPermission === 'granted' && 'Bildirimlere izin verdin.'}
                              {notificationPermission === 'denied' && 'Bildirimleri engelledin.'}
-                             {notificationPermission === 'default' && 'Bildirimlere henüz izin vermedin.'}
+                             {notificationPermission === 'prompt' && 'Bildirimlere henüz izin vermedin.'}
                         </span>
                     </div>
-                     {notificationPermission === 'default' && (
-                        <Button variant="default" size="sm" onClick={handlePermissionRequest} disabled={isRequestingPermission}>
+                     {notificationPermission === 'prompt' && (
+                        <Button variant="default" size="sm" onClick={handleEnableNotificationsClick} disabled={isRequestingPermission}>
                            {isRequestingPermission ? <Icons.logo width={16} height={16} className='animate-pulse mr-2' /> : <Bell className="h-4 w-4 mr-2"/>}
                            İzin Ver
                         </Button>
@@ -144,7 +194,7 @@ export default function AppSettingsPage() {
                     <div className="flex flex-col space-y-1">
                         <span>Anlık Bildirimler</span>
                         <span className="font-normal text-xs leading-snug text-muted-foreground">
-                            Tarayıcınız anlık bildirimleri desteklemiyor.
+                            Cihazınız veya tarayıcınız anlık bildirimleri desteklemiyor.
                         </span>
                     </div>
                 </div>
