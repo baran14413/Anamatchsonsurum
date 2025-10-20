@@ -7,7 +7,6 @@ export interface Product {
   title: string;
   description: string;
   price: string;
-  // Diğer olası alanlar
 }
 
 export interface Purchase {
@@ -22,33 +21,72 @@ export interface BillingPlugin {
   checkSubscriptions(): Promise<{ activeSubscriptions: any[] }>;
 }
 
-// Eklentiyi sarmalayan ve platform kontrolü yapan daha güvenli bir yapı
-const initializeBilling = (): BillingPlugin => {
-  if (Capacitor.isPluginAvailable('Billing')) {
-    // Eklenti sadece mevcutsa ve native platformdaysa yükle
-    return registerPlugin<BillingPlugin>('Billing');
-  } else {
-    // Eklenti mevcut değilse (örneğin web'de), konsola uyarı veren sahte bir implementasyon döndür.
-    // Bu, kodun hata vermesini engeller.
-    const unavailablePlugin: BillingPlugin = {
-      initialize: async () => console.warn('Billing plugin not available.'),
-      queryProducts: async () => {
-        console.warn('Billing plugin not available.');
-        return { products: [] };
-      },
-      purchase: async (options) => {
-        console.warn(`Billing plugin not available. Purchase for ${options.productId} cannot be completed.`);
-        return { purchaseState: 'FAILED', productId: options.productId };
-      },
-      checkSubscriptions: async () => {
-        console.warn('Billing plugin not available.');
-        return { activeSubscriptions: [] };
-      },
-    };
-    return unavailablePlugin;
-  }
+// Default implementation for web or when the plugin is not available.
+const unavailableBilling: BillingPlugin = {
+  initialize: async () => console.warn('Billing plugin not available on this platform.'),
+  queryProducts: async () => {
+    console.warn('Billing plugin not available.');
+    return { products: [] };
+  },
+  purchase: async (options) => {
+    console.warn(`Billing plugin not available. Purchase for ${options.productId} cannot be completed.`);
+    // Returning FAILED to avoid confusion with cancellation.
+    return { purchaseState: 'FAILED', productId: options.productId };
+  },
+  checkSubscriptions: async () => {
+    console.warn('Billing plugin not available.');
+    return { activeSubscriptions: [] };
+  },
 };
 
-const Billing = initializeBilling();
+// A singleton instance of our billing plugin.
+let billingInstance: BillingPlugin | null = null;
+let isInitializing = false;
 
-export default Billing;
+// This function safely initializes and returns the billing plugin.
+export const initializeBilling = async (): Promise<BillingPlugin> => {
+  if (billingInstance) {
+    return billingInstance;
+  }
+
+  // Prevent multiple initializations at the same time.
+  if (isInitializing) {
+    // If initialization is already in progress, wait for it to complete.
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (billingInstance) {
+          clearInterval(interval);
+          resolve(billingInstance);
+        }
+      }, 100);
+    });
+  }
+
+  isInitializing = true;
+
+  if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Billing')) {
+    try {
+      const plugin = registerPlugin<BillingPlugin>('Billing');
+      await plugin.initialize();
+      console.log("Billing plugin initialized successfully.");
+      billingInstance = plugin;
+    } catch (error) {
+      console.error("Failed to initialize billing plugin:", error);
+      billingInstance = unavailableBilling; // Fallback to unavailable
+    }
+  } else {
+    billingInstance = unavailableBilling;
+  }
+  
+  isInitializing = false;
+  return billingInstance;
+};
+
+// Export a getter to access the instance if needed, though initialization should be primary.
+export const getBilling = (): BillingPlugin => {
+    if (!billingInstance) {
+        console.warn("Billing plugin has not been initialized. Call initializeBilling() first.");
+        return unavailableBilling;
+    }
+    return billingInstance;
+}

@@ -1,13 +1,12 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Gem, Star, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { products, getProductById } from '@/lib/products';
-import Billing from '@/lib/billing';
+import { initializeBilling, getBilling } from '@/lib/billing';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { doc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -21,12 +20,21 @@ export default function MarketPage() {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
+  const [isBillingReady, setIsBillingReady] = useState(false);
 
   const goldProducts = products.filter(p => p.type === 'gold');
   const superLikeProducts = products.filter(p => p.type === 'superlike');
 
+  // Initialize the billing plugin when the component mounts
+  useEffect(() => {
+    initializeBilling().then(() => {
+      setIsBillingReady(true);
+      console.log("Billing is now ready.");
+    });
+  }, []);
+
   const handlePurchase = async (productId: string) => {
-    // Güvenlik katmanı: Web'de bu özelliğin çalışmasını engelle ve kullanıcıyı bilgilendir.
+    // First, check if the platform is native. This is a clear check for the user.
     if (!Capacitor.isNativePlatform()) {
         toast({
             title: 'Web Tarayıcısı',
@@ -35,7 +43,12 @@ export default function MarketPage() {
         });
         return;
     }
-      
+
+    if (!isBillingReady) {
+      toast({ title: 'Hata', description: 'Faturalandırma servisi henüz hazır değil. Lütfen bir an bekleyin.', variant: 'destructive' });
+      return;
+    }
+
     if (!user || !firestore) {
       toast({ title: 'Hata', description: 'Satın alım yapmak için giriş yapmalısınız.', variant: 'destructive' });
       return;
@@ -44,13 +57,11 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-      // Artık sadece mobil platformda çağrılacak olan Billing modülünü kullanıyoruz.
+      const Billing = getBilling();
       const result = await Billing.purchase({ productId });
-      
       const product = getProductById(productId);
 
       if (result.purchaseState === 'PURCHASED' && product) {
-        // Satın alma başarılı, Firestore'da kullanıcı profilini güncelle
         const userRef = doc(firestore, 'users', user.uid);
         let updateData: any = {};
 
@@ -84,7 +95,6 @@ export default function MarketPage() {
 
     } catch (error: any) {
       console.error('Satın alma hatası:', error);
-      // "canceled" veya "cancelled" içeren hataları sessizce geç
       if (error.message && !error.message.toLowerCase().includes('cancel')) {
           toast({
               title: 'Satın Alma Başarısız',
@@ -116,7 +126,7 @@ export default function MarketPage() {
         <Button 
           className={cn("w-full", product.type === 'gold' && "bg-yellow-500 hover:bg-yellow-600 text-black")} 
           onClick={() => handlePurchase(product.id)}
-          disabled={!!isPurchasing}
+          disabled={!!isPurchasing || !isBillingReady}
         >
           {isPurchasing === product.id ? <Icons.logo width={24} height={24} className="animate-pulse" /> : 'Satın Al'}
         </Button>
