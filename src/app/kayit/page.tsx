@@ -7,7 +7,6 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,16 +19,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, XCircle, Plus, Trash2, Pencil, MapPin, Star, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MapPin, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
-import Image from "next/image";
 import { Icons } from "@/components/icons";
-import type { UserImage } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import * as LucideIcons from 'lucide-react';
-import { cn } from "@/lib/utils";
 
 
 const formSchema = z.object({
@@ -40,10 +36,6 @@ const formSchema = z.object({
       .min(2, { message: "İsim en az 2 karakter olmalıdır." })
       .max(14, { message: "İsim en fazla 14 karakter olabilir." })
       .regex(/^[a-zA-Z\sçÇğĞıİöÖşŞüÜ]+$/, { message: "İsim sadece harf içerebilir." }),
-    images: z.array(z.object({
-        url: z.string(),
-        public_id: z.string(),
-    })).min(1, { message: "En az 1 fotoğraf yüklemelisin." }),
     location: z.object({
         latitude: z.number(),
         longitude: z.number(),
@@ -56,17 +48,6 @@ const formSchema = z.object({
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-type ImageSlot = {
-    file: File | null;
-    preview: string | null;
-    public_id?: string | null;
-    isUploading: boolean;
-};
-
-const getInitialImageSlots = (): ImageSlot[] => {
-    return Array.from({ length: 10 }, () => ({ file: null, preview: null, public_id: null, isUploading: false }));
-};
-
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 const interestCategories = langTr.signup.step11.categories;
 
@@ -74,19 +55,13 @@ export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const t = langTr.signup;
-  const { auth, firestore, storage } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
-
-  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(getInitialImageSlots);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
-  const tempIdRef = useRef(`temp_${Date.now()}`);
-
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -98,7 +73,6 @@ export default function SignUpPage() {
       password: '',
       confirmPassword: '',
       name: "",
-      images: [],
       interests: [],
     },
     mode: "onChange",
@@ -144,94 +118,6 @@ export default function SignUpPage() {
       { timeout: 10000, enableHighAccuracy: true }
     );
   };
-  
-  const handleFileSelect = (index: number) => {
-    if(isSubmitting) return;
-    fileInputRef.current?.setAttribute('data-slot-index', String(index));
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    const slotIndexStr = fileInputRef.current?.getAttribute('data-slot-index');
-    const slotIndex = slotIndexStr ? parseInt(slotIndexStr) : -1;
-
-    if (slotIndex === -1) return;
-    if (!storage) {
-        toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
-        return;
-    }
-
-    setImageSlots(prev => {
-        const newSlots = [...prev];
-        newSlots[slotIndex] = { file, preview: URL.createObjectURL(file), isUploading: true, public_id: null };
-        return newSlots;
-    });
-
-    const tempId = tempIdRef.current;
-    const uniqueFileName = `bematch_profiles/${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-    const imageRef = storageRef(storage, uniqueFileName);
-
-    try {
-        const snapshot = await uploadBytes(imageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
-        const newImage = { url: downloadURL, public_id: uniqueFileName };
-        
-        const currentImages = form.getValues('images') || [];
-        const finalImages = [...currentImages, newImage];
-        form.setValue('images', finalImages, { shouldValidate: true });
-
-        setImageSlots(prevSlots => {
-            const updatedSlots = [...prevSlots];
-            updatedSlots[slotIndex] = { file: null, preview: downloadURL, public_id: uniqueFileName, isUploading: false };
-            return updatedSlots;
-        });
-
-    } catch (error: any) {
-        toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
-        // Revert UI on failure
-        setImageSlots(prev => prev.map((s, i) => i === slotIndex ? getInitialImageSlots()[i] : s));
-    } finally {
-        if (e.target) e.target.value = ''; // Reset file input
-    }
-  };
-
-
-  const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
-      e.stopPropagation();
-      if(isSubmitting || !storage) return;
-
-      const slotToDelete = imageSlots[index];
-      if (slotToDelete.public_id) {
-          try {
-              const imageRef = storageRef(storage, slotToDelete.public_id);
-              await deleteObject(imageRef);
-          } catch (err: any) {
-                // If object does not exist, we can ignore, otherwise it's a problem.
-                if (err.code !== 'storage/object-not-found') {
-                  console.error("Failed to delete from Firebase Storage but proceeding in UI", err);
-                  return; // Optionally stop the UI update if delete fails
-                }
-          }
-      }
-      
-      const newSlots = [...imageSlots];
-      if (newSlots[index].preview && newSlots[index].file) {
-            URL.revokeObjectURL(newSlots[index].preview!);
-      }
-      newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
-      const filledSlots = newSlots.filter(s => s.preview);
-      const emptySlots = newSlots.filter(s => !s.preview);
-      const finalSlots = [...filledSlots, ...emptySlots];
-      setImageSlots(finalSlots);
-      
-      const finalImages = finalSlots
-        .filter(p => p.preview && p.public_id && !p.isUploading)
-        .map(p => ({ url: p.preview!, public_id: p.public_id! }));
-      form.setValue('images', finalImages, { shouldValidate: true });
-  };
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => {
@@ -257,19 +143,17 @@ export default function SignUpPage() {
             throw new Error(t.errors.dbConnectionError);
         }
         
-        const finalImages = data.images;
-
-        await updateProfile(currentUser, { displayName: data.name, photoURL: finalImages.length > 0 ? finalImages[0].url : '' });
+        await updateProfile(currentUser, { displayName: data.name });
         
         const userProfileData = {
             uid: currentUser.uid,
             email: data.email,
             fullName: data.name,
             interests: data.interests,
-            images: finalImages,
+            images: [], // Initialize with empty array
             location: data.location,
             address: null,
-            profilePicture: finalImages.length > 0 ? finalImages[0].url : '',
+            profilePicture: '', // Initialize with empty string
             createdAt: serverTimestamp(),
             dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 25)).toISOString(), // Default age 25
             gender: 'male', // Default gender
@@ -279,11 +163,12 @@ export default function SignUpPage() {
             globalModeEnabled: true, // Global mode is ON by default for new users
             expandAgeRange: true,
             isBot: false,
-            rulesAgreed: false,
+            rulesAgreed: false, // User will agree after this step
         };
         
         await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
-        router.push('/kurallar');
+        // Redirect to gallery to add first photos
+        router.push('/profil/galeri');
 
     } catch (error: any) {
         if (error.code === 'auth/email-already-in-use') {
@@ -299,20 +184,18 @@ export default function SignUpPage() {
     }
   }
   
-  const totalSteps = 6;
+  const totalSteps = 4;
   const progressValue = ((step + 1) / totalSteps) * 100;
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] | undefined;
-    let isValid = true;
     
     switch (step) {
       case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
-      case 1: fieldsToValidate = ['interests']; break;
-      case 2: fieldsToValidate = ['location']; break;
-      case 3: fieldsToValidate = ['name']; break;
-      case 4: fieldsToValidate = ['images']; break;
-      case 5: // Summary step, trigger full validation before submitting
+      case 1: fieldsToValidate = ['name']; break;
+      case 2: fieldsToValidate = ['interests']; break;
+      case 3: fieldsToValidate = ['location']; break;
+      case 4: 
         await form.trigger();
         if (form.formState.isValid) {
             onSubmit(form.getValues());
@@ -320,10 +203,9 @@ export default function SignUpPage() {
             const firstErrorField = Object.keys(form.formState.errors)[0] as keyof SignupFormValues;
             const errorStepMap: { [key in keyof SignupFormValues]?: number } = {
                 'email': 0, 'password': 0, 'confirmPassword': 0,
-                'interests': 1,
-                'location': 2,
-                'name': 3,
-                'images': 4,
+                'name': 1,
+                'interests': 2,
+                'location': 3,
             };
             const stepWithError = errorStepMap[firstErrorField];
             if (stepWithError !== undefined) {
@@ -344,13 +226,9 @@ export default function SignUpPage() {
         return;
     }
     
-    if (fieldsToValidate) {
-        isValid = await form.trigger(fieldsToValidate);
-        if (isValid) {
-          nextStep();
-        }
-    } else {
-        nextStep();
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      nextStep();
     }
   };
   
@@ -429,6 +307,21 @@ export default function SignUpPage() {
                 </>
               )}
                {step === 1 && (
+                <>
+                  <h1 className="text-3xl font-bold">{t.step2.title}</h1>
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                      <FormItem className="mt-8">
+                          <FormControl>
+                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-white/50 rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-white/50" {...field} />
+                          </FormControl>
+                          <FormLabel className="text-white/80">{t.step2.label}</FormLabel>
+                          <FormMessage />
+                      </FormItem>
+                      )}
+                  />
+                </>
+              )}
+               {step === 2 && (
                 <div className="flex-1 flex flex-col min-h-0">
                     <FormField
                         control={form.control}
@@ -478,7 +371,7 @@ export default function SignUpPage() {
                     />
                 </div>
               )}
-               {step === 2 && (
+               {step === 3 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <MapPin className="w-20 h-20 text-white" />
                     <div className="space-y-2">
@@ -507,82 +400,7 @@ export default function SignUpPage() {
                     <FormMessage>{form.formState.errors.location?.message}</FormMessage>
                  </div>
               )}
-               {step === 3 && (
-                <>
-                  <h1 className="text-3xl font-bold">{t.step2.title}</h1>
-                  <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem className="mt-8">
-                          <FormControl>
-                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-white/50 rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-white/50" {...field} />
-                          </FormControl>
-                          <FormLabel className="text-white/80">{t.step2.label}</FormLabel>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                </>
-              )}
-              {step === 4 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                    <FormField
-                      control={form.control}
-                      name="images"
-                      render={() => (
-                        <FormItem className="flex-1 flex flex-col min-h-0">
-                          <div className="shrink-0">
-                            <h1 className="text-3xl font-bold">Fotoğraflarını Ekle</h1>
-                            <p className="text-white/80">
-                              Profilinde en az 1 fotoğraf olmalı.
-                            </p>
-                             <div className="space-y-2 mt-4">
-                                <FormMessage />
-                            </div>
-                          </div>
-                          <div className="flex-1 overflow-y-auto pt-4 -mr-6 pr-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                {imageSlots.map((slot, index) => (
-                                    <div key={index} className="relative aspect-[3/4]">
-                                        <div onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full h-full border-2 border-dashed border-white/50 bg-white/10 rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-white/20 group", slot.preview && "border-solid border-white/30")}>
-                                            {slot.preview ? (
-                                                <>
-                                                    <Image src={slot.preview} alt={'Önizleme ' + index} fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                                    {slot.isUploading && (
-                                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                           <Icons.logo width={48} height={48} className="animate-pulse" />
-                                                        </div>
-                                                    )}
-                                                    {index === 0 && (
-                                                        <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
-                                                            <Star className="w-3 h-3"/>
-                                                            Profil Fotoğrafı
-                                                        </Badge>
-                                                    )}
-                                                    {!isSubmitting && !slot.isUploading && (
-                                                        <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                            <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
-                                                            {uploadedImageCount > 0 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="text-center text-white/70 p-2 flex flex-col items-center justify-center gap-2">
-                                                    <div className='h-12 w-12 rounded-full flex items-center justify-center bg-white/20 text-white'>
-                                                        <Plus className="w-8 h-8" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                </div>
-              )}
-               {step === 5 && (
+               {step === 4 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
                     <h1 className="text-3xl font-bold">Hesap Özeti</h1>
                     <p className="text-white/80 max-w-sm">
@@ -592,7 +410,6 @@ export default function SignUpPage() {
                         <p><strong>İsim:</strong> {form.getValues('name')}</p>
                         <p><strong>E-posta:</strong> {form.getValues('email')}</p>
                         <p><strong>İlgi Alanları:</strong> {form.getValues('interests').slice(0,3).join(', ')}...</p>
-                        <p><strong>Fotoğraf Sayısı:</strong> {form.getValues('images').length}</p>
                     </div>
                  </div>
               )}
@@ -605,12 +422,11 @@ export default function SignUpPage() {
               className="w-full h-14 rounded-full text-lg font-bold bg-white text-red-600 hover:bg-gray-200"
               disabled={
                 isSubmitting ||
-                (step === 1 && (form.getValues('interests')?.length ?? 0) < 5) ||
-                (step === 2 && locationStatus !== 'success') ||
-                (step === 4 && uploadedImageCount < 1)
+                (step === 2 && (form.getValues('interests')?.length ?? 0) < 5) ||
+                (step === 3 && locationStatus !== 'success')
               }
             >
-              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === 5 ? "Onayla ve Bitir" : t.common.next)}
+              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}
             </Button>
           </div>
         </form>

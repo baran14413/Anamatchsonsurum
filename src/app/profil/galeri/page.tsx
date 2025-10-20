@@ -53,6 +53,17 @@ export default function GalleryPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // This state determines if this page is part of the initial onboarding
+    const [isOnboarding, setIsOnboarding] = useState(false);
+
+    useEffect(() => {
+        // If the user has not agreed to the rules yet, we assume they are in the onboarding flow.
+        if (userProfile && !userProfile.rulesAgreed) {
+            setIsOnboarding(true);
+        }
+    }, [userProfile]);
+
+
     useEffect(() => {
         if (userProfile) {
             setImageSlots(getInitialImageSlots(userProfile));
@@ -85,12 +96,15 @@ export default function GalleryPage() {
         const isReplacing = !!imageSlots[slotIndex].preview;
         if (isReplacing && imageSlots[slotIndex].public_id) {
             const oldSlot = imageSlots[slotIndex];
-            const imageRefToDelete = storageRef(storage, oldSlot.public_id!);
-            await deleteObject(imageRefToDelete).catch(err => {
-                if (err.code !== 'storage/object-not-found') {
-                    console.error("Failed to delete old image from storage:", err);
-                }
-            });
+            // Only attempt to delete if it's a Firebase Storage URL, not a Google profile pic
+            if (oldSlot.public_id && !oldSlot.public_id.startsWith('google_')) {
+                const imageRefToDelete = storageRef(storage, oldSlot.public_id!);
+                await deleteObject(imageRefToDelete).catch(err => {
+                    if (err.code !== 'storage/object-not-found') {
+                        console.error("Failed to delete old image from storage:", err);
+                    }
+                });
+            }
         }
         
         handleImageUpload(file, slotIndex);
@@ -132,10 +146,15 @@ export default function GalleryPage() {
         e.stopPropagation();
         if(isSubmitting || !storage) return;
 
-        if (uploadedImageCount <= 1) {
-            toast({ title: "En Az Bir Medya Gerekli", description: "Profilinde en az 1 fotoğraf bulunmalıdır.", variant: "destructive" });
+        if (uploadedImageCount <= 1 && isOnboarding) {
+            toast({ title: "En Az Bir Medya Gerekli", description: "Devam etmek için en az 1 fotoğraf eklemelisiniz.", variant: "destructive" });
             return;
         }
+        if (uploadedImageCount <= 1 && !isOnboarding) {
+            toast({ title: "En Az Bir Medya Gerekli", description: "Profilinizde en az 1 fotoğraf bulunmalıdır.", variant: "destructive" });
+            return;
+        }
+
 
         const slotToDelete = imageSlots[index];
         if (slotToDelete.public_id && !slotToDelete.public_id.startsWith('google_')) {
@@ -186,7 +205,12 @@ export default function GalleryPage() {
                 title: t.toasts.saveSuccessTitle,
                 description: t.toasts.saveSuccessDesc,
             });
-            router.push('/profil');
+            
+            if(isOnboarding) {
+                router.push('/kurallar');
+            } else {
+                router.push('/profil');
+            }
         } catch (error: any) {
             console.error("Gallery save error:", error);
             toast({ title: t.toasts.saveErrorTitle, description: error.message, variant: "destructive" });
@@ -199,18 +223,20 @@ export default function GalleryPage() {
     return (
         <div className="flex h-dvh flex-col bg-background text-foreground">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting}>
+                <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting || isOnboarding}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <h1 className="text-lg font-semibold">{t.title}</h1>
+                <h1 className="text-lg font-semibold">{isOnboarding ? "Profilini Oluştur" : t.title}</h1>
                 <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedImageCount < 1}>
-                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : langTr.common.save}
+                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (isOnboarding ? langTr.common.next : langTr.common.save)}
                 </Button>
             </header>
 
             <main className="flex-1 overflow-y-auto p-6 space-y-6">
                  <div>
-                    <p className="text-muted-foreground text-sm mb-4">Profilinde göstereceğin fotoğrafları yönet. En az 1, en fazla 10 fotoğraf ekleyebilirsin.</p>
+                    <p className="text-muted-foreground text-sm mb-4">
+                        {isOnboarding ? "Harika bir profil için ilk adımı at! Profilinde göstereceğin fotoğrafları ekle." : "Profilinde göstereceğin fotoğrafları yönet. En az 1, en fazla 10 fotoğraf ekleyebilirsin."}
+                    </p>
                     <div className="space-y-2">
                         <Progress value={(uploadedImageCount / 10) * 100} className="h-2" />
                         <p className="text-sm font-medium text-muted-foreground text-right">{uploadedImageCount} / 10</p>
@@ -240,7 +266,7 @@ export default function GalleryPage() {
                                         {!isSubmitting && !slot.isUploading && (
                                             <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                                 <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
-                                                {uploadedImageCount > 1 && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
+                                                {((!isOnboarding && uploadedImageCount > 1) || (isOnboarding && uploadedImageCount > 0)) && <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-8 w-8 rounded-full bg-red-600/80 text-white flex items-center justify-center hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>}
                                             </div>
                                         )}
                                     </>
