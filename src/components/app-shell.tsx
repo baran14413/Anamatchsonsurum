@@ -39,6 +39,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useNotificationHandler } from '@/lib/notifications';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -67,6 +69,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       });
     }
   };
+  
+    useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('backButton', ({ canGoBack }) => {
+        if (canGoBack) {
+          router.back();
+        } else {
+          App.exitApp();
+        }
+      });
+    }
+
+    return () => {
+      // Clean up the listener when the component unmounts
+      if (Capacitor.isNativePlatform()) {
+        App.removeAllListeners();
+      }
+    };
+  }, [router]);
+
 
   useEffect(() => {
     if (isUserLoading) {
