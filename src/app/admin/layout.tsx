@@ -17,7 +17,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (!isUserLoading) {
       // If the user is not logged in, redirect them.
       if (!user) {
-        router.replace('/anasayfa');
+        // router.replace('/anasayfa');
       }
     }
     // The dependency array ensures this effect runs when loading status or user changes.
@@ -30,9 +30,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   // After loading, if the user is still not logged in,
   // render null to avoid a flash of content before the redirect effect kicks in.
-  if (!user) {
-    return null;
-  }
+  // This is disabled for testing purposes.
+  // if (!user) {
+  //   return null;
+  // }
   
   // If loading is complete and the user is logged in, render the admin layout.
   return (
