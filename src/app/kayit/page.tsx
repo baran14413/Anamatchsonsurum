@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
@@ -19,14 +20,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, XCircle, MapPin, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
+import { ArrowLeft, X, Mail, Lock, Eye, EyeOff, MapPin, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import { Icons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import * as LucideIcons from 'lucide-react';
-
 
 const formSchema = z.object({
     email: z.string().email({ message: langTr.signup.errors.form.email }),
@@ -184,7 +184,7 @@ export default function SignUpPage() {
     }
   }
   
-  const totalSteps = 4;
+  const totalSteps = 3; // Reduced number of steps
   const progressValue = ((step + 1) / totalSteps) * 100;
 
   const handleNextStep = async () => {
@@ -192,10 +192,9 @@ export default function SignUpPage() {
     
     switch (step) {
       case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
-      case 1: fieldsToValidate = ['name']; break;
-      case 2: fieldsToValidate = ['interests']; break;
-      case 3: fieldsToValidate = ['location']; break;
-      case 4: 
+      case 1: fieldsToValidate = ['name', 'interests']; break;
+      case 2: fieldsToValidate = ['location']; break;
+      case 3: // This is now the final step
         await form.trigger();
         if (form.formState.isValid) {
             onSubmit(form.getValues());
@@ -203,9 +202,8 @@ export default function SignUpPage() {
             const firstErrorField = Object.keys(form.formState.errors)[0] as keyof SignupFormValues;
             const errorStepMap: { [key in keyof SignupFormValues]?: number } = {
                 'email': 0, 'password': 0, 'confirmPassword': 0,
-                'name': 1,
-                'interests': 2,
-                'location': 3,
+                'name': 1, 'interests': 1,
+                'location': 2,
             };
             const stepWithError = errorStepMap[firstErrorField];
             if (stepWithError !== undefined) {
@@ -243,8 +241,8 @@ export default function SignUpPage() {
     };
   
   return (
-    <div className="flex h-dvh flex-col animated-gradient-bg text-white">
-       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-white/20 bg-transparent px-4">
+    <div className="flex h-dvh flex-col animated-gradient-bg text-black">
+       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-black/20 bg-transparent px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
@@ -259,15 +257,15 @@ export default function SignUpPage() {
               {step === 0 && (
                 <>
                   <h1 className="text-3xl font-bold">Hesabını Oluştur</h1>
-                  <p className="text-white/80 mt-2">Maceraya başlamak için e-posta ve şifreni belirle.</p>
+                  <p className="text-black/80 mt-2">Maceraya başlamak için e-posta ve şifreni belirle.</p>
                   <div className="space-y-6 mt-8">
                      <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
                             <FormLabel>E-posta Adresin</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
-                                    <Input type="email" placeholder="E-posta adresini gir" className="pl-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
+                                    <Input type="email" placeholder="E-posta adresini gir" className="pl-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -278,10 +276,10 @@ export default function SignUpPage() {
                             <FormLabel>Şifren</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
-                                    <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni oluştur" className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
+                                    <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni oluştur" className="pl-10 pr-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
+                                        {showPassword ? <EyeOff className="h-5 w-5 text-black/60" /> : <Eye className="h-5 w-5 text-black/60" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -293,10 +291,10 @@ export default function SignUpPage() {
                             <FormLabel>Şifreni Onayla</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
-                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir" className="pl-10 pr-10 h-12 bg-white/10 border-white/30 placeholder:text-white/60 focus:ring-white/80" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
+                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir" className="pl-10 pr-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
                                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-white/60" /> : <Eye className="h-5 w-5 text-white/60" />}
+                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-black/60" /> : <Eye className="h-5 w-5 text-black/60" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -307,30 +305,26 @@ export default function SignUpPage() {
                 </>
               )}
                {step === 1 && (
-                <>
-                  <h1 className="text-3xl font-bold">{t.step2.title}</h1>
+                <div className="flex-1 flex flex-col min-h-0">
                   <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem className="mt-8">
-                          <FormControl>
-                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-white/50 rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-white/50" {...field} />
+                      <FormItem className="shrink-0">
+                          <h1 className="text-3xl font-bold">{t.step2.title}</h1>
+                          <FormControl className="mt-8">
+                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-black/50 rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-black/50" {...field} />
                           </FormControl>
-                          <FormLabel className="text-white/80">{t.step2.label}</FormLabel>
+                          <FormLabel className="text-black/80">{t.step2.label}</FormLabel>
                           <FormMessage />
                       </FormItem>
                       )}
                   />
-                </>
-              )}
-               {step === 2 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                    <FormField
+                   <FormField
                         control={form.control}
                         name="interests"
                         render={({ field }) => (
-                            <FormItem className="flex-1 flex flex-col min-h-0">
+                            <FormItem className="flex-1 flex flex-col min-h-0 mt-8">
                                 <div className="shrink-0">
-                                    <h1 className="text-3xl font-bold">{t.step11.title}</h1>
-                                    <p className="text-white/80">
+                                    <h2 className="text-2xl font-bold">{t.step11.title}</h2>
+                                    <p className="text-black/80">
                                         {t.step11.description.replace('{count}', String(field.value.length))}
                                     </p>
                                     <FormMessage className="pt-2" />
@@ -340,7 +334,7 @@ export default function SignUpPage() {
                                         {interestCategories.map((category) => {
                                         const Icon = LucideIcons[category.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
                                         return (
-                                            <AccordionItem value={category.title} key={category.title} className="border-white/20">
+                                            <AccordionItem value={category.title} key={category.title} className="border-black/20">
                                             <AccordionTrigger className="hover:no-underline">
                                                 <div className="flex items-center gap-3">
                                                 <Icon className="h-5 w-5" />
@@ -371,46 +365,33 @@ export default function SignUpPage() {
                     />
                 </div>
               )}
-               {step === 3 && (
+               {step === 2 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <MapPin className="w-20 h-20 text-white" />
+                    <MapPin className="w-20 h-20 text-black" />
                     <div className="space-y-2">
                       <h1 className="text-3xl font-bold">{t.step6.title}</h1>
-                      <p className="text-white/80">{t.step6.description}</p>
+                      <p className="text-black/80">{t.step6.description}</p>
                     </div>
                     {locationStatus === 'idle' && (
-                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full bg-white text-red-600 hover:bg-gray-200">
+                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full bg-black text-white hover:bg-gray-800">
                             {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />}
                             {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
                         </Button>
                     )}
                     {locationStatus === 'success' && (
-                        <div className="flex flex-col items-center gap-2 text-green-400">
+                        <div className="flex flex-col items-center gap-2 text-green-600">
                            <CheckCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">Konum Başarıyla Alındı!</p>
                         </div>
                     )}
                     {locationStatus === 'error' && (
-                         <div className="flex flex-col items-center gap-2 text-red-400">
+                         <div className="flex flex-col items-center gap-2 text-red-600">
                            <XCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">{locationError}</p>
-                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4 bg-transparent text-white border-white hover:bg-white/10">Tekrar Dene</Button>
+                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4 bg-transparent text-black border-black hover:bg-black/10">Tekrar Dene</Button>
                         </div>
                     )}
                     <FormMessage>{form.formState.errors.location?.message}</FormMessage>
-                 </div>
-              )}
-               {step === 4 && (
-                 <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <h1 className="text-3xl font-bold">Hesap Özeti</h1>
-                    <p className="text-white/80 max-w-sm">
-                      Bilgilerini kontrol et. Her şey doğruysa, maceraya başlamak için onayla.
-                    </p>
-                    <div className="w-full max-w-sm text-left bg-white/10 p-4 rounded-lg space-y-2 text-sm">
-                        <p><strong>İsim:</strong> {form.getValues('name')}</p>
-                        <p><strong>E-posta:</strong> {form.getValues('email')}</p>
-                        <p><strong>İlgi Alanları:</strong> {form.getValues('interests').slice(0,3).join(', ')}...</p>
-                    </div>
                  </div>
               )}
             </div>
@@ -419,14 +400,14 @@ export default function SignUpPage() {
             <Button
               type="button"
               onClick={handleNextStep}
-              className="w-full h-14 rounded-full text-lg font-bold bg-white text-red-600 hover:bg-gray-200"
+              className="w-full h-14 rounded-full text-lg font-bold bg-black text-white hover:bg-gray-800"
               disabled={
                 isSubmitting ||
-                (step === 2 && (form.getValues('interests')?.length ?? 0) < 5) ||
-                (step === 3 && locationStatus !== 'success')
+                (step === 1 && (form.getValues('interests')?.length ?? 0) < 5) ||
+                (step === 2 && locationStatus !== 'success')
               }
             >
-              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps ? "Onayla ve Bitir" : t.common.next)}
+              {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (step === totalSteps - 1 ? "Hesabı Oluştur" : t.common.next)}
             </Button>
           </div>
         </form>

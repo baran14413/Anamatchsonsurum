@@ -134,14 +134,14 @@ function EslesmelerPageContent() {
 
   if (isLoading) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center animated-gradient-bg">
             <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
         </div>
       )
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden animated-gradient-bg">
         {(!matches || matches.length === 0) && !isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />

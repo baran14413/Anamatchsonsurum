@@ -47,7 +47,7 @@ input, textarea {
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 346.8 77.2% 49.8%;
+    --primary: 340 82% 52%; /* Pink */
     --primary-foreground: 355.7 100% 97.3%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -59,7 +59,7 @@ input, textarea {
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 346.8 77.2% 49.8%;
+    --ring: 340 82% 52%; /* Pink */
     --radius: 0.5rem;
   }
   .dark {
@@ -98,10 +98,10 @@ input, textarea {
   .animated-gradient-bg {
     background: linear-gradient(
       -45deg,
-      #000000,
-      #dc2626,
-      #000000,
-      #7f1d1d
+      #ffffff,
+      #f9a8d4, /* light pink */
+      #ffffff,
+      #f472b6  /* medium pink */
     );
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;

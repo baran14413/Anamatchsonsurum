@@ -25,7 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -57,6 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleAdminLogin = () => {
     if (adminPassword === 'admin') {
+      sessionStorage.setItem('admin_access', 'granted');
       router.push('/admin/dashboard');
     } else {
       toast({
@@ -73,8 +73,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     if (user && !userProfile?.rulesAgreed) {
-        if (pathname !== '/kurallar') {
-            router.replace('/kurallar');
+        if (pathname !== '/kurallar' && pathname !== '/profil/galeri') {
+            router.replace('/profil/galeri');
         }
     } else if (!user) {
         // Allow access to public pages

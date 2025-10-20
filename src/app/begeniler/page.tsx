@@ -132,7 +132,7 @@ function BegenilerPageContent() {
 
     if (isLoading) {
         return (
-            <div className="flex h-dvh w-full items-center justify-center">
+            <div className="flex h-dvh w-full items-center justify-center animated-gradient-bg">
                 <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
             </div>
         );
@@ -179,7 +179,7 @@ function BegenilerPageContent() {
     return (
         <AlertDialog>
              <Sheet open={!!selectedProfile} onOpenChange={(isOpen) => !isOpen && setSelectedProfile(null)}>
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-hidden animated-gradient-bg">
                     
                     {likers.length > 0 ? (
                         <div className="flex-1 overflow-y-auto p-4">

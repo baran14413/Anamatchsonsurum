@@ -255,7 +255,7 @@ function AnasayfaPageContent() {
   
   if (isLoading || isUserLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center animated-gradient-bg">
         <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
       </div>
     );
@@ -268,7 +268,7 @@ function AnasayfaPageContent() {
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center py-4 overflow-hidden">
+    <div className="flex-1 flex flex-col items-center py-4 overflow-hidden animated-gradient-bg">
       <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[85vh]">
             {topCard ? (
                 <MemoizedProfileCard

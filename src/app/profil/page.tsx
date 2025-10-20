@@ -141,7 +141,7 @@ function ProfilePageContent() {
       if (userProfile.gender) score++;
       if (userProfile.location) score++;
       if (userProfile.lookingFor) score++;
-      if (userProfile.media && userProfile.media.length >= 2) score++;
+      if (userProfile.images && userProfile.images.length >= 2) score++;
       if (userProfile.interests && userProfile.interests.length > 0) score++;
       return Math.round((score / maxScore) * 100);
   }
@@ -159,7 +159,7 @@ function ProfilePageContent() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto animated-gradient-bg">
       <div className="container mx-auto max-w-2xl p-4 space-y-6">
 
         {/* Profile Header */}
@@ -187,7 +187,7 @@ function ProfilePageContent() {
 
         {/* Gold Card */}
         {!isGoldMember && (
-          <Card className='shadow-md bg-gradient-to-r from-red-500 to-yellow-400 text-white'>
+          <Card className='shadow-md bg-gradient-to-r from-pink-500 to-yellow-400 text-white'>
               <CardContent className='p-4 flex items-center gap-4'>
                   <Icons.beGold width={48} height={48} />
                   <div className='flex-1'>

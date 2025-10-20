@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import { requestNotificationPermission, isNotificationSupported, saveTokenToFirestore, useNotificationHandler } from '@/lib/notifications';
@@ -215,8 +215,8 @@ export default function AppSettingsPage() {
               className="flex items-center justify-between rounded-lg border bg-background p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
             >
               <div className="flex items-center gap-3">
-                <Sun className="h-5 w-5" />
-                <span>Gündüz Modu</span>
+                <Palette className="h-5 w-5" />
+                <span>Pembe & Beyaz</span>
               </div>
               <RadioGroupItem value="light" id="light" />
             </Label>
