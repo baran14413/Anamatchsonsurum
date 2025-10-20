@@ -216,6 +216,7 @@ function AnasayfaPageContent() {
 
             if (profileToSwipe.isBot) {
                 try {
+                    // Trigger the webhook for the bot to send the initial message.
                     await fetch('/api/message-webhook', {
                         method: 'POST',
                         headers: {
@@ -224,7 +225,8 @@ function AnasayfaPageContent() {
                         },
                         body: JSON.stringify({
                             matchId: matchId,
-                            message: { senderId: user.uid, text: "Initial bot match message" }
+                            type: 'MATCH', // Specify the type of event
+                            userId: user.uid // The real user's ID
                         })
                     });
                 } catch (error: any) {

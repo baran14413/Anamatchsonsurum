@@ -1,8 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase/admin';
-import { BOT_REPLIES } from '@/lib/bot-data';
-import type { ChatMessage } from '@/lib/types';
+import { BOT_REPLIES, BOT_GREETINGS } from '@/lib/bot-data';
+import type { ChatMessage, UserProfile } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export const runtime = 'nodejs';
@@ -10,15 +10,11 @@ export const runtime = 'nodejs';
 // It's better to get this from environment variables
 const SHARED_SECRET = process.env.WEBHOOK_SECRET || 'your-very-secret-key';
 
-// Basit, önceden tanımlanmış bir cevap havuzundan rastgele bir cevap seçer.
-const getRandomBotReply = () => {
-    return BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
-};
+const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 /**
- * Bu API rotası, bir kullanıcı bir bota mesaj gönderdiğinde doğrudan istemciden tetiklenir.
- * Gelen mesaj bir bot'a gönderilmişse, yapay zeka yerine önceden tanımlanmış cevap havuzundan
- * rastgele bir cevap seçer ve sohbeti devam ettirir.
+ * Bu API rotası, bir kullanıcı bir bota mesaj gönderdiğinde VEYA bir botla eşleştiğinde tetiklenir.
+ * Gelen isteğin türüne göre (ilk eşleşme mi, mevcut sohbet mi) işlem yapar.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -29,16 +25,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Gelen Veriyi Ayrıştırma
-    const { matchId, message } = await req.json() as { matchId: string; message: ChatMessage };
+    const { matchId, type, userId } = await req.json() as { matchId: string; type: 'MATCH' | 'MESSAGE'; userId: string; };
 
-    if (!matchId || !message || !message.senderId) {
-      return NextResponse.json({ error: 'Gerekli alanlar eksik: matchId ve message.' }, { status: 400 });
+    if (!matchId || !type || !userId) {
+      return NextResponse.json({ error: 'Gerekli alanlar eksik: matchId, type ve userId.' }, { status: 400 });
     }
 
-    // Eşleşme ID'sinden bot'un ve kullanıcının ID'lerini çıkar
-    const [user1Id, user2Id] = matchId.split('_');
-    const botId = message.senderId === user1Id ? user2Id : user1Id;
-    const userId = message.senderId;
+    // Eşleşme ID'sinden bot'un ID'sini çıkar
+    const botId = matchId.replace(userId, '').replace('_', '');
 
     // 3. Bot varlığını kontrol et
     const botDoc = await db.collection('users').doc(botId).get();
@@ -47,8 +41,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Alıcı bir bot değil.' });
     }
     
-    // 4. Rastgele bir cevap seç
-    const reply = getRandomBotReply();
+    // 4. Cevap metnini belirle
+    let replyText: string;
+    if (type === 'MATCH') {
+      // Eğer yeni bir eşleşme ise, selamlaşma mesajlarından birini seç.
+      replyText = getRandomItem(BOT_GREETINGS);
+    } else {
+      // Eğer mevcut bir sohbete mesaj ise, standart cevaplardan birini seç.
+      replyText = getRandomItem(BOT_REPLIES);
+    }
     
     // Küçük bir gecikme ekleyerek cevabın daha doğal görünmesini sağla
     await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
@@ -57,22 +58,26 @@ export async function POST(req: NextRequest) {
     const botReplyMessage: Partial<ChatMessage> = {
       matchId: matchId,
       senderId: botId,
-      text: reply,
+      text: replyText,
       timestamp: FieldValue.serverTimestamp(),
       isRead: false,
       type: 'user',
     };
     await db.collection(`matches/${matchId}/messages`).add(botReplyMessage);
     
-    // 6. Eşleşme listesindeki son mesajı güncelle
+    // 6. Eşleşme listesindeki son mesajı ve okunmadı sayacını güncelle
     const batch = db.batch();
     const currentUserMatchRef = db.doc(`users/${userId}/matches/${matchId}`);
-    batch.update(currentUserMatchRef, { lastMessage: reply, timestamp: FieldValue.serverTimestamp(), unreadCount: FieldValue.increment(1) });
+    // Sadece kullanıcıya giden mesajda unreadCount artırılır.
+    batch.update(currentUserMatchRef, { lastMessage: replyText, timestamp: FieldValue.serverTimestamp(), unreadCount: FieldValue.increment(1) });
+    
     const botUserMatchRef = db.doc(`users/${botId}/matches/${matchId}`);
-    batch.update(botUserMatchRef, { lastMessage: reply, timestamp: FieldValue.serverTimestamp() });
+    // Bot kendi gönderdiği mesajı okumuş sayılır, unreadCount artırılmaz.
+    batch.update(botUserMatchRef, { lastMessage: replyText, timestamp: FieldValue.serverTimestamp() });
+    
     await batch.commit();
 
-    return NextResponse.json({ success: true, reply });
+    return NextResponse.json({ success: true, reply: replyText });
 
   } catch (error: any) {
     console.error("Bot mesaj webhook hatası:", error);
