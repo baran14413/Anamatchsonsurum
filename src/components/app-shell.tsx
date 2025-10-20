@@ -16,6 +16,18 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { langTr } from '@/languages/tr';
 import { signOut } from 'firebase/auth';
@@ -41,6 +53,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+
+  const handleAdminLogin = () => {
+    if (adminPassword === 'admin') {
+      router.push('/admin/dashboard');
+    } else {
+      toast({
+        title: 'Hatalı Şifre',
+        description: 'Admin paneline erişim için girdiğiniz şifre yanlış.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     if (isUserLoading) {
@@ -124,11 +149,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
 
     return (
+     <AlertDialog>
       <div className="flex h-dvh flex-col bg-background text-foreground">
          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
-            <Link href="/anasayfa">
-              <Icons.logo width={32} height={32} />
-            </Link>
+            <div className="flex items-center gap-2">
+                <Link href="/anasayfa">
+                    <Icons.logo width={32} height={32} />
+                </Link>
+                {!userProfile?.isAdmin && (
+                    <AlertDialogTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground">
+                            <AtSign className="h-4 w-4" />
+                        </Button>
+                    </AlertDialogTrigger>
+                )}
+            </div>
 
             <div className='flex items-center gap-1'>
                  <TooltipProvider>
@@ -186,5 +221,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
            {children}
         </main>
       </div>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Admin Girişi</AlertDialogTitle>
+          <AlertDialogDescription>
+            Yönetici paneline erişmek için lütfen şifreyi girin.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="py-2">
+            <Input 
+                type="password"
+                placeholder="Şifre"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+            />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setAdminPassword('')}>İptal</AlertDialogCancel>
+          <AlertDialogAction onClick={handleAdminLogin}>Giriş Yap</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+     </AlertDialog>
     );
 }
