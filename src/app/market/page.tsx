@@ -89,7 +89,11 @@ export default function MarketPage() {
       } else if (result.purchaseState === 'CANCELLED') {
         // Do nothing, user cancelled.
       } else {
-         throw new Error('Satın alma tamamlanamadı veya başarısız oldu.');
+         toast({
+            title: 'Satın Alma İşlemi Beklemede',
+            description: 'Satın alma işlemi tamamlanamadı veya askıda kaldı. Lütfen daha sonra tekrar deneyin.',
+            variant: 'default',
+         });
       }
 
     } catch (error: any) {
