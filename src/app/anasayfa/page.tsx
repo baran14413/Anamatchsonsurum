@@ -268,7 +268,7 @@ function AnasayfaPageContent() {
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center py-4 overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col items-center overflow-hidden bg-transparent">
       <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[85vh]">
             {topCard ? (
                 <MemoizedProfileCard
