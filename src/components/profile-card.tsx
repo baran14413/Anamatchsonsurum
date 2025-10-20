@@ -256,7 +256,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </div>
                     
                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                    <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                    <SheetHeader className='p-4 flex-row items-center justify-between'>
                             <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
                             <SheetClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full">

@@ -150,7 +150,7 @@ function ChatPageContent() {
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
         const collectionPath = isSystemChat ? `system_messages` : `matches/${matchId}/messages`;
-        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
+        return query(collection(collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
 
@@ -786,7 +786,7 @@ function ChatPageContent() {
 
     return (
         <>
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 bg-background px-4">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/eslesmeler')}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
