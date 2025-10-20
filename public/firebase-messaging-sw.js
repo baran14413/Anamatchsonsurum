@@ -1,7 +1,8 @@
+// Firebase SDK'larını içe aktar
+import { initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
 
-importScripts("https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js");
-
+// Firebase proje yapılandırmanız
 const firebaseConfig = {
   apiKey: "AIzaSyBTYHLORHg_HuLzAg74XCanqLE82e92NJI",
   authDomain: "bematch-new.firebaseapp.com",
@@ -12,20 +13,19 @@ const firebaseConfig = {
   measurementId: "G-P6LCQY34GB"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Firebase uygulamasını başlat
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
+// Arka planda gelen mesajları işlemek için handler
+onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
+  // Bildirimi özelleştir ve göster
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: payload.notification.icon || '/logo.png' 
+    icon: '/logo.png' // Bildirimlerde gösterilecek ikon
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
