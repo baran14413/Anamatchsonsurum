@@ -228,7 +228,7 @@ function AnasayfaPageContent() {
             matchedWith: profileToSwipe.uid,
             status: newStatus,
             timestamp: serverTimestamp(),
-            fullName: profileToSwipe.fullName,
+            fullName: profileToSwipe.fullName || '',
             profilePicture: profileToSwipe.profilePicture || '',
             isSuperLike: updateData.isSuperLike,
             superLikeInitiator: updateData.superLikeInitiator || null,
@@ -240,7 +240,7 @@ function AnasayfaPageContent() {
             matchedWith: user.uid,
             status: newStatus,
             timestamp: serverTimestamp(),
-            fullName: userProfile.fullName,
+            fullName: userProfile.fullName || '',
             profilePicture: userProfile.profilePicture || '',
             isSuperLike: updateData.isSuperLike,
             superLikeInitiator: updateData.superLikeInitiator || null,
@@ -276,7 +276,9 @@ function AnasayfaPageContent() {
             });
 
         } else if (action !== 'disliked') {
-            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+             if (profileToSwipe.uid) { // Ensure other user's subcollection is only written to if UID exists
+                await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+            }
              if (action === 'superliked') {
                 toast({
                     title: "Super Like Gönderildi!",
@@ -406,3 +408,4 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
