@@ -48,21 +48,21 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
-      // onAuthStateChanged in provider will handle redirect.
+      // Explicitly redirect after successful login
+      router.push('/anasayfa');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         toast({ title: 'Giriş Başarısız', description: 'E-posta veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.', variant: 'destructive' });
       } else {
         toast({ title: t.login.errors.emailCheckError, description: error.message, variant: 'destructive' });
       }
-    } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false); // Only set to false on error, success will navigate away
     }
   };
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-transparent px-4 text-foreground">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b-0 bg-transparent px-4 text-foreground">
         <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting}>
           <ArrowLeft className="h-6 w-6" />
         </Button>

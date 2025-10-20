@@ -167,7 +167,7 @@ export default function SignUpPage() {
         };
         
         await setDoc(doc(firestore, "users", currentUser.uid), userProfileData);
-        // Redirect to gallery to add first photos
+        // Explicitly redirect to gallery to add first photos
         router.push('/profil/galeri');
 
     } catch (error: any) {
@@ -235,7 +235,7 @@ export default function SignUpPage() {
   
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-transparent px-4">
+       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b-0 bg-transparent px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>

@@ -4,7 +4,6 @@
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { langTr } from '@/languages/tr';
 import { useUser } from '@/firebase/provider';
@@ -22,7 +21,6 @@ export default function WelcomePage() {
 
   useEffect(() => {
     // This effect should only redirect if the user is fully authenticated and onboarded.
-    // It should not interfere with new users trying to sign up.
     if (!isUserLoading && user && userProfile?.rulesAgreed) {
         router.replace('/anasayfa');
     }
@@ -74,7 +72,6 @@ export default function WelcomePage() {
         <div />
         <div className="flex flex-1 flex-col justify-center items-center">
           <motion.div
-            className="transform-gpu"
             animate={{
               scale: [1, 1.05, 1],
             }}
