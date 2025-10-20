@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 export default function MarketPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, firestore } = useFirebase();
+  const { user } = useFirebase();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
 
   const goldProducts = products.filter(p => p.type === 'gold');
@@ -33,6 +33,11 @@ export default function MarketPage() {
       // Get the initialized billing plugin. This now waits for initialization.
       const Billing = await getBilling();
       
+      toast({
+          title: 'Ödeme İşlemi Başlatıldı',
+          description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
+      });
+
       // We only initiate the purchase here. The result is handled by the global listener.
       await Billing.purchase({ productId });
 

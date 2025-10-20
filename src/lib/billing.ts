@@ -22,7 +22,7 @@ export interface Purchase {
 export interface BillingPlugin {
   initialize(): Promise<void>;
   queryProducts(options: { productIds: string[] }): Promise<{ products: Product[] }>;
-  purchase(options: { productId: string }): Promise<Purchase>;
+  purchase(options: { productId: string }): Promise<Purchase | void>;
   checkSubscriptions(): Promise<{ activeSubscriptions: any[] }>;
   addListener(eventName: 'purchaseCompleted' | 'purchaseFailed', listenerFunc: (result: Purchase | any) => void): Promise<any>;
 }
@@ -37,10 +37,9 @@ const unavailableBilling: BillingPlugin = {
     return { products: [] };
   },
   purchase: async (options) => {
-    console.log(`Billing plugin not available. Simulating successful purchase for ${options.productId} for testing purposes.`);
-    const fakePurchase: Purchase = { purchaseState: 'PURCHASED', productId: options.productId };
-    handleSuccessfulPurchase(fakePurchase);
-    return fakePurchase;
+    console.error(`Billing plugin not available. Cannot process purchase for ${options.productId}.`);
+    // Return void or throw an error to indicate failure
+    return;
   },
   checkSubscriptions: async () => {
     console.warn('Billing plugin not available. Returning empty subscriptions.');
@@ -48,7 +47,6 @@ const unavailableBilling: BillingPlugin = {
   },
   addListener: async () => { console.log("addListener called on unavailable billing"); }
 };
-
 
 const handleSuccessfulPurchase = async (purchase: Purchase) => {
     console.log("Handling successful purchase:", purchase);
@@ -103,12 +101,7 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
     }
 };
 
-
 export const initializeBilling = (): Promise<BillingPlugin> => {
-  if (billingInstance) {
-    return Promise.resolve(billingInstance);
-  }
-
   if (initializationPromise) {
     return initializationPromise;
   }
@@ -117,11 +110,14 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
     if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Billing')) {
       try {
         const plugin = registerPlugin<BillingPlugin>('Billing');
+        
+        // Wait for initialization to complete
         await plugin.initialize();
 
+        // Setup listeners *after* successful initialization
         plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
           console.log('Global listener: Purchase completed', result);
-          if (result.purchaseState === 'PURCHASED') {
+          if (result && result.purchaseState === 'PURCHASED') {
               handleSuccessfulPurchase(result as Purchase);
           }
         });
@@ -133,8 +129,9 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
         console.log("Billing plugin initialized successfully with listeners.");
         billingInstance = plugin;
         resolve(billingInstance);
+
       } catch (error) {
-        console.error("Failed to initialize billing plugin:", error);
+        console.error("Failed to initialize native billing plugin:", error);
         billingInstance = unavailableBilling; 
         resolve(billingInstance);
       }
@@ -148,12 +145,12 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
   return initializationPromise;
 };
 
-// This function now ensures initialization is complete before returning.
 export const getBilling = async (): Promise<BillingPlugin> => {
+    if (billingInstance) {
+        return billingInstance;
+    }
     if (!initializationPromise) {
-        // If no initialization has been started, start it.
         return initializeBilling();
     }
-    // Otherwise, wait for the existing initialization promise to complete.
     return initializationPromise;
 }
