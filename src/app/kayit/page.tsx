@@ -102,13 +102,6 @@ export default function SignUpPage() {
     },
     mode: "onChange",
   });
-
-   useEffect(() => {
-    const finalImages = imageSlots
-        .filter(p => p.preview && p.public_id && !p.isUploading)
-        .map(p => ({ url: p.preview!, public_id: p.public_id! }));
-    form.setValue('images', finalImages, { shouldValidate: true });
-  }, [uploadedImageCount, imageSlots, form]);
   
   const handleLocationRequest = () => {
     setIsLocationLoading(true);
@@ -222,18 +215,21 @@ export default function SignUpPage() {
       }
       
       // Update UI regardless of storage deletion outcome for better UX
-      setImageSlots(prevSlots => {
-          const newSlots = [...prevSlots];
-          if (newSlots[index].preview && newSlots[index].file) {
-                // Revoke object URL to free memory if it's a local preview
-                URL.revokeObjectURL(newSlots[index].preview!);
-          }
-          newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
-          // Re-sort the array so empty slots are at the end
-          const filledSlots = newSlots.filter(s => s.preview);
-          const emptySlots = newSlots.filter(s => !s.preview);
-          return [...filledSlots, ...emptySlots];
-      });
+      const newSlots = [...imageSlots];
+      if (newSlots[index].preview && newSlots[index].file) {
+            // Revoke object URL to free memory if it's a local preview
+            URL.revokeObjectURL(newSlots[index].preview!);
+      }
+      newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
+      const filledSlots = newSlots.filter(s => s.preview);
+      const emptySlots = newSlots.filter(s => !s.preview);
+      const finalSlots = [...filledSlots, ...emptySlots];
+      setImageSlots(finalSlots);
+      
+      const finalImages = finalSlots
+        .filter(p => p.preview && p.public_id && !p.isUploading)
+        .map(p => ({ url: p.preview!, public_id: p.public_id! }));
+      form.setValue('images', finalImages, { shouldValidate: true });
   };
 
   const nextStep = () => setStep((prev) => prev + 1);
