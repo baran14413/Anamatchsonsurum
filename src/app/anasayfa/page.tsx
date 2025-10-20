@@ -21,34 +21,35 @@ const fetchProfiles = async (
     firestore: Firestore,
     user: User,
     userProfile: UserProfile,
-    interactedUids: Set<string>,
-    ignoreFilters: boolean = false
+    ignoreFilters: boolean = false,
+    currentProfileIds: Set<string>
 ): Promise<UserProfile[]> => {
     try {
         const usersRef = collection(firestore, 'users');
-        let q = query(usersRef, limit(250));
+        
+        // To avoid showing already seen users, we can fetch matches.
+        // This is a simplified approach. For large scale, a more robust system is needed.
+        const interactedUids = new Set<string>();
+        const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
+        interactedMatchDocsSnap.forEach(doc => {
+            const match = doc.data();
+            if (match.user1Id === user.uid) {
+                interactedUids.add(match.user2Id);
+            } else if (match.user2Id === user.uid) {
+                interactedUids.add(match.user1Id);
+            }
+        });
+
+        let q = query(usersRef, limit(100)); // Fetch a larger batch to have more options
         const usersSnapshot = await getDocs(q);
-
-        // Fetch all previously interacted UIDs from the matches collection just once if not ignoring filters
-        if (!ignoreFilters && interactedUids.size === 0) {
-            const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
-            interactedMatchDocsSnap.forEach(doc => {
-                const match = doc.data();
-                if (match.user1Id === user.uid) { // user1_action is not needed, any action means interaction
-                    interactedUids.add(match.user2Id);
-                } else if (match.user2Id === user.uid) { // user2_action is not needed
-                    interactedUids.add(match.user1Id);
-                }
-            });
-        }
-
 
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
                 if (p.uid === user.uid) return false;
-                if (interactedUids.has(p.uid)) return false; // Filter based on the comprehensive set
+                if (interactedUids.has(p.uid)) return false;
+                if (currentProfileIds.has(p.uid)) return false; // Don't add if already in the state
                 
                 if (p.isBot) return true;
 
@@ -82,16 +83,9 @@ const fetchProfiles = async (
                 return true;
             });
 
-        fetchedProfiles.sort((a, b) => {
-            // If global mode is enabled, sort by distance from nearest to farthest.
-            if (userProfile.globalModeEnabled) {
-                return (a.distance ?? Infinity) - (b.distance ?? Infinity);
-            }
-            // Otherwise, shuffle randomly.
-            return Math.random() - 0.5;
-        });
+        fetchedProfiles.sort(() => Math.random() - 0.5); // Shuffle
 
-        return fetchedProfiles;
+        return fetchedProfiles.slice(0, 10); // Return a smaller slice to keep the deck fresh
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
         return [];
@@ -109,8 +103,6 @@ function AnasayfaPageContent() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isFetching = useRef(false);
-  // Use a ref to store interacted UIDs to avoid re-renders and have a persistent set across renders.
-  const interactedUserIds = useRef(new Set<string>());
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
@@ -118,22 +110,18 @@ function AnasayfaPageContent() {
     isFetching.current = true;
     setIsLoading(true);
 
-    const newProfiles = await fetchProfiles(firestore, user, userProfile, interactedUserIds.current, ignoreFilters);
+    const currentProfileIds = new Set(profiles.map(p => p.uid));
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, currentProfileIds);
     
-    // Filter out profiles that are already in the current state's list to avoid duplicates
-    setProfiles(prev => {
-        const currentIds = new Set(prev.map(p => p.uid));
-        const uniqueNewProfiles = newProfiles.filter(np => !currentIds.has(np.uid));
-        return [...prev, ...uniqueNewProfiles];
-    });
+    setProfiles(prev => [...prev, ...newProfiles]);
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile]);
+  }, [user, firestore, userProfile, profiles]);
 
   // Initial load
   useEffect(() => {
-    if (!isUserLoading && user && userProfile) {
+    if (!isUserLoading && user && userProfile && profiles.length === 0) {
       loadProfiles();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,9 +136,6 @@ function AnasayfaPageContent() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
-    
-    // Add to interacted list
-    interactedUserIds.current.add(profileToSwipe.uid);
     
     // Immediately remove the swiped profile from the state to make the UI feel fast
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
@@ -215,7 +200,6 @@ function AnasayfaPageContent() {
 
         await setDoc(matchDocRef, updateData, { merge: true });
         
-        // --- ONLY create chat entries IF it's a match ---
         if (isMatch) {
             const lastMessage = langTr.eslesmeler.defaultMessage;
             
@@ -245,7 +229,6 @@ function AnasayfaPageContent() {
 
             if (profileToSwipe.isBot) {
                 try {
-                    // Trigger the webhook for the bot to send the initial message.
                     await fetch('/api/message-webhook', {
                         method: 'POST',
                         headers: {
@@ -254,8 +237,8 @@ function AnasayfaPageContent() {
                         },
                         body: JSON.stringify({
                             matchId: matchId,
-                            type: 'MATCH', // Specify the type of event
-                            userId: user.uid // The real user's ID
+                            type: 'MATCH', 
+                            userId: user.uid
                         })
                     });
                 } catch (error: any) {
@@ -278,7 +261,6 @@ function AnasayfaPageContent() {
 
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
-        // If an error occurs, re-add the profile to the top of the stack
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
   }, [user, firestore, toast, userProfile, router]);
@@ -296,7 +278,6 @@ function AnasayfaPageContent() {
         title: langTr.anasayfa.resetToastTitle,
         description: langTr.anasayfa.resetToastDescription,
       });
-      interactedUserIds.current.clear();
       setProfiles([]);
       loadProfiles();
   }
@@ -340,3 +321,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
