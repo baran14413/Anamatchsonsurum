@@ -288,5 +288,3 @@ export default function BegenilerPage() {
         </AppShell>
     );
 }
-
-    

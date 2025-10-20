@@ -1,4 +1,5 @@
 
+
 export interface UserImage {
   url: string;
   public_id: string;
@@ -31,7 +32,6 @@ export type UserProfile = {
   school?: string;
   lookingFor?: string;
   distancePreference?: number;
-  distance?: number; // Calculated property, not stored in DB
   ageRange?: {
     min: number;
     max: number;
@@ -152,3 +152,4 @@ export interface DenormalizedMatch {
     lastSystemMessageId?: string;
     hasUnreadSystemMessage?: boolean;
 }
+    
