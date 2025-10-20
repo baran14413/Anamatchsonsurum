@@ -371,18 +371,20 @@ function AnasayfaPageContent() {
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-transparent">
-      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[calc(85vh-60px)]">
-            {profiles.map((profile, index) => {
-                 if (index < profiles.length - 1) return null; // Render only the top card
-                 return (
-                    <MemoizedProfileCard
-                        key={profile.uid}
-                        profile={profile}
-                        onSwipe={handleSwipe}
-                    />
-                )
-            })}
+    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-transparent p-4">
+      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[calc(100vh-160px)]">
+            {profiles.map((profile) => (
+                 <MemoizedProfileCard
+                    key={profile.uid}
+                    profile={profile}
+                    onSwipe={handleSwipe}
+                />
+            ))}
+
+             <Button onClick={handleUndo} variant="outline" size="icon" className="absolute top-0 right-0 z-50 m-2 w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
+                <Undo className="w-6 h-6" />
+            </Button>
+            
             {!topCard && !isLoading && (
                 <div
                     className="flex flex-col items-center justify-center text-center p-4 space-y-4"
@@ -398,20 +400,6 @@ function AnasayfaPageContent() {
             )}
       </div>
 
-       <div className="flex items-center justify-center gap-4 py-4">
-            <Button onClick={handleUndo} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500/10" disabled={!lastSwipedProfile}>
-                <Undo className="w-8 h-8" />
-            </Button>
-             <Button onClick={() => topCard && handleSwipe(topCard, 'left')} variant="outline" size="icon" className="w-20 h-20 rounded-full shadow-lg border-2 border-red-500 text-red-500 hover:bg-red-500/10">
-                <X className="w-12 h-12" />
-            </Button>
-             <Button onClick={() => topCard && handleSwipe(topCard, 'up')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg border-2 border-blue-500 text-blue-500 hover:bg-blue-500/10">
-                <Star className="w-8 h-8" />
-            </Button>
-             <Button onClick={() => topCard && handleSwipe(topCard, 'right')} variant="outline" size="icon" className="w-20 h-20 rounded-full shadow-lg border-2 border-green-500 text-green-500 hover:bg-green-500/10">
-                <Heart className="w-12 h-12" />
-            </Button>
-        </div>
     </div>
   );
 }
