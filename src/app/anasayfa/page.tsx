@@ -292,6 +292,12 @@ function AnasayfaPageContent() {
   }
 
   const handleRetry = () => {
+      toast({
+        title: langTr.anasayfa.resetToastTitle,
+        description: langTr.anasayfa.resetToastDescription,
+      });
+      interactedUserIds.current.clear();
+      setProfiles([]);
       loadProfiles();
   }
   
