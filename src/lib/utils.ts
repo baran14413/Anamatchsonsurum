@@ -11,7 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  * @param lon1 Longitude of the first point.
  * @param lat2 Latitude of the second point.
  * @param lon2 Longitude of the second point.
- * @returns The distance in kilometers.
+ * @returns The distance in kilometers, not rounded.
  */
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the Earth in km
@@ -23,7 +23,7 @@ export function getDistance(lat1: number, lon1: number, lat2: number, lon2: numb
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c; // Distance in km
-  return Math.round(d);
+  return d;
 }
 
 function deg2rad(deg: number): number {

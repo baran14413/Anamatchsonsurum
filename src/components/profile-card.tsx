@@ -133,6 +133,15 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   
   const likeRatio = useMemo(() => Math.floor(Math.random() * (98 - 70 + 1)) + 70, [profile.uid]);
 
+  const displayDistance = useMemo(() => {
+    if (profile.distance === undefined || profile.distance === null) return null;
+    if (profile.distance < 1) {
+      return `${Math.round(profile.distance * 1000)} m uzakta`;
+    }
+    return `${Math.round(profile.distance)} km uzakta`;
+  }, [profile.distance]);
+
+
   return (
     <motion.div
         className="absolute w-full h-full cursor-grab transform-gpu"
@@ -216,10 +225,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                     <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
                                     <span className="font-semibold text-white/80 text-3xl">{age}</span>
                                 </div>
-                                 {(profile.distance || profile.distance === 0) && (
+                                 {displayDistance && (
                                     <div className="flex items-center gap-1.5 text-base font-medium mt-1">
                                         <MapPin className="w-5 h-5" />
-                                        <span>{langTr.anasayfa.distance.replace('{distance}', String(profile.distance))}</span>
+                                        <span>{displayDistance}</span>
                                     </div>
                                 )}
                             </div>
