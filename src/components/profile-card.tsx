@@ -38,12 +38,17 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
     if (isBot || isOnline) {
         statusText = "Şu an aktif";
         iconColor = "bg-green-400";
-    } else if (lastSeen?.toDate) {
-        const lastSeenDate = lastSeen.toDate();
-        const hoursAgo = differenceInHours(new Date(), lastSeenDate);
-        if (hoursAgo < 10) {
-            statusText = `${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })} aktifti`;
-            iconColor = "bg-yellow-400";
+    } else if (lastSeen) {
+        // lastSeen could be a Firebase Server Timestamp or a number from RTDB
+        const lastSeenDate = typeof lastSeen === 'number' ? new Date(lastSeen) : lastSeen?.toDate();
+        if (lastSeenDate && !isNaN(lastSeenDate.getTime())) {
+             const hoursAgo = differenceInHours(new Date(), lastSeenDate);
+             if (hoursAgo < 1) {
+                statusText = `Son görülme ${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}`;
+                iconColor = "bg-yellow-400";
+             } else {
+                 statusText = "Yakınlarda aktifti";
+             }
         } else {
             statusText = "Yakınlarda aktifti";
         }

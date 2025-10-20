@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -631,15 +632,15 @@ export default function ChatPage() {
     const renderOnlineStatus = () => {
         if (!otherUser) return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
         if (otherUser.isOnline) {
-            return <span className="text-xs text-green-500">Çevrimiçi</span>
+            return <span className="text-xs text-green-500">Çevrimiçi</span>;
         }
         if (otherUser.lastSeen) {
-            const lastSeenDate = new Date(otherUser.lastSeen.seconds * 1000);
-            if (!isNaN(lastSeenDate.getTime())) {
-                return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}</span>
+            const lastSeenDate = typeof otherUser.lastSeen === 'number' ? new Date(otherUser.lastSeen) : otherUser.lastSeen?.toDate();
+            if (lastSeenDate && !isNaN(lastSeenDate.getTime())) {
+                return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}</span>;
             }
         }
-        return <span className="text-xs text-muted-foreground">Çevrimdışı</span>
+        return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
     }
 
     const handleOpenViewOnce = (message: ChatMessage) => {

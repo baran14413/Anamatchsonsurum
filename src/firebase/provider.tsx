@@ -5,6 +5,7 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { getDatabase, ref, onValue, onDisconnect, set, serverTimestamp as rtdbServerTimestamp } from 'firebase/database';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
 import { initializeFirebase } from '@/firebase'; // Import initializeFirebase
@@ -62,24 +63,65 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
     
-    const { auth, firestore } = services;
+    const { auth, firestore, firebaseApp } = services;
+    const rtdb = getDatabase(firebaseApp);
 
     let profileUnsubscribe: (() => void) | undefined;
+    let presenceUnsubscribe: (() => void) | undefined;
     
     const authUnsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
         // Clean up previous listeners
         profileUnsubscribe?.();
+        presenceUnsubscribe?.();
 
         if (firebaseUser) {
             setUser(firebaseUser);
-            
-            // Set user online upon login
             const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-            setDoc(userDocRef, { isOnline: true }, { merge: true });
+            
+            // --- Firebase Realtime Database for Presence ---
+            const userStatusDatabaseRef = ref(rtdb, '/status/' + firebaseUser.uid);
+            const isOfflineForDatabase = {
+                isOnline: false,
+                lastSeen: rtdbServerTimestamp(),
+            };
+            const isOnlineForDatabase = {
+                isOnline: true,
+                lastSeen: rtdbServerTimestamp(),
+            };
 
-            // Listen for profile changes
+            const userStatusFirestoreRef = doc(firestore, '/users/' + firebaseUser.uid);
+            const isOfflineForFirestore = {
+                isOnline: false,
+                lastSeen: serverTimestamp(),
+            };
+           
+            // Listen for connection status to RTDB
+            onValue(ref(rtdb, '.info/connected'), (snapshot) => {
+                if (snapshot.val() === false) {
+                    // If connection is lost, update Firestore manually
+                     setDoc(userStatusFirestoreRef, isOfflineForFirestore, { merge: true });
+                    return;
+                };
+
+                // On connection, set up onDisconnect hooks
+                onDisconnect(userStatusDatabaseRef).set(isOfflineForDatabase).then(() => {
+                    // Once onDisconnect is established, set user as online
+                    set(userStatusDatabaseRef, isOnlineForDatabase);
+                });
+            });
+
+            // Listen for changes in RTDB and sync to Firestore
+            presenceUnsubscribe = onValue(userStatusDatabaseRef, (snapshot) => {
+                const status = snapshot.val();
+                if (status) {
+                    setDoc(userDocRef, { isOnline: status.isOnline, lastSeen: status.lastSeen }, { merge: true });
+                }
+            });
+            // --- End of Presence Logic ---
+
+            // Listen for profile changes in Firestore
             profileUnsubscribe = onSnapshot(userDocRef, 
                 (docSnap) => {
                     if (docSnap.exists()) {
@@ -99,11 +141,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             );
 
         } else {
-            // User logs out
-            if (user) { 
-                 const userDocRef = doc(firestore, 'users', user.uid);
-                 setDoc(userDocRef, { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
-            }
+            // User logs out, no need to manually set offline as onDisconnect will handle it
             setUser(null);
             setUserProfile(null);
             setIsUserLoading(false);
@@ -121,10 +159,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     return () => {
       authUnsubscribe();
       profileUnsubscribe?.();
-       if (user) { 
-          const userDocRef = doc(firestore, 'users', user.uid);
-          setDoc(userDocRef, { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
-       }
+      presenceUnsubscribe?.();
+      // If a user was logged in, clean up their RTDB status on unmount/logout
+      if (user) {
+          const userStatusDatabaseRef = ref(rtdb, '/status/' + user.uid);
+          set(userStatusDatabaseRef, {
+              isOnline: false,
+              lastSeen: rtdbServerTimestamp(),
+          });
+      }
     };
   }, [services, user]); 
 
