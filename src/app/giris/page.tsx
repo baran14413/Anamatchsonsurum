@@ -48,7 +48,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
-      // onAuthStateChanged in provider will handle redirect
+      // onAuthStateChanged in provider will handle redirect.
+      // We can set isSubmitting to false here to give feedback to the user
+      // while the redirect is happening.
+      setIsSubmitting(false);
     } catch (error: any) {
       setIsSubmitting(false);
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
