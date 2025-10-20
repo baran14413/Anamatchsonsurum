@@ -1,9 +1,9 @@
+
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase/admin';
-import { BOT_GREETINGS } from '@/lib/bot-data';
-import { generateBotReply, BotReplyInput, BotReplyInputSchema } from '@/ai/flows/bot-chat-flow';
+import { BOT_GREETINGS, BOT_REPLIES } from '@/lib/bot-data';
 import type { ChatMessage, UserProfile } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -16,7 +16,7 @@ const getRandomItem = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.le
 
 /**
  * This API route is triggered when a user sends a message to a bot OR when they match with a bot.
- * It processes the request based on the event type (initial match vs. existing conversation).
+ * It processes the request based on the event type and sends a predefined random message.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -38,51 +38,20 @@ export async function POST(req: NextRequest) {
 
     // 3. Verify Bot Existence
     const botDoc = await db.collection('users').doc(botId).get();
-    const botProfile = botDoc.data() as UserProfile;
-    if (!botDoc.exists || !botProfile?.isBot) {
+    if (!botDoc.exists || !botDoc.data()?.isBot) {
       // If the recipient is not a bot, do nothing.
       return NextResponse.json({ message: 'Recipient is not a bot.' });
     }
 
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userProfile = userDoc.data() as UserProfile;
-    if(!userDoc.exists) {
-        return NextResponse.json({ message: 'User not found.' });
-    }
-
-    // 4. Determine Reply Text
+    // 4. Determine Reply Text from predefined lists
     let replyText: string;
 
     if (type === 'MATCH') {
       // If it's a new match, select one of the greeting messages.
       replyText = getRandomItem(BOT_GREETINGS);
     } else {
-      // If it's a message in an existing conversation, use the AI flow.
-      const messagesSnap = await db.collection(`matches/${matchId}/messages`).orderBy('timestamp', 'desc').limit(20).get();
-      const conversationHistory = messagesSnap.docs.map(doc => {
-        const msg = doc.data();
-        return {
-          isUser: msg.senderId === userId,
-          message: msg.text || '',
-        };
-      }).reverse();
-        
-      const aiInput: BotReplyInput = {
-        botProfile: {
-            fullName: botProfile.fullName || 'Bot',
-            age: botProfile.dateOfBirth ? new Date().getFullYear() - new Date(botProfile.dateOfBirth).getFullYear() : 25,
-            bio: botProfile.bio || '',
-            interests: botProfile.interests || []
-        },
-        userName: userProfile.fullName || 'User',
-        conversationHistory,
-      };
-
-      // Validate input with Zod before passing to the AI flow
-      BotReplyInputSchema.parse(aiInput);
-
-      const aiResult = await generateBotReply(aiInput);
-      replyText = aiResult.reply;
+      // If it's a message in an existing conversation, select a random generic reply.
+      replyText = getRandomItem(BOT_REPLIES);
     }
     
     // Add a small delay to make the response feel more natural
@@ -102,11 +71,11 @@ export async function POST(req: NextRequest) {
     // 6. Update the last message and unread count in the match list
     const batch = db.batch();
     const currentUserMatchRef = db.doc(`users/${userId}/matches/${matchId}`);
-    // Only increment unreadCount for the user's message.
+    // Increment unreadCount for the user.
     batch.update(currentUserMatchRef, { lastMessage: replyText, timestamp: FieldValue.serverTimestamp(), unreadCount: FieldValue.increment(1) });
     
     const botUserMatchRef = db.doc(`users/${botId}/matches/${matchId}`);
-    // The bot is considered to have read its own message, so unreadCount is not incremented.
+    // The bot has "read" its own message, so we just update the text.
     batch.update(botUserMatchRef, { lastMessage: replyText, timestamp: FieldValue.serverTimestamp() });
     
     await batch.commit();
