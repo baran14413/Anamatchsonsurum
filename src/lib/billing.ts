@@ -106,15 +106,14 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
     return initializationPromise;
   }
 
-  initializationPromise = new Promise(async (resolve) => {
+  initializationPromise = new Promise(async (resolve, reject) => {
     if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Billing')) {
-      try {
         const plugin = registerPlugin<BillingPlugin>('Billing');
         
-        // Wait for initialization to complete
+        // Zorla gerçek eklentiyi başlat, hata olursa yakalama ve fırlat.
         await plugin.initialize();
 
-        // Setup listeners *after* successful initialization
+        // Başarılı başlatmanın hemen ardından dinleyicileri kur.
         plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
           console.log('Global listener: Purchase completed', result);
           if (result && result.purchaseState === 'PURCHASED') {
@@ -130,11 +129,6 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
         billingInstance = plugin;
         resolve(billingInstance);
 
-      } catch (error) {
-        console.error("Failed to initialize native billing plugin:", error);
-        billingInstance = unavailableBilling; 
-        resolve(billingInstance);
-      }
     } else {
       console.warn('Billing plugin is not native or not available. Using mock implementation.');
       billingInstance = unavailableBilling;
@@ -149,8 +143,10 @@ export const getBilling = async (): Promise<BillingPlugin> => {
     if (billingInstance) {
         return billingInstance;
     }
+    // Eğer başlatma sözü yoksa, yeni bir tane başlat ve onun sonucunu bekle.
     if (!initializationPromise) {
         return initializeBilling();
     }
+    // Eğer başlatma zaten devam ediyorsa, onun bitmesini bekle.
     return initializationPromise;
 }
