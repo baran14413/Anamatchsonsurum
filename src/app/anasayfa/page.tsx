@@ -52,13 +52,16 @@ const fetchProfiles = async (
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
+                // If it's a bot, always include it (as long as it's not already in the deck)
+                if (p.isBot) {
+                    return !currentProfileIds.has(p.uid) && p.uid !== user.uid;
+                }
+
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
                 if (p.uid === user.uid) return false;
                 if (interactedUids.has(p.uid)) return false; // This will be empty if ignoreFilters is true
                 if (currentProfileIds.has(p.uid)) return false; // Don't add if already in the state
                 
-                if (p.isBot) return true;
-
                 if (!ignoreFilters && userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                     if (p.gender !== userProfile.genderPreference) return false;
                 }
@@ -437,5 +440,7 @@ export default function AnasayfaPage() {
 }
 
 
+
+    
 
     
