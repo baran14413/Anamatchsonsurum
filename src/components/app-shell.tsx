@@ -173,7 +173,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           <TooltipTrigger asChild>
                             <Link href={item.href}>
                               <Button variant='ghost' size='icon' className="relative rounded-full h-10 w-10">
-                                  <item.icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80")} />
+                                  <item.icon className={cn("h-6 w-6 transition-colors", isActive ? "text-red-500" : "text-muted-foreground hover:text-foreground/80")} />
                                   {item.hasNotification && (
                                       <span className="absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />
                                   )}
