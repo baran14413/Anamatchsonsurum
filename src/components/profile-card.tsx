@@ -256,11 +256,11 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </div>
                     
                 <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                    <SheetHeader className='p-4 flex-row items-center justify-between'>
+                    <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
                             <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
                             <SheetClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full">
-                                <X className="h-5 w-5" />
+                                
                             </Button>
                         </SheetClose>
                     </SheetHeader>
@@ -306,11 +306,11 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                     </div>
                                     {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                     
-                                    {(profile.address?.city && profile.address?.country) && (
+                                    {displayDistance && (
                                         <div className="flex items-center gap-2 text-muted-foreground">
                                             <MapPin className="w-4 h-4" />
                                             <span>
-                                                {profile.address.city}, {profile.address.country}
+                                                {displayDistance}
                                             </span>
                                         </div>
                                     )}
