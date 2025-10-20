@@ -15,7 +15,7 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import { Undo, X, Heart, Star } from 'lucide-react';
+import { Undo } from 'lucide-react';
 import { differenceInCalendarDays } from 'date-fns';
 
 // Helper function to fetch and filter profiles
@@ -276,7 +276,7 @@ function AnasayfaPageContent() {
             });
 
         } else if (action !== 'disliked') {
-             if (profileToSwipe.uid) { // Ensure other user's subcollection is only written to if UID exists
+             if (profileToSwipe.uid) { 
                 await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
             }
              if (action === 'superliked') {
@@ -315,7 +315,7 @@ function AnasayfaPageContent() {
     }
 
     try {
-        setProfiles(prev => [lastSwipedProfile.profile, ...prev]);
+        setProfiles(prev => [...prev, lastSwipedProfile.profile]);
         setLastSwipedProfile(null);
 
         const batch = writeBatch(firestore);
@@ -323,10 +323,15 @@ function AnasayfaPageContent() {
         const matchId = sortedIds.join('_');
 
         const mainMatchRef = doc(firestore, 'matches', matchId);
+        const matchDoc = await getDoc(mainMatchRef);
+
+        if (matchDoc.exists()) {
+             batch.delete(mainMatchRef);
+        }
+
         const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
         const otherUserMatchRef = doc(firestore, `users/${lastSwipedProfile.profile.uid}/matches`, matchId);
-
-        batch.delete(mainMatchRef);
+        
         batch.delete(currentUserMatchRef);
         batch.delete(otherUserMatchRef);
         
@@ -337,10 +342,11 @@ function AnasayfaPageContent() {
 
         if (!isGoldMember) {
              const currentUserRef = doc(firestore, 'users', user.uid);
-             batch.update(currentUserRef, {
-                 dailyUndoCount: increment(1),
-                 lastUndoTimestamp: serverTimestamp()
-             });
+             const updatePayload: { dailyUndoCount: any; lastUndoTimestamp: any } = {
+                dailyUndoCount: increment(isNewDay ? -(userProfile.dailyUndoCount || 0) + 1 : 1),
+                lastUndoTimestamp: serverTimestamp()
+             };
+             batch.update(currentUserRef, updatePayload);
         }
         
         await batch.commit();
