@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
 import { Undo } from 'lucide-react';
 import { differenceInCalendarDays } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -116,6 +117,7 @@ function AnasayfaPageContent() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<{profile: UserProfile, direction: 'left' | 'right' | 'up'} | null>(null);
+  const [showUndoMessage, setShowUndoMessage] = useState(false);
   const isFetching = useRef(false);
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
@@ -351,7 +353,8 @@ function AnasayfaPageContent() {
         
         await batch.commit();
 
-        toast({ title: 'Geri Alındı' });
+        setShowUndoMessage(true);
+        setTimeout(() => setShowUndoMessage(false), 2000);
 
     } catch (error: any) {
         console.error("Error undoing swipe:", error);
@@ -380,7 +383,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1">
+        <div className="relative flex-1 w-full h-full flex items-center justify-center">
             {topCard ? (
                 <MemoizedProfileCard
                     key={topCard.uid}
@@ -398,9 +401,24 @@ function AnasayfaPageContent() {
                     </Button>
                 </div>
             )}
-             <Button onClick={handleUndo} variant="outline" size="icon" className="absolute top-2 right-4 z-50 w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
-                <Undo className="w-6 h-6" />
-            </Button>
+             <div className="absolute top-2 right-4 z-50 flex flex-col items-center">
+                <Button onClick={handleUndo} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
+                    <Undo className="w-6 h-6" />
+                </Button>
+                <AnimatePresence>
+                    {showUndoMessage && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400"
+                        >
+                            Geri Alındı
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+             </div>
         </div>
     </div>
   );
