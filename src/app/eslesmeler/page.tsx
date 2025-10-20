@@ -143,10 +143,12 @@ function EslesmelerPageContent() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {(!matches || matches.length === 0) && !isLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
-                <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
-                <h2 className="text-2xl font-semibold text-foreground mb-2">{t.noChatsTitle}</h2>
-                <p>{t.noChatsDescription}</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+                <MessageSquare className="h-20 w-20 text-muted-foreground/30" strokeWidth={1} />
+                <div className='space-y-1'>
+                    <h2 className="text-2xl font-bold text-foreground">{t.noChatsTitle}</h2>
+                    <p className='text-muted-foreground'>{t.noChatsDescription}</p>
+                </div>
             </div>
         ) : (
             <>
