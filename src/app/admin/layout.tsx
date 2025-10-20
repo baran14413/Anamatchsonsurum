@@ -7,22 +7,29 @@ import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSqu
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
     // We only want to check for admin status once the user loading is complete.
     if (!isUserLoading) {
       // Test mode: Allow access if password was correct, skip isAdmin check.
-      // In a real app, you'd re-enable this.
-      // if (!user || !userProfile?.isAdmin) {
-      //   router.replace('/anasayfa');
-      // }
+      const hasAdminAccess = sessionStorage.getItem('admin_access') === 'granted';
+      
+      if (!user) {
+        router.replace('/');
+        return;
+      }
+      
+      if (!userProfile?.isAdmin && !hasAdminAccess) {
+        router.replace('/anasayfa');
+      }
     }
     // The dependency array ensures this effect runs when loading status or user changes.
-  }, [user, isUserLoading, router]);
+  }, [user, userProfile, isUserLoading, router]);
 
   // While user data is loading, show a loading indicator.
   if (isUserLoading) {
@@ -79,13 +86,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 </SidebarMenu>
             </SidebarContent>
         </Sidebar>
-        <SidebarInset className="overflow-y-auto">
+        <SidebarInset>
             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
                  <SidebarTrigger className="md:hidden" />
                  {/* You can add a breadcrumb or title here if needed */}
             </header>
-            <main className="flex-1 p-4 pt-0 md:p-6 md:pt-0">
-                {children}
+            <main className="relative flex-1 p-4 pt-0 md:p-6 md:pt-0">
+                <ScrollArea className="h-[calc(100vh-5rem)]">
+                    {children}
+                </ScrollArea>
             </main>
         </SidebarInset>
     </SidebarProvider>

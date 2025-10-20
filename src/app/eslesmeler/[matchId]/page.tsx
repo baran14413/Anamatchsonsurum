@@ -9,7 +9,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -29,12 +29,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import WaveSurfer from 'wavesurfer.js';
 import { Progress } from '@/components/ui/progress';
@@ -221,17 +221,21 @@ function ChatPageContent() {
 
     // Effect to mark messages as read and reset unread count
     useEffect(() => {
-        if (!firestore || !user || isSystemChat || !matchId) return;
+        if (!firestore || !user || !matchId) return;
         
         const markAsRead = () => {
              // 1. Reset unread count on the user's denormalized match document
             const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
             getDoc(userMatchRef).then(userMatchSnap => {
-                if (userMatchSnap.exists() && (userMatchSnap.data().unreadCount > 0 || userMatchSnap.data().hasUnreadSystemMessage)) {
+                if (userMatchSnap.exists()) {
+                    const data = userMatchSnap.data();
                     const updateData: {unreadCount?: number, hasUnreadSystemMessage?: boolean} = {};
-                    if (userMatchSnap.data().unreadCount > 0) updateData.unreadCount = 0;
-                    if (userMatchSnap.data().hasUnreadSystemMessage) updateData.hasUnreadSystemMessage = false;
-                    updateDoc(userMatchRef, updateData);
+                    if(data.unreadCount > 0) updateData.unreadCount = 0;
+                    if(data.hasUnreadSystemMessage) updateData.hasUnreadSystemMessage = false;
+
+                    if (Object.keys(updateData).length > 0) {
+                        updateDoc(userMatchRef, updateData);
+                    }
                 }
             });
 
@@ -760,6 +764,24 @@ function ChatPageContent() {
                         <Button onClick={handleAcceptSuperLike} disabled={isAcceptingSuperLike}>
                             {isAcceptingSuperLike ? <Icons.logo width={24} height={24} className='animate-pulse' /> : <><Heart className="mr-2 h-4 w-4" /> Eşleş</>}
                         </Button>
+                    </div>
+                )}
+                 {isSystemChat && (
+                    <div className="p-4 mb-4 text-center rounded-lg bg-muted">
+                        <p className="text-sm text-muted-foreground">
+                            Burası BeMatch ekibinden gelen resmi duyuruları ve anketleri bulabileceğin yerdir.
+                        </p>
+                        <div className="mt-4 flex flex-wrap justify-center gap-2">
+                             <Button asChild variant="link">
+                                <Link href="/tos"><BookOpen className="mr-2 h-4 w-4" />Kullanım Koşulları</Link>
+                            </Button>
+                            <Button asChild variant="link">
+                                <Link href="/privacy"><Shield className="mr-2 h-4 w-4" />Gizlilik Politikası</Link>
+                            </Button>
+                            <Button asChild variant="link">
+                                <Link href="/cookies"><File className="mr-2 h-4 w-4" />Topluluk Kuralları</Link>
+                            </Button>
+                        </div>
                     </div>
                 )}
                 <div className="space-y-1">
