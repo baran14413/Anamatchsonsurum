@@ -29,7 +29,7 @@ const serviceAccount = {
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
       databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`,
       storageBucket: `${serviceAccount.project_id}.appspot.com`,
     });
