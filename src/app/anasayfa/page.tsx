@@ -371,24 +371,16 @@ function AnasayfaPageContent() {
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-transparent p-4">
-      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[calc(100vh-160px)]">
-            {profiles.map((profile) => (
-                 <MemoizedProfileCard
-                    key={profile.uid}
-                    profile={profile}
+    <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
+        <div className="relative flex-1">
+            {topCard ? (
+                <MemoizedProfileCard
+                    key={topCard.uid}
+                    profile={topCard}
                     onSwipe={handleSwipe}
                 />
-            ))}
-
-             <Button onClick={handleUndo} variant="outline" size="icon" className="absolute top-0 right-0 z-50 m-2 w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
-                <Undo className="w-6 h-6" />
-            </Button>
-            
-            {!topCard && !isLoading && (
-                <div
-                    className="flex flex-col items-center justify-center text-center p-4 space-y-4"
-                >
+            ) : !isLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
                     <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
                     <p className="text-muted-foreground">
                     {langTr.anasayfa.outOfProfilesDescription}
@@ -398,8 +390,10 @@ function AnasayfaPageContent() {
                     </Button>
                 </div>
             )}
-      </div>
-
+             <Button onClick={handleUndo} variant="outline" size="icon" className="absolute top-2 right-4 z-50 w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
+                <Undo className="w-6 h-6" />
+            </Button>
+        </div>
     </div>
   );
 }
