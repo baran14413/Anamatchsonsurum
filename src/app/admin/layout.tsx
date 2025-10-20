@@ -15,10 +15,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // We only want to check for admin status once the user loading is complete.
     if (!isUserLoading) {
-      // If the user is not logged in, redirect them.
-      if (!user) {
-        // router.replace('/anasayfa');
-      }
+      // Test mode: Allow access if password was correct, skip isAdmin check.
+      // In a real app, you'd re-enable this.
+      // if (!user || !userProfile?.isAdmin) {
+      //   router.replace('/anasayfa');
+      // }
     }
     // The dependency array ensures this effect runs when loading status or user changes.
   }, [user, isUserLoading, router]);
@@ -28,14 +29,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     return <div className="flex h-screen items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
   }
 
-  // After loading, if the user is still not logged in,
-  // render null to avoid a flash of content before the redirect effect kicks in.
-  // This is disabled for testing purposes.
-  // if (!user) {
-  //   return null;
-  // }
-  
-  // If loading is complete and the user is logged in, render the admin layout.
+  // If loading is complete, render the admin layout.
   return (
     <SidebarProvider>
         <Sidebar>
@@ -86,7 +80,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </SidebarContent>
         </Sidebar>
         <SidebarInset className="overflow-y-auto">
-            <main className="flex-1 p-4">
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                 <SidebarTrigger className="md:hidden" />
+                 {/* You can add a breadcrumb or title here if needed */}
+            </header>
+            <main className="flex-1 p-4 pt-0 md:p-6 md:pt-0">
                 {children}
             </main>
         </SidebarInset>
