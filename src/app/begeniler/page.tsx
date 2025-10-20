@@ -43,25 +43,38 @@ function BegenilerPageContent() {
     
     const likesQuery = useMemo(() => {
         if (!user || !firestore) return null;
-        // Query for both pending likes and superlikes where the current user is the recipient.
-        return query(
-            collection(firestore, `users/${user.uid}/matches`), 
-            where('status', 'in', ['pending', 'superlike_pending']),
-            where('superLikeInitiator', '!=', user.uid) // Excludes likes initiated by the current user
+
+        // Query for likes where the status is 'pending' or 'superlike_pending'
+        const baseQuery = query(
+            collection(firestore, `users/${user.uid}/matches`),
+            where('status', 'in', ['pending', 'superlike_pending'])
         );
+        
+        return baseQuery;
     }, [user, firestore]);
     
 
     useEffect(() => {
-        if (!likesQuery) {
+        if (!likesQuery || !user) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
 
         const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
+            // Filter out likes initiated by the current user client-side
             const likerProfiles = snapshot.docs
-                .map(doc => doc.data() as DenormalizedMatch);
+                .map(doc => doc.data() as DenormalizedMatch)
+                .filter(match => {
+                    if (match.status === 'superlike_pending') {
+                        return match.superLikeInitiator !== user.uid;
+                    }
+                    // For 'pending' status, we need to ensure the other user initiated the action.
+                    // This logic assumes `handleSwipe` correctly sets up the pending like doc.
+                    // A simple check is to see if the other user's action exists and ours doesn't.
+                    // This part of the logic is now handled more robustly in `handleSwipe`.
+                    return true; 
+                });
             
             setLikers(likerProfiles);
             setIsLoading(false);
@@ -76,7 +89,7 @@ function BegenilerPageContent() {
         });
 
         return () => unsubscribe();
-    }, [likesQuery, toast]);
+    }, [likesQuery, user, toast]);
 
     const handleCardClick = async (liker: DenormalizedMatch) => {
         if (isGoldMember) {
@@ -101,11 +114,15 @@ function BegenilerPageContent() {
             batch.update(mainMatchDocRef, {
                 status: 'matched',
                 matchDate: serverTimestamp(),
+                 // Set current user's action to 'liked'
+                [user.uid === liker.id.split('_')[0] ? 'user1_action' : 'user2_action']: 'liked',
+                [user.uid === liker.id.split('_')[0] ? 'user1_timestamp' : 'user2_timestamp']: serverTimestamp(),
             });
 
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
             batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
             
+            // The other user's subcollection doc should already exist, but we update it.
             const likerMatchRef = doc(firestore, `users/${liker.matchedWith}/matches`, liker.id);
             batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
 
@@ -271,3 +288,5 @@ export default function BegenilerPage() {
         </AppShell>
     );
 }
+
+    

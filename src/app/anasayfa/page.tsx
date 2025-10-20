@@ -147,28 +147,26 @@ function AnasayfaPageContent() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
-    
-    // Immediately remove the swiped profile from the state to make the UI feel fast
+
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
         const currentUserRef = doc(firestore, 'users', user.uid);
         const currentUserSnap = await getDoc(currentUserRef);
         const currentUserData = currentUserSnap.data();
-        
+
         if (!currentUserData || (currentUserData.superLikeBalance ?? 0) < 1) {
             toast({
                 title: "Super Like Hakkın Kalmadı!",
                 description: "Daha fazla Super Like almak için marketi ziyaret edebilirsin.",
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
-            // Re-add the profile to the top of the stack if the action failed
             setProfiles(prev => [profileToSwipe, ...prev]);
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
     }
-    
+
     try {
         const action = direction === 'up' ? 'superliked' : (direction === 'right' ? 'liked' : 'disliked');
         const sortedIds = [user.uid, profileToSwipe.uid].sort();
@@ -179,27 +177,28 @@ function AnasayfaPageContent() {
         let matchData: any = matchDoc.exists() ? matchDoc.data() : {};
 
         const user1IsCurrentUser = user.uid === sortedIds[0];
-        
-        const otherUserKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
-        const otherUserAction = matchData[otherUserKey];
+        const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
+        const otherUserAction = matchData[otherUserActionKey];
 
-        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || (action === 'superliked' && otherUserAction === 'liked');
+        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
+                        (action === 'superliked' && otherUserAction === 'liked');
+
+        let newStatus: 'pending' | 'matched' | 'superlike_pending' = 'pending';
+        if (isMatch) {
+            newStatus = 'matched';
+        } else if (action === 'superliked') {
+            newStatus = 'superlike_pending';
+        } else if (matchData.status) {
+            newStatus = matchData.status;
+        }
 
         const updateData: any = {
             id: matchId,
             user1Id: sortedIds[0],
             user2Id: sortedIds[1],
             isSuperLike: matchData.isSuperLike || action === 'superliked',
-            status: isMatch ? 'matched' : (action === 'superliked' ? 'superlike_pending' : (matchData.status || 'pending')),
+            status: newStatus,
         };
-
-        if(action === 'superliked') {
-            updateData.superLikeInitiator = user.uid;
-        }
-
-        if (isMatch) {
-            updateData.matchDate = serverTimestamp();
-        }
 
         if (user1IsCurrentUser) {
             updateData.user1_action = action;
@@ -209,37 +208,48 @@ function AnasayfaPageContent() {
             updateData.user2_timestamp = serverTimestamp();
         }
 
-        await setDoc(matchDocRef, updateData, { merge: true });
-        
+        if (action === 'superliked') {
+            updateData.superLikeInitiator = user.uid;
+        }
         if (isMatch) {
-            const lastMessage = langTr.eslesmeler.defaultMessage;
-            
-            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), { 
-                id: matchId,
-                matchedWith: user.uid, 
-                status: 'matched',
-                timestamp: serverTimestamp(),
-                fullName: userProfile.fullName,
-                profilePicture: userProfile.profilePicture || '',
-                isSuperLike: updateData.isSuperLike || false,
-                superLikeInitiator: updateData.superLikeInitiator || null,
-                lastMessage: lastMessage,
-            }, { merge: true });
-            
-            await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), {
-                id: matchId,
-                matchedWith: profileToSwipe.uid,
-                status: 'matched',
-                timestamp: serverTimestamp(),
-                fullName: profileToSwipe.fullName,
-                profilePicture: profileToSwipe.profilePicture || '',
-                isSuperLike: updateData.isSuperLike || false,
-                superLikeInitiator: updateData.superLikeInitiator || null,
-                lastMessage: lastMessage,
-            }, { merge: true });
+            updateData.matchDate = serverTimestamp();
+        }
+        
+        await setDoc(matchDocRef, updateData, { merge: true });
 
+        const defaultLastMessage = langTr.eslesmeler.defaultMessage;
+        
+        // Always create/update the sub-collection docs
+        const currentUserMatchData = {
+            id: matchId,
+            matchedWith: profileToSwipe.uid,
+            status: newStatus,
+            timestamp: serverTimestamp(),
+            fullName: profileToSwipe.fullName,
+            profilePicture: profileToSwipe.profilePicture || '',
+            isSuperLike: updateData.isSuperLike,
+            superLikeInitiator: updateData.superLikeInitiator || null,
+            lastMessage: isMatch ? defaultLastMessage : '',
+        };
+        
+        const otherUserMatchData = {
+            id: matchId,
+            matchedWith: user.uid,
+            status: newStatus,
+            timestamp: serverTimestamp(),
+            fullName: userProfile.fullName,
+            profilePicture: userProfile.profilePicture || '',
+            isSuperLike: updateData.isSuperLike,
+            superLikeInitiator: updateData.superLikeInitiator || null,
+            lastMessage: isMatch ? defaultLastMessage : '',
+        };
+
+        if (isMatch) {
+            await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), currentUserMatchData, { merge: true });
+            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+            
             if (profileToSwipe.isBot) {
-                try {
+                 try {
                     await fetch('/api/message-webhook', {
                         method: 'POST',
                         headers: {
@@ -261,20 +271,24 @@ function AnasayfaPageContent() {
                 title: langTr.anasayfa.matchToastTitle,
                 description: `${profileToSwipe.fullName} ${langTr.anasayfa.matchToastDescription}`
             });
+
+        } else if (action !== 'disliked') {
+            // This is a like or superlike that didn't result in a match yet.
+            // Create the record in the *other* user's subcollection so they see the like.
+            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+             if (action === 'superliked') {
+                toast({
+                    title: "Super Like Gönderildi!",
+                    description: `${profileToSwipe.fullName} kabul ederse eşleşeceksiniz.`
+                });
+            }
         }
         
-         if (action === 'superliked' && !isMatch) {
-            toast({
-                title: "Super Like Gönderildi!",
-                description: `${profileToSwipe.fullName} kabul ederse eşleşeceksiniz.`
-            });
-        }
-
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
         setProfiles(prev => [profileToSwipe, ...prev]);
     }
-  }, [user, firestore, toast, userProfile, router]);
+}, [user, firestore, toast, userProfile, router]);
   
   if (isUserLoading || (isLoading && profiles.length === 0)) {
     return (
@@ -334,6 +348,8 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
 
     
 
