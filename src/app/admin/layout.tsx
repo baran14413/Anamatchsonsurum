@@ -14,21 +14,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // We only want to check for admin status once the user loading is complete.
-    if (!isUserLoading) {
-      // Test mode: Allow access if password was correct, skip isAdmin check.
-      const hasAdminAccess = sessionStorage.getItem('admin_access') === 'granted';
-      
-      if (!user) {
-        router.replace('/');
-        return;
-      }
-      
-      if (!userProfile?.isAdmin && !hasAdminAccess) {
-        router.replace('/anasayfa');
-      }
+    if (isUserLoading) {
+      return; // Don't do anything until user status is resolved
     }
-    // The dependency array ensures this effect runs when loading status or user changes.
+
+    const hasAdminAccess = sessionStorage.getItem('admin_access') === 'granted';
+
+    // If user is not logged in at all, redirect to home
+    if (!user) {
+      router.replace('/');
+      return;
+    }
+
+    // If user is logged in, but not an admin AND doesn't have the session pass, redirect
+    if (!userProfile?.isAdmin && !hasAdminAccess) {
+      router.replace('/anasayfa');
+    }
+    
   }, [user, userProfile, isUserLoading, router]);
 
   // While user data is loading, show a loading indicator.
@@ -87,7 +89,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </SidebarContent>
         </Sidebar>
         <SidebarInset>
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
                  <SidebarTrigger className="md:hidden" />
                  {/* You can add a breadcrumb or title here if needed */}
             </header>
