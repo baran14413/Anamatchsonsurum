@@ -15,6 +15,7 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
+import useSWR from 'swr';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -105,22 +106,33 @@ function AnasayfaPageContent() {
   const router = useRouter();
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadProfiles = useCallback(async (ignoreFilters = false) => {
+  
+  const fetcher = (ignoreFilters: boolean) => {
     if (user && firestore && userProfile && !isUserLoading) {
-      setIsLoading(true);
-      const fetched = await fetchProfiles(firestore, user, userProfile, ignoreFilters);
-      setProfiles(fetched);
-      setIsLoading(false);
-    } else if (!isUserLoading) {
-      setIsLoading(false);
+        return fetchProfiles(firestore, user, userProfile, ignoreFilters);
     }
-  }, [user, firestore, userProfile, isUserLoading]);
+    return Promise.resolve([]);
+  };
+
+  const { data: fetchedProfiles, error, isLoading, mutate } = useSWR(
+      user && userProfile ? ['profiles', user.uid] : null,
+      () => fetcher(false),
+      { revalidateOnFocus: false }
+  );
 
   useEffect(() => {
-    loadProfiles(false);
-  }, [loadProfiles]);
+    if (fetchedProfiles) {
+      setProfiles(fetchedProfiles);
+    }
+  }, [fetchedProfiles]);
+  
+  useEffect(() => {
+      // Prefetch next batch of profiles when the current stack is low
+      if (profiles.length > 0 && profiles.length < 5) {
+          mutate(); // Re-trigger fetcher
+      }
+  }, [profiles.length, mutate]);
+
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
@@ -262,7 +274,7 @@ function AnasayfaPageContent() {
   }
 
   const handleRetry = () => {
-      loadProfiles(true);
+      mutate();
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
