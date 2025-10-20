@@ -15,18 +15,28 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (isUserLoading) {
-      return;
+    // We only want to check for admin status once the user loading is complete.
+    if (!isUserLoading) {
+      // If the user is loaded and they are not an admin, redirect them.
+      if (!userProfile?.isAdmin) {
+        router.replace('/anasayfa');
+      }
     }
-    if (!userProfile?.isAdmin) {
-      router.replace('/anasayfa');
-    }
+    // The dependency array ensures this effect runs when loading status or profile changes.
   }, [userProfile, isUserLoading, router]);
 
-  if (isUserLoading || !userProfile?.isAdmin) {
+  // While user data is loading, show a loading indicator.
+  if (isUserLoading) {
     return <div className="flex h-screen items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
   }
 
+  // After loading, if the user is still not an admin (e.g., they logged out or never were an admin),
+  // render null to avoid a flash of content before the redirect effect kicks in.
+  if (!userProfile?.isAdmin) {
+    return null;
+  }
+  
+  // If loading is complete and the user is an admin, render the admin layout.
   return (
     <SidebarProvider>
         <Sidebar>
