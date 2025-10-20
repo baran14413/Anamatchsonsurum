@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -26,6 +25,8 @@ export default function MarketPage() {
   const superLikeProducts = products.filter(p => p.type === 'superlike');
 
   const handlePurchase = async (productId: string) => {
+    // Güvenlik katmanı: Yeni billing.ts zaten bunu yönetiyor ama
+    // kullanıcıya daha net bir mesaj vermek için bu kontrolü burada tutmak iyi bir pratik.
     if (!Capacitor.isNativePlatform()) {
         toast({
             title: 'Web Tarayıcısı',
@@ -43,7 +44,7 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-      // Capacitor Billing plugin'i aracılığıyla satın alma işlemini başlat
+      // Artık güvenli olan Billing modülünü çağırıyoruz.
       const result = await Billing.purchase({ productId });
       
       const product = getProductById(productId);
@@ -79,16 +80,28 @@ export default function MarketPage() {
 
       } else {
         // Satın alma başarısız veya iptal edildi
-        throw new Error('Satın alma tamamlanamadı veya kullanıcı tarafından iptal edildi.');
+        // billing.ts içindeki sahte implementasyon 'FAILED' döndüreceği için bu bloğa girebilir.
+        if (result.purchaseState !== 'CANCELLED') {
+             throw new Error('Satın alma tamamlanamadı veya kullanıcı tarafından iptal edildi.');
+        }
       }
 
     } catch (error: any) {
       console.error('Satın alma hatası:', error);
-      toast({
-        title: 'Satın Alma Başarısız',
-        description: error.message || 'Ödeme sırasında bir sorun oluştu. Lütfen tekrar deneyin.',
-        variant: 'destructive',
-      });
+      // Kullanıcıya genel bir hata mesajı göster
+       if (error.message.includes('tamamlanamadı')) {
+             toast({
+                title: 'Satın Alma İptal Edildi',
+                description: 'Satın alma işlemi tamamlanmadı.',
+                variant: 'default',
+            });
+       } else {
+            toast({
+                title: 'Satın Alma Başarısız',
+                description: 'Ödeme sırasında bir sorun oluştu. Lütfen tekrar deneyin.',
+                variant: 'destructive',
+            });
+       }
     } finally {
       setIsPurchasing(null);
     }
