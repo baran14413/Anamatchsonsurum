@@ -146,12 +146,12 @@ function ChatPageContent() {
     const [viewOnceProgress, setViewOnceProgress] = useState(0);
     
     const isSystemChat = matchId === 'system';
-    const otherUserId = user && !isSystemChat ? matchId.replace(user.uid, '').replace('_', '') : null;
+    const otherUserId = user && !isSystemChat ? matchId?.replace(user.uid, '').replace('_', '') : null;
     
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
-        const collectionPath = isSystemChat ? `system_messages` : `matches/${matchId}/messages`;
-        return query(collection(collectionPath), orderBy('timestamp', 'asc'));
+        const collectionPath = isSystemChat ? 'system_messages' : `matches/${matchId}/messages`;
+        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
 
@@ -1341,3 +1341,5 @@ export default function ChatPage() {
         </AppShell>
     )
 }
+
+    
