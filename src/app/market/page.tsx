@@ -47,64 +47,21 @@ export default function MarketPage() {
 
     try {
       const Billing = getBilling();
-      const result = await Billing.purchase({ productId });
-      
-      const product = getProductById(productId);
-
-      if (result.purchaseState === 'PURCHASED' && product) {
-        
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const updateData: any = {};
-        
-        if (product.type === 'gold') {
-          updateData.membershipType = 'gold';
-          let expiryDate: Date | null = new Date();
-          if (product.id.includes('1month')) {
-            expiryDate = add(new Date(), { months: 1 });
-          } else if (product.id.includes('6months')) {
-            expiryDate = add(new Date(), { months: 6 });
-          } else if (product.id.includes('1year')) {
-            expiryDate = add(new Date(), { years: 1 });
-          }
-          updateData.goldMembershipExpiresAt = Timestamp.fromDate(expiryDate);
-        } else if (product.type === 'superlike') {
-          const amount = parseInt(product.id.split('.').pop() || '0');
-          updateData.superLikeBalance = increment(amount);
-        }
-
-        await updateDoc(userDocRef, updateData);
-        
-        await addDoc(collection(firestore, 'purchases'), {
-            userId: user.uid,
-            productId: productId,
-            purchaseDate: serverTimestamp(),
-            ...result
-        });
-
-        toast({
-          title: 'Satın Alma Başarılı!',
-          description: `${product.title} paketi hesabınıza eklendi.`,
-        });
-
-      } else if (result.purchaseState === 'CANCELLED') {
-        // Do nothing, user cancelled.
-      } else {
-        // This handles PENDING, FAILED, or UNSPECIFIED states without throwing an error.
-        // We just inform the user that the process is not complete.
-        // The billing plugin should emit events for final states which should be handled elsewhere.
-         console.log(`Purchase ended with state: ${result.purchaseState}`);
-      }
+      // We only initiate the purchase here. The result is handled by the global listener.
+      await Billing.purchase({ productId });
 
     } catch (error: any) {
-      console.error('Satın alma hatası:', error);
-      if (error.message && !error.message.toLowerCase().includes('cancel')) {
-          toast({
-              title: 'Satın Alma Başarısız',
-              description: 'Ödeme sırasında bir sorun oluştu. Lütfen tekrar deneyin.',
-              variant: 'destructive',
-          });
-      }
+      // This catch block will now only handle errors related to INITIATING the purchase
+      // e.g., product not found in the app store, network error, etc.
+      // It won't handle user cancellation or pending states.
+      console.error('Satın alma başlatma hatası:', error);
+      toast({
+          title: 'Satın Alma Başlatılamadı',
+          description: 'Ödeme süreci başlatılırken bir sorun oluştu. Lütfen tekrar deneyin.',
+          variant: 'destructive',
+      });
     } finally {
+      // We can stop the loading indicator as our job (initiating) is done.
       setIsPurchasing(null);
     }
   };

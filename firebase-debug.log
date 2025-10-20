@@ -2421,3 +2421,79 @@
 [error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
 [debug] [2025-10-20T17:38:39.480Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
 [debug] [2025-10-20T17:38:39.480Z] > authorizing via signed-in user (baranguler.65091@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-10-20T18:07:44.474Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.475Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.476Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.476Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.477Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.477Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.477Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.478Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.478Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.478Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.480Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ [none]
+[debug] [2025-10-20T18:07:44.480Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.510Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.510Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.513Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.513Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.515Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.515Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.517Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com [none]
+[debug] [2025-10-20T18:07:44.518Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com x-goog-quota-user=projects/bematch-new
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-10-20T18:07:44.610Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.610Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.610Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.611Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.611Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.611Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.611Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.612Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.612Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.612Z] Checked if tokens are valid: true, expires at: 1760985517173
+[debug] [2025-10-20T18:07:44.612Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ [none]
+[debug] [2025-10-20T18:07:44.612Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.614Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.614Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.616Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.616Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.618Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-10-20T18:07:44.618Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:44.622Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com [none]
+[debug] [2025-10-20T18:07:44.622Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com x-goog-quota-user=projects/bematch-new
+[debug] [2025-10-20T18:07:45.308Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com 403
+[debug] [2025-10-20T18:07:45.308Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com [omitted]
+[debug] [2025-10-20T18:07:45.325Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com 403
+[debug] [2025-10-20T18:07:45.326Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseio.com [omitted]
+[debug] [2025-10-20T18:07:45.377Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com 200
+[debug] [2025-10-20T18:07:45.378Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.400Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-10-20T18:07:45.402Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.409Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-10-20T18:07:45.410Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.425Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com 200
+[debug] [2025-10-20T18:07:45.428Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasecrashlytics.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.488Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-10-20T18:07:45.488Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.506Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-10-20T18:07:45.507Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-10-20T18:07:45.633Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ 200
+[debug] [2025-10-20T18:07:45.634Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ [omitted]
+[debug] [2025-10-20T18:07:45.649Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ 200
+[debug] [2025-10-20T18:07:45.649Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/bematch-new/services/ [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-10-20T18:07:45.669Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-10-20T18:07:45.672Z] > authorizing via signed-in user (baranguler.65091@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-10-20T18:07:45.724Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-10-20T18:07:45.724Z] > authorizing via signed-in user (baranguler.65091@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-10-20T18:07:45.763Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-10-20T18:07:45.764Z] > authorizing via signed-in user (baranguler.65091@gmail.com)
