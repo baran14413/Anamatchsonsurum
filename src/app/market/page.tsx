@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import { doc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { add } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 
 export default function MarketPage() {
   const router = useRouter();
@@ -24,6 +26,15 @@ export default function MarketPage() {
   const superLikeProducts = products.filter(p => p.type === 'superlike');
 
   const handlePurchase = async (productId: string) => {
+    if (!Capacitor.isNativePlatform()) {
+        toast({
+            title: 'Web Tarayıcısı',
+            description: 'Satın alma özelliği yalnızca mobil uygulamamızda mevcuttur.',
+            variant: 'default',
+        });
+        return;
+    }
+      
     if (!user || !firestore) {
       toast({ title: 'Hata', description: 'Satın alım yapmak için giriş yapmalısınız.', variant: 'destructive' });
       return;
