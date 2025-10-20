@@ -92,8 +92,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const likesQuery = query(
         collection(firestore, `users/${user.uid}/matches`), 
-        where('status', '==', 'superlike_pending'),
-        where('superLikeInitiator', '!=', user.uid)
+        where('status', 'in', ['pending', 'superlike_pending']),
+        where('superLikeInitiator', '!=', user.uid) 
     );
     const unsubscribeLikes = onSnapshot(likesQuery, (snapshot) => {
         setHasNewLikes(!snapshot.empty);
@@ -156,13 +156,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link href="/anasayfa">
                     <Icons.logo width={32} height={32} />
                 </Link>
-                {!userProfile?.isAdmin && (
-                    <AlertDialogTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground">
-                            <AtSign className="h-4 w-4" />
-                        </Button>
-                    </AlertDialogTrigger>
-                )}
+                <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground">
+                        <AtSign className="h-4 w-4" />
+                    </Button>
+                </AlertDialogTrigger>
             </div>
 
             <div className='flex items-center gap-1'>

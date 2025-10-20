@@ -1,14 +1,12 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
 import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
-import AppShell from '@/components/app-shell';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -98,10 +96,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
-        <AppShell>
-            <AdminLayoutContent>
-                {children}
-            </AdminLayoutContent>
-        </AppShell>
+        <AdminLayoutContent>
+            {children}
+        </AdminLayoutContent>
     )
 }
