@@ -52,20 +52,20 @@ export default function MarketPage() {
       if (result.purchaseState === 'PURCHASED' && product) {
         // Satın alma başarılı, Firestore'da kullanıcı profilini güncelle
         const userRef = doc(firestore, 'users', user.uid);
-        let updateData = {};
+        let updateData: any = {};
 
         if (product.type === 'gold') {
           let expiryDate: Date | null = new Date();
-           if (productId.includes('1_month')) expiryDate = add(new Date(), { months: 1 });
-           else if (productId.includes('6_months')) expiryDate = add(new Date(), { months: 6 });
-           else if (productId.includes('1_year')) expiryDate = add(new Date(), { years: 1 });
+           if (productId.includes('1month')) expiryDate = add(new Date(), { months: 1 });
+           else if (productId.includes('6months')) expiryDate = add(new Date(), { months: 6 });
+           else if (productId.includes('1year')) expiryDate = add(new Date(), { years: 1 });
           
           updateData = {
             membershipType: 'gold',
             goldMembershipExpiresAt: Timestamp.fromDate(expiryDate)
           };
         } else if (product.type === 'superlike') {
-          const amount = parseInt(productId.split('_').pop() || '0');
+          const amount = parseInt(productId.split('.').pop() || '0');
           updateData = {
             superLikeBalance: increment(amount)
           };
