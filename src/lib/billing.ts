@@ -29,18 +29,18 @@ let initializationPromise: Promise<BillingPlugin> | null = null;
 
 // Default implementation for web or when the plugin is not available.
 const unavailableBilling: BillingPlugin = {
-  initialize: async () => console.warn('Billing plugin not available on this platform.'),
+  initialize: async () => console.warn('Billing plugin not available on this platform. Using mock.'),
   queryProducts: async () => {
-    console.warn('Billing plugin not available.');
+    console.warn('Billing plugin not available. Returning empty products.');
     return { products: [] };
   },
   purchase: async (options) => {
-    console.warn(`Billing plugin not available. Purchase for ${options.productId} cannot be completed.`);
-    // Returning FAILED to avoid confusion with cancellation.
-    return { purchaseState: 'FAILED', productId: options.productId };
+    console.warn(`Billing plugin not available. Simulating successful purchase for ${options.productId} for testing purposes.`);
+    // On web, we simulate a successful purchase for testing.
+    return { purchaseState: 'PURCHASED', productId: options.productId };
   },
   checkSubscriptions: async () => {
-    console.warn('Billing plugin not available.');
+    console.warn('Billing plugin not available. Returning empty subscriptions.');
     return { activeSubscriptions: [] };
   },
 };
