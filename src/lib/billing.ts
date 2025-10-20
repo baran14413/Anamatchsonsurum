@@ -24,15 +24,12 @@ export interface BillingPlugin {
   queryProducts(options: { productIds: string[] }): Promise<{ products: Product[] }>;
   purchase(options: { productId: string }): Promise<Purchase>;
   checkSubscriptions(): Promise<{ activeSubscriptions: any[] }>;
-  // Eklentinin olayları dinleyebilmesi için bu metodun var olduğunu varsayıyoruz
-  addListener(eventName: 'purchaseCompleted' | 'purchaseFailed', listenerFunc: (result: Purchase) => void): Promise<any>;
+  addListener(eventName: 'purchaseCompleted' | 'purchaseFailed', listenerFunc: (result: Purchase | any) => void): Promise<any>;
 }
 
-// A singleton instance of our billing plugin.
 let billingInstance: BillingPlugin | null = null;
 let initializationPromise: Promise<BillingPlugin> | null = null;
 
-// Default implementation for web or when the plugin is not available.
 const unavailableBilling: BillingPlugin = {
   initialize: async () => console.warn('Billing plugin not available on this platform. Using mock.'),
   queryProducts: async () => {
@@ -41,7 +38,6 @@ const unavailableBilling: BillingPlugin = {
   },
   purchase: async (options) => {
     console.log(`Billing plugin not available. Simulating successful purchase for ${options.productId} for testing purposes.`);
-    // On web, we simulate a successful purchase for testing and trigger the handler directly.
     const fakePurchase: Purchase = { purchaseState: 'PURCHASED', productId: options.productId };
     handleSuccessfulPurchase(fakePurchase);
     return fakePurchase;
@@ -108,7 +104,6 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
 };
 
 
-// This function safely initializes and returns the billing plugin.
 export const initializeBilling = (): Promise<BillingPlugin> => {
   if (billingInstance) {
     return Promise.resolve(billingInstance);
@@ -124,11 +119,10 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
         const plugin = registerPlugin<BillingPlugin>('Billing');
         await plugin.initialize();
 
-        // Setup global listeners for purchase events
-        plugin.addListener('purchaseCompleted', (purchase: Purchase) => {
-          console.log('Global listener: Purchase completed', purchase);
-          if (purchase.purchaseState === 'PURCHASED') {
-              handleSuccessfulPurchase(purchase);
+        plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
+          console.log('Global listener: Purchase completed', result);
+          if (result.purchaseState === 'PURCHASED') {
+              handleSuccessfulPurchase(result as Purchase);
           }
         });
 
@@ -141,7 +135,7 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
         resolve(billingInstance);
       } catch (error) {
         console.error("Failed to initialize billing plugin:", error);
-        billingInstance = unavailableBilling; // Fallback to unavailable
+        billingInstance = unavailableBilling; 
         resolve(billingInstance);
       }
     } else {
@@ -154,11 +148,12 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
   return initializationPromise;
 };
 
-// Export a getter to access the instance.
-export const getBilling = (): BillingPlugin => {
-    if (!billingInstance) {
-        console.warn("Billing plugin has not been initialized. Returning unavailable mock. Call initializeBilling() at app startup.");
-        return unavailableBilling;
+// This function now ensures initialization is complete before returning.
+export const getBilling = async (): Promise<BillingPlugin> => {
+    if (!initializationPromise) {
+        // If no initialization has been started, start it.
+        return initializeBilling();
     }
-    return billingInstance;
+    // Otherwise, wait for the existing initialization promise to complete.
+    return initializationPromise;
 }

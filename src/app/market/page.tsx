@@ -5,55 +5,38 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Gem, Star, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { products, getProductById } from '@/lib/products';
-import { initializeBilling, getBilling } from '@/lib/billing';
+import { products } from '@/lib/products';
+import { getBilling } from '@/lib/billing';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { doc, updateDoc, increment, serverTimestamp, Timestamp, addDoc, collection } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { add } from 'date-fns';
 
 export default function MarketPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { firestore, user } = useFirebase();
+  const { user, firestore } = useFirebase();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
-  const [isBillingReady, setIsBillingReady] = useState(false);
 
   const goldProducts = products.filter(p => p.type === 'gold');
   const superLikeProducts = products.filter(p => p.type === 'superlike');
 
-  // Initialize the billing plugin when the component mounts
-  useEffect(() => {
-    initializeBilling().then(() => {
-      setIsBillingReady(true);
-      console.log("Billing is now ready.");
-    });
-  }, []);
-
   const handlePurchase = async (productId: string) => {
-    if (!isBillingReady) {
-      toast({ title: 'Hata', description: 'Faturalandırma servisi henüz hazır değil. Lütfen bir an bekleyin.', variant: 'destructive' });
-      return;
-    }
-
-    if (!user || !firestore) {
+    if (!user) {
       toast({ title: 'Hata', description: 'Satın alım yapmak için giriş yapmalısınız.', variant: 'destructive' });
       return;
     }
-
+    
     setIsPurchasing(productId);
 
     try {
-      const Billing = getBilling();
+      // Get the initialized billing plugin. This now waits for initialization.
+      const Billing = await getBilling();
+      
       // We only initiate the purchase here. The result is handled by the global listener.
       await Billing.purchase({ productId });
 
     } catch (error: any) {
-      // This catch block will now only handle errors related to INITIATING the purchase
-      // e.g., product not found in the app store, network error, etc.
-      // It won't handle user cancellation or pending states.
       console.error('Satın alma başlatma hatası:', error);
       toast({
           title: 'Satın Alma Başlatılamadı',
@@ -85,7 +68,7 @@ export default function MarketPage() {
         <Button 
           className={cn("w-full", product.type === 'gold' && "bg-yellow-500 hover:bg-yellow-600 text-black")} 
           onClick={() => handlePurchase(product.id)}
-          disabled={!!isPurchasing || !isBillingReady}
+          disabled={!!isPurchasing}
         >
           {isPurchasing === product.id ? <Icons.logo width={24} height={24} className="animate-pulse" /> : 'Satın Al'}
         </Button>
