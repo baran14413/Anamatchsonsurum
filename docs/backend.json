@@ -136,7 +136,7 @@
         "goldMembershipExpiresAt": {
           "type": "string",
           "format": "date-time",
-          "description": "The timestamp when the user's Gold membership expires."
+          "description": "The user's Gold membership expires."
         },
         "dailyUndoCount": {
           "type": "number",

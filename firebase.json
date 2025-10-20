@@ -1,14 +1,14 @@
 
 {
   "hosting": {
-    "public": "out",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ]
   },
-  "functions": {
-    "source": "functions"
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
