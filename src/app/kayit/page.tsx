@@ -177,13 +177,15 @@ export default function SignUpPage() {
         const snapshot = await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
+        const newImage = { url: downloadURL, public_id: uniqueFileName };
+        
+        const currentImages = form.getValues('images') || [];
+        const finalImages = [...currentImages, newImage];
+        form.setValue('images', finalImages, { shouldValidate: true });
+
         setImageSlots(prevSlots => {
             const updatedSlots = [...prevSlots];
             updatedSlots[slotIndex] = { file: null, preview: downloadURL, public_id: uniqueFileName, isUploading: false };
-            const finalImages = updatedSlots
-                .filter(p => p.preview && p.public_id && !p.isUploading)
-                .map(p => ({ url: p.preview!, public_id: p.public_id! }));
-            form.setValue('images', finalImages, { shouldValidate: true });
             return updatedSlots;
         });
 
@@ -215,10 +217,8 @@ export default function SignUpPage() {
           }
       }
       
-      // Update UI regardless of storage deletion outcome for better UX
       const newSlots = [...imageSlots];
       if (newSlots[index].preview && newSlots[index].file) {
-            // Revoke object URL to free memory if it's a local preview
             URL.revokeObjectURL(newSlots[index].preview!);
       }
       newSlots[index] = { file: null, preview: null, public_id: null, isUploading: false };
@@ -618,5 +618,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-
-    
