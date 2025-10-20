@@ -159,7 +159,7 @@ function ProfilePageContent() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto animated-gradient-bg">
+    <div className="flex-1 overflow-y-auto bg-background">
       <div className="container mx-auto max-w-2xl p-4 space-y-6">
 
         {/* Profile Header */}

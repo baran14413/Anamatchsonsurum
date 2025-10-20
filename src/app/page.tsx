@@ -70,7 +70,7 @@ export default function WelcomePage() {
   // If user is not logged in or not fully onboarded, show the welcome screen
   if (!user || !userProfile?.rulesAgreed) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-between p-8 text-center animated-gradient-bg text-black">
+      <div className="flex min-h-dvh flex-col items-center justify-between p-8 text-center bg-background text-foreground">
         <div />
         <div className="flex flex-1 flex-col justify-center items-center">
           <motion.div
@@ -90,7 +90,7 @@ export default function WelcomePage() {
         </div>
 
         <div className="w-full max-w-sm space-y-8">
-          <div className="text-xs text-black/90">
+          <div className="text-xs text-muted-foreground">
             <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement.replace('<1>', '<a href="/tos" class="underline">').replace('</1>', '</a>').replace('<3>', '<a href="/privacy" class="underline">').replace('</3>', '</a>').replace('<5>', '<a href="/cookies" class="underline">').replace('</5>', '</a>') }} />
           </div>
 
@@ -98,7 +98,7 @@ export default function WelcomePage() {
             <Link href="/giris">
               <Button
                 variant="outline"
-                className="w-full h-12 rounded-full bg-white/20 border-black/30 text-black hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+                className="w-full h-12 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 <Mail className="mr-4 h-6 w-6" />
                 E-posta ile Giriş Yap
@@ -106,15 +106,15 @@ export default function WelcomePage() {
             </Link>
             <Link href="/kayit">
               <Button
-                variant="outline"
-                className="w-full h-12 rounded-full bg-black/90 border-black/30 text-white hover:bg-black text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+                variant="default"
+                className="w-full h-12 rounded-full text-base font-semibold justify-start pl-6 backdrop-blur-sm"
               >
                 <UserPlus className="mr-4 h-6 w-6" />
                 Yeni Hesap Oluştur
               </Button>
             </Link>
           </div>
-            <Button variant="link" className="text-black/60 hover:text-black" onClick={handleClearCache}>
+            <Button variant="link" className="text-muted-foreground hover:text-foreground" onClick={handleClearCache}>
               <Trash2 className="mr-2 h-4 w-4" />
               Önbelleği Temizle
           </Button>

@@ -216,7 +216,7 @@ export default function AppSettingsPage() {
             >
               <div className="flex items-center gap-3">
                 <Palette className="h-5 w-5" />
-                <span>Kırmızı & Beyaz</span>
+                <span>Siyah &amp; Beyaz</span>
               </div>
               <RadioGroupItem value="light" id="light" />
             </Label>

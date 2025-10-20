@@ -134,14 +134,14 @@ function EslesmelerPageContent() {
 
   if (isLoading) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center animated-gradient-bg">
+        <div className="flex-1 flex flex-col items-center justify-center bg-background">
             <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
         </div>
       )
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden animated-gradient-bg">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {(!matches || matches.length === 0) && !isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
                 <MessageSquare className="h-16 w-16 mb-4 text-gray-300" />
@@ -153,7 +153,7 @@ function EslesmelerPageContent() {
                 <div className="p-4 border-b shrink-0">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Sohbetlerde Ara" className="pl-10 bg-background" onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input placeholder="Sohbetlerde Ara" className="pl-10 bg-secondary" onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                 </div>
                 
@@ -177,7 +177,7 @@ function EslesmelerPageContent() {
                                                 <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
                                             </Avatar>
                                             {hasUnread && (
-                                                <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-background" />
+                                                <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-background" />
                                             )}
                                         </div>
                                         <div className="ml-4 flex-1 overflow-hidden">

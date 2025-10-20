@@ -194,18 +194,23 @@ export default function SignUpPage() {
       case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
       case 1: fieldsToValidate = ['name', 'interests']; break;
       case 2: fieldsToValidate = ['location']; break;
-      case 3: // This is now the final step
-        await form.trigger();
-        if (form.formState.isValid) {
+    }
+    
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+        if (step === totalSteps - 1) {
             onSubmit(form.getValues());
         } else {
-            const firstErrorField = Object.keys(form.formState.errors)[0] as keyof SignupFormValues;
-            const errorStepMap: { [key in keyof SignupFormValues]?: number } = {
+            nextStep();
+        }
+    } else {
+         const firstErrorField = Object.keys(form.formState.errors)[0] as keyof SignupFormValues;
+         if (fieldsToValidate && !fieldsToValidate.includes(firstErrorField)) {
+              const stepWithError = {
                 'email': 0, 'password': 0, 'confirmPassword': 0,
                 'name': 1, 'interests': 1,
                 'location': 2,
-            };
-            const stepWithError = errorStepMap[firstErrorField];
+            }[firstErrorField];
             if (stepWithError !== undefined) {
                 setStep(stepWithError);
                 toast({
@@ -213,20 +218,8 @@ export default function SignUpPage() {
                     description: 'Lütfen tüm adımlardaki bilgileri doğru bir şekilde doldurun.',
                     variant: "destructive"
                 });
-            } else {
-                 toast({
-                    title: "Bilinmeyen Form Hatası",
-                    description: 'Lütfen tüm alanları kontrol edin.',
-                    variant: "destructive"
-                });
             }
-        }
-        return;
-    }
-    
-    const isValid = await form.trigger(fieldsToValidate);
-    if (isValid) {
-      nextStep();
+         }
     }
   };
   
@@ -241,8 +234,8 @@ export default function SignUpPage() {
     };
   
   return (
-    <div className="flex h-dvh flex-col animated-gradient-bg text-black">
-       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-black/20 bg-transparent px-4">
+    <div className="flex h-dvh flex-col bg-background text-foreground">
+       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-transparent px-4">
         <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
            {step === 0 ? <X className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />}
         </Button>
@@ -257,15 +250,15 @@ export default function SignUpPage() {
               {step === 0 && (
                 <>
                   <h1 className="text-3xl font-bold">Hesabını Oluştur</h1>
-                  <p className="text-black/80 mt-2">Maceraya başlamak için e-posta ve şifreni belirle.</p>
+                  <p className="text-muted-foreground mt-2">Maceraya başlamak için e-posta ve şifreni belirle.</p>
                   <div className="space-y-6 mt-8">
                      <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
                             <FormLabel>E-posta Adresin</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
-                                    <Input type="email" placeholder="E-posta adresini gir" className="pl-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type="email" placeholder="E-posta adresini gir" className="pl-10 h-12 bg-secondary border-border placeholder:text-muted-foreground focus:ring-ring" {...field} />
                                 </div>
                             </FormControl>
                             <FormMessage />
@@ -276,10 +269,10 @@ export default function SignUpPage() {
                             <FormLabel>Şifren</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
-                                    <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni oluştur" className="pl-10 pr-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni oluştur" className="pl-10 pr-10 h-12 bg-secondary border-border placeholder:text-muted-foreground focus:ring-ring" {...field} />
                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showPassword ? <EyeOff className="h-5 w-5 text-black/60" /> : <Eye className="h-5 w-5 text-black/60" />}
+                                        {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -291,10 +284,10 @@ export default function SignUpPage() {
                             <FormLabel>Şifreni Onayla</FormLabel>
                             <FormControl>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-black/60" />
-                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir" className="pl-10 pr-10 h-12 bg-white/20 border-black/30 placeholder:text-black/60 focus:ring-black/80" {...field} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir" className="pl-10 pr-10 h-12 bg-secondary border-border placeholder:text-muted-foreground focus:ring-ring" {...field} />
                                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-black/60" /> : <Eye className="h-5 w-5 text-black/60" />}
+                                        {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
                                     </button>
                                 </div>
                             </FormControl>
@@ -310,9 +303,9 @@ export default function SignUpPage() {
                       <FormItem className="shrink-0">
                           <h1 className="text-3xl font-bold">{t.step2.title}</h1>
                           <FormControl className="mt-8">
-                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-black/50 rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-black/50" {...field} />
+                          <Input placeholder={t.step2.placeholder} className="border-0 border-b-2 border-border rounded-none px-0 text-2xl h-auto focus:ring-0 focus-visible:ring-offset-0 focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground" {...field} />
                           </FormControl>
-                          <FormLabel className="text-black/80">{t.step2.label}</FormLabel>
+                          <FormLabel className="text-muted-foreground">{t.step2.label}</FormLabel>
                           <FormMessage />
                       </FormItem>
                       )}
@@ -324,7 +317,7 @@ export default function SignUpPage() {
                             <FormItem className="flex-1 flex flex-col min-h-0 mt-8">
                                 <div className="shrink-0">
                                     <h2 className="text-2xl font-bold">{t.step11.title}</h2>
-                                    <p className="text-black/80">
+                                    <p className="text-muted-foreground">
                                         {t.step11.description.replace('{count}', String(field.value.length))}
                                     </p>
                                     <FormMessage className="pt-2" />
@@ -334,7 +327,7 @@ export default function SignUpPage() {
                                         {interestCategories.map((category) => {
                                         const Icon = LucideIcons[category.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
                                         return (
-                                            <AccordionItem value={category.title} key={category.title} className="border-black/20">
+                                            <AccordionItem value={category.title} key={category.title}>
                                             <AccordionTrigger className="hover:no-underline">
                                                 <div className="flex items-center gap-3">
                                                 <Icon className="h-5 w-5" />
@@ -367,13 +360,13 @@ export default function SignUpPage() {
               )}
                {step === 2 && (
                  <div className="flex flex-col items-center justify-center text-center h-full gap-6">
-                    <MapPin className="w-20 h-20 text-black" />
+                    <MapPin className="w-20 h-20 text-foreground" />
                     <div className="space-y-2">
                       <h1 className="text-3xl font-bold">{t.step6.title}</h1>
-                      <p className="text-black/80">{t.step6.description}</p>
+                      <p className="text-muted-foreground">{t.step6.description}</p>
                     </div>
                     {locationStatus === 'idle' && (
-                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full bg-black text-white hover:bg-gray-800">
+                        <Button type="button" onClick={handleLocationRequest} disabled={isLocationLoading} size="lg" className="rounded-full">
                             {isLocationLoading && <Icons.logo width={24} height={24} className="mr-2 animate-pulse" />}
                             {isLocationLoading ? langTr.ayarlarKonum.updatingButton : t.step6.button}
                         </Button>
@@ -388,7 +381,7 @@ export default function SignUpPage() {
                          <div className="flex flex-col items-center gap-2 text-red-600">
                            <XCircle className="w-12 h-12" />
                            <p className="font-semibold text-lg">{locationError}</p>
-                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4 bg-transparent text-black border-black hover:bg-black/10">Tekrar Dene</Button>
+                           <Button type="button" onClick={handleLocationRequest} variant="outline" className="mt-4">Tekrar Dene</Button>
                         </div>
                     )}
                     <FormMessage>{form.formState.errors.location?.message}</FormMessage>
@@ -400,7 +393,7 @@ export default function SignUpPage() {
             <Button
               type="button"
               onClick={handleNextStep}
-              className="w-full h-14 rounded-full text-lg font-bold bg-black text-white hover:bg-gray-800"
+              className="w-full h-14 rounded-full text-lg font-bold"
               disabled={
                 isSubmitting ||
                 (step === 1 && (form.getValues('interests')?.length ?? 0) < 5) ||
