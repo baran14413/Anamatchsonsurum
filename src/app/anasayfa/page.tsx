@@ -21,6 +21,7 @@ const fetchProfiles = async (
     firestore: Firestore,
     user: User,
     userProfile: UserProfile,
+    interactedUids: Set<string>,
     ignoreFilters: boolean = false
 ): Promise<UserProfile[]> => {
     try {
@@ -28,25 +29,26 @@ const fetchProfiles = async (
         let q = query(usersRef, limit(250));
         const usersSnapshot = await getDocs(q);
 
-        let interactedUids = new Set<string>();
-        if (!ignoreFilters) {
+        // Fetch all previously interacted UIDs from the matches collection just once if not ignoring filters
+        if (!ignoreFilters && interactedUids.size === 0) {
             const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
             interactedMatchDocsSnap.forEach(doc => {
                 const match = doc.data();
-                if (match.user1Id === user.uid && match.user1_action) {
+                if (match.user1Id === user.uid) { // user1_action is not needed, any action means interaction
                     interactedUids.add(match.user2Id);
-                } else if (match.user2Id === user.uid && match.user1_action) {
+                } else if (match.user2Id === user.uid) { // user2_action is not needed
                     interactedUids.add(match.user1Id);
                 }
             });
         }
+
 
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
                 if (p.uid === user.uid) return false;
-                if (!ignoreFilters && interactedUids.has(p.uid)) return false;
+                if (interactedUids.has(p.uid)) return false; // Filter based on the comprehensive set
                 
                 if (p.isBot) return true;
 
@@ -107,6 +109,8 @@ function AnasayfaPageContent() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isFetching = useRef(false);
+  // Use a ref to store interacted UIDs to avoid re-renders and have a persistent set across renders.
+  const interactedUserIds = useRef(new Set<string>());
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
@@ -114,15 +118,18 @@ function AnasayfaPageContent() {
     isFetching.current = true;
     setIsLoading(true);
 
-    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters);
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, interactedUserIds.current, ignoreFilters);
     
-    // Filter out profiles that are already in the list to avoid duplicates
-    const uniqueNewProfiles = newProfiles.filter(np => !profiles.some(p => p.uid === np.uid));
+    // Filter out profiles that are already in the current state's list to avoid duplicates
+    setProfiles(prev => {
+        const currentIds = new Set(prev.map(p => p.uid));
+        const uniqueNewProfiles = newProfiles.filter(np => !currentIds.has(np.uid));
+        return [...prev, ...uniqueNewProfiles];
+    });
 
-    setProfiles(prev => [...prev, ...uniqueNewProfiles]);
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles]);
+  }, [user, firestore, userProfile]);
 
   // Initial load
   useEffect(() => {
@@ -141,6 +148,9 @@ function AnasayfaPageContent() {
 
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
+    
+    // Add to interacted list
+    interactedUserIds.current.add(profileToSwipe.uid);
     
     // Immediately remove the swiped profile from the state to make the UI feel fast
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
