@@ -103,12 +103,12 @@ export default function SignUpPage() {
     mode: "onChange",
   });
 
-  useEffect(() => {
+   useEffect(() => {
     const finalImages = imageSlots
         .filter(p => p.preview && p.public_id && !p.isUploading)
         .map(p => ({ url: p.preview!, public_id: p.public_id! }));
     form.setValue('images', finalImages, { shouldValidate: true });
-  }, [imageSlots, form]);
+  }, [uploadedImageCount, imageSlots, form]);
   
   const handleLocationRequest = () => {
     setIsLocationLoading(true);
@@ -184,11 +184,15 @@ export default function SignUpPage() {
         const snapshot = await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        setImageSlots(prev => {
-            const newSlots = [...prev];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null };
-            return newSlots;
-        });
+        const updatedSlots = [...imageSlots];
+        updatedSlots[slotIndex] = { file: null, preview: downloadURL, public_id: uniqueFileName, isUploading: false };
+        setImageSlots(updatedSlots);
+
+        const finalImages = updatedSlots
+          .filter(p => p.preview && p.public_id && !p.isUploading)
+          .map(p => ({ url: p.preview!, public_id: p.public_id! }));
+        form.setValue('images', finalImages, { shouldValidate: true });
+
     } catch (error: any) {
         toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
         // Revert UI on failure
