@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "bematch-new"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

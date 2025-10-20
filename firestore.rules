@@ -1,143 +1,28 @@
-/**
- * @file Firestore Security Rules for BeMatch application.
- *
- * @core_philosophy This ruleset enforces a strict user-ownership model for user profiles,
- *  and shared access via explicit matching for matches and associated messages.
- *  It prioritizes security and data integrity.
- *
- * @data_structure
- * - /users/{userId}: Stores user profiles, accessible only to the user themselves.
- * - /matches/{matchId}: Stores match interactions between two users.
- * - /users/{userId}/matches/{matchId}: Denormalized match data for each user.
- * - /matches/{matchId}/messages/{messageId}: Chat messages within a match.
- *
- * @key_security_decisions
- * - Users can only read and write their own profile data.
- * - Listing all users is explicitly denied.
- * - Matches can only be created and modified by the involved users.
- * - Messages are only accessible to users participating in the match.
- *
- * @denormalization_for_authorization
- *  - Matches store user IDs directly in the document to avoid needing to query a separate
- *    collection to determine who is participating in the match.
- *
- * @structural_segregation
- *  - Public user profiles are stored in /users/{userId}, separate from any potentially
- *    private user data.
- */
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
-    /**
-     * @description Controls access to user profile data.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile.
-     * @allow (get, update, delete) User with UID 'user123' can read/update/delete their profile.
-     * @deny (create, get, update, delete) User with UID 'user456' cannot access user 'user123' profile.
-     * @principle Enforces document ownership for user profiles.
-     */
+    // Allow users to read and write their own profile
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * @description Controls access to match data between two users.
-     * @path /matches/{matchId}
-     * @allow (create) User can create a match if one of the userIds is their own.
-     * @allow (get) Any authenticated user can retrieve match data.
-     * @deny (create) User cannot create a match where neither userId is their own.
-     * @deny (update, delete) Only the involved users can update or delete a match.
-     * @principle Enforces that only involved users can manage their matches.
-     */
+    // Allow authenticated users to read other user profiles
+    match /users/{userId} {
+      allow get: if request.auth != null;
+    }
+    
     match /matches/{matchId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-
-        function isMatchParticipant() {
-            return resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid;
-        }
-
-        function isExistingMatchParticipant() {
-            return isMatchParticipant() && exists(resource);
-        }
-        // Anyone can read match data since matches are a top level document, if a user matches with someone the
-        // match document should become visible to them.
-        allow get, list: if isSignedIn() && isMatchParticipant();
-        allow create: if isSignedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
-        allow update: if isSignedIn() && isExistingMatchParticipant();
-        allow delete: if isSignedIn() && isExistingMatchParticipant();
+    	allow read, write: if request.auth != null && (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
     }
-    /**
-     * @description Controls access to denormalized match data for a specific user.
-     * @path /users/{userId}/matches/{matchId}
-     * @allow (get, list) User can access their own match list.
-     * @deny (create, update, delete) Only the system can create, update, or delete this data.
-     * @principle Ensures only the user can read their match list; write access is denied to prevent unauthorized changes.
-     */
-    match /users/{userId}/matches/{matchId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get, list: if isSignedIn() && isOwner(userId);
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to chat messages within a specific match.
-     * @path /matches/{matchId}/messages/{messageId}
-     * @allow (create) Any user in the match can create a message.
-     * @allow (get, list) Any user in the match can read messages.
-     * @deny (update, delete) Only the message sender can update or delete their own messages.
-     * @principle Enforces that only match participants can send and read messages within their match.
-     */
+    
     match /matches/{matchId}/messages/{messageId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-
-        function isMatchParticipant(matchId) {
-          return get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid
-          || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid;
-        }
-
-        function isExistingMatchParticipant(matchId) {
-            return isMatchParticipant(matchId) && exists(resource);
-        }
-
-        function isMessageSender(messageId) {
-          return request.auth.uid == resource.data.senderId;
-        }
-
-        function isExistingMessageSender(messageId) {
-          return isMessageSender(messageId) && exists(resource);
-        }
-        allow get, list: if isSignedIn() && isMatchParticipant(matchId);
-        allow create: if isSignedIn() && isMatchParticipant(matchId) && request.auth.uid == request.resource.data.senderId;
-        allow update: if isSignedIn() && isExistingMessageSender(messageId);
-        allow delete: if isSignedIn() && isExistingMessageSender(messageId);
+    	allow read, write: if request.auth != null && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.recipientId);
     }
   }
 }
