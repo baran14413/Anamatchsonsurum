@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { Mail, UserPlus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import AppShell from '@/components/app-shell';
 
 export default function WelcomePage() {
   const t = langTr;
@@ -66,58 +67,62 @@ export default function WelcomePage() {
       );
   }
 
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-between p-8 text-center animated-gradient-bg text-white">
-      <div />
-      <div className="flex flex-1 flex-col justify-center items-center">
-        <motion.div
-          className="transform-gpu"
-          animate={{
-            scale: [1, 1.05, 1],
-          }}
-          transition={{
-            duration: 2.5,
-            ease: 'easeInOut',
-            repeat: Infinity,
-            repeatDelay: 0.5,
-          }}
-        >
-          <Icons.logo width={256} height={256} />
-        </motion.div>
-      </div>
+  // If user is not logged in or not fully onboarded, show the welcome screen
+  if (!user || !userProfile?.rulesAgreed) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-between p-8 text-center animated-gradient-bg text-white">
+        <div />
+        <div className="flex flex-1 flex-col justify-center items-center">
+          <motion.div
+            className="transform-gpu"
+            animate={{
+              scale: [1, 1.05, 1],
+            }}
+            transition={{
+              duration: 2.5,
+              ease: 'easeInOut',
+              repeat: Infinity,
+              repeatDelay: 0.5,
+            }}
+          >
+            <Icons.logo width={256} height={256} />
+          </motion.div>
+        </div>
 
-      <div className="w-full max-w-sm space-y-8">
-         <div className="space-y-4">
-            <div className="text-xs text-white/90">
-              <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement.replace('<1>', '<a href="/tos" class="underline">').replace('</1>', '</a>').replace('<3>', '<a href="/privacy" class="underline">').replace('</3>', '</a>').replace('<5>', '<a href="/cookies" class="underline">').replace('</5>', '</a>') }} />
-            </div>
+        <div className="w-full max-w-sm space-y-8">
+          <div className="text-xs text-white/90">
+            <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement.replace('<1>', '<a href="/tos" class="underline">').replace('</1>', '</a>').replace('<3>', '<a href="/privacy" class="underline">').replace('</3>', '</a>').replace('<5>', '<a href="/cookies" class="underline">').replace('</5>', '</a>') }} />
+          </div>
 
-            <div className="space-y-3">
-              <Link href="/giris">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
-                >
-                  <Mail className="mr-4 h-6 w-6" />
-                  E-posta ile Giriş Yap
-                </Button>
-              </Link>
-              <Link href="/kayit">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 rounded-full bg-white/90 border-white/30 text-black hover:bg-white text-base font-semibold justify-start pl-6 backdrop-blur-sm"
-                >
-                  <UserPlus className="mr-4 h-6 w-6" />
-                  Yeni Hesap Oluştur
-                </Button>
-              </Link>
-            </div>
-             <Button variant="link" className="text-white/60 hover:text-white" onClick={handleClearCache}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Önbelleği Temizle
-            </Button>
+          <div className="space-y-3">
+            <Link href="/giris">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-full bg-white/20 border-white/30 text-white hover:bg-white/30 text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+              >
+                <Mail className="mr-4 h-6 w-6" />
+                E-posta ile Giriş Yap
+              </Button>
+            </Link>
+            <Link href="/kayit">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-full bg-white/90 border-white/30 text-black hover:bg-white text-base font-semibold justify-start pl-6 backdrop-blur-sm"
+              >
+                <UserPlus className="mr-4 h-6 w-6" />
+                Yeni Hesap Oluştur
+              </Button>
+            </Link>
+          </div>
+            <Button variant="link" className="text-white/60 hover:text-white" onClick={handleClearCache}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Önbelleği Temizle
+          </Button>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+  
+  // This should ideally not be reached, but as a fallback, we show the main app.
+  return <AppShell><div/></AppShell>;
 }

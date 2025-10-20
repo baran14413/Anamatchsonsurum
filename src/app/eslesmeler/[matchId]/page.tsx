@@ -44,6 +44,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import AppShell from '@/components/app-shell';
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
@@ -104,7 +105,7 @@ const AudioPlayer = ({ src }: { src: string }) => {
 };
 
 
-export default function ChatPage() {
+function ChatPageContent() {
     const params = useParams();
     const matchId = Array.isArray(params.matchId) ? params.matchId[0] : params.matchId;
     const router = useRouter();
@@ -748,184 +749,7 @@ export default function ChatPage() {
     const likeRatio = useMemo(() => otherUser ? Math.floor(Math.random() * (98 - 70 + 1)) + 70 : 0, [otherUser?.uid]);
 
     return (
-        <div className="flex h-dvh flex-col bg-background">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-2">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-6 w-6" />
-                </Button>
-                <Sheet>
-                    <SheetTrigger asChild>
-                        <div className="flex items-center gap-3 cursor-pointer">
-                            {isSystemChat ? (
-                                <>
-                                <Avatar className="h-9 w-9">
-                                    <Icons.bmIcon className="h-full w-full" />
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <span className="font-semibold">BeMatch - Sistem Mesajları</span>
-                                    <span className="text-xs text-green-500">Her zaman aktif</span>
-                                </div>
-                                </>
-                            ) : (otherUser ? (
-                                <>
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={otherUser.profilePicture} />
-                                        <AvatarFallback>{otherUser.fullName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-1.5">
-                                        <span className="font-semibold">{otherUser.fullName}</span>
-                                        {isOtherUserGold && <Icons.beGold width={20} height={20} />}
-                                        </div>
-                                        {renderOnlineStatus()}
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                <Avatar className="h-9 w-9">
-                                    <Icons.bmIcon className="h-full w-full" />
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <span className="font-semibold">Kullanıcı Bulunamadı</span>
-                                    <span className="text-xs text-muted-foreground">Çevrimdışı</span>
-                                </div>
-                                </>
-                            ))}
-                        </div>
-                    </SheetTrigger>
-                    {otherUser && (
-                         <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                            <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
-                                <SheetTitle className="sr-only">{otherUser.fullName} Profili</SheetTitle>
-                                <SheetDescription className="sr-only">Kullanıcının detaylı profili.</SheetDescription>
-                            </SheetHeader>
-                            <ScrollArea className='flex-1'>
-                                <div className="space-y-6">
-                                    {otherUser.images && otherUser.images.length > 0 && (
-                                        <Carousel className="w-full">
-                                            <CarouselContent>
-                                                {otherUser.images.map((image, index) => (
-                                                <CarouselItem key={index}>
-                                                    <div className="relative w-full aspect-[4/3]">
-                                                        <Image
-                                                            src={image.url}
-                                                            alt={`${otherUser.fullName} profil medyası ${index + 1}`}
-                                                            fill
-                                                            className="object-cover"
-                                                        />
-                                                    </div>
-                                                </CarouselItem>
-                                                ))}
-                                            </CarouselContent>
-                                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                        </Carousel>
-                                    )}
-                                    <div className="p-6 space-y-6 !pt-2">
-                                        <div className="text-left space-y-2">
-                                            <div className='flex flex-col items-start'>
-                                                {otherUser.membershipType === 'gold' && (
-                                                    <div className='flex items-center gap-2'>
-                                                    <Icons.beGold width={24} height={24} />
-                                                    <p className="font-semibold text-yellow-500">Gold Üye</p>
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="text-3xl font-bold">{otherUser.fullName}</h3>
-                                                    <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
-                                                </div>
-                                            </div>
-                                            {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
-                                            {(otherUser.address?.city && otherUser.address?.country) && (
-                                                <div className="flex items-center gap-2 text-muted-foreground">
-                                                    <MapPin className="w-4 h-4" />
-                                                    <span>{otherUser.address.city}, {otherUser.address.country}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {likeRatio > 0 && (
-                                            <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
-                                                <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
-                                                <div className='flex-1'>
-                                                    <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
-                                                    <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {otherUser.bio && (
-                                            <div>
-                                                <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
-                                                <p className='text-muted-foreground'>{otherUser.bio}</p>
-                                            </div>
-                                        )}
-                                        {interestEntries.length > 0 && (
-                                            <div>
-                                                <h4 className='text-lg font-semibold mb-4'>İlgi Alanları</h4>
-                                                <div className="space-y-4">
-                                                    {interestEntries.map(([category, { icon, interests }]) => {
-                                                        const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
-                                                        return (
-                                                            <div key={category} className="flex items-start gap-3">
-                                                                <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                                    <IconComponent className="w-6 h-6 text-primary" />
-                                                                </div>
-                                                                <div className='flex flex-col'>
-                                                                    <span className="font-medium text-sm">{category}</span>
-                                                                    <div className="flex flex-wrap gap-2 mt-1">
-                                                                        {interests.map(interest => (
-                                                                            <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </ScrollArea>
-                        </SheetContent>
-                    )}
-                </Sheet>
-                {isSystemChat ? (
-                    <div className="w-9 h-9"></div>
-                ) : (
-                    <AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-6 w-6" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className='text-red-600 focus:text-red-600'>
-                                        <UserX className="mr-2 h-4 w-4" />
-                                        <span>Kullanıcıyı Engelle</span>
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Kullanıcıyı Engellemek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecek. Bu kullanıcı bir daha karşınıza çıkmayacak.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
-                                {isBlocking ? t.common.loading : 'Engelle'}
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
-            </header>
-
+        <>
             <main className="flex-1 overflow-y-auto p-4">
                  {isSuperLikePendingAndIsRecipient && (
                     <div className="text-center my-6 p-4 border rounded-lg bg-blue-500/10 border-blue-500/30 space-y-4">
@@ -1252,10 +1076,19 @@ export default function ChatPage() {
                     )}
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     );
     
     function isSender(senderId: string | undefined): boolean {
         return senderId === user?.uid;
     }
+}
+
+
+export default function ChatPage() {
+    return (
+        <AppShell>
+            <ChatPageContent/>
+        </AppShell>
+    )
 }

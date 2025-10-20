@@ -20,8 +20,9 @@ import { DenormalizedMatch, ChatMessage, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import AppShell from '@/components/app-shell';
 
-export default function EslesmelerPage() {
+function EslesmelerPageContent() {
   const t = langTr.eslesmeler;
   const { user } = useUser();
   const firestore = useFirestore();
@@ -264,4 +265,10 @@ export default function EslesmelerPage() {
   );
 }
 
-    
+export default function EslesmelerPage() {
+    return (
+        <AppShell>
+            <EslesmelerPageContent />
+        </AppShell>
+    );
+}

@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
+import AppShell from '@/components/app-shell';
 
 interface SettingsItemProps {
   icon: React.ElementType;
@@ -45,50 +46,50 @@ const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
 );
 
 
-export default function SettingsPage() {
+function SettingsPageContent() {
     const { user } = useUser();
     const router = useRouter();
     const t = langTr;
 
     return (
-        <div className="flex h-dvh flex-col">
-             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-6 w-6" />
-                </Button>
-                <h1 className="text-lg font-semibold">Ayarlar ve hareketler</h1>
-                <div className='w-9'></div>
-            </header>
-            <main className="flex-1 overflow-y-auto">
-                <SectionTitle title="Hesabın" />
-                <div className="bg-background border-y divide-y">
-                   <SettingsItem icon={User} iconColor="#8b5cf6" text="Kişisel Bilgiler" href='/ayarlar/kisisel-bilgiler' />
-                   <SettingsItem icon={Wallet} iconColor="#f59e0b" text="Cüzdanım" href='/ayarlar/cuzdanim' />
-                   <SettingsItem icon={MapPin} iconColor="#10b981" text="Konum" href='/ayarlar/konum' />
-                   <SettingsItem icon={SlidersHorizontal} iconColor="#3b82f6" text="Tercihler" href='/ayarlar/tercihler' />
-                </div>
-                
-                <SectionTitle title="İlgi Alanları" />
-                 <div className="bg-background border-y">
-                   <SettingsItem icon={Heart} iconColor="#ef4444" text="İlgi Alanlarını Düzenle" href='/ayarlar/ilgi-alanlari' />
-                </div>
+        <div className="flex-1 overflow-y-auto">
+            <SectionTitle title="Hesabın" />
+            <div className="bg-background border-y divide-y">
+               <SettingsItem icon={User} iconColor="#8b5cf6" text="Kişisel Bilgiler" href='/ayarlar/kisisel-bilgiler' />
+               <SettingsItem icon={Wallet} iconColor="#f59e0b" text="Cüzdanım" href='/ayarlar/cuzdanim' />
+               <SettingsItem icon={MapPin} iconColor="#10b981" text="Konum" href='/ayarlar/konum' />
+               <SettingsItem icon={SlidersHorizontal} iconColor="#3b82f6" text="Tercihler" href='/ayarlar/tercihler' />
+            </div>
+            
+            <SectionTitle title="İlgi Alanları" />
+             <div className="bg-background border-y">
+               <SettingsItem icon={Heart} iconColor="#ef4444" text="İlgi Alanlarını Düzenle" href='/ayarlar/ilgi-alanlari' />
+            </div>
 
-                <SectionTitle title="Uygulama Ayarları" />
-                 <div className="bg-background border-y">
-                   <SettingsItem icon={Smartphone} iconColor="#f97316" text="Uygulama" href='/ayarlar/uygulama' />
-                </div>
+            <SectionTitle title="Uygulama Ayarları" />
+             <div className="bg-background border-y">
+               <SettingsItem icon={Smartphone} iconColor="#f97316" text="Uygulama" href='/ayarlar/uygulama' />
+            </div>
 
-                 <SectionTitle title="Oturum" />
-                 <div className="bg-background border-y">
-                    <SettingsItem icon={LogOut} iconColor="#78716c" text="Çıkış Yap" />
-                </div>
+             <SectionTitle title="Oturum" />
+             <div className="bg-background border-y">
+                <SettingsItem icon={LogOut} iconColor="#78716c" text="Çıkış Yap" />
+            </div>
 
-                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <Icons.logo width={100} height={35} />
-                    <p className="text-xs text-muted-foreground mt-2">Tüm hakları gizlidir © BeMatch</p>
-                </div>
-                
-            </main>
+             <div className="flex flex-col items-center justify-center py-10 text-center">
+                <Icons.logo width={100} height={35} />
+                <p className="text-xs text-muted-foreground mt-2">Tüm hakları gizlidir © BeMatch</p>
+            </div>
+            
         </div>
     )
+}
+
+
+export default function SettingsPage() {
+    return (
+        <AppShell>
+            <SettingsPageContent />
+        </AppShell>
+    );
 }

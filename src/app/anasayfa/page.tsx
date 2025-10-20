@@ -14,6 +14,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import AppShell from '@/components/app-shell';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -97,7 +98,7 @@ const fetchProfiles = async (
 
 const MemoizedProfileCard = memo(ProfileCard);
 
-export default function AnasayfaPage() {
+function AnasayfaPageContent() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -289,4 +290,13 @@ export default function AnasayfaPage() {
       </div>
     </div>
   );
+}
+
+
+export default function AnasayfaPage() {
+    return (
+        <AppShell>
+            <AnasayfaPageContent />
+        </AppShell>
+    );
 }

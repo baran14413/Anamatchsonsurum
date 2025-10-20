@@ -8,8 +8,9 @@ import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSqu
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
+import AppShell from '@/components/app-shell';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { userProfile, isUserLoading } = useUser();
   const router = useRouter();
 
@@ -76,14 +77,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </SidebarContent>
         </Sidebar>
         <SidebarInset className="overflow-y-auto">
-            <header className="flex h-12 items-center gap-2 border-b bg-background p-2 md:p-4 sticky top-0 z-10">
-                <SidebarTrigger className='md:hidden'/>
-                <h1 className='text-lg font-semibold ml-2'>Yönetim Paneli</h1>
-            </header>
             <main className="flex-1 p-4">
                 {children}
             </main>
         </SidebarInset>
     </SidebarProvider>
   );
+}
+
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <AppShell>
+            <AdminLayoutContent>
+                {children}
+            </AdminLayoutContent>
+        </AppShell>
+    )
 }

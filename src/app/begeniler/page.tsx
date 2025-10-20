@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import AppShell from '@/components/app-shell';
 
 function calculateAge(dateOfBirth: string | undefined): number | null {
     if (!dateOfBirth) return null;
@@ -26,7 +27,7 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
 }
 
-export default function BegenilerPage() {
+function BegenilerPageContent() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const [likers, setLikers] = useState<DenormalizedMatch[]>([]);
@@ -179,9 +180,6 @@ export default function BegenilerPage() {
         <AlertDialog>
              <Sheet open={!!selectedProfile} onOpenChange={(isOpen) => !isOpen && setSelectedProfile(null)}>
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <header className="sticky top-0 z-10 p-4 border-b flex items-center justify-center shrink-0 bg-background">
-                        <h1 className="text-xl font-bold">{t.begeniler.title} ({likers.length})</h1>
-                    </header>
                     
                     {likers.length > 0 ? (
                         <div className="flex-1 overflow-y-auto p-4">
@@ -266,3 +264,10 @@ export default function BegenilerPage() {
     );
 }
 
+export default function BegenilerPage() {
+    return (
+        <AppShell>
+            <BegenilerPageContent />
+        </AppShell>
+    );
+}

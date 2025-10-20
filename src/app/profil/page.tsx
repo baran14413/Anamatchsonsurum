@@ -18,9 +18,10 @@ import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import type { Match } from '@/lib/types';
+import AppShell from '@/components/app-shell';
 
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const t = langTr;
   const { user, userProfile, auth } = useUser();
   const firestore = useFirestore();
@@ -259,4 +260,12 @@ export default function ProfilePage() {
       </div>
     </div>
   );
+}
+
+export default function ProfilePage() {
+    return (
+        <AppShell>
+            <ProfilePageContent />
+        </AppShell>
+    );
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useUser, useFirestore } from '@/firebase/provider';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Settings, AtSign, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
 import { Icons } from './icons';
@@ -30,16 +30,36 @@ import { useNotificationHandler } from '@/lib/notifications';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, auth } = useUser();
+  const { user, userProfile, auth, isUserLoading } = useUser();
   const firestore = useFirestore();
   const pathname = usePathname();
   const { toast } = useToast();
   const t = langTr;
+  const router = useRouter();
 
   useNotificationHandler(toast);
 
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+
+  useEffect(() => {
+    if (isUserLoading) {
+        return; // Wait until user status is resolved
+    }
+
+    if (user && !userProfile?.rulesAgreed) {
+        if (pathname !== '/kurallar') {
+            router.replace('/kurallar');
+        }
+    } else if (!user) {
+        // Allow access to public pages
+        const publicPages = ['/', '/giris', '/kayit', '/tos', '/privacy', '/cookies'];
+        if (!publicPages.includes(pathname)) {
+            router.replace('/');
+        }
+    }
+  }, [user, userProfile, isUserLoading, pathname, router]);
+
 
   // Effect for notifications (likes and messages)
   useEffect(() => {
@@ -72,7 +92,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!auth) return;
     try {
       await signOut(auth);
-      // The redirect is handled by the layout now
+      router.replace('/');
     } catch (error) {
       console.error("Logout error:", error);
       toast({
@@ -89,6 +109,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       { href: '/eslesmeler', icon: MessageSquare, label: t.footerNav.chats, hasNotification: hasUnreadMessages },
       { href: '/profil', icon: User, label: t.footerNav.profile, hasNotification: false },
     ];
+    
+    // Determine if the AppShell UI should be shown
+    const showAppUI = user && userProfile?.rulesAgreed;
+
+    if (isUserLoading) {
+      return <div className="flex h-dvh items-center justify-center bg-background"><Icons.logo width={48} height={48} className="animate-pulse" /></div>;
+    }
+    
+    if (!showAppUI) {
+      // For public pages or onboarding, just render the children without the shell
+      return <>{children}</>;
+    }
+
 
     return (
       <div className="flex h-dvh flex-col bg-background text-foreground">
