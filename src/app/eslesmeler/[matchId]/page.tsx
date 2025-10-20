@@ -816,11 +816,11 @@ function ChatPageContent() {
                                 </div>
                             </SheetTrigger>
                              <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                                <SheetHeader className='p-4 border-b flex-row items-center justify-between'>
+                                <SheetHeader className='p-4 flex-row items-center justify-between'>
                                         <SheetTitle className="text-xl">{otherUser.fullName}</SheetTitle>
                                         <SheetClose asChild>
-                                        <Button variant="ghost" size="icon" className="rounded-full">
-                                            
+                                        <Button variant="ghost" size="icon" className="rounded-full" type="button">
+                                            <X className="h-5 w-5" />
                                         </Button>
                                     </SheetClose>
                                 </SheetHeader>
@@ -1148,7 +1148,7 @@ function ChatPageContent() {
                     <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
                         {editingMessage && (
                             <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleCancelEdit}>
-                                
+                                <X className="h-5 w-5" />
                             </Button>
                         )}
                         {!editingMessage && (
@@ -1238,7 +1238,7 @@ function ChatPageContent() {
                     <DialogDescription className="sr-only">Göndermeden önce fotoğrafı önizleyin, başlık ekleyin ve tek seferlik görüntüleme olarak ayarlayın.</DialogDescription>
                     <DialogClose asChild>
                         <Button variant="ghost" size="icon" className="absolute top-4 left-4 z-20 rounded-full bg-black/50 hover:bg-black/70">
-                            
+                            <X className="h-6 w-6" />
                         </Button>
                     </DialogClose>
                     <div className="flex-1 flex items-center justify-center relative p-8">
@@ -1290,7 +1290,7 @@ function ChatPageContent() {
                     </div>
                         <DialogClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/20 hover:text-white" onClick={() => setViewingOnceImage(null)}>
-                                
+                                <X className="h-6 w-6" />
                             </Button>
                         </DialogClose>
                     </DialogHeader>

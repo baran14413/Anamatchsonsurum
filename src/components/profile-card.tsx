@@ -260,7 +260,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                             <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
                             <SheetClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full">
-                                
+                                <X className="h-5 w-5" />
                             </Button>
                         </SheetClose>
                     </SheetHeader>
