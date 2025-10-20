@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen, Crown } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -720,6 +719,39 @@ function ChatPageContent() {
         return Math.abs(ageDate.getUTCFullYear() - 1970);
     };
 
+    const handleCheckPremiumStatus = () => {
+        if (!userProfile) return;
+    
+        let statusText = '';
+        if (userProfile.membershipType === 'gold') {
+            if (userProfile.goldMembershipExpiresAt) {
+                 try {
+                    const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
+                    statusText = `Gold üyeliğiniz ${format(expiryDate, "d MMMM yyyy 'tarihine kadar geçerlidir'", { locale: tr })}.`;
+                } catch (e) {
+                    statusText = 'Kalıcı Gold üyeliğiniz bulunmaktadır.';
+                }
+            } else {
+                statusText = 'Kalıcı Gold üyeliğiniz bulunmaktadır.';
+            }
+        } else {
+            statusText = "Şu anda Gold üyeliğiniz bulunmamaktadır. Marketi ziyaret ederek Gold ayrıcalıklarından yararlanabilirsiniz.";
+        }
+    
+        const statusMessage: ChatMessage = {
+            id: `status-check-${Date.now()}`,
+            matchId: 'system',
+            senderId: 'system',
+            text: statusText,
+            timestamp: new Date(),
+            isRead: true,
+            type: 'user', // Render as a normal message bubble
+        };
+    
+        // Add to local state to display instantly, without writing to DB
+        setMessages(prev => [...prev, statusMessage]);
+    };
+
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
@@ -787,12 +819,12 @@ function ChatPageContent() {
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
-                        const isSystem = message.senderId === 'system' || message.type === 'poll';
+                        const isSystemGenerated = message.senderId === 'system' || message.type === 'poll';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
-                        if (isSystem) {
-                            const poll = message as SystemMessage;
-                            const isVoted = poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id];
+                        if (isSystemGenerated) {
+                            const poll = message as SystemMessage; // Treat it as a SystemMessage for type safety
+                            const isVoted = isSystemChat && poll.type === 'poll' && (poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id]);
                             const myVote = isVoted ? (votedPolls[poll.id] || 'voted') : null;
                             const totalVotes = poll.pollResults ? Object.values(poll.pollResults).reduce((s, c) => s + c, 0) : 0;
                             
@@ -811,17 +843,21 @@ function ChatPageContent() {
                                                     {poll.pollOptions?.map(option => {
                                                         const votes = poll.pollResults?.[option] || 0;
                                                         const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+                                                        const isMyVote = isSystemChat && myVote === option;
                                                         return (
-                                                            <Button 
-                                                            key={option}
-                                                            variant={myVote === option ? 'default' : 'secondary'}
-                                                            className={cn("w-full justify-between h-auto text-wrap py-2", isVoted && "cursor-default")}
-                                                            onClick={() => !isVoted && handleVoteOnPoll(poll.id, option)}
-                                                            disabled={isVoted}
-                                                            >
-                                                                <span>{option}</span>
-                                                                {isVoted && <span className='font-bold'>{percentage.toFixed(0)}%</span>}
-                                                            </Button>
+                                                            <div key={option} className="relative w-full">
+                                                                <Button 
+                                                                    variant={isMyVote ? 'default' : 'secondary'}
+                                                                    className={cn("w-full justify-start h-auto text-wrap py-2", !isSystemChat && "cursor-default", isVoted && "cursor-default")}
+                                                                    onClick={() => isSystemChat && !isVoted && handleVoteOnPoll(poll.id, option)}
+                                                                    disabled={isVoted || !isSystemChat}
+                                                                >
+                                                                    <span>{option}</span>
+                                                                </Button>
+                                                                {isVoted && (
+                                                                     <div className='absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold'>{percentage.toFixed(0)}%</div>
+                                                                )}
+                                                            </div>
                                                         )
                                                     })}
                                                 </div>
@@ -929,7 +965,14 @@ function ChatPageContent() {
                 <div ref={messagesEndRef} />
             </main>
             
-            {canSendMessage ? (
+            {isSystemChat ? (
+                 <footer className="sticky bottom-0 z-10 border-t bg-background p-4 flex flex-col gap-2">
+                    <Button onClick={handleCheckPremiumStatus}>
+                        <Crown className="mr-2 h-4 w-4" />
+                        Premium Durumumu Kontrol Et
+                    </Button>
+                </footer>
+            ) : canSendMessage ? (
             <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                 {recordingStatus === 'idle' && (
                     <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
@@ -1000,10 +1043,6 @@ function ChatPageContent() {
             ) : matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator === user?.uid ? (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t">
                     Yanıt bekleniyor...
-                </div>
-            ) : isSystemChat ? (
-                <div className="text-center text-sm text-muted-foreground p-4 border-t">
-                    Sistem mesajlarına yanıt veremezsiniz.
                 </div>
             ) : (
                 <div className="text-center text-sm text-muted-foreground p-4 border-t bg-muted">
