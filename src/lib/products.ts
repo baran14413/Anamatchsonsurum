@@ -10,7 +10,7 @@ export interface Product {
 export const products: Product[] = [
   // Gold Üyelik Paketleri
   {
-    id: 'bematch_gold_1_month',
+    id: 'aylikgold',
     type: 'gold',
     title: '1 Aylık Gold',
     description: 'Bir ay boyunca tüm Gold ayrıcalıklarının tadını çıkar.',
