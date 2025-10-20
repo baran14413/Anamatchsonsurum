@@ -1,6 +1,4 @@
 
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase/admin';
 import { BOT_GREETINGS, BOT_REPLIES } from '@/lib/bot-data';
