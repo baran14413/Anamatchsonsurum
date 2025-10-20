@@ -402,8 +402,8 @@ function AnasayfaPageContent() {
                 </div>
             )}
              <div className="absolute top-2 right-4 z-50 flex flex-col items-center">
-                <Button onClick={handleUndo} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
-                    <Undo className="w-6 h-6" />
+                <Button onClick={handleUndo} variant="outline" size="icon" className="w-10 h-10 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
+                    <Undo className="w-5 h-5" />
                 </Button>
                 <AnimatePresence>
                     {showUndoMessage && (
@@ -433,3 +433,6 @@ export default function AnasayfaPage() {
     );
 }
 
+
+
+    
