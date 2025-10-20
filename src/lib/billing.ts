@@ -10,7 +10,7 @@ export interface Product {
 }
 
 export interface Purchase {
-  purchaseState: 'PURCHASED' | 'PENDING' | 'FAILED' | 'CANCELLED';
+  purchaseState: 'PURCHASED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'UNSPECIFIED' | undefined;
   productId: string;
   transaction?: any;
 }
@@ -24,7 +24,6 @@ export interface BillingPlugin {
 
 // A singleton instance of our billing plugin.
 let billingInstance: BillingPlugin | null = null;
-let isInitializing = false;
 let initializationPromise: Promise<BillingPlugin> | null = null;
 
 // Default implementation for web or when the plugin is not available.
@@ -35,7 +34,7 @@ const unavailableBilling: BillingPlugin = {
     return { products: [] };
   },
   purchase: async (options) => {
-    console.warn(`Billing plugin not available. Simulating successful purchase for ${options.productId} for testing purposes.`);
+    console.log(`Billing plugin not available. Simulating successful purchase for ${options.productId} for testing purposes.`);
     // On web, we simulate a successful purchase for testing.
     return { purchaseState: 'PURCHASED', productId: options.productId };
   },
@@ -56,8 +55,6 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
   }
 
   initializationPromise = new Promise(async (resolve) => {
-    isInitializing = true;
-
     if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Billing')) {
       try {
         const plugin = registerPlugin<BillingPlugin>('Billing');
@@ -71,11 +68,10 @@ export const initializeBilling = (): Promise<BillingPlugin> => {
         resolve(billingInstance);
       }
     } else {
+      console.warn('Billing plugin is not native or not available. Using mock implementation.');
       billingInstance = unavailableBilling;
       resolve(billingInstance);
     }
-    
-    isInitializing = false;
   });
 
   return initializationPromise;

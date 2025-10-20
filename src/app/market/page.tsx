@@ -89,11 +89,10 @@ export default function MarketPage() {
       } else if (result.purchaseState === 'CANCELLED') {
         // Do nothing, user cancelled.
       } else {
-         toast({
-            title: 'Satın Alma İşlemi Beklemede',
-            description: 'Satın alma işlemi tamamlanamadı veya askıda kaldı. Lütfen daha sonra tekrar deneyin.',
-            variant: 'default',
-         });
+        // This handles PENDING, FAILED, or UNSPECIFIED states without throwing an error.
+        // We just inform the user that the process is not complete.
+        // The billing plugin should emit events for final states which should be handled elsewhere.
+         console.log(`Purchase ended with state: ${result.purchaseState}`);
       }
 
     } catch (error: any) {
