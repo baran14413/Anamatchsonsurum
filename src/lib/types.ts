@@ -1,5 +1,4 @@
 
-
 export interface UserImage {
   url: string;
   public_id: string;
@@ -153,4 +152,3 @@ export interface DenormalizedMatch {
     lastSystemMessageId?: string;
     hasUnreadSystemMessage?: boolean;
 }
-    

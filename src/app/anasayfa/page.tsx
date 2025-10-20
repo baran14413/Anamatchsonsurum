@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -15,6 +15,8 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
+import { Undo, X, Heart, Star } from 'lucide-react';
+import { differenceInCalendarDays } from 'date-fns';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -113,6 +115,7 @@ function AnasayfaPageContent() {
 
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSwipedProfile, setLastSwipedProfile] = useState<{profile: UserProfile, direction: 'left' | 'right' | 'up'} | null>(null);
   const isFetching = useRef(false);
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
@@ -148,6 +151,7 @@ function AnasayfaPageContent() {
   const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
+    setLastSwipedProfile({ profile: profileToSwipe, direction });
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
 
     if (direction === 'up') {
@@ -219,7 +223,6 @@ function AnasayfaPageContent() {
 
         const defaultLastMessage = langTr.eslesmeler.defaultMessage;
         
-        // Always create/update the sub-collection docs
         const currentUserMatchData = {
             id: matchId,
             matchedWith: profileToSwipe.uid,
@@ -273,8 +276,6 @@ function AnasayfaPageContent() {
             });
 
         } else if (action !== 'disliked') {
-            // This is a like or superlike that didn't result in a match yet.
-            // Create the record in the *other* user's subcollection so they see the like.
             await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
              if (action === 'superliked') {
                 toast({
@@ -290,6 +291,66 @@ function AnasayfaPageContent() {
     }
 }, [user, firestore, toast, userProfile, router]);
   
+  const handleUndo = async () => {
+    if (!lastSwipedProfile || !user || !firestore || !userProfile) {
+        toast({ title: 'Geri alınacak bir işlem yok.' });
+        return;
+    }
+
+    const isGoldMember = userProfile.membershipType === 'gold';
+    const lastUndoDate = userProfile.lastUndoTimestamp?.toDate();
+    const today = new Date();
+    const isNewDay = !lastUndoDate || differenceInCalendarDays(today, lastUndoDate) >= 1;
+    const canUndo = isGoldMember || isNewDay || (userProfile.dailyUndoCount || 0) < 1;
+
+    if (!canUndo) {
+        toast({
+            title: 'Günlük Geri Alma Hakkın Bitti',
+            description: 'Sınırsız geri alma için Gold üyeliğe geçebilirsin.',
+            action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
+        });
+        return;
+    }
+
+    try {
+        setProfiles(prev => [lastSwipedProfile.profile, ...prev]);
+        setLastSwipedProfile(null);
+
+        const batch = writeBatch(firestore);
+        const sortedIds = [user.uid, lastSwipedProfile.profile.uid].sort();
+        const matchId = sortedIds.join('_');
+
+        const mainMatchRef = doc(firestore, 'matches', matchId);
+        const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+        const otherUserMatchRef = doc(firestore, `users/${lastSwipedProfile.profile.uid}/matches`, matchId);
+
+        batch.delete(mainMatchRef);
+        batch.delete(currentUserMatchRef);
+        batch.delete(otherUserMatchRef);
+        
+        if (lastSwipedProfile.direction === 'up') {
+             const currentUserRef = doc(firestore, 'users', user.uid);
+             batch.update(currentUserRef, { superLikeBalance: increment(1) });
+        }
+
+        if (!isGoldMember) {
+             const currentUserRef = doc(firestore, 'users', user.uid);
+             batch.update(currentUserRef, {
+                 dailyUndoCount: increment(1),
+                 lastUndoTimestamp: serverTimestamp()
+             });
+        }
+        
+        await batch.commit();
+
+        toast({ title: 'Geri Alındı' });
+
+    } catch (error: any) {
+        console.error("Error undoing swipe:", error);
+        toast({ title: 'Hata', description: 'İşlem geri alınırken bir sorun oluştu.', variant: 'destructive'});
+    }
+  };
+
   if (isUserLoading || (isLoading && profiles.length === 0)) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-background">
@@ -304,14 +365,14 @@ function AnasayfaPageContent() {
         description: langTr.anasayfa.resetToastDescription,
       });
       setProfiles([]);
-      loadProfiles(true); // Call with ignoreFilters = true
+      loadProfiles(true);
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center overflow-hidden bg-transparent">
-      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[85vh]">
+    <div className="flex-1 flex flex-col items-center justify-center overflow-hidden bg-transparent">
+      <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[calc(85vh-60px)]">
             {profiles.map((profile, index) => {
                  if (index < profiles.length - 1) return null; // Render only the top card
                  return (
@@ -336,6 +397,21 @@ function AnasayfaPageContent() {
                 </div>
             )}
       </div>
+
+       <div className="flex items-center justify-center gap-4 py-4">
+            <Button onClick={handleUndo} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500/10" disabled={!lastSwipedProfile}>
+                <Undo className="w-8 h-8" />
+            </Button>
+             <Button onClick={() => topCard && handleSwipe(topCard, 'left')} variant="outline" size="icon" className="w-20 h-20 rounded-full shadow-lg border-2 border-red-500 text-red-500 hover:bg-red-500/10">
+                <X className="w-12 h-12" />
+            </Button>
+             <Button onClick={() => topCard && handleSwipe(topCard, 'up')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg border-2 border-blue-500 text-blue-500 hover:bg-blue-500/10">
+                <Star className="w-8 h-8" />
+            </Button>
+             <Button onClick={() => topCard && handleSwipe(topCard, 'right')} variant="outline" size="icon" className="w-20 h-20 rounded-full shadow-lg border-2 border-green-500 text-green-500 hover:bg-green-500/10">
+                <Heart className="w-12 h-12" />
+            </Button>
+        </div>
     </div>
   );
 }
@@ -348,11 +424,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
-    
-
-    
-
-    
-
-    
