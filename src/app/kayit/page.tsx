@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -86,6 +85,8 @@ export default function SignUpPage() {
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(getInitialImageSlots);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedImageCount = useMemo(() => imageSlots.filter(p => p.preview).length, [imageSlots]);
+  const tempIdRef = useRef(`temp_${Date.now()}`);
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -168,8 +169,7 @@ export default function SignUpPage() {
         return newSlots;
     });
 
-    const email = form.getValues('email');
-    const tempId = email ? email.replace(/[^a-zA-Z0-9]/g, '_') : `temp_${Date.now()}`;
+    const tempId = tempIdRef.current;
     const uniqueFileName = `bematch_profiles/${tempId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const imageRef = storageRef(storage, uniqueFileName);
 
@@ -177,14 +177,15 @@ export default function SignUpPage() {
         const snapshot = await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        const updatedSlots = [...imageSlots];
-        updatedSlots[slotIndex] = { file: null, preview: downloadURL, public_id: uniqueFileName, isUploading: false };
-        setImageSlots(updatedSlots);
-
-        const finalImages = updatedSlots
-          .filter(p => p.preview && p.public_id && !p.isUploading)
-          .map(p => ({ url: p.preview!, public_id: p.public_id! }));
-        form.setValue('images', finalImages, { shouldValidate: true });
+        setImageSlots(prevSlots => {
+            const updatedSlots = [...prevSlots];
+            updatedSlots[slotIndex] = { file: null, preview: downloadURL, public_id: uniqueFileName, isUploading: false };
+            const finalImages = updatedSlots
+                .filter(p => p.preview && p.public_id && !p.isUploading)
+                .map(p => ({ url: p.preview!, public_id: p.public_id! }));
+            form.setValue('images', finalImages, { shouldValidate: true });
+            return updatedSlots;
+        });
 
     } catch (error: any) {
         toast({ title: t.errors.uploadFailed.replace('{fileName}', file.name), description: error.message, variant: "destructive" });
@@ -302,16 +303,16 @@ export default function SignUpPage() {
   const progressValue = ((step + 1) / totalSteps) * 100;
 
   const handleNextStep = async () => {
-    let fieldsToValidate: (keyof SignupFormValues) | (keyof SignupFormValues)[] | undefined;
+    let fieldsToValidate: (keyof SignupFormValues)[] | undefined;
     let isValid = true;
     
     switch (step) {
       case 0: fieldsToValidate = ['email', 'password', 'confirmPassword']; break;
-      case 1: fieldsToValidate = 'interests'; break;
-      case 2: fieldsToValidate = 'location'; break;
-      case 3: fieldsToValidate = 'name'; break;
-      case 4: fieldsToValidate = 'images'; break;
-      case 5: // Summary step, no validation needed before submitting
+      case 1: fieldsToValidate = ['interests']; break;
+      case 2: fieldsToValidate = ['location']; break;
+      case 3: fieldsToValidate = ['name']; break;
+      case 4: fieldsToValidate = ['images']; break;
+      case 5: // Summary step, trigger full validation before submitting
         await form.trigger();
         if (form.formState.isValid) {
             onSubmit(form.getValues());
@@ -330,6 +331,12 @@ export default function SignUpPage() {
                 toast({
                     title: "Form Eksik",
                     description: 'Lütfen tüm adımlardaki bilgileri doğru bir şekilde doldurun.',
+                    variant: "destructive"
+                });
+            } else {
+                 toast({
+                    title: "Bilinmeyen Form Hatası",
+                    description: 'Lütfen tüm alanları kontrol edin.',
                     variant: "destructive"
                 });
             }
@@ -611,3 +618,5 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    
