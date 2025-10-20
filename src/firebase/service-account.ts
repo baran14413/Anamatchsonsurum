@@ -28,7 +28,7 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      storageBucket: `${serviceAccount.project_id}.appspot.com`
+      storageBucket: "bematch-new.firebasestorage.app"
     });
   } catch (e: any) {
     console.error('Firebase Admin SDK Initialization Error:', e.stack);
