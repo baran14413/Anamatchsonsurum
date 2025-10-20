@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -112,17 +113,14 @@ function AnasayfaPageContent() {
     isFetching.current = true;
     setIsLoading(true);
 
-    // Pass the current profile IDs directly to fetchProfiles
     const currentProfileIds = new Set(profiles.map(p => p.uid));
     const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, currentProfileIds);
     
-    // Append new profiles to the existing ones
     setProfiles(prev => [...prev, ...newProfiles]);
 
     setIsLoading(false);
     isFetching.current = false;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, firestore, userProfile]);
+  }, [user, firestore, userProfile, profiles]);
 
   // Initial load
   useEffect(() => {
@@ -292,26 +290,28 @@ function AnasayfaPageContent() {
   return (
     <div className="flex-1 flex flex-col items-center overflow-hidden bg-transparent">
       <div className="relative w-full h-full max-w-md flex items-center justify-center aspect-[9/16] max-h-[85vh]">
-            {topCard ? (
-                <MemoizedProfileCard
-                    key={topCard.uid}
-                    profile={topCard}
-                    onSwipe={handleSwipe}
-                />
-            ) : (
-                 !isLoading && (
-                    <div
-                        className="flex flex-col items-center justify-center text-center p-4 space-y-4"
-                    >
-                        <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-                        <p className="text-muted-foreground">
-                        {langTr.anasayfa.outOfProfilesDescription}
-                        </p>
-                        <Button onClick={handleRetry} disabled={isFetching.current}>
-                            {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
-                        </Button>
-                    </div>
+            {profiles.map((profile, index) => {
+                 if (index < profiles.length - 1) return null; // Render only the top card
+                 return (
+                    <MemoizedProfileCard
+                        key={profile.uid}
+                        profile={profile}
+                        onSwipe={handleSwipe}
+                    />
                 )
+            })}
+            {!topCard && !isLoading && (
+                <div
+                    className="flex flex-col items-center justify-center text-center p-4 space-y-4"
+                >
+                    <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                    <p className="text-muted-foreground">
+                    {langTr.anasayfa.outOfProfilesDescription}
+                    </p>
+                    <Button onClick={handleRetry} disabled={isFetching.current}>
+                        {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
+                    </Button>
+                </div>
             )}
       </div>
     </div>
@@ -326,5 +326,7 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
 
     
