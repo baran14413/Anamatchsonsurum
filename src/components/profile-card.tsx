@@ -84,6 +84,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   }, [profile.uid, x, y]);
 
   const age = calculateAge(profile.dateOfBirth);
+  const isGoldMember = profile.membershipType === 'gold';
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -157,7 +158,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             transition: { duration: 0.3 }
         }}
     >
-        <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200">
+        <div className={cn(
+            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+            isGoldMember && "border-4 border-yellow-400"
+        )}>
             <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
                 <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
             </motion.div>
@@ -222,8 +226,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         <div className="flex items-end justify-between gap-4">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
-                                    <span className="font-semibold text-white/80 text-3xl">{age}</span>
+                                     <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                                     <span className="font-semibold text-white/80 text-3xl">{age}</span>
+                                     {isGoldMember && <Icons.beGold width={28} height={28} />}
                                 </div>
                                  {displayDistance && (
                                     <div className="flex items-center gap-1.5 text-base font-medium mt-1">
@@ -255,7 +260,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                             <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
                             <SheetClose asChild>
                             <Button variant="ghost" size="icon" className="rounded-full">
-                                
+                                <X className="h-5 w-5" />
                             </Button>
                         </SheetClose>
                     </SheetHeader>
