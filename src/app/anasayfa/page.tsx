@@ -186,7 +186,8 @@ function AnasayfaPageContent() {
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         const otherUserAction = matchData[otherUserActionKey];
 
-        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
+        const isInstantBotMatch = profileToSwipe.isBot && action === 'liked';
+        const isMatch = isInstantBotMatch || (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
                         (action === 'superliked' && otherUserAction === 'liked');
 
         let newStatus: 'pending' | 'matched' | 'superlike_pending' = 'pending';
@@ -209,9 +210,11 @@ function AnasayfaPageContent() {
         if (user1IsCurrentUser) {
             updateData.user1_action = action;
             updateData.user1_timestamp = serverTimestamp();
+            if (isInstantBotMatch) updateData.user2_action = 'liked'; // Bot likes back instantly
         } else {
             updateData.user2_action = action;
             updateData.user2_timestamp = serverTimestamp();
+             if (isInstantBotMatch) updateData.user1_action = 'liked'; // Bot likes back instantly
         }
 
         if (action === 'superliked') {
