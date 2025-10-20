@@ -182,34 +182,16 @@ export default function SystemMessagesPage() {
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
         // Start with a base object that is always valid
-        const centralMessageData: Omit<SystemMessage, 'id'> = {
+        let centralMessageData: Omit<SystemMessage, 'id'> = {
             timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
-            // Initialize all possible fields to null to avoid 'undefined'
-            text: null,
-            pollQuestion: null,
-            pollOptions: null,
-            pollResults: null,
-            type: 'text', // default type
+            type: isPoll ? 'poll' : 'text',
+            text: isPoll ? null : messageContent,
+            pollQuestion: isPoll ? messageContent : null,
+            pollOptions: isPoll ? pollOptions.map(o => o.trim()) : null,
+            pollResults: isPoll ? pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {}) : null,
         };
-
-        if (isPoll) {
-            centralMessageData.type = 'poll';
-            centralMessageData.pollQuestion = messageContent;
-            centralMessageData.pollOptions = pollOptions.map(o => o.trim());
-            centralMessageData.pollResults = pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {});
-        } else {
-            centralMessageData.type = 'text';
-            centralMessageData.text = messageContent;
-        }
-
-        // Clean the object: remove any keys that are null
-        Object.keys(centralMessageData).forEach(key => {
-          if ((centralMessageData as any)[key] === null) {
-            delete (centralMessageData as any)[key];
-          }
-        });
 
         batch.set(centralMessageRef, centralMessageData);
 
