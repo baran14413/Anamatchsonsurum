@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from "@/firebase/provider";
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from "@/components/theme-provider";
-import { PageWrapper } from "@/components/page-wrapper";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,9 +26,7 @@ export default function RootLayout({
           enableSystem
         >
           <FirebaseProvider>
-            <PageWrapper>
-              {children}
-            </PageWrapper>
+            {children}
           </FirebaseProvider>
           <Toaster />
         </ThemeProvider>
