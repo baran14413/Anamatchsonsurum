@@ -169,11 +169,13 @@ export default function SystemMessagesPage() {
         toast({ title: 'Hata', description: 'Mesaj veya anket sorusu boş olamaz.', variant: 'destructive' });
         return;
     }
-
-    if (isPoll && (pollOptions.some(opt => opt.trim() === '') || pollOptions.length < 2)) {
+    
+    const finalPollOptions = pollOptions.map(opt => opt.trim()).filter(Boolean);
+    if (isPoll && (finalPollOptions.length < 2 || finalPollOptions.length !== pollOptions.length)) {
         toast({ title: 'Hata', description: 'Tüm anket seçenekleri dolu olmalı ve en az 2 seçenek bulunmalıdır.', variant: 'destructive' });
         return;
     }
+
 
     setIsSending(true);
     try {
@@ -181,17 +183,31 @@ export default function SystemMessagesPage() {
         const timestamp = serverTimestamp();
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
-        // Start with a base object that is always valid
-        let centralMessageData: Omit<SystemMessage, 'id'> = {
+        let centralMessageData: Omit<SystemMessage, 'id'>;
+
+        if (isPoll) {
+          centralMessageData = {
             timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
-            type: isPoll ? 'poll' : 'text',
-            text: isPoll ? null : messageContent,
-            pollQuestion: isPoll ? messageContent : null,
-            pollOptions: isPoll ? pollOptions.map(o => o.trim()) : null,
-            pollResults: isPoll ? pollOptions.reduce((acc, opt) => ({ ...acc, [opt.trim()]: 0 }), {}) : null,
-        };
+            type: 'poll',
+            text: null,
+            pollQuestion: messageContent,
+            pollOptions: finalPollOptions,
+            pollResults: finalPollOptions.reduce((acc, opt) => ({ ...acc, [opt]: 0 }), {}),
+          };
+        } else {
+          centralMessageData = {
+            timestamp: timestamp,
+            sentTo: users.map(u => u.uid),
+            seenBy: [],
+            type: 'text',
+            text: messageContent,
+            pollQuestion: null,
+            pollOptions: null,
+            pollResults: null,
+          };
+        }
 
         batch.set(centralMessageRef, centralMessageData);
 
@@ -402,5 +418,3 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
-
-    
