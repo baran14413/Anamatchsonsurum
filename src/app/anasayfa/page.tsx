@@ -62,49 +62,54 @@ const fetchProfiles = async (
 
         for (const p of allPotentialProfiles) {
             if (p.isBot) {
-                p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance
+                // For bots, assign a random distance. They are exempt from location/preference filters.
+                p.distance = Math.floor(Math.random() * 140) + 1;
                 bots.push(p);
             } else {
                 realUsers.push(p);
             }
         }
         
-        // 4. Apply specific filters ONLY to real users
+        // 4. Apply specific preference filters ONLY to real users
         const filteredRealUsers = realUsers.filter(p => {
-            let passesFilters = true;
-
-            // Assign distance for real users
-             if (userProfile.location && p.location) {
+            // Assign distance for real users if location data is present
+             if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
                 p.distance = getDistance(
-                    userProfile.location.latitude!,
-                    userProfile.location.longitude!,
-                    p.location.latitude!,
-                    p.location.longitude!
+                    userProfile.location.latitude,
+                    userProfile.location.longitude,
+                    p.location.latitude,
+                    p.location.longitude
                 );
             } else {
-                if (!userProfile.globalModeEnabled) {
-                    return false; // Skip real user without location data if not in global mode
-                }
-                // Assign a random high distance if global mode is on but location is missing
-                p.distance = Math.floor(Math.random() * 5000) + 200;
-            }
-
-            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                if (p.gender !== userProfile.genderPreference) passesFilters = false;
-            }
-
-            if (!userProfile.globalModeEnabled) {
-                 if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
-            }
-
-            if (userProfile.ageRange && p.dateOfBirth) {
-                const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                    if (!userProfile.expandAgeRange) passesFilters = false;
+                // If location is missing, they can only be shown in global mode.
+                // Give them a high random distance.
+                if (userProfile.globalModeEnabled) {
+                   p.distance = Math.floor(Math.random() * 5000) + 200;
+                } else {
+                    return false; // Skip if no location and not in global mode
                 }
             }
             
-            return passesFilters;
+            // Gender preference filter
+            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                if (p.gender !== userProfile.genderPreference) return false;
+            }
+            
+            // Distance preference filter (only if global mode is off)
+            if (!userProfile.globalModeEnabled) {
+                 if (p.distance > (userProfile.distancePreference || 160)) return false;
+            }
+
+            // Age range filter
+            if (userProfile.ageRange && p.dateOfBirth) {
+                const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                    // If outside range, check if expansion is allowed
+                    if (!userProfile.expandAgeRange) return false;
+                }
+            }
+            
+            return true; // If all checks pass
         });
         
         // 5. Shuffle each group and combine: real users first, then bots.
@@ -136,7 +141,7 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
 
-  const loadProfiles = async () => {
+  const loadProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
@@ -157,7 +162,7 @@ function AnasayfaPageContent() {
 
     setIsLoading(false);
     isFetching.current = false;
-  };
+  }, [user, firestore, userProfile]);
 
   // Initial load
   useEffect(() => {
@@ -165,8 +170,7 @@ function AnasayfaPageContent() {
       if(user.uid) seenProfileIds.current.add(user.uid); // Add current user to seen set from the start
       loadProfiles();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUserLoading, user, userProfile]);
+  }, [isUserLoading, user, userProfile, loadProfiles, profiles.length]);
 
   // Prefetch when deck is low
   useEffect(() => {
