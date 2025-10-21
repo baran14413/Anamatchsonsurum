@@ -25,7 +25,7 @@ export const langTr = {
   welcome: {
     agreement: 'Oturum aç\'a dokunarak <1>Şartlarımızı</1> kabul edersin. Verilerini nasıl işlediğimizi öğrenmek için <3>Gizlilik Politikası</3> ve <5>Çerez Politikası</5>\'nı inceleyebilirsin.',
     continueWithGoogle: 'Google ile devam et',
-    continueWithEmail: 'E-posta ile devam et',
+    continueWithEmail: 'Giriş Yap',
     loginIssues: 'Oturum açarken sorun mu yaşıyorsun?',
   },
   login: {
@@ -249,11 +249,6 @@ export const langTr = {
         description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline {count} ilgi alanı ekle.',
         categories: [
             {
-                title: 'Müzik',
-                icon: 'Music',
-                options: ['Gospel', 'Müzik Grupları', 'Rock', 'Soul', 'Pop', 'K-Pop', 'Punk', 'Rap', 'Folk', 'Latin', 'Alternatif', 'Tekno', 'Caz', 'House', 'EDM', 'R&B', 'Indie', 'Opera', 'Heavy Metal', 'Funk', 'Reggaeton', 'Country', 'Hip Hop', 'J-Pop', 'Elektronik', 'Grime', '90lar Britpop', 'Trap', 'Müzik']
-            },
-            {
                 title: 'Dışarı Çıkmak',
                 icon: 'DoorOpen',
                 options: ['Kaçış Odaları', 'Barlar', 'İkinci El Alışverişi', 'Müzeler', 'Partiler', 'Arabalı Sinemalar', 'Müzikaller', 'Kafe Gezintisi', 'Akvaryum', 'Kulüpler', 'Sergiler', 'Alışveriş', 'Arabalar', 'Pub Quiz', 'Festivaller', 'Happy Hour', 'Stand-up Komedi', 'Karaoke', 'Ev Partileri', 'Tiyatro', 'Nargile', 'Paten', 'Canlı Müzik', 'Bar Gezintisi', 'Bowling', 'Motosikletler']
@@ -264,50 +259,10 @@ export const langTr = {
                 options: ['Kürek Çekme', 'Tüplü Dalış', 'Jet Ski', 'Yürüyüş Turları', 'Doğa', 'Sıcak Su Kaynakları', 'Köpek Gezdirme', 'Kayak', 'Kano', 'Kar Kayağı', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Stand-up Paddle', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelken', 'Yürüyüş', 'Dağlar', 'Sırt Çantasıyla Gezme', 'Kaya Tırmanışı', 'Balık Tutma', 'Kamp', 'Açık Hava', 'Piknikler']
             },
             {
-                title: 'Değerler ve Amaçlar',
-                icon: 'Globe',
-                options: ['Ruh Sağlığı Farkındalığı', 'Seçmen Hakları', 'İklim Değişikliği', 'LGBTQIA+ Hakları', 'Feminizm', 'Black Lives Matter', 'Kapsayıcılık', 'İnsan Hakları', 'Sosyal Gelişim', 'Gönüllülük', 'Çevrecilik', 'Dünya Barışı', 'Onur Yürüyüşü', 'Gençlik Güçlendirmesi', 'Eşitlik', 'Politika', 'Aktivizm', 'Engelli Hakları']
-            },
-            {
                 title: 'Evde Takılmak',
                 icon: 'Home',
                 options: ['Okuma', 'Dizi/Film Maratonu', 'Evde Egzersiz', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online Alışveriş', 'Bahçe İşleri', 'Kutu Oyunları', 'Fırıncılık']
             },
-            {
-                title: 'Kurmaca Evrenler',
-                icon: 'Sparkles',
-                options: ['Comic Con', 'Harry Potter', '90lar Çocuğu', 'NBA', 'MLB', 'Zindanlar ve Ejderhalar', 'Manga', 'Marvel', 'Disney']
-            },
-            {
-                title: 'TV ve Filmler',
-                icon: 'Clapperboard',
-                options: ['Aksiyon Filmleri', 'Animasyon Filmleri', 'Suç Dizileri', 'Drama Dizileri', 'Fantastik Filmler', 'Belgeseller', 'Bağımsız Filmler', 'Reality Şovlar', 'Romantik Komediler', 'Spor Şovları', 'Gerilim Filmleri', 'K-Dramalar', 'Korku Filmleri', 'Bollywood', 'Sinema', 'Bilim Kurgu', 'Anime', 'Komedi']
-            },
-            {
-                title: 'Yaratıcılık',
-                icon: 'Paintbrush',
-                options: ['El Sanatları', 'Yazarlık', 'Dans', 'Resim', 'Tasarım', 'Makyaj']
-            },
-            {
-                title: 'Oyun',
-                icon: 'Gamepad2',
-                options: ['PlayStation', 'E-spor', 'Fortnite', 'Xbox', 'League of Legends', 'Nintendo', 'Among Us', 'Arcade', 'Roblox']
-            },
-            {
-                title: 'Sağlık ve Yaşam Tarzı',
-                icon: 'Sprout',
-                options: ['Kendini Sevme', 'Yeni Şeyler Deneme', 'Tarot', 'Spa', 'Kişisel Gelişim', 'Meditasyon', 'Cilt Bakımı', 'Astroloji', 'Farkındalık', 'Sauna', 'Aktif Yaşam Tarzı', 'Yoga']
-            },
-            {
-                title: 'Sosyal Medya İçerikleri',
-                icon: 'MessageCircle',
-                options: ['Instagram', 'X', 'SoundCloud', 'Pinterest', 'Spotify', 'Sosyal Medya', 'Vlogging', 'YouTube', 'Sanal Gerçeklik', 'Memler', 'Metaverse', 'Podcastler', 'TikTok', 'Twitch', 'Netflix']
-            },
-            {
-                title: 'Spor ve Fitness',
-                icon: 'Dumbbell',
-                options: ['Buz Hokeyi', 'Atıcılık', 'Atletizm', 'Spor', 'Yürüyüş', 'Plaj Sporları', 'Fitness Dersleri', 'Kaykay', 'Ragbi', 'Boks']
-            }
         ]
     },
     step12: {
