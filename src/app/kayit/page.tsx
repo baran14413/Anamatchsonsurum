@@ -136,8 +136,6 @@ const DateInput = ({
       } else {
         onChange(null);
       }
-    } else {
-       onChange(null);
     }
   };
 
@@ -402,29 +400,31 @@ export default function SignUpPage() {
             )}
 
             {step === 3 && (
-                <div className="flex flex-col flex-1 justify-center space-y-4">
-                    <div className="text-center">
+                <div className="flex flex-col h-full">
+                    <div className="space-y-2 mb-6">
                         <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
                         <p className="text-muted-foreground">
                         {langTr.signup.step5.label}
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-4">
-                        {langTr.signup.step5.options.map((option) => (
-                        <div
-                            key={option.id}
-                            onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
-                            className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50 aspect-square",
-                                lookingForValue === option.id ? "border-primary" : "border-card bg-card"
-                            )}
-                        >
-                            <span className="text-4xl">{option.emoji}</span>
-                            <p className="font-semibold text-sm">{option.label}</p>
+                     <ScrollArea className="flex-1 -mr-6 pr-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            {langTr.signup.step5.options.map((option) => (
+                            <div
+                                key={option.id}
+                                onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
+                                className={cn(
+                                    "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50 aspect-square",
+                                    lookingForValue === option.id ? "border-primary" : "border-card bg-card"
+                                )}
+                            >
+                                <span className="text-2xl">{option.emoji}</span>
+                                <p className="font-semibold text-sm">{option.label}</p>
+                            </div>
+                            ))}
                         </div>
-                        ))}
-                    </div>
-                    <FormMessage>{form.formState.errors.lookingFor?.message}</FormMessage>
+                        <FormMessage className="mt-4">{form.formState.errors.lookingFor?.message}</FormMessage>
+                    </ScrollArea>
                 </div>
             )}
 
