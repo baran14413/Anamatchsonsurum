@@ -32,7 +32,7 @@ const fetchProfiles = async (
         
         const interactedUids = new Set<string>();
         
-        // No need to fetch all matches if ignoring filters, but still useful to not show matched people
+        // Fetch all matches to avoid showing users we've already interacted with
         const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
         interactedMatchDocsSnap.forEach(doc => {
             const match = doc.data();
@@ -43,26 +43,29 @@ const fetchProfiles = async (
             }
         });
 
-
         let q = query(usersRef, limit(100));
         const usersSnapshot = await getDocs(q);
 
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal checks for all profiles
-                if (!p.uid || seenUids.has(p.uid)) { // Check against ALL seen UIDs
+                // --- Universal Checks for ALL profiles ---
+                // 1. Must have a UID and must not have been seen before
+                if (!p.uid || seenUids.has(p.uid)) {
+                    return false;
+                }
+                 // 2. Must not be a user we've already swiped on (liked, disliked, etc.)
+                if (interactedUids.has(p.uid)) {
+                    return false;
+                }
+                // 3. Must have basic profile info
+                if (!p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
                     return false;
                 }
 
-                // For real users, enforce more stringent rules
-                if (!p.isBot) {
-                    if (!p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
-                    if (interactedUids.has(p.uid)) return false; 
-                }
-                
+                // --- Assign Distance ---
                 if (p.isBot) {
-                     // Assign a random distance for bots up to 140km
+                    // Assign a random distance for bots up to 140km
                     p.distance = Math.floor(Math.random() * 140) + 1;
                 } else if (userProfile.location && p.location) {
                     p.distance = getDistance(
@@ -72,10 +75,10 @@ const fetchProfiles = async (
                         p.location.longitude!
                     );
                 } else {
-                    p.distance = Infinity;
+                    p.distance = Infinity; // Or some other large number
                 }
 
-                // Apply user's matching preferences if not ignoring filters
+                // --- Apply User's Matching Preferences (if not ignoring) ---
                 if (!ignoreFilters) {
                     if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                         if (p.gender !== userProfile.genderPreference) return false;
@@ -91,6 +94,7 @@ const fetchProfiles = async (
                     }
                 }
 
+                // If all checks pass, include the profile
                 return true;
             });
 
@@ -104,7 +108,7 @@ const fetchProfiles = async (
             return aIsBot ? 1 : -1; // Non-bots come first
         });
 
-        return fetchedProfiles.slice(0, 20); // Return a larger slice to ensure we have enough
+        return fetchedProfiles.slice(0, 20); // Return a decent slice to ensure we have enough profiles
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
         return [];
@@ -461,4 +465,3 @@ export default function AnasayfaPage() {
     );
 }
 
-    
