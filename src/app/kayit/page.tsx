@@ -34,7 +34,10 @@ const formSchema = z.object({
     .min(2, { message: 'İsim en az 2 karakter olmalıdır.' })
     .max(20, { message: 'İsim en fazla 20 karakter olabilir.' }),
   dateOfBirth: z
-    .date()
+    .date({
+        required_error: "Lütfen doğum tarihinizi girin.",
+        invalid_type_error: "Lütfen geçerli bir tarih girin.",
+    })
     .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' })
     .refine((date) => date && !isNaN(date.getTime()), {
       message: 'Lütfen geçerli bir tarih girin.',
@@ -121,9 +124,6 @@ const DateInput = ({
       } else {
         onChange(new Date('invalid'));
       }
-    } else {
-        // If the date is incomplete, pass an invalid date to trigger validation messages if needed
-        onChange(new Date('invalid'));
     }
   };
 
