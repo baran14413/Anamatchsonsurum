@@ -227,11 +227,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                             {isGoldMember && <Icons.beGold width={28} height={28} />}
                         </div>
                         <div className="flex items-center gap-2">
-                            {age && (
-                                <Badge variant="secondary" className="text-base bg-white/20 text-white backdrop-blur-sm border-none">
-                                    {age}
-                                </Badge>
-                            )}
                             {profile.gender && (
                                 <Badge variant="secondary" className={cn(
                                     "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize flex gap-1.5",
@@ -239,7 +234,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                     profile.gender === 'male' && 'bg-blue-500/50 text-white'
                                 )}>
                                     {profile.gender === 'female' ? <Venus className="w-4 h-4" /> : <Mars className="w-4 h-4" />}
-                                    {profile.gender === 'female' ? 'Kadın' : 'Erkek'}
+                                    {age}
                                 </Badge>
                             )}
                         </div>
