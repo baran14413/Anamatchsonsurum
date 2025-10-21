@@ -199,6 +199,7 @@ const PasswordStrength = ({ password }: { password?: string }) => {
     };
 
     const strength = getStrength();
+    const strengthIndex = Math.min(strength, 4); // Ensure index is within bounds (0-4)
     const strengthText = ['Çok Zayıf', 'Zayıf', 'Orta', 'Güçlü', 'Çok Güçlü'];
     const strengthColor = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-green-500'];
 
@@ -206,8 +207,8 @@ const PasswordStrength = ({ password }: { password?: string }) => {
 
     return (
         <div className="space-y-2">
-            <Progress value={(strength / 4) * 100} className="h-1" indicatorClassName={strengthColor[strength]} />
-            <p className="text-xs font-medium" style={{ color: `hsl(var(--${strengthColor[strength].replace('bg-', '')}-foreground))` }}>
+            <Progress value={(strength / 4) * 100} className="h-1" indicatorClassName={strengthColor[strengthIndex]} />
+            <p className="text-xs font-medium" style={{ color: `hsl(var(--${strengthColor[strengthIndex].replace('bg-', '')}-foreground))` }}>
                 Şifre Gücü: {strengthText[strength]}
             </p>
         </div>
@@ -449,15 +450,15 @@ export default function SignUpPage() {
               </div>
             )}
 
-            {step === 3 && (
+           {step === 3 && (
                 <div className="flex flex-col h-full">
-                    <div className="space-y-2 mb-6">
+                    <div className="space-y-2 mb-6 shrink-0">
                         <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
                         <p className="text-muted-foreground">
                         {langTr.signup.step5.label}
                         </p>
                     </div>
-                     <div className="flex-1 flex flex-col justify-center">
+                     <div className="flex-1 flex flex-col justify-center min-h-0">
                         <div className="grid grid-cols-2 grid-rows-3 gap-2">
                             {langTr.signup.step5.options.map((option) => (
                             <div
@@ -468,8 +469,8 @@ export default function SignUpPage() {
                                     lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                                 )}
                             >
-                                <span className="text-xl">{option.emoji}</span>
-                                <p className="font-semibold text-xs">{option.label}</p>
+                                <span className="text-2xl">{option.emoji}</span>
+                                <p className="font-semibold text-sm">{option.label}</p>
                             </div>
                             ))}
                         </div>
@@ -510,7 +511,7 @@ export default function SignUpPage() {
             
             {step === 5 && (
                  <div className="flex flex-col h-full">
-                    <div className="space-y-2 mb-6">
+                    <div className="space-y-2 mb-6 shrink-0">
                         <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
                         <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
                     </div>
