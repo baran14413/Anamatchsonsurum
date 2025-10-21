@@ -61,17 +61,6 @@ const fetchProfiles = async (
         let bots: UserProfile[] = [];
 
         for (const p of allPotentialProfiles) {
-            if (p.isBot) {
-                // For bots, assign a random distance. They are exempt from location/preference filters.
-                p.distance = Math.floor(Math.random() * 140) + 1;
-                bots.push(p);
-            } else {
-                realUsers.push(p);
-            }
-        }
-        
-        // 4. Apply specific preference filters ONLY to real users
-        const filteredRealUsers = realUsers.filter(p => {
             // Assign distance for real users if location data is present
              if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
                 p.distance = getDistance(
@@ -80,14 +69,26 @@ const fetchProfiles = async (
                     p.location.latitude,
                     p.location.longitude
                 );
-            } else {
-                // If location is missing, they can only be shown in global mode.
-                // Give them a high random distance.
-                if (userProfile.globalModeEnabled) {
-                   p.distance = Math.floor(Math.random() * 5000) + 200;
-                } else {
-                    return false; // Skip if no location and not in global mode
+            }
+
+            if (p.isBot) {
+                 // For bots, assign a random distance if they don't have one.
+                if (p.distance === undefined) {
+                    p.distance = Math.floor(Math.random() * 140) + 1;
                 }
+                bots.push(p);
+            } else {
+                realUsers.push(p);
+            }
+        }
+        
+        // 4. Apply specific preference filters ONLY to real users
+        const filteredRealUsers = realUsers.filter(p => {
+            // Assign distance if missing
+            if (p.distance === undefined && userProfile.globalModeEnabled) {
+                p.distance = Math.floor(Math.random() * 5000) + 200;
+            } else if (p.distance === undefined && !userProfile.globalModeEnabled) {
+                return false; // Skip if no location and not in global mode
             }
             
             // Gender preference filter
@@ -97,7 +98,7 @@ const fetchProfiles = async (
             
             // Distance preference filter (only if global mode is off)
             if (!userProfile.globalModeEnabled) {
-                 if (p.distance > (userProfile.distancePreference || 160)) return false;
+                 if (p.distance! > (userProfile.distancePreference || 160)) return false;
             }
 
             // Age range filter
@@ -145,7 +146,10 @@ function AnasayfaPageContent() {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
-    setIsLoading(true);
+    
+    if (profiles.length === 0) {
+      setIsLoading(true);
+    }
     
     const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
     
@@ -162,7 +166,7 @@ function AnasayfaPageContent() {
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile]);
+  }, [user, firestore, userProfile, profiles.length]);
 
   // Initial load
   useEffect(() => {
