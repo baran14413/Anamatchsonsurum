@@ -50,13 +50,8 @@ const getRandomDob = (): Date => {
     return new Date(year, month, day);
 };
 const getRandomLocation = () => {
-    const centerLat = 39.9255; // Ankara
-    const centerLon = 32.8663;
-    const radius = 5.0; // ~500km radius
-    return {
-        latitude: centerLat + (Math.random() - 0.5) * radius * 2,
-        longitude: centerLon + (Math.random() - 0.5) * radius * 2,
-    };
+    // We will now assign null, and the frontend will generate a random distance.
+    return null;
 };
 
 export default function AdminBotsPage() {
@@ -389,3 +384,5 @@ export default function AdminBotsPage() {
      </AlertDialog>
   );
 }
+
+    

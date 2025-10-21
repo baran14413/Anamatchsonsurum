@@ -32,17 +32,16 @@ const fetchProfiles = async (
         
         const interactedUids = new Set<string>();
         
-        if (!ignoreFilters) {
-            const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
-            interactedMatchDocsSnap.forEach(doc => {
-                const match = doc.data();
-                if (match.user1Id === user.uid) {
-                    interactedUids.add(match.user2Id);
-                } else if (match.user2Id === user.uid) {
-                    interactedUids.add(match.user1Id);
-                }
-            });
-        }
+        // No need to fetch all matches if ignoring filters, but still useful to not show matched people
+        const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
+        interactedMatchDocsSnap.forEach(doc => {
+            const match = doc.data();
+            if (match.user1Id === user.uid) {
+                interactedUids.add(match.user2Id);
+            } else if (match.user2Id === user.uid) {
+                interactedUids.add(match.user1Id);
+            }
+        });
 
 
         let q = query(usersRef, limit(100));
@@ -69,7 +68,10 @@ const fetchProfiles = async (
                     }
                 }
                 
-                if (userProfile.location && p.location) {
+                if (p.isBot) {
+                     // Assign a random distance for bots up to 140km
+                    p.distance = Math.floor(Math.random() * 140) + 1;
+                } else if (userProfile.location && p.location) {
                     p.distance = getDistance(
                         userProfile.location.latitude!,
                         userProfile.location.longitude!,
@@ -461,3 +463,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
