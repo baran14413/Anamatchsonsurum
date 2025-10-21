@@ -44,83 +44,81 @@ const fetchProfiles = async (
         const q = query(usersRef, limit(200)); // Fetch more to have a better pool
         const usersSnapshot = await getDocs(q);
 
-        // 3. Separate real users and bots
-        let allProfiles = usersSnapshot.docs
+        // 3. Separate real users and bots after universal filtering
+        const allPotentialProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal filter: Not the user themselves, and not seen in this session
-                return p.uid && p.uid !== user.uid && !seenUids.has(p.uid);
+                // Universal filters for ALL profiles (bots and real)
+                return p.uid &&
+                       p.uid !== user.uid &&
+                       !seenUids.has(p.uid) &&
+                       !interactedUids.has(p.uid) &&
+                       p.images && p.images.length > 0 &&
+                       p.fullName && p.dateOfBirth;
             });
 
         let realUsers: UserProfile[] = [];
         let bots: UserProfile[] = [];
 
-        for (const p of allProfiles) {
-             // Universal filter: Not already interacted with, and has basic info
-            if (interactedUids.has(p.uid) || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
-                continue;
-            }
-
-
+        for (const p of allPotentialProfiles) {
             if (p.isBot) {
-                // Bots are exempt from user's filters (age, distance, etc.)
-                 p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance if user or target has no location
+                p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance
                 bots.push(p);
             } else {
-                // Real user requirements: Apply all user preferences
-                let passesFilters = true;
-
-                // Assign distance for real users
-                 if (userProfile.location && p.location) {
-                    p.distance = getDistance(
-                        userProfile.location.latitude!,
-                        userProfile.location.longitude!,
-                        p.location.latitude!,
-                        p.location.longitude!
-                    );
-                } else {
-                    // If a real user has no location, we can't calculate distance.
-                    // Depending on the strictness, we might filter them out.
-                    // For now, let's assign a random distance but maybe they shouldn't be shown
-                    // if global mode is off. Let's filter them if distance is a hard requirement.
-                    if (!userProfile.globalModeEnabled) {
-                        continue; // Skip real user without location data if not in global mode
-                    }
-                    p.distance = Math.floor(Math.random() * 140) + 1;
-                }
-
-                if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                    if (p.gender !== userProfile.genderPreference) passesFilters = false;
-                }
-
-                if (!userProfile.globalModeEnabled) {
-                     if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
-                }
-
-                if (userProfile.ageRange && p.dateOfBirth) {
-                    const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-                    if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                        if (!userProfile.expandAgeRange) passesFilters = false;
-                    }
-                }
-                
-                if (passesFilters) {
-                    realUsers.push(p);
-                }
+                realUsers.push(p);
             }
         }
         
-        // 4. Shuffle each group and combine: real users first, then bots.
-        realUsers.sort(() => Math.random() - 0.5);
+        // 4. Apply specific filters ONLY to real users
+        const filteredRealUsers = realUsers.filter(p => {
+            let passesFilters = true;
+
+            // Assign distance for real users
+             if (userProfile.location && p.location) {
+                p.distance = getDistance(
+                    userProfile.location.latitude!,
+                    userProfile.location.longitude!,
+                    p.location.latitude!,
+                    p.location.longitude!
+                );
+            } else {
+                if (!userProfile.globalModeEnabled) {
+                    return false; // Skip real user without location data if not in global mode
+                }
+                // Assign a random high distance if global mode is on but location is missing
+                p.distance = Math.floor(Math.random() * 5000) + 200;
+            }
+
+            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                if (p.gender !== userProfile.genderPreference) passesFilters = false;
+            }
+
+            if (!userProfile.globalModeEnabled) {
+                 if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
+            }
+
+            if (userProfile.ageRange && p.dateOfBirth) {
+                const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                    if (!userProfile.expandAgeRange) passesFilters = false;
+                }
+            }
+            
+            return passesFilters;
+        });
+        
+        // 5. Shuffle each group and combine: real users first, then bots.
+        filteredRealUsers.sort(() => Math.random() - 0.5);
         bots.sort(() => Math.random() - 0.5);
 
-        return [...realUsers, ...bots].slice(0, 20);
+        return [...filteredRealUsers, ...bots].slice(0, 20);
 
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
         return [];
     }
 };
+
 
 const MemoizedProfileCard = memo(ProfileCard);
 
@@ -166,7 +164,7 @@ function AnasayfaPageContent() {
 
   // Initial load
   useEffect(() => {
-    if (!isUserLoading && user && userProfile && profiles.length === 0 && seenProfileIds.current.size === 0) {
+    if (!isUserLoading && user && userProfile && profiles.length === 0) {
       if(user.uid) seenProfileIds.current.add(user.uid); // Add current user to seen set from the start
       loadProfiles();
     }
@@ -471,4 +469,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
