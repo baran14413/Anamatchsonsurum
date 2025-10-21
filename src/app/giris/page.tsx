@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -96,7 +95,12 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Şifre</FormLabel>
+                     <div className="flex justify-between items-center">
+                        <FormLabel>Şifre</FormLabel>
+                        <Link href="/sifremi-unuttum" className="text-sm font-medium text-primary hover:underline">
+                            Şifreni mi unuttun?
+                        </Link>
+                    </div>
                     <FormControl>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
