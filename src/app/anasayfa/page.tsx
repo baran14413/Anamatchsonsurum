@@ -136,22 +136,19 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
 
-  const loadProfiles = useCallback(async () => {
+  const loadProfiles = async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
     setIsLoading(true);
     
-    // Pass the current seen IDs to the fetch function
     const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
     
     if (newProfiles.length > 0) {
         const newProfileIds = newProfiles.map(p => p.uid);
-        // Add new IDs to the seen set
         newProfileIds.forEach(id => seenProfileIds.current.add(id));
         
         setProfiles(prev => {
-            // Filter out any profiles that might already be in the state to be safe
             const existingIds = new Set(prev.map(p => p.uid));
             const uniqueNewProfiles = newProfiles.filter(p => !existingIds.has(p.uid));
             return [...prev, ...uniqueNewProfiles];
@@ -160,7 +157,7 @@ function AnasayfaPageContent() {
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile]);
+  };
 
   // Initial load
   useEffect(() => {
