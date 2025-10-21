@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -22,8 +22,7 @@ import { differenceInCalendarDays } from 'date-fns';
 const fetchProfiles = async (
     firestore: Firestore,
     user: User,
-    userProfile: UserProfile,
-    seenUids: Set<string>
+    userProfile: UserProfile
 ): Promise<UserProfile[]> => {
     try {
         const usersRef = collection(firestore, 'users');
@@ -39,85 +38,57 @@ const fetchProfiles = async (
                 interactedUids.add(match.user1Id);
             }
         });
-
-        // 2. Fetch a large batch of potential profiles
-        const q = query(usersRef, limit(200)); // Fetch more to have a better pool
+        
+        // 2. Fetch a large batch of ONLY REAL USERS
+        const q = query(usersRef, where('isBot', '!=', true), limit(200));
         const usersSnapshot = await getDocs(q);
 
-        // 3. Separate real users and bots after universal filtering
-        const allPotentialProfiles = usersSnapshot.docs
+        // 3. Filter the real users
+        const filteredUsers = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal filters for ALL profiles (bots and real)
-                return p.uid &&
-                       p.uid !== user.uid &&
-                       !seenUids.has(p.uid) &&
-                       !interactedUids.has(p.uid) &&
-                       p.images && p.images.length > 0 &&
-                       p.fullName && p.dateOfBirth;
+                // Universal filters
+                if (!p.uid || p.uid === user.uid || interactedUids.has(p.uid) || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
+                    return false;
+                }
+
+                // Assign distance
+                if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                    p.distance = getDistance(
+                        userProfile.location.latitude,
+                        userProfile.location.longitude,
+                        p.location.latitude,
+                        p.location.longitude
+                    );
+                } else if (userProfile.globalModeEnabled) {
+                     p.distance = Math.floor(Math.random() * 5000) + 200;
+                } else {
+                    return false; // Skip if no location and not in global mode
+                }
+
+                // Apply preference filters
+                if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                    if (p.gender !== userProfile.genderPreference) return false;
+                }
+                
+                if (!userProfile.globalModeEnabled) {
+                    if (p.distance! > (userProfile.distancePreference || 160)) return false;
+                }
+
+                if (userProfile.ageRange && p.dateOfBirth) {
+                    const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                    if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                        if (!userProfile.expandAgeRange) return false;
+                    }
+                }
+            
+                return true;
             });
-
-        let realUsers: UserProfile[] = [];
-        let bots: UserProfile[] = [];
-
-        for (const p of allPotentialProfiles) {
-            // Assign distance for real users if location data is present
-             if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                p.distance = getDistance(
-                    userProfile.location.latitude,
-                    userProfile.location.longitude,
-                    p.location.latitude,
-                    p.location.longitude
-                );
-            }
-
-            if (p.isBot) {
-                 // For bots, assign a random distance if they don't have one.
-                if (p.distance === undefined) {
-                    p.distance = Math.floor(Math.random() * 140) + 1;
-                }
-                bots.push(p);
-            } else {
-                realUsers.push(p);
-            }
-        }
         
-        // 4. Apply specific preference filters ONLY to real users
-        const filteredRealUsers = realUsers.filter(p => {
-            // Assign distance if missing
-            if (p.distance === undefined && userProfile.globalModeEnabled) {
-                p.distance = Math.floor(Math.random() * 5000) + 200;
-            } else if (p.distance === undefined && !userProfile.globalModeEnabled) {
-                return false; // Skip if no location and not in global mode
-            }
-            
-            // Gender preference filter
-            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                if (p.gender !== userProfile.genderPreference) return false;
-            }
-            
-            // Distance preference filter (only if global mode is off)
-            if (!userProfile.globalModeEnabled) {
-                 if (p.distance! > (userProfile.distancePreference || 160)) return false;
-            }
+        // 4. Shuffle and return
+        filteredUsers.sort(() => Math.random() - 0.5);
 
-            // Age range filter
-            if (userProfile.ageRange && p.dateOfBirth) {
-                const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                    // If outside range, check if expansion is allowed
-                    if (!userProfile.expandAgeRange) return false;
-                }
-            }
-            
-            return true; // If all checks pass
-        });
-        
-        // 5. Shuffle each group and combine: real users first, then bots.
-        filteredRealUsers.sort(() => Math.random() - 0.5);
-        bots.sort(() => Math.random() - 0.5);
-
-        return [...filteredRealUsers, ...bots].slice(0, 20);
+        return filteredUsers.slice(0, 20);
 
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
@@ -142,30 +113,25 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
 
-  // REMOVED useCallback to ensure the latest state is always used
   const loadProfiles = async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
-
+  
     isFetching.current = true;
-    setIsLoading(true); // Always set loading to true when fetching
-    
-    const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
-    
-    if (newProfiles.length > 0) {
-        const newProfileIds = newProfiles.map(p => p.uid);
-        newProfileIds.forEach(id => seenProfileIds.current.add(id));
-        
-        // Use functional update to ensure we're working with the latest state
-        setProfiles(prev => {
-            const existingIds = new Set(prev.map(p => p.uid));
-            const uniqueNewProfiles = newProfiles.filter(p => !existingIds.has(p.uid));
-            return [...prev, ...uniqueNewProfiles];
-        });
+    setIsLoading(true);
+  
+    // Fetch profiles that haven't been seen yet.
+    const newProfiles = await fetchProfiles(firestore, user, userProfile);
+    const unseenProfiles = newProfiles.filter(p => !seenProfileIds.current.has(p.uid));
+  
+    if (unseenProfiles.length > 0) {
+      unseenProfiles.forEach(p => seenProfileIds.current.add(p.uid));
+      setProfiles(prev => [...prev, ...unseenProfiles]);
     }
-
+    
     setIsLoading(false);
     isFetching.current = false;
   };
+  
 
   // Initial load
   useEffect(() => {
