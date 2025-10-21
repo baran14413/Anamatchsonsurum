@@ -267,7 +267,7 @@ export default function SignUpPage() {
   
   const onSubmit = async (data: SignupFormValues) => {
     if (!auth || !firestore) {
-      toast({ title: langTr.errors.dbConnectionError, variant: 'destructive' });
+      toast({ title: langTr.signup.errors.dbConnectionError, variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
@@ -299,7 +299,6 @@ export default function SignUpPage() {
       router.push('/profil/galeri');
 
     } catch (error: any) {
-      console.error(error.code, error.message);
       if (error.code === 'auth/email-already-in-use') {
         toast({
             title: langTr.common.emailExistsTitle,
@@ -307,7 +306,7 @@ export default function SignUpPage() {
             action: <Button onClick={() => router.push('/giris')}>{langTr.common.goToLogin}</Button>
         });
       } else {
-        toast({ title: langTr.errors.signupFailed, description: error.message, variant: 'destructive' });
+        toast({ title: langTr.signup.errors.signupFailed, description: error.message, variant: 'destructive' });
       }
     } finally {
       setIsSubmitting(false);
@@ -382,290 +381,291 @@ export default function SignUpPage() {
 
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 flex-col overflow-hidden p-6">
-            
-            {step === 0 && (
-                <div className="flex-1 flex flex-col">
-                    <div className="space-y-4">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
-                        <FormField
-                        control={form.control}
-                        name="fullName"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormControl>
-                                <Input
-                                placeholder={langTr.signup.step2.placeholder}
-                                {...field}
-                                className="h-14 rounded-none border-0 border-b-2 bg-transparent text-2xl focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
-                                />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <p className="text-muted-foreground">
-                        {langTr.signup.step2.label}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {step === 1 && (
-                <div className="flex-1 flex flex-col">
-                    <div className="space-y-4">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
-                        <Controller
-                        control={form.control}
-                        name="dateOfBirth"
-                        render={({ field, fieldState }) => (
-                            <FormItem>
-                            <FormControl>
-                                <DateInput
-                                value={field.value}
-                                onChange={handleDateOfBirthChange}
-                                />
-                            </FormControl>
-                            {ageStatus === 'valid' && (
-                                <div className="flex items-center pt-2 text-sm text-green-600">
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                {langTr.signup.step3.ageConfirm}
-                                </div>
-                            )}
-                            {ageStatus === 'invalid' && (
-                                <div className="flex items-center pt-2 text-sm text-red-600">
-                                <XCircle className="mr-2 h-4 w-4" />
-                                {langTr.signup.step3.ageError}
-                                </div>
-                            )}
-                            <FormMessage>{fieldState.error?.message}</FormMessage>
-                            </FormItem>
-                        )}
-                        />
-                        <p className="text-muted-foreground">
-                        {langTr.signup.step3.label}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {step === 2 && (
-                <div className="flex-1 flex flex-col">
-                    <div className="space-y-8">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
+            <div className="flex-1 flex flex-col min-h-0">
+                {step === 0 && (
+                    <div className="flex-1 flex flex-col">
                         <div className="space-y-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className={cn(
-                            'h-14 w-full rounded-full text-lg',
-                            genderValue === 'female' &&
-                                'border-2 border-primary text-primary'
-                            )}
-                            onClick={() =>
-                            form.setValue('gender', 'female', { shouldValidate: true })
-                            }
-                        >
-                            {langTr.signup.step4.woman}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className={cn(
-                            'h-14 w-full rounded-full text-lg',
-                            genderValue === 'male' &&
-                                'border-2 border-primary text-primary'
-                            )}
-                            onClick={() =>
-                            form.setValue('gender', 'male', { shouldValidate: true })
-                            }
-                        >
-                            {langTr.signup.step4.man}
-                        </Button>
-                        <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
-                        </div>
-                        <FormField
-                        control={form.control}
-                        name="showGender"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                            <FormControl>
-                                <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                id="showGender"
-                                />
-                            </FormControl>
-                            <Label className="font-normal" htmlFor="showGender">
-                                Profilimde cinsiyetimi göster
-                            </Label>
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {step === 3 && (
-                <div className="flex flex-col flex-1">
-                    <div className="space-y-2 mb-6 shrink-0">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
-                        <p className="text-muted-foreground">
-                        {langTr.signup.step5.label}
-                        </p>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center min-h-0">
-                       <div className="grid grid-cols-2 grid-rows-3 gap-3 w-full max-w-sm mx-auto">
-                            {langTr.signup.step5.options.map((option) => (
-                            <div
-                                key={option.id}
-                                onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
-                                className={cn(
-                                    "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-1 text-center transition-all h-28 hover:bg-muted/50",
-                                    lookingForValue === option.id ? "border-primary" : "border-card bg-card"
-                                )}
-                            >
-                                <span className="text-2xl">{option.emoji}</span>
-                                <p className="font-semibold text-sm">{option.label}</p>
-                            </div>
-                            ))}
-                        </div>
-                        <FormMessage className="mt-4 text-center">{form.formState.errors.lookingFor?.message}</FormMessage>
-                    </div>
-                </div>
-            )}
-
-            {step === 4 && (
-                <div className="flex-1 flex flex-col">
-                    <div className="space-y-8">
-                        <div className="space-y-2">
-                            <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
-                            <p className="text-muted-foreground">{langTr.signup.step7.description}</p>
-                        </div>
-                        <div className="space-y-4 pt-8">
-                            <div className="flex justify-between items-baseline">
-                                <Label className="text-lg">{langTr.signup.step7.label}</Label>
-                                <span className="text-lg font-bold text-foreground">{distanceValue} {langTr.signup.step7.unit}</span>
-                            </div>
-                            <Controller
-                                control={form.control}
-                                name="distancePreference"
-                                render={({ field }) => (
-                                    <Slider
-                                        value={[field.value]}
-                                        onValueChange={(value) => field.onChange(value[0])}
-                                        max={160}
-                                        min={1}
-                                        step={1}
-                                        className="w-full"
+                            <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
+                            <FormField
+                            control={form.control}
+                            name="fullName"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormControl>
+                                    <Input
+                                    placeholder={langTr.signup.step2.placeholder}
+                                    {...field}
+                                    className="h-14 rounded-none border-0 border-b-2 bg-transparent text-2xl focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
                                     />
-                                )}
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
                             />
+                            <p className="text-muted-foreground">
+                            {langTr.signup.step2.label}
+                            </p>
                         </div>
-                        <p className="text-muted-foreground text-center pt-8">{langTr.signup.step7.info}</p>
                     </div>
-                </div>
-            )}
-            
-            {step === 5 && (
-                <div className="flex-1 flex flex-col min-h-0">
-                    <div className="space-y-2 mb-6 shrink-0">
-                        <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
-                        <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                )}
+
+                {step === 1 && (
+                    <div className="flex-1 flex flex-col">
+                        <div className="space-y-4">
+                            <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
+                            <Controller
+                            control={form.control}
+                            name="dateOfBirth"
+                            render={({ field, fieldState }) => (
+                                <FormItem>
+                                <FormControl>
+                                    <DateInput
+                                    value={field.value}
+                                    onChange={handleDateOfBirthChange}
+                                    />
+                                </FormControl>
+                                {ageStatus === 'valid' && (
+                                    <div className="flex items-center pt-2 text-sm text-green-600">
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    {langTr.signup.step3.ageConfirm}
+                                    </div>
+                                )}
+                                {ageStatus === 'invalid' && (
+                                    <div className="flex items-center pt-2 text-sm text-red-600">
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    {langTr.signup.step3.ageError}
+                                    </div>
+                                )}
+                                <FormMessage>{fieldState.error?.message}</FormMessage>
+                                </FormItem>
+                            )}
+                            />
+                            <p className="text-muted-foreground">
+                            {langTr.signup.step3.label}
+                            </p>
+                        </div>
                     </div>
-                    <ScrollArea className="flex-1 -mr-6 pr-6">
+                )}
+
+                {step === 2 && (
+                    <div className="flex-1 flex flex-col">
                         <div className="space-y-8">
-                            {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
-                                .filter(key => key !== 'title' && key !== 'description')
-                                .map(key => {
-                                    const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
-                                    const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
-
-                                    return (
-                                        <div key={key}>
-                                            <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-                                                <Icon className="h-5 w-5 text-muted-foreground" />
-                                                {question.question}
-                                            </h2>
-                                            <div className="flex flex-wrap gap-2">
-                                                {question.options.map(option => (
-                                                    <Badge
-                                                        key={option.id}
-                                                        variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
-                                                        onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
-                                                        className="cursor-pointer py-1.5 px-3 text-sm"
-                                                    >
-                                                        {option.label}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )
-                            })}
-                        </div>
-                    </ScrollArea>
-                </div>
-            )}
-
-            {step === 6 && (
-                <div className="flex-1 flex flex-col">
-                    <div className="space-y-4">
-                        <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
-                        <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
-                        <div className="space-y-6 pt-4">
-                            <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="E-posta adresini gir..." {...field} className="h-14 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
+                            <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
+                            <div className="space-y-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className={cn(
+                                'h-14 w-full rounded-full text-lg',
+                                genderValue === 'female' &&
+                                    'border-2 border-primary text-primary'
                                 )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="password"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                        <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni belirle..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
-                                            {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                                        </button>
-                                        </div>
-                                    </FormControl>
-                                    <PasswordStrength password={passwordValue} />
-                                    <FormMessage />
-                                    </FormItem>
+                                onClick={() =>
+                                form.setValue('gender', 'female', { shouldValidate: true })
+                                }
+                            >
+                                {langTr.signup.step4.woman}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className={cn(
+                                'h-14 w-full rounded-full text-lg',
+                                genderValue === 'male' &&
+                                    'border-2 border-primary text-primary'
                                 )}
-                            />
+                                onClick={() =>
+                                form.setValue('gender', 'male', { shouldValidate: true })
+                                }
+                            >
+                                {langTr.signup.step4.man}
+                            </Button>
+                            <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
+                            </div>
                             <FormField
-                                control={form.control}
-                                name="passwordConfirmation"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
-                                                {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                                            </button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
+                            control={form.control}
+                            name="showGender"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                <FormControl>
+                                    <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    id="showGender"
+                                    />
+                                </FormControl>
+                                <Label className="font-normal" htmlFor="showGender">
+                                    Profilimde cinsiyetimi göster
+                                </Label>
+                                </FormItem>
+                            )}
                             />
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {step === 3 && (
+                    <div className="flex flex-col h-full">
+                        <div className="space-y-2 mb-6 shrink-0">
+                            <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                            <p className="text-muted-foreground">
+                            {langTr.signup.step5.label}
+                            </p>
+                        </div>
+                        <div className="flex-1 flex items-center justify-center min-h-0">
+                           <div className="grid grid-cols-2 grid-rows-3 gap-3 w-full max-w-sm mx-auto">
+                                {langTr.signup.step5.options.map((option) => (
+                                <div
+                                    key={option.id}
+                                    onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
+                                    className={cn(
+                                        "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-1 text-center transition-all h-28 hover:bg-muted/50",
+                                        lookingForValue === option.id ? "border-primary" : "border-card bg-card"
+                                    )}
+                                >
+                                    <span className="text-2xl">{option.emoji}</span>
+                                    <p className="font-semibold text-sm">{option.label}</p>
+                                </div>
+                                ))}
+                            </div>
+                        </div>
+                         <FormMessage className="mt-4 text-center">{form.formState.errors.lookingFor?.message}</FormMessage>
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div className="flex-1 flex flex-col">
+                        <div className="space-y-8">
+                            <div className="space-y-2">
+                                <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
+                                <p className="text-muted-foreground">{langTr.signup.step7.description}</p>
+                            </div>
+                            <div className="space-y-4 pt-8">
+                                <div className="flex justify-between items-baseline">
+                                    <Label className="text-lg">{langTr.signup.step7.label}</Label>
+                                    <span className="text-lg font-bold text-foreground">{distanceValue} {langTr.signup.step7.unit}</span>
+                                </div>
+                                <Controller
+                                    control={form.control}
+                                    name="distancePreference"
+                                    render={({ field }) => (
+                                        <Slider
+                                            value={[field.value]}
+                                            onValueChange={(value) => field.onChange(value[0])}
+                                            max={160}
+                                            min={1}
+                                            step={1}
+                                            className="w-full"
+                                        />
+                                    )}
+                                />
+                            </div>
+                            <p className="text-muted-foreground text-center pt-8">{langTr.signup.step7.info}</p>
+                        </div>
+                    </div>
+                )}
+                
+                {step === 5 && (
+                    <div className="flex-1 flex flex-col min-h-0">
+                        <div className="space-y-2 mb-6 shrink-0">
+                            <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
+                            <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                        </div>
+                        <ScrollArea className="flex-1 -mr-6 pr-6">
+                            <div className="space-y-8">
+                                {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
+                                    .filter(key => key !== 'title' && key !== 'description')
+                                    .map(key => {
+                                        const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
+                                        const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
+
+                                        return (
+                                            <div key={key}>
+                                                <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                                                    <Icon className="h-5 w-5 text-muted-foreground" />
+                                                    {question.question}
+                                                </h2>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {question.options.map(option => (
+                                                        <Badge
+                                                            key={option.id}
+                                                            variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
+                                                            onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
+                                                            className="cursor-pointer py-1.5 px-3 text-sm"
+                                                        >
+                                                            {option.label}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )
+                                })}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                )}
+
+                {step === 6 && (
+                    <div className="flex-1 flex flex-col">
+                        <div className="space-y-4">
+                            <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
+                            <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                            <div className="space-y-6 pt-4">
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="E-posta adresini gir..." {...field} className="h-14 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                            <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni belirle..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                                {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                            </button>
+                                            </div>
+                                        </FormControl>
+                                        <PasswordStrength password={passwordValue} />
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="passwordConfirmation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                                    {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                                </button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
             
             <div className="shrink-0 pt-6">
                 <Button
