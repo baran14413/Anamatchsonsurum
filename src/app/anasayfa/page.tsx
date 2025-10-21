@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -22,35 +23,35 @@ import { differenceInCalendarDays } from 'date-fns';
 const fetchProfiles = async (
     firestore: Firestore,
     user: User,
-    userProfile: UserProfile
+    userProfile: UserProfile,
+    interactedUids: Set<string>
 ): Promise<UserProfile[]> => {
     try {
         const usersRef = collection(firestore, 'users');
 
-        // 1. Get all UIDs the user has already interacted with (liked, disliked, matched)
-        const interactedUids = new Set<string>();
-        const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
-        interactedMatchDocsSnap.forEach(doc => {
-            const match = doc.data();
-            if (match.user1Id === user.uid) {
-                interactedUids.add(match.user2Id);
-            } else if (match.user2Id === user.uid) {
-                interactedUids.add(match.user1Id);
-            }
-        });
-        
-        // 2. Fetch a large batch of ONLY REAL USERS
+        // Fetch only real users who are not the current user.
         const q = query(usersRef, where('isBot', '!=', true), limit(200));
         const usersSnapshot = await getDocs(q);
 
-        // 3. Filter the real users
         const filteredUsers = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 // Universal filters
-                if (!p.uid || p.uid === user.uid || interactedUids.has(p.uid) || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
+                if (!p.uid || p.uid === user.uid || interactedUids.has(p.uid)) {
                     return false;
                 }
+                
+                // CRITICAL FIX: Profile must have at least one image to be shown.
+                if (!p.images || p.images.length === 0) {
+                    return false;
+                }
+
+                // Basic integrity checks
+                if (!p.fullName || !p.dateOfBirth) {
+                    return false;
+                }
+
+                // --- User Preference Filtering ---
 
                 // Assign distance
                 if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
@@ -61,9 +62,11 @@ const fetchProfiles = async (
                         p.location.longitude
                     );
                 } else if (userProfile.globalModeEnabled) {
+                     // Assign a random large distance for global users without location
                      p.distance = Math.floor(Math.random() * 5000) + 200;
                 } else {
-                    return false; // Skip if no location and not in global mode
+                    // If location is required (not global mode) and not available, filter out.
+                    return false;
                 }
 
                 // Apply preference filters
@@ -78,6 +81,7 @@ const fetchProfiles = async (
                 if (userProfile.ageRange && p.dateOfBirth) {
                     const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
                     if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                        // If expand age range is not enabled, filter them out.
                         if (!userProfile.expandAgeRange) return false;
                     }
                 }
@@ -85,7 +89,7 @@ const fetchProfiles = async (
                 return true;
             });
         
-        // 4. Shuffle and return
+        // Shuffle and return the final list
         filteredUsers.sort(() => Math.random() - 0.5);
 
         return filteredUsers.slice(0, 20);
@@ -112,15 +116,15 @@ function AnasayfaPageContent() {
   
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
+  const interactedUids = useRef<Set<string>>(new Set());
 
-  const loadProfiles = async () => {
+  const loadProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
   
     isFetching.current = true;
     setIsLoading(true);
   
-    // Fetch profiles that haven't been seen yet.
-    const newProfiles = await fetchProfiles(firestore, user, userProfile);
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, interactedUids.current);
     const unseenProfiles = newProfiles.filter(p => !seenProfileIds.current.has(p.uid));
   
     if (unseenProfiles.length > 0) {
@@ -130,31 +134,51 @@ function AnasayfaPageContent() {
     
     setIsLoading(false);
     isFetching.current = false;
-  };
-  
+  }, [user, firestore, userProfile]);
 
-  // Initial load
+  // Initial load and fetching interacted UIDs
   useEffect(() => {
-    if (!isUserLoading && user && userProfile && profiles.length === 0) {
-      if(user.uid) seenProfileIds.current.add(user.uid); // Add current user to seen set from the start
-      loadProfiles();
+    if (!isUserLoading && user && firestore && userProfile) {
+      if(user.uid) {
+        seenProfileIds.current.add(user.uid);
+        interactedUids.current.add(user.uid);
+      }
+
+      // Fetch all matches once to know who to exclude
+      const fetchInteracted = async () => {
+         const matchCollectionRef = collection(firestore, 'matches');
+         const q1 = query(matchCollectionRef, where('user1Id', '==', user.uid));
+         const q2 = query(matchCollectionRef, where('user2Id', '==', user.uid));
+
+         const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+         
+         snap1.forEach(doc => interactedUids.current.add(doc.data().user2Id));
+         snap2.forEach(doc => interactedUids.current.add(doc.data().user1Id));
+
+         // Initial profile load after fetching interactions
+         if (profiles.length === 0) {
+            loadProfiles();
+         }
+      };
+
+      fetchInteracted();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isUserLoading, user, userProfile]);
+  }, [isUserLoading, user, firestore, userProfile]);
 
   // Prefetch when deck is low
   useEffect(() => {
     if (profiles.length > 0 && profiles.length < 5 && !isFetching.current) {
         loadProfiles();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profiles.length]);
+  }, [profiles.length, loadProfiles]);
 
  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
 
     setLastSwipedProfile({ profile: profileToSwipe, direction });
     setProfiles(prev => prev.filter(p => p.uid !== profileToSwipe.uid));
+    interactedUids.current.add(profileToSwipe.uid); // Add to interacted set
 
     if (direction === 'up') {
         const currentUserRef = doc(firestore, 'users', user.uid);
@@ -168,6 +192,7 @@ function AnasayfaPageContent() {
                 action: <Button onClick={() => router.push('/market')}>Markete Git</Button>
             });
             setProfiles(prev => [profileToSwipe, ...prev]);
+            interactedUids.current.delete(profileToSwipe.uid); // Revert interaction
             return;
         }
         await updateDoc(currentUserRef, { superLikeBalance: increment(-1) });
@@ -186,8 +211,7 @@ function AnasayfaPageContent() {
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         const otherUserAction = matchData[otherUserActionKey];
 
-        const isInstantBotMatch = profileToSwipe.isBot && (action === 'liked' || action === 'superliked');
-        const isMatch = isInstantBotMatch || (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
+        const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
                         (action === 'superliked' && otherUserAction === 'liked');
 
         let newStatus: 'pending' | 'matched' | 'superlike_pending' = 'pending';
@@ -210,11 +234,9 @@ function AnasayfaPageContent() {
         if (user1IsCurrentUser) {
             updateData.user1_action = action;
             updateData.user1_timestamp = serverTimestamp();
-            if (isInstantBotMatch) updateData.user2_action = 'liked'; // Bot likes back instantly
         } else {
             updateData.user2_action = action;
             updateData.user2_timestamp = serverTimestamp();
-             if (isInstantBotMatch) updateData.user1_action = 'liked'; // Bot likes back instantly
         }
 
         if (action === 'superliked') {
@@ -256,25 +278,6 @@ function AnasayfaPageContent() {
             await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), currentUserMatchData, { merge: true });
             await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
             
-            if (profileToSwipe.isBot) {
-                 try {
-                    await fetch('/api/message-webhook', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
-                        },
-                        body: JSON.stringify({
-                            matchId: matchId,
-                            type: 'MATCH', 
-                            userId: user.uid
-                        })
-                    });
-                } catch (error: any) {
-                    console.error("Bot interaction webhook error:", error);
-                }
-            }
-
             toast({
                 title: langTr.anasayfa.matchToastTitle,
                 description: `${profileToSwipe.fullName} ${langTr.anasayfa.matchToastDescription}`
@@ -282,7 +285,6 @@ function AnasayfaPageContent() {
 
         } else if (action !== 'disliked') {
              if (profileToSwipe.uid) { 
-                // CRUCIAL: Add to the OTHER user's subcollection for "Likes You" page
                 await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
             }
              if (action === 'superliked') {
@@ -296,6 +298,7 @@ function AnasayfaPageContent() {
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
         setProfiles(prev => [profileToSwipe, ...prev]);
+        interactedUids.current.delete(profileToSwipe.uid); // Revert interaction
     }
 }, [user, firestore, toast, userProfile, router]);
   
@@ -327,7 +330,6 @@ function AnasayfaPageContent() {
 
         const mainMatchRef = doc(firestore, 'matches', matchId);
         
-        // This is important: check if the doc exists before trying to delete
         const matchDoc = await getDoc(mainMatchRef);
         if (matchDoc.exists()) {
              batch.delete(mainMatchRef);
@@ -354,12 +356,15 @@ function AnasayfaPageContent() {
         }
         
         await batch.commit();
+        
+        interactedUids.current.delete(lastSwipedProfile.profile.uid);
+        seenProfileIds.current.delete(lastSwipedProfile.profile.uid);
+
 
         setShowUndoMessage(true);
         setTimeout(() => setShowUndoMessage(false), 2000);
         
-        // Correctly restore the profile to the end of the array
-        setProfiles(prev => [...prev, lastSwipedProfile.profile]);
+        setProfiles(prev => [lastSwipedProfile.profile, ...prev]);
         setLastSwipedProfile(null);
 
     } catch (error: any) {
@@ -367,15 +372,7 @@ function AnasayfaPageContent() {
         toast({ title: 'Hata', description: 'İşlem geri alınırken bir sorun oluştu.', variant: 'destructive'});
     }
   };
-
-  if (isUserLoading || (isLoading && profiles.length === 0)) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-background">
-        <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
-      </div>
-    );
-  }
-
+  
   const handleRetry = () => {
     toast({
       title: langTr.anasayfa.resetToastTitle,
@@ -386,6 +383,14 @@ function AnasayfaPageContent() {
     if(user) seenProfileIds.current.add(user.uid);
     loadProfiles();
   }
+
+  if (isUserLoading || (isLoading && profiles.length === 0)) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-background">
+        <Icons.logo width={48} height={48} className="animate-pulse text-primary" />
+      </div>
+    );
+  }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
@@ -393,11 +398,19 @@ function AnasayfaPageContent() {
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
         <div className="relative flex-1 w-full h-full flex items-center justify-center">
             {topCard ? (
-                <MemoizedProfileCard
-                    key={topCard.uid}
-                    profile={topCard}
-                    onSwipe={handleSwipe}
-                />
+                 <AnimatePresence>
+                    {profiles.map((profile, index) => {
+                        const isTop = index === profiles.length - 1;
+                        if (!isTop) return null; // Only render the top card for interaction
+                        return (
+                            <MemoizedProfileCard
+                                key={profile.uid}
+                                profile={profile}
+                                onSwipe={handleSwipe}
+                            />
+                        )
+                    })}
+                </AnimatePresence>
             ) : !isLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
                     <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
