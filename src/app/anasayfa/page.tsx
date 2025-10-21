@@ -80,29 +80,22 @@ const fetchProfiles = async (
              if(p.distance > (userProfile.distancePreference || 160)) return false;
            }
       } else {
-          p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance if location is missing
-          if (!userProfile.globalModeEnabled) {
-              return false; // If global mode is off and there's no location data for distance check, filter out.
+          // If global mode is on, we don't need to filter out users without location
+          if (userProfile.globalModeEnabled) {
+            p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance
+          } else {
+            // If global mode is off and there's no location data for distance check, filter out.
+            return false;
           }
       }
       
       return true;
     });
 
-    // If there are filtered real users, return them first.
-    if (filteredRealUsers.length > 0) {
-      filteredRealUsers.sort(() => Math.random() - 0.5);
-      return filteredRealUsers.slice(0, 25);
-    }
-    
-    // If no real users match, fall back to bots.
-    // Assign random distance to bots
-    bots.forEach(bot => {
-        bot.distance = Math.floor(Math.random() * (140 - 1 + 1)) + 1;
-    });
-    bots.sort(() => Math.random() - 0.5);
+    // Mix real users and bots
+    const combinedList = [...filteredRealUsers.sort(() => Math.random() - 0.5), ...bots.sort(() => Math.random() - 0.5)];
 
-    return bots.slice(0, 25);
+    return combinedList.slice(0, 25);
 
   } catch (error: any) {
     console.error("Profil getirme hatası:", error);
@@ -420,7 +413,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start items-center p-4 h-[calc(100%-1.5rem)]">
+        <div className="relative flex-1 w-full flex flex-col justify-start items-center p-4 pb-4">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
