@@ -6,6 +6,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getPerformance } from 'firebase/performance';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -36,7 +37,7 @@ export function initializeFirebase() {
   }
 
   // On the server, return a dummy object or handle as needed
-  return { firebaseApp: null, auth: null, firestore: null, storage: null };
+  return { firebaseApp: null, auth: null, firestore: null, storage: null, performance: null };
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
@@ -45,6 +46,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
     auth: getAuth(firebaseApp),
     firestore: getFirestore(firebaseApp),
     storage: getStorage(firebaseApp),
+    performance: getPerformance(firebaseApp),
   };
 }
 

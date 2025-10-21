@@ -10,6 +10,7 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { UserProfile } from '@/lib/types';
 import { initializeFirebase } from '@/firebase'; // Import initializeFirebase
 import { Storage } from 'firebase/storage';
+import { FirebasePerformance } from 'firebase/performance';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export interface FirebaseContextState {
   firestore: Firestore | null;
   auth: Auth | null;
   storage: Storage | null;
+  performance: FirebasePerformance | null;
   user: User | null;
   userProfile: UserProfile | null;
   isUserLoading: boolean;
@@ -43,7 +45,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
 }) => {
-  const [services, setServices] = useState<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; storage: Storage; } | null>(null);
+  const [services, setServices] = useState<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; storage: Storage; performance: FirebasePerformance; } | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
@@ -52,8 +54,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   useEffect(() => {
     // Initialize Firebase on the client side, once per component mount.
     const firebaseServices = initializeFirebase();
-    if (firebaseServices.firebaseApp && firebaseServices.auth && firebaseServices.firestore && firebaseServices.storage) {
-      setServices(firebaseServices as { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; storage: Storage });
+    if (firebaseServices.firebaseApp && firebaseServices.auth && firebaseServices.firestore && firebaseServices.storage && firebaseServices.performance) {
+      setServices(firebaseServices as { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; storage: Storage; performance: FirebasePerformance });
     }
   }, []);
 
@@ -179,6 +181,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       firestore: services?.firestore || null,
       auth: services?.auth || null,
       storage: services?.storage || null,
+      performance: services?.performance || null,
       user,
       userProfile,
       isUserLoading: !services || isUserLoading, // Still loading if services aren't ready
