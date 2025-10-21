@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import * as React from 'react';
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +20,10 @@ import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { langTr } from "@/languages/tr";
 import { Icons } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -31,6 +35,10 @@ const formSchema = z.object({
     dateOfBirth: z.date()
         .max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
         .refine(date => !isNaN(date.getTime()), { message: "Lütfen geçerli bir tarih girin." }),
+    gender: z.enum(['female', 'male'], {
+        required_error: "Lütfen cinsiyetinizi seçin.",
+    }),
+    showGender: z.boolean().default(true),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -101,7 +109,8 @@ export default function SignUpPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
-      dateOfBirth: undefined
+      dateOfBirth: undefined,
+      showGender: true,
     },
     mode: "onChange",
   });
@@ -126,6 +135,7 @@ export default function SignUpPage() {
     switch (step) {
       case 0: fieldsToValidate = ['fullName']; break;
       case 1: fieldsToValidate = ['dateOfBirth']; break;
+      case 2: fieldsToValidate = ['gender']; break;
     }
     
     const isValid = await form.trigger(fieldsToValidate);
@@ -142,6 +152,8 @@ export default function SignUpPage() {
   const totalSteps = 6;
   const progressValue = ((step + 1) / totalSteps) * 100;
   
+  const genderValue = form.watch('gender');
+
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b-0 bg-transparent px-4">
@@ -198,6 +210,54 @@ export default function SignUpPage() {
                     <p className="text-muted-foreground">
                         Profilinde yaşın gösterilir, doğum tarihin değil.
                     </p>
+                </div>
+              )}
+
+              {step === 2 && (
+                 <div className="space-y-8">
+                    <h1 className="text-3xl font-bold">Cinsiyetin ne?</h1>
+                    <div className="space-y-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                                "w-full h-14 rounded-full text-lg",
+                                genderValue === 'female' && "border-primary text-primary border-2"
+                            )}
+                            onClick={() => form.setValue('gender', 'female', { shouldValidate: true })}
+                        >
+                            Kadın
+                        </Button>
+                        <Button
+                             type="button"
+                             variant="outline"
+                             className={cn(
+                                 "w-full h-14 rounded-full text-lg",
+                                 genderValue === 'male' && "border-primary text-primary border-2"
+                             )}
+                             onClick={() => form.setValue('gender', 'male', { shouldValidate: true })}
+                        >
+                            Erkek
+                        </Button>
+                         <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name="showGender"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <Label className="font-normal" htmlFor="showGender">
+                                    Profilimde cinsiyetimi göster
+                                </Label>
+                            </FormItem>
+                        )}
+                    />
                 </div>
               )}
 
