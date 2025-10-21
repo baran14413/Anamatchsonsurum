@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -134,10 +134,10 @@ const DateInput = ({
       ) {
         onChange(date);
       } else {
-        onChange(null); // Send null for invalid date
+        onChange(null);
       }
     } else {
-      onChange(null); // Send null if not complete
+       onChange(null);
     }
   };
 
@@ -415,11 +415,11 @@ export default function SignUpPage() {
                             key={option.id}
                             onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                             className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50",
+                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50 aspect-square",
                                 lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                             )}
                         >
-                            <span className="text-2xl">{option.emoji}</span>
+                            <span className="text-4xl">{option.emoji}</span>
                             <p className="font-semibold text-sm">{option.label}</p>
                         </div>
                         ))}
@@ -459,12 +459,12 @@ export default function SignUpPage() {
             )}
             
             {step === 5 && (
-                <ScrollArea className="flex-1 -mr-6 pr-6">
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
-                            <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
-                        </div>
+                 <div className="flex flex-col h-full">
+                    <div className="space-y-2 mb-6">
+                        <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
+                        <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                    </div>
+                    <ScrollArea className="flex-1 -mr-6 pr-6">
                         <div className="space-y-8">
                             {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
                                 .filter(key => key !== 'title' && key !== 'description')
@@ -494,8 +494,8 @@ export default function SignUpPage() {
                                     )
                             })}
                         </div>
-                    </div>
-                </ScrollArea>
+                    </ScrollArea>
+                </div>
             )}
           </div>
 
