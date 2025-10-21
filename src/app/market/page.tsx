@@ -12,6 +12,13 @@ import { useFirebase } from '@/firebase';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
+
+// Helper function to check for the native Android interface
+const isAndroidInterfaceAvailable = (): boolean => {
+  return typeof window !== 'undefined' && (window as any).Android && typeof (window as any).Android.purchase === 'function';
+};
+
+
 export default function MarketPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -30,16 +37,29 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-      // Get the initialized billing plugin. This now waits for initialization.
-      const Billing = await getBilling();
-      
-      toast({
-          title: 'Ödeme İşlemi Başlatıldı',
-          description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
-      });
+      if (isAndroidInterfaceAvailable()) {
+          console.log(`Attempting purchase via Android interface for product: ${productId}`);
+          (window as any).Android.purchase(productId);
+          // Android arayüzü sonrası için bir bekleme durumu veya kullanıcı bildirimi eklenebilir.
+          // Şimdilik sadece çağrıyı yapıyoruz ve işlemi Android tarafına bırakıyoruz.
+          // Native kodun sonucu bildirmesi beklenir.
+          toast({
+              title: 'Ödeme İşlemi Başlatıldı',
+              description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
+          });
 
-      // We only initiate the purchase here. The result is handled by the global listener.
-      await Billing.purchase({ productId });
+      } else {
+          // Get the initialized billing plugin. This now waits for initialization.
+          const Billing = await getBilling();
+          
+          toast({
+              title: 'Ödeme İşlemi Başlatıldı',
+              description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
+          });
+
+          // We only initiate the purchase here. The result is handled by the global listener.
+          await Billing.purchase({ productId });
+      }
 
     } catch (error: any) {
       console.error('Satın alma başlatma hatası:', error);

@@ -27,6 +27,12 @@ export interface BillingPlugin {
   addListener(eventName: 'purchaseCompleted' | 'purchaseFailed', listenerFunc: (result: Purchase | any) => void): Promise<any>;
 }
 
+// Helper function to check for the native Android interface
+const isAndroidInterfaceAvailable = (): boolean => {
+  return typeof window !== 'undefined' && (window as any).Android && typeof (window as any).Android.purchase === 'function';
+};
+
+
 let billingInstance: BillingPlugin | null = null;
 let initializationPromise: Promise<BillingPlugin> | null = null;
 
@@ -37,6 +43,11 @@ const unavailableBilling: BillingPlugin = {
     return { products: [] };
   },
   purchase: async (options) => {
+     if (isAndroidInterfaceAvailable()) {
+      console.log(`Attempting purchase via Android interface for product: ${options.productId}`);
+      (window as any).Android.purchase(options.productId);
+      return;
+    }
     console.error(`Billing plugin not available. Cannot process purchase for ${options.productId}.`);
     // Return void or throw an error to indicate failure
     return;
