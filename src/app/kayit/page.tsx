@@ -282,7 +282,7 @@ export default function SignUpPage() {
 
       <Form {...form}>
         <form className="flex flex-1 flex-col overflow-hidden p-6">
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 flex flex-col min-h-0">
             {step === 0 && (
               <div className="space-y-4">
                 <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
@@ -407,24 +407,24 @@ export default function SignUpPage() {
                         {langTr.signup.step5.label}
                         </p>
                     </div>
-                     <ScrollArea className="flex-1 -mr-6 pr-6">
-                        <div className="grid grid-cols-2 gap-4">
+                     <div className="flex-1 flex flex-col justify-center">
+                        <div className="grid grid-cols-2 grid-rows-3 gap-4">
                             {langTr.signup.step5.options.map((option) => (
                             <div
                                 key={option.id}
                                 onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                                 className={cn(
-                                    "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50 aspect-square",
+                                    "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-1 text-center transition-all hover:bg-muted/50 aspect-square",
                                     lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                                 )}
                             >
-                                <span className="text-2xl">{option.emoji}</span>
-                                <p className="font-semibold text-sm">{option.label}</p>
+                                <span className="text-xl">{option.emoji}</span>
+                                <p className="font-semibold text-xs">{option.label}</p>
                             </div>
                             ))}
                         </div>
                         <FormMessage className="mt-4">{form.formState.errors.lookingFor?.message}</FormMessage>
-                    </ScrollArea>
+                    </div>
                 </div>
             )}
 
