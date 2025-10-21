@@ -43,12 +43,11 @@ const formSchema = z.object({
     .string()
     .min(2, { message: 'İsim en az 2 karakter olmalıdır.' })
     .max(20, { message: 'İsim en fazla 20 karakter olabilir.' }),
-  dateOfBirth: z
-    .date({
-        required_error: "Lütfen doğum tarihinizi girin.",
-        invalid_type_error: "Lütfen geçerli bir tarih girin.",
-    })
-    .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' }),
+  dateOfBirth: z.any().refine((val) => val instanceof Date && !isNaN(val.getTime()), {
+    message: "Lütfen geçerli bir tarih girin.",
+  }).refine((val) => val <= eighteenYearsAgo, {
+    message: 'En az 18 yaşında olmalısın.',
+  }),
   gender: z.enum(['female', 'male'], {
     required_error: 'Lütfen cinsiyetinizi seçin.',
   }),
@@ -70,7 +69,7 @@ const DateInput = ({
   disabled,
 }: {
   value?: Date;
-  onChange: (date: Date) => void;
+  onChange: (date: Date | null) => void;
   disabled?: boolean;
 }) => {
   const [day, setDay] = useState('');
@@ -86,10 +85,6 @@ const DateInput = ({
         setDay(String(value.getDate()).padStart(2, '0'));
         setMonth(String(value.getMonth() + 1).padStart(2, '0'));
         setYear(String(value.getFullYear()));
-    } else {
-        setDay('');
-        setMonth('');
-        setYear('');
     }
   }, [value]);
 
@@ -134,14 +129,8 @@ const DateInput = ({
       ) {
         onChange(date);
       } else {
-         onChange(new Date('invalid'));
+        onChange(new Date('invalid'));
       }
-    } else {
-        // Only trigger onChange with invalid if all fields are touched but invalid
-        if (newDay.length > 0 || newMonth.length > 0 || newYear.length > 0) {
-           const partialDate = new Date('invalid');
-            onChange(partialDate);
-        }
     }
   };
 
@@ -216,8 +205,8 @@ export default function SignUpPage() {
     return 'unknown';
   }, [dateOfBirthValue]);
 
-  const handleDateOfBirthChange = (date: Date) => {
-    form.setValue('dateOfBirth', date, { shouldValidate: true });
+  const handleDateOfBirthChange = (date: Date | null) => {
+      form.setValue('dateOfBirth', date, { shouldValidate: true });
   };
 
   const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
@@ -230,7 +219,10 @@ export default function SignUpPage() {
         break;
       case 1:
         fieldsToValidate = ['dateOfBirth'];
-        if (ageStatus !== 'valid') return;
+        if (ageStatus !== 'valid') {
+            form.trigger('dateOfBirth'); // Manually trigger to show error
+            return;
+        }
         break;
       case 2:
         fieldsToValidate = ['gender'];
@@ -331,13 +323,13 @@ export default function SignUpPage() {
                           {langTr.signup.step3.ageConfirm}
                         </div>
                       )}
-                      {ageStatus === 'invalid' && (
+                      {fieldState.error?.message === 'En az 18 yaşında olmalısın.' && (
                         <div className="flex items-center pt-2 text-sm text-red-600">
                           <XCircle className="mr-2 h-4 w-4" />
                           {langTr.signup.step3.ageError}
                         </div>
                       )}
-                      {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
+                       <FormMessage>{fieldState.error && fieldState.error.message !== 'En az 18 yaşında olmalısın.' ? fieldState.error.message : ''}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -416,12 +408,12 @@ export default function SignUpPage() {
                       key={option.id}
                       onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
+                        "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
                         lookingForValue === option.id && "border-primary"
                       )}
                     >
-                      <span className="text-2xl">{option.emoji}</span>
-                      <p className="font-semibold text-sm">{option.label}</p>
+                      <span className="text-xl">{option.emoji}</span>
+                      <p className="font-semibold text-xs">{option.label}</p>
                     </div>
                   ))}
                 </div>
