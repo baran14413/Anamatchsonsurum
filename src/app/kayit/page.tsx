@@ -36,7 +36,7 @@ const formSchema = z.object({
   dateOfBirth: z
     .date()
     .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' })
-    .refine((date) => !isNaN(date.getTime()), {
+    .refine((date) => date && !isNaN(date.getTime()), {
       message: 'Lütfen geçerli bir tarih girin.',
     }),
   gender: z.enum(['female', 'male'], {
@@ -58,27 +58,26 @@ const DateInput = ({
   onChange: (date: Date) => void;
   disabled?: boolean;
 }) => {
-  const [day, setDay] = useState(() =>
-    value ? String(value.getDate()).padStart(2, '0') : ''
-  );
-  const [month, setMonth] = useState(() =>
-    value ? String(value.getMonth() + 1).padStart(2, '0') : ''
-  );
-  const [year, setYear] = useState(() =>
-    value ? String(value.getFullYear()) : ''
-  );
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
 
   const dayRef = React.useRef<HTMLInputElement>(null);
   const monthRef = React.useRef<HTMLInputElement>(null);
   const yearRef = React.useRef<HTMLInputElement>(null);
-
+  
   useEffect(() => {
-    if (value) {
-      setDay(String(value.getDate()).padStart(2, '0'));
-      setMonth(String(value.getMonth() + 1).padStart(2, '0'));
-      setYear(String(value.getFullYear()));
+    if (value && !isNaN(value.getTime())) {
+        setDay(String(value.getDate()).padStart(2, '0'));
+        setMonth(String(value.getMonth() + 1).padStart(2, '0'));
+        setYear(String(value.getFullYear()));
+    } else {
+        setDay('');
+        setMonth('');
+        setYear('');
     }
   }, [value]);
+
 
   const handleDateChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -92,9 +91,7 @@ const DateInput = ({
 
     if (field === 'day') {
       if (val.length > 0 && parseInt(val.charAt(0)) > 3) {
-        /* do nothing */
       } else if (val.length > 1 && parseInt(val) > 31) {
-        /* do nothing */
       } else {
         setDay(val);
         newDay = val;
@@ -102,9 +99,7 @@ const DateInput = ({
       }
     } else if (field === 'month') {
       if (val.length > 0 && parseInt(val.charAt(0)) > 1) {
-        /* do nothing */
       } else if (val.length > 1 && parseInt(val) > 12) {
-        /* do nothing */
       } else {
         setMonth(val);
         newMonth = val;
@@ -127,7 +122,8 @@ const DateInput = ({
         onChange(new Date('invalid'));
       }
     } else {
-      onChange(new Date('invalid'));
+        // If the date is incomplete, pass an invalid date to trigger validation messages if needed
+        onChange(new Date('invalid'));
     }
   };
 
@@ -183,7 +179,9 @@ export default function SignUpPage() {
     defaultValues: {
       fullName: '',
       dateOfBirth: undefined,
+      gender: undefined,
       showGender: true,
+      lookingFor: undefined,
       distancePreference: 80,
     },
     mode: 'onChange',
