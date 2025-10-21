@@ -1,9 +1,12 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { db } from "./admin";
 
-// Bildirim gönderme fonksiyonu
+admin.initializeApp();
+
+const db = admin.firestore();
+
+// Generic function to send a notification
 const sendNotification = async (
   tokens: string[],
   title: string,
@@ -30,10 +33,10 @@ const sendNotification = async (
 
   try {
     const response = await admin.messaging().sendEachForMulticast(payload);
-    console.log("Notifications sent successfully:", response);
+    console.log("Notifications sent successfully:", response.successCount);
 
-    // Başarısız olan token'ları temizle
-    const tokensToRemove: Promise<any>[] = [];
+    // Clean up invalid tokens
+    const tokensToRemove: string[] = [];
     response.responses.forEach((result, index) => {
       if (!result.success) {
         const error = result.error;
@@ -46,124 +49,122 @@ const sendNotification = async (
           error.code === "messaging/invalid-registration-token" ||
           error.code === "messaging/registration-token-not-registered"
         ) {
-          // Bu token'ı kullanıcının profilinden sil
-          // (Bu kısım için kullanıcı ID'sini bilmek gerekir,
-          // bu yüzden genellikle token yönetimi daha karmaşıktır)
+          tokensToRemove.push(tokens[index]);
         }
       }
     });
-    await Promise.all(tokensToRemove);
+
+    if (tokensToRemove.length > 0) {
+      // Here you would typically find the user associated with these tokens
+      // and remove the tokens from their profile. This requires a more complex
+      // lookup (e.g., querying users collection for fcmTokens array containing the token).
+      // For simplicity, we are just logging it here.
+      console.log("Need to remove invalid tokens:", tokensToRemove);
+    }
   } catch (error) {
     console.error("Error sending notifications:", error);
   }
 };
 
 
-// Yeni bir mesaj gönderildiğinde tetiklenir
-export const onNewMessage = functions
-  .region("europe-west1")
-  .firestore.document("/matches/{matchId}/messages/{messageId}")
+// Triggered when a new message is created in any chat
+export const onNewMessage = functions.region("europe-west1").firestore
+  .document("/matches/{matchId}/messages/{messageId}")
   .onCreate(async (snap, context) => {
     const message = snap.data();
-    const matchId = context.params.matchId;
-    const senderId = message.senderId;
-
-    if (!message || !senderId) {
-      console.log("Eksik mesaj verisi.");
+    if (!message) {
+      console.log("No message data found.");
       return null;
     }
 
-    // Gönderen ve alan kişilerin ID'lerini bul
+    const {matchId} = context.params;
+    const {senderId} = message;
+
+    // Get the two user IDs from the matchId
     const [user1Id, user2Id] = matchId.split("_");
     const recipientId = senderId === user1Id ? user2Id : user1Id;
 
-    // Alan kullanıcının ve gönderen kullanıcının profilini al
+    // Get recipient and sender profiles
     const recipientDoc = await db.collection("users").doc(recipientId).get();
     const senderDoc = await db.collection("users").doc(senderId).get();
 
     if (!recipientDoc.exists || !senderDoc.exists) {
-      console.log("Kullanıcı bulunamadı.");
+      console.log("Sender or recipient not found.");
       return null;
     }
 
     const recipient = recipientDoc.data();
     const sender = senderDoc.data();
-    const fcmTokens = recipient?.fcmTokens;
 
-    if (!fcmTokens || fcmTokens.length === 0) {
-      console.log("Alıcının bildirim token'ı yok.");
+    // Check if the recipient has any FCM tokens
+    const fcmTokens = recipient?.fcmTokens;
+    if (!fcmTokens || !Array.isArray(fcmTokens) || fcmTokens.length === 0) {
+      console.log("Recipient has no FCM tokens.");
       return null;
     }
 
-    let notificationBody = "";
+    let notificationBody = "Yeni bir mesajın var.";
     if (message.text) {
       notificationBody = message.text;
     } else if (message.imageUrl) {
       notificationBody = "📷 Bir fotoğraf gönderdi.";
     } else if (message.audioUrl) {
       notificationBody = "▶️ Bir sesli mesaj gönderdi.";
-    } else {
-      notificationBody = "Yeni bir mesajın var.";
     }
 
-    // Bildirimi gönder
+    // Send the notification
     await sendNotification(
       fcmTokens,
-      `${sender?.fullName}`, // Bildirim başlığı
-      notificationBody,
-      `/eslesmeler/${matchId}`, // Tıklanınca açılacak link
+      `${sender?.fullName}`, // Notification title
+      notificationBody, // Notification body
+      `/eslesmeler/${matchId}`  // Link to open on click
     );
 
     return null;
   });
 
 
-// Yeni bir eşleşme olduğunda tetiklenir
-export const onNewMatch = functions
-  .region("europe-west1")
-  .firestore.document("/matches/{matchId}")
+// Triggered when a match status changes
+export const onNewMatch = functions.region("europe-west1").firestore
+  .document("/matches/{matchId}")
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
-    // Sadece status 'pending' veya 'superlike_pending' den 'matched'e değiştiğinde çalışır
-    if (
-      (before.status === "pending" || before.status === "superlike_pending") &&
-       after.status === "matched"
-    ) {
-      const user1Id = after.user1Id;
-      const user2Id = after.user2Id;
-      const matchId = context.params.matchId;
+    // Check if the status has just changed to 'matched'
+    if (before.status !== "matched" && after.status === "matched") {
+      const {user1Id, user2Id} = after;
+      const {matchId} = context.params;
 
-      // Her iki kullanıcının da profilini al
+      // Get both user profiles
       const user1Doc = await db.collection("users").doc(user1Id).get();
       const user2Doc = await db.collection("users").doc(user2Id).get();
 
       if (!user1Doc.exists || !user2Doc.exists) {
-        console.log("Eşleşen kullanıcılardan biri bulunamadı.");
+        console.log("One or both users in the match not found.");
         return null;
       }
 
       const user1 = user1Doc.data();
       const user2 = user2Doc.data();
 
-      // Kullanıcı 1'e bildirim gönder
+      // Send notification to User 1
       if (user1 && user1.fcmTokens && user1.fcmTokens.length > 0) {
         await sendNotification(
           user1.fcmTokens,
           "Yeni bir eşleşmen var! 🎉",
           `${user2?.fullName} ile eşleştin.`,
-          `/eslesmeler/${matchId}`,
+          `/eslesmeler/${matchId}`
         );
       }
 
-      // Kullanıcı 2'ye bildirim gönder
+      // Send notification to User 2
       if (user2 && user2.fcmTokens && user2.fcmTokens.length > 0) {
         await sendNotification(
           user2.fcmTokens,
           "Yeni bir eşleşmen var! 🎉",
           `${user1?.fullName} ile eşleştin.`,
-          `/eslesmeler/${matchId}`,
+          `/eslesmeler/${matchId}`
         );
       }
     }
