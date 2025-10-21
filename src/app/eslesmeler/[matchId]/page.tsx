@@ -148,7 +148,7 @@ function ChatPageContent() {
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
         const collectionPath = isSystemChat ? 'system_messages' : `matches/${matchId}/messages`;
-        return query(collection(collectionPath), orderBy('timestamp', 'asc'));
+        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
 
