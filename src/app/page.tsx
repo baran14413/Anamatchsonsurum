@@ -61,22 +61,10 @@ export default function WelcomePage() {
         />
         <div className="absolute inset-0 bg-black/40 z-10" />
 
-        <div className="z-20" />
-        <div className="flex flex-1 flex-col justify-center items-center z-20">
-          <motion.div
-            animate={{
-              scale: [1, 1.05, 1],
-            }}
-            transition={{
-              duration: 2.5,
-              ease: 'easeInOut',
-              repeat: Infinity,
-              repeatDelay: 0.5,
-            }}
-          >
-            <Icons.logo width={256} height={256} />
-          </motion.div>
+        <div className="flex flex-1 flex-col items-center z-20 pt-8">
+            <Icons.logo width={150} height={150} />
         </div>
+
 
         <div className="w-full max-w-sm space-y-8 z-20">
           <div className="text-xs text-white/80">
