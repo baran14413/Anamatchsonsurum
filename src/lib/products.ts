@@ -34,7 +34,7 @@ export const products: Product[] = [
   },
   // Super Like Packages
   {
-    id: 'bematch.superlike.5',
+    id: '5listars',
     type: 'superlike',
     title: '5x Süperlike',
     description: 'Dikkatleri üzerine çekmek için küçük bir destek.',
