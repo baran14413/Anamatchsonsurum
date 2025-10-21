@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -85,6 +87,10 @@ const DateInput = ({
         setDay(String(value.getDate()).padStart(2, '0'));
         setMonth(String(value.getMonth() + 1).padStart(2, '0'));
         setYear(String(value.getFullYear()));
+    } else {
+        setDay('');
+        setMonth('');
+        setYear('');
     }
   }, [value]);
 
@@ -129,8 +135,10 @@ const DateInput = ({
       ) {
         onChange(date);
       } else {
-        onChange(new Date('invalid'));
+        onChange(null); // Send null for invalid date
       }
+    } else {
+      onChange(null); // Send null if not complete
     }
   };
 
@@ -277,7 +285,7 @@ export default function SignUpPage() {
 
       <Form {...form}>
         <form className="flex flex-1 flex-col overflow-hidden p-6">
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0">
             {step === 0 && (
               <div className="space-y-4">
                 <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
@@ -323,13 +331,13 @@ export default function SignUpPage() {
                           {langTr.signup.step3.ageConfirm}
                         </div>
                       )}
-                      {fieldState.error?.message === 'En az 18 yaşında olmalısın.' && (
+                      {ageStatus === 'invalid' && (
                         <div className="flex items-center pt-2 text-sm text-red-600">
                           <XCircle className="mr-2 h-4 w-4" />
                           {langTr.signup.step3.ageError}
                         </div>
                       )}
-                       <FormMessage>{fieldState.error && fieldState.error.message !== 'En az 18 yaşında olmalısın.' ? fieldState.error.message : ''}</FormMessage>
+                       <FormMessage>{fieldState.error?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -395,30 +403,30 @@ export default function SignUpPage() {
             )}
 
             {step === 3 && (
-              <div className="flex flex-col flex-1 justify-center space-y-4">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
-                    <p className="text-muted-foreground">
-                    {langTr.signup.step5.label}
-                    </p>
-                </div>
-                 <div className="grid grid-cols-2 gap-4 pt-4">
-                  {langTr.signup.step5.options.map((option) => (
-                    <div
-                      key={option.id}
-                      onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
-                      className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
-                        lookingForValue === option.id && "border-primary"
-                      )}
-                    >
-                      <span className="text-xl">{option.emoji}</span>
-                      <p className="font-semibold text-xs">{option.label}</p>
+                <div className="flex flex-col flex-1 justify-center space-y-4">
+                    <div className="text-center">
+                        <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                        <p className="text-muted-foreground">
+                        {langTr.signup.step5.label}
+                        </p>
                     </div>
-                  ))}
+                    <div className="grid grid-cols-2 gap-4 pt-4">
+                        {langTr.signup.step5.options.map((option) => (
+                        <div
+                            key={option.id}
+                            onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
+                            className={cn(
+                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-4 text-center transition-all hover:bg-muted/50",
+                                lookingForValue === option.id ? "border-primary" : "border-card bg-card"
+                            )}
+                        >
+                            <span className="text-3xl">{option.emoji}</span>
+                            <p className="font-semibold text-sm">{option.label}</p>
+                        </div>
+                        ))}
+                    </div>
+                    <FormMessage>{form.formState.errors.lookingFor?.message}</FormMessage>
                 </div>
-                 <FormMessage>{form.formState.errors.lookingFor?.message}</FormMessage>
-              </div>
             )}
 
             {step === 4 && (
@@ -452,41 +460,43 @@ export default function SignUpPage() {
             )}
             
             {step === 5 && (
-                 <div className="space-y-6">
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
-                        <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
-                    </div>
-                    <div className="space-y-8">
-                        {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
-                            .filter(key => key !== 'title' && key !== 'description')
-                            .map(key => {
-                                const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
-                                const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
+                <ScrollArea className="flex-1 -mr-6 pr-6">
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
+                            <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                        </div>
+                        <div className="space-y-8">
+                            {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
+                                .filter(key => key !== 'title' && key !== 'description')
+                                .map(key => {
+                                    const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
+                                    const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
 
-                                return (
-                                    <div key={key}>
-                                        <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-                                            <Icon className="h-5 w-5 text-muted-foreground" />
-                                            {question.question}
-                                        </h2>
-                                        <div className="flex flex-wrap gap-2">
-                                            {question.options.map(option => (
-                                                <Badge
-                                                    key={option.id}
-                                                    variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
-                                                    onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
-                                                    className="cursor-pointer py-1.5 px-3 text-sm"
-                                                >
-                                                    {option.label}
-                                                </Badge>
-                                            ))}
+                                    return (
+                                        <div key={key}>
+                                            <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                                                <Icon className="h-5 w-5 text-muted-foreground" />
+                                                {question.question}
+                                            </h2>
+                                            <div className="flex flex-wrap gap-2">
+                                                {question.options.map(option => (
+                                                    <Badge
+                                                        key={option.id}
+                                                        variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
+                                                        onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
+                                                        className="cursor-pointer py-1.5 px-3 text-sm"
+                                                    >
+                                                        {option.label}
+                                                    </Badge>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )
-                        })}
+                                    )
+                            })}
+                        </div>
                     </div>
-                 </div>
+                </ScrollArea>
             )}
           </div>
 
