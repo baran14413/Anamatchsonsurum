@@ -1,4 +1,5 @@
 
+
 export interface UserImage {
   url: string;
   public_id: string;
@@ -103,12 +104,7 @@ export interface SystemMessage {
     timestamp: any;
     sentTo: string[];
     seenBy: string[];
-    type: 'text' | 'poll';
-    text: string | null;
-    pollQuestion: string | null;
-    pollOptions: string[] | null;
-    pollResults: { [key: string]: number } | null;
-    votedBy?: string[]; // Tracks which UIDs have voted on this poll
+    text: string;
 }
 
 export type ChatMessage = {
@@ -125,15 +121,11 @@ export type ChatMessage = {
   timestamp: any; 
   isRead: boolean;
   readTimestamp?: any;
-  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed' | 'poll';
+  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
   isEdited?: boolean;
   editedAt?: any;
-  pollQuestion?: string;
-  pollOptions?: string[];
-  pollResults?: { [key: string]: number };
-  votedBy?: string[];
   createdAt?: any; // Kept for backward compatibility but should be migrated to timestamp
 };
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -37,8 +36,6 @@ import {
 
 
 const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMessage, totalUsers: number, onDelete: (messageId: string) => void }) => {
-    const isPoll = message.type === 'poll';
-    const totalVotes = isPoll && message.pollResults ? Object.values(message.pollResults).reduce((sum, count) => sum + count, 0) : 0;
     const seenCount = message.seenBy?.length || 0;
 
     return (
@@ -46,7 +43,7 @@ const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMes
             <CardHeader className='p-4 flex-row items-start justify-between'>
                  <div className="space-y-1">
                     <p className="text-sm text-muted-foreground break-words font-semibold">
-                        {isPoll ? <><strong>Anket:</strong> {message.pollQuestion}</> : <>{message.text}</>}
+                        {message.text}
                     </p>
                 </div>
                  <DropdownMenu>
@@ -66,25 +63,6 @@ const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMes
                 </DropdownMenu>
             </CardHeader>
 
-            <CardContent className="p-4 pt-0 space-y-3">
-                 {isPoll && message.pollOptions && (
-                    <div className="space-y-2">
-                        {message.pollOptions.map((option, index) => {
-                            const votes = message.pollResults?.[option] || 0;
-                            const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
-                            return (
-                                <div key={index} className="space-y-1">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="font-medium">{option}</span>
-                                        <span className="text-muted-foreground">{votes} oy ({percentage.toFixed(1)}%)</span>
-                                    </div>
-                                    <Progress value={percentage} className="h-2" />
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </CardContent>
             <CardFooter className='p-4 pt-0 flex items-center justify-between'>
                 <div className="text-xs text-muted-foreground">
                     {message.timestamp?.toDate && formatDistanceToNow(message.timestamp.toDate(), { locale: tr, addSuffix: true })}
@@ -94,12 +72,6 @@ const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMes
                         <Eye className="h-4 w-4" />
                         <span>{seenCount} / {totalUsers}</span>
                     </div>
-                    {isPoll && (
-                        <div className='flex items-center gap-1.5' title={`Toplam ${totalVotes} oy kullanıldı`}>
-                            <BarChart2 className="h-4 w-4" />
-                            <span>{totalVotes}</span>
-                        </div>
-                    )}
                 </div>
             </CardFooter>
         </Card>
@@ -112,11 +84,6 @@ export default function SystemMessagesPage() {
   const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  
-  const [isPoll, setIsPoll] = useState(false);
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOptions, setPollOptions] = useState(['', '']);
-
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
 
   const allUsersCollectionRef = useMemo(
@@ -127,8 +94,6 @@ export default function SystemMessagesPage() {
 
   const users = useMemo(() => {
     if (!allUsers) return [];
-    // This is the most reliable way to filter out bots,
-    // as it accounts for documents where `isBot` might be undefined or false.
     return allUsers.filter(user => user.isBot !== true);
   }, [allUsers]);
 
@@ -139,44 +104,17 @@ export default function SystemMessagesPage() {
   const { data: sentMessages, isLoading: isLoadingMessages } = useCollection<SystemMessage>(systemMessagesQuery);
 
 
-  const handleAddOption = () => {
-    if (pollOptions.length < 4) {
-      setPollOptions([...pollOptions, '']);
-    }
-  };
-
-  const handleRemoveOption = (index: number) => {
-    if (pollOptions.length > 2) {
-      const newOptions = [...pollOptions];
-      newOptions.splice(index, 1);
-      setPollOptions(newOptions);
-    }
-  };
-
-  const handleOptionChange = (index: number, value: string) => {
-    const newOptions = [...pollOptions];
-    newOptions[index] = value;
-    setPollOptions(newOptions);
-  };
-
   const handleSendMessage = async () => {
     if (!firestore || !users || users.length === 0) {
         toast({ title: 'Hata', description: 'Mesaj gönderilecek kullanıcı bulunamadı.', variant: 'destructive' });
         return;
     }
 
-    const messageContent = isPoll ? pollQuestion.trim() : message.trim();
+    const messageContent = message.trim();
     if (!messageContent) {
-        toast({ title: 'Hata', description: 'Mesaj veya anket sorusu boş olamaz.', variant: 'destructive' });
+        toast({ title: 'Hata', description: 'Mesaj boş olamaz.', variant: 'destructive' });
         return;
     }
-    
-    const finalPollOptions = pollOptions.map(opt => opt.trim()).filter(Boolean);
-    if (isPoll && (finalPollOptions.length < 2 || finalPollOptions.length !== pollOptions.length)) {
-        toast({ title: 'Hata', description: 'Tüm anket seçenekleri dolu olmalı ve en az 2 seçenek bulunmalıdır.', variant: 'destructive' });
-        return;
-    }
-
 
     setIsSending(true);
     try {
@@ -184,39 +122,19 @@ export default function SystemMessagesPage() {
         const timestamp = serverTimestamp();
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
-        let centralMessageData: Omit<SystemMessage, 'id'>;
-
-        if (isPoll) {
-          centralMessageData = {
+        const centralMessageData: Omit<SystemMessage, 'id'> = {
             timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
-            type: 'poll',
-            text: null,
-            pollQuestion: messageContent,
-            pollOptions: finalPollOptions,
-            pollResults: finalPollOptions.reduce((acc, opt) => ({ ...acc, [opt]: 0 }), {}),
-            votedBy: [],
-          };
-        } else {
-          centralMessageData = {
-            timestamp: timestamp,
-            sentTo: users.map(u => u.uid),
-            seenBy: [],
-            type: 'text',
             text: messageContent,
-            pollQuestion: null,
-            pollOptions: null,
-            pollResults: null,
-          };
-        }
+        };
 
         batch.set(centralMessageRef, centralMessageData);
 
         const systemMatchData = {
             id: 'system',
             matchedWith: 'system',
-            lastMessage: isPoll ? `Anket: ${messageContent}` : messageContent,
+            lastMessage: messageContent,
             timestamp: timestamp,
             fullName: 'BeMatch - Sistem Mesajları',
             profilePicture: '',
@@ -232,13 +150,10 @@ export default function SystemMessagesPage() {
 
         toast({
             title: 'Mesaj Gönderildi',
-            description: `${users.length} kullanıcıya ${isPoll ? 'anket' : 'mesaj'} başarıyla gönderildi.`,
+            description: `${users.length} kullanıcıya mesaj başarıyla gönderildi.`,
         });
 
         setMessage('');
-        setPollQuestion('');
-        setPollOptions(['', '']);
-        setIsPoll(false);
 
     } catch (error: any) {
         console.error("Error sending system message:", error);
@@ -259,11 +174,9 @@ export default function SystemMessagesPage() {
     try {
         const batch = writeBatch(firestore);
         
-        // 1. Delete the central message document
         const centralMessageRef = doc(firestore, 'system_messages', messageToDelete);
         batch.delete(centralMessageRef);
 
-        // 2. Clear the last message preview for all users
         users.forEach(user => {
             const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
             batch.update(systemMatchRef, {
@@ -296,14 +209,14 @@ export default function SystemMessagesPage() {
   return (
     <AlertDialog>
         <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Sistem Mesajları ve Anketler</h1>
+        <h1 className="text-2xl font-bold">Sistem Mesajları</h1>
 
         <div className="grid md:grid-cols-2 gap-8">
             <Card>
             <CardHeader>
                 <CardTitle>Toplu Mesaj Paneli</CardTitle>
                 <CardDescription>
-                Buradan tüm aktif (bot olmayan) kullanıcılara bir sistem mesajı veya anket gönderebilirsiniz.
+                Buradan tüm aktif (bot olmayan) kullanıcılara bir sistem mesajı gönderebilirsiniz.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -319,61 +232,22 @@ export default function SystemMessagesPage() {
                 </Alert>
                 
                 <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <Label htmlFor="system-message">{isPoll ? "Anket Sorusu" : "Mesajınız"}</Label>
-                    <Button variant="link" onClick={() => setIsPoll(!isPoll)}>
-                    {isPoll ? "Normal Mesaja Dön" : "Anket Oluştur"}
-                    </Button>
-                </div>
-
-                {isPoll ? (
-                    <div className="space-y-3">
-                        <Input 
-                            id="poll-question"
-                            placeholder="Anket sorusunu buraya yazın..."
-                            value={pollQuestion}
-                            onChange={(e) => setPollQuestion(e.target.value)}
-                            disabled={isSending}
-                        />
-                        <Label>Seçenekler</Label>
-                        {pollOptions.map((option, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <Input 
-                                placeholder={`Seçenek ${index + 1}`}
-                                value={option}
-                                onChange={(e) => handleOptionChange(index, e.target.value)}
-                                disabled={isSending}
-                            />
-                            {pollOptions.length > 2 && (
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(index)} disabled={isSending}>
-                                <X className="h-4 w-4 text-red-500"/>
-                            </Button>
-                            )}
-                        </div>
-                        ))}
-                        {pollOptions.length < 4 && (
-                        <Button variant="outline" size="sm" onClick={handleAddOption} disabled={isSending}>
-                            <Plus className="mr-2 h-4 w-4"/> Seçenek Ekle
-                        </Button>
-                        )}
-                    </div>
-                ) : (
+                    <Label htmlFor="system-message">Mesajınız</Label>
                     <Textarea
-                    id="system-message"
-                    placeholder="Tüm kullanıcılara göndermek istediğiniz mesajı buraya yazın..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={5}
-                    disabled={isSending}
+                        id="system-message"
+                        placeholder="Tüm kullanıcılara göndermek istediğiniz mesajı buraya yazın..."
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        rows={5}
+                        disabled={isSending}
                     />
-                )}
                 </div>
 
                 <Button onClick={handleSendMessage} disabled={isSending || isLoadingUsers}>
                 {isSending ? (
                     <><Icons.logo className="mr-2 h-4 w-4 animate-pulse" /> Gönderiliyor...</>
                 ) : (
-                    <><Send className="mr-2 h-4 w-4" /> {isPoll ? "Anketi Gönder" : "Mesajı Gönder"}</>
+                    <><Send className="mr-2 h-4 w-4" /> Mesajı Gönder</>
                 )}
                 </Button>
             </CardContent>
@@ -382,7 +256,7 @@ export default function SystemMessagesPage() {
             <Card>
             <CardHeader>
                 <CardTitle>Gönderilmiş Mesajlar</CardTitle>
-                <CardDescription>Daha önce gönderilen sistem mesajları ve anketlerin durumu.</CardDescription>
+                <CardDescription>Daha önce gönderilen sistem mesajları.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
@@ -419,5 +293,3 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -124,8 +123,6 @@ function ChatPageContent() {
     const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    const [votedPolls, setVotedPolls] = useState<{[key: string]: string}>({});
 
     const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'preview'>('idle');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -151,7 +148,7 @@ function ChatPageContent() {
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
         const collectionPath = isSystemChat ? 'system_messages' : `matches/${matchId}/messages`;
-        return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
+        return query(collection(collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
 
@@ -267,30 +264,6 @@ function ChatPageContent() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
-    
-    const handleVoteOnPoll = async (messageId: string, option: string) => {
-      if (!user || !firestore || votedPolls[messageId]) return;
-
-      const messageRef = doc(firestore, 'system_messages', messageId);
-
-      try {
-          // Use dot notation to increment a specific field in a map
-          await updateDoc(messageRef, {
-              [`pollResults.${option}`]: increment(1),
-              // Also record that this user has voted on this poll
-              votedBy: arrayUnion(user.uid)
-          });
-          setVotedPolls(prev => ({...prev, [messageId]: option}));
-          toast({ title: 'Oyunuz Kaydedildi', description: `"${option}" seçeneğine oy verdiniz.` });
-      } catch (error: any) {
-          console.error("Error voting on poll:", error);
-          if (error.code === 'permission-denied') {
-              toast({ title: 'Hata', description: 'Bu ankete zaten oy vermiş olabilirsiniz.', variant: 'destructive' });
-          } else {
-              toast({ title: 'Hata', description: 'Oy verilirken bir sorun oluştu.', variant: 'destructive' });
-          }
-      }
-    };
 
 
     const handleSendMessage = useCallback(async (
@@ -990,15 +963,10 @@ function ChatPageContent() {
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = message.senderId === user?.uid;
-                        const isSystemGenerated = message.senderId === 'system' || message.type === 'poll';
+                        const isSystemGenerated = message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
                         if (isSystemGenerated) {
-                            const poll = message as SystemMessage; // Treat it as a SystemMessage for type safety
-                            const isVoted = isSystemChat && poll.type === 'poll' && (poll.votedBy?.includes(user?.uid || '') || !!votedPolls[poll.id]);
-                            const myVote = isVoted ? (votedPolls[poll.id] || 'voted') : null;
-                            const totalVotes = poll.pollResults ? Object.values(poll.pollResults).reduce((s, c) => s + c, 0) : 0;
-                            
                             return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
@@ -1007,35 +975,7 @@ function ChatPageContent() {
                                             <Icons.bmIcon className="h-full w-full" />
                                         </Avatar>
                                         <div className="max-w-[70%] rounded-2xl flex flex-col items-start bg-muted rounded-bl-none p-3 space-y-3">
-                                        {poll.type === 'poll' ? (
-                                            <>
-                                                <p className='break-words font-semibold text-left w-full'>{poll.pollQuestion}</p>
-                                                <div className='w-full space-y-2'>
-                                                    {poll.pollOptions?.map(option => {
-                                                        const votes = poll.pollResults?.[option] || 0;
-                                                        const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
-                                                        const isMyVote = isSystemChat && myVote === option;
-                                                        return (
-                                                            <div key={option} className="relative w-full">
-                                                                <Button 
-                                                                    variant={isMyVote ? 'default' : 'secondary'}
-                                                                    className={cn("w-full justify-start h-auto text-wrap py-2", !isSystemChat && "cursor-default", isVoted && "cursor-default")}
-                                                                    onClick={() => isSystemChat && !isVoted && handleVoteOnPoll(poll.id, option)}
-                                                                    disabled={isVoted || !isSystemChat}
-                                                                >
-                                                                    <span>{option}</span>
-                                                                </Button>
-                                                                {isVoted && (
-                                                                     <div className='absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold'>{percentage.toFixed(0)}%</div>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </>
-                                        ) : (
                                             <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>
-                                        )}
                                         </div>
                                     </div>
                                 </div>
@@ -1341,5 +1281,3 @@ export default function ChatPage() {
         </AppShell>
     )
 }
-
-    
