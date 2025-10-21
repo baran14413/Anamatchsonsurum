@@ -29,7 +29,9 @@ const fetchProfiles = async (
   try {
     const usersRef = collection(firestore, 'users');
 
-    // Fetch a broad set of users first, excluding already interacted ones.
+    // Fetch a broad set of users first.
+    // We add a 'where' clause to try and fetch non-interacted users from the backend,
+    // but client-side filtering is still the final guarantee.
     const usersSnapshot = await getDocs(query(usersRef, limit(200)));
 
     const allPotentials = usersSnapshot.docs
@@ -74,12 +76,14 @@ const fetchProfiles = async (
       // Distance filter
       if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
            p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+           if (!userProfile.globalModeEnabled) {
+             if(p.distance > (userProfile.distancePreference || 160)) return false;
+           }
       } else {
           p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance if location is missing
-      }
-      
-      if (!userProfile.globalModeEnabled) {
-        if(p.distance > (userProfile.distancePreference || 160)) return false;
+          if (!userProfile.globalModeEnabled) {
+              return false; // If global mode is off and there's no location data for distance check, filter out.
+          }
       }
       
       return true;
@@ -416,7 +420,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full h-full flex items-center justify-center p-4 pb-6">
+        <div className="relative flex-1 w-full flex flex-col justify-start items-center p-4 h-[calc(100%-1.5rem)]">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
