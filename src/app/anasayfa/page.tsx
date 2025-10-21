@@ -25,14 +25,13 @@ const fetchProfiles = async (
     user: User,
     userProfile: UserProfile,
     ignoreFilters: boolean = false,
-    currentProfileIds: Set<string>
+    seenUids: Set<string> // Use a set of all seen UIDs to filter
 ): Promise<UserProfile[]> => {
     try {
         const usersRef = collection(firestore, 'users');
         
         const interactedUids = new Set<string>();
         
-        // Only check for previous interactions if we are NOT ignoring filters
         if (!ignoreFilters) {
             const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
             interactedMatchDocsSnap.forEach(doc => {
@@ -46,21 +45,21 @@ const fetchProfiles = async (
         }
 
 
-        let q = query(usersRef, limit(100)); // Fetch a larger batch to have more options
+        let q = query(usersRef, limit(100));
         const usersSnapshot = await getDocs(q);
 
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal checks for all profiles (bots and real users)
-                if (!p.uid || p.uid === user.uid || currentProfileIds.has(p.uid)) {
+                // Universal checks for all profiles
+                if (!p.uid || seenUids.has(p.uid)) { // Check against ALL seen UIDs
                     return false;
                 }
 
                 // For real users, enforce more stringent rules
                 if (!p.isBot) {
                     if (!p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
-                    if (interactedUids.has(p.uid)) return false; // Check for previous interactions
+                    if (interactedUids.has(p.uid)) return false; 
                 }
 
                 // Apply user's matching preferences if not ignoring filters
@@ -106,7 +105,7 @@ const fetchProfiles = async (
             return aIsBot ? 1 : -1; // Non-bots come first
         });
 
-        return fetchedProfiles.slice(0, 10); // Return a smaller slice to keep the deck fresh
+        return fetchedProfiles.slice(0, 20); // Return a larger slice to ensure we have enough
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
         return [];
@@ -125,26 +124,41 @@ function AnasayfaPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<{profile: UserProfile, direction: 'left' | 'right' | 'up'} | null>(null);
   const [showUndoMessage, setShowUndoMessage] = useState(false);
+  
   const isFetching = useRef(false);
+  const seenProfileIds = useRef<Set<string>>(new Set());
 
   const loadProfiles = useCallback(async (ignoreFilters = false) => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
-    setIsLoading(true);
+    // Set loading true only if the deck is completely empty
+    if(profiles.length === 0) setIsLoading(true);
 
-    const currentProfileIds = new Set(profiles.map(p => p.uid));
-    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, currentProfileIds);
+    // Pass the entire set of seen IDs to the fetch function
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, seenProfileIds.current);
     
-    setProfiles(prev => [...prev, ...newProfiles]);
+    if (newProfiles.length > 0) {
+        // Add new profile IDs to the seen set and update the state
+        setProfiles(prev => {
+            const newProfileIds = newProfiles.map(p => p.uid);
+            newProfileIds.forEach(id => seenProfileIds.current.add(id));
+            
+            const existingIds = new Set(prev.map(p => p.uid));
+            const uniqueNewProfiles = newProfiles.filter(p => !existingIds.has(p.uid));
+            
+            return [...prev, ...uniqueNewProfiles];
+        });
+    }
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles]);
+  }, [user, firestore, userProfile, profiles.length]);
 
   // Initial load
   useEffect(() => {
-    if (!isUserLoading && user && userProfile && profiles.length === 0) {
+    if (!isUserLoading && user && userProfile && profiles.length === 0 && seenProfileIds.current.size === 0) {
+      if(user.uid) seenProfileIds.current.add(user.uid); // Add current user to seen set from the start
       loadProfiles();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,6 +403,8 @@ function AnasayfaPageContent() {
         description: langTr.anasayfa.resetToastDescription,
       });
       setProfiles([]);
+      seenProfileIds.current.clear(); // Clear seen profiles as well
+      if(user) seenProfileIds.current.add(user.uid);
       loadProfiles(true);
   }
   
@@ -445,11 +461,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
-
-
-    
-
-    
-
-    
