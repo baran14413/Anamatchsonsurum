@@ -232,7 +232,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         </div>
                          {profile.gender && (
                             <Badge variant="secondary" className={cn(
-                                "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize w-fit"
+                                "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize w-fit",
+                                profile.gender === 'female' && 'bg-pink-500/50 text-white',
+                                profile.gender === 'male' && 'bg-blue-500/50 text-white'
                             )}>
                                 {profile.gender === 'female' && <Venus className="w-4 h-4 mr-1.5" />}
                                 {profile.gender === 'male' && <Mars className="w-4 h-4 mr-1.5" />}
