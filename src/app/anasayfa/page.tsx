@@ -142,14 +142,12 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
 
-  const loadProfiles = useCallback(async () => {
+  // REMOVED useCallback to ensure the latest state is always used
+  const loadProfiles = async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
-    
-    if (profiles.length === 0) {
-      setIsLoading(true);
-    }
+    setIsLoading(true); // Always set loading to true when fetching
     
     const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
     
@@ -157,6 +155,7 @@ function AnasayfaPageContent() {
         const newProfileIds = newProfiles.map(p => p.uid);
         newProfileIds.forEach(id => seenProfileIds.current.add(id));
         
+        // Use functional update to ensure we're working with the latest state
         setProfiles(prev => {
             const existingIds = new Set(prev.map(p => p.uid));
             const uniqueNewProfiles = newProfiles.filter(p => !existingIds.has(p.uid));
@@ -166,7 +165,7 @@ function AnasayfaPageContent() {
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles.length]);
+  };
 
   // Initial load
   useEffect(() => {
@@ -174,14 +173,16 @@ function AnasayfaPageContent() {
       if(user.uid) seenProfileIds.current.add(user.uid); // Add current user to seen set from the start
       loadProfiles();
     }
-  }, [isUserLoading, user, userProfile, loadProfiles, profiles.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUserLoading, user, userProfile]);
 
   // Prefetch when deck is low
   useEffect(() => {
     if (profiles.length > 0 && profiles.length < 5 && !isFetching.current) {
         loadProfiles();
     }
-  }, [profiles.length, loadProfiles]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles.length]);
 
  const handleSwipe = useCallback(async (profileToSwipe: UserProfile, direction: 'left' | 'right' | 'up') => {
     if (!user || !firestore || !profileToSwipe || !userProfile) return;
@@ -409,7 +410,7 @@ function AnasayfaPageContent() {
     );
   }
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     if (isFetching.current) return;
     toast({
       title: langTr.anasayfa.resetToastTitle,
@@ -418,7 +419,8 @@ function AnasayfaPageContent() {
     setProfiles([]);
     seenProfileIds.current.clear(); // Clear seen profiles as well
     if(user) seenProfileIds.current.add(user.uid);
-    await loadProfiles();
+    // Directly call loadProfiles, ensuring it uses the now-empty state
+    loadProfiles();
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
