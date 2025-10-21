@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -65,9 +65,9 @@ const DateInput = ({
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
 
-  const dayRef = React.useRef<HTMLInputElement>(null);
-  const monthRef = React.useRef<HTMLInputElement>(null);
-  const yearRef = React.useRef<HTMLInputElement>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (value && !isNaN(value.getTime())) {
@@ -75,6 +75,7 @@ const DateInput = ({
         setMonth(String(value.getMonth() + 1).padStart(2, '0'));
         setYear(String(value.getFullYear()));
     } else {
+        // If the date is invalid or undefined, clear the inputs
         setDay('');
         setMonth('');
         setYear('');
@@ -115,6 +116,8 @@ const DateInput = ({
 
     if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
       const date = new Date(`${newYear}-${newMonth}-${newDay}T00:00:00`);
+      // Check if the constructed date is valid AND matches the input day/month
+      // This prevents dates like "2024-02-31" from becoming "2024-03-02"
       if (
         !isNaN(date.getTime()) &&
         date.getDate() === parseInt(newDay) &&
@@ -122,8 +125,12 @@ const DateInput = ({
       ) {
         onChange(date);
       } else {
-        onChange(new Date('invalid'));
+         onChange(new Date('invalid'));
       }
+    } else {
+      // If any field is not fully filled, we can arguably pass an invalid date
+      // to ensure validation fails until the user completes it.
+      // Or simply don't call onChange until it's complete. Let's try not calling it.
     }
   };
 
@@ -186,18 +193,22 @@ export default function SignUpPage() {
     },
     mode: 'onChange',
   });
+  
+  const dateOfBirthValue = form.watch('dateOfBirth');
+
+  useEffect(() => {
+    if (dateOfBirthValue && !isNaN(dateOfBirthValue.getTime())) {
+      const ageDifMs = Date.now() - dateOfBirthValue.getTime();
+      const ageDate = new Date(ageDifMs);
+      const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+      setAgeStatus(age >= 18 ? 'valid' : 'invalid');
+    } else {
+      setAgeStatus('unknown');
+    }
+  }, [dateOfBirthValue]);
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
-    if (isNaN(date.getTime())) {
-      setAgeStatus('unknown');
-      return;
-    }
-    const ageDifMs = Date.now() - date.getTime();
-    const ageDate = new Date(ageDifMs);
-    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-
-    setAgeStatus(age >= 18 ? 'valid' : 'invalid');
   };
 
   const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
@@ -210,6 +221,7 @@ export default function SignUpPage() {
         break;
       case 1:
         fieldsToValidate = ['dateOfBirth'];
+        if (ageStatus !== 'valid') return;
         break;
       case 2:
         fieldsToValidate = ['gender'];
@@ -378,23 +390,25 @@ export default function SignUpPage() {
             )}
 
             {step === 3 && (
-              <div className="space-y-4">
-                <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
-                <p className="text-muted-foreground">
-                  {langTr.signup.step5.label}
-                </p>
-                 <div className="grid grid-cols-2 gap-4 pt-4">
+              <div className="flex flex-col flex-1 justify-center space-y-4">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
+                    <p className="text-muted-foreground">
+                    {langTr.signup.step5.label}
+                    </p>
+                </div>
+                 <div className="grid grid-cols-2 gap-2 pt-4">
                   {langTr.signup.step5.options.map((option) => (
                     <div
                       key={option.id}
                       onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-card bg-card p-4 text-center transition-all hover:bg-muted/50",
+                        "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
                         lookingForValue === option.id && "border-primary"
                       )}
                     >
-                      <span className="text-4xl">{option.emoji}</span>
-                      <p className="font-semibold">{option.label}</p>
+                      <span className="text-2xl">{option.emoji}</span>
+                      <p className="font-semibold text-sm">{option.label}</p>
                     </div>
                   ))}
                 </div>
