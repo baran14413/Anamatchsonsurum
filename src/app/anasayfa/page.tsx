@@ -24,15 +24,13 @@ const fetchProfiles = async (
     firestore: Firestore,
     user: User,
     userProfile: UserProfile,
-    ignoreFilters: boolean = false,
-    seenUids: Set<string> // Use a set of all seen UIDs to filter
+    seenUids: Set<string>
 ): Promise<UserProfile[]> => {
     try {
         const usersRef = collection(firestore, 'users');
-        
+
+        // 1. Get all UIDs the user has already interacted with (liked, disliked, matched)
         const interactedUids = new Set<string>();
-        
-        // Fetch all matches to avoid showing users we've already interacted with
         const interactedMatchDocsSnap = await getDocs(collection(firestore, 'matches'));
         interactedMatchDocsSnap.forEach(doc => {
             const match = doc.data();
@@ -43,73 +41,73 @@ const fetchProfiles = async (
             }
         });
 
-        let q = query(usersRef, limit(100));
+        // 2. Fetch a large batch of potential profiles
+        const q = query(usersRef, limit(200)); // Fetch more to have a better pool
         const usersSnapshot = await getDocs(q);
 
-        let fetchedProfiles = usersSnapshot.docs
+        // 3. Separate real users and bots
+        let allProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // --- Universal Checks for ALL profiles ---
-                // 1. Must have a UID, not be the current user, and must not have been seen before in this session
-                if (!p.uid || p.uid === user.uid || seenUids.has(p.uid)) {
-                    return false;
-                }
-                 // 2. Must not be a user we've already swiped on (liked, disliked, etc.)
-                if (interactedUids.has(p.uid)) {
-                    return false;
-                }
-                // 3. Must have basic profile info
-                if (!p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
-                    return false;
-                }
-
-                 // --- Assign Distance ---
-                if (p.isBot) {
-                    // Assign a random distance for bots up to 140km
-                    p.distance = Math.floor(Math.random() * 140) + 1;
-                } else if (userProfile.location && p.location) {
-                    p.distance = getDistance(
-                        userProfile.location.latitude!,
-                        userProfile.location.longitude!,
-                        p.location.latitude!,
-                        p.location.longitude!
-                    );
-                } else {
-                    p.distance = Infinity; // Or some other large number
-                }
-
-
-                // --- Apply User's Matching Preferences (if not ignoring) ---
-                if (!ignoreFilters) {
-                    if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                        if (p.gender !== userProfile.genderPreference) return false;
-                    }
-                    if (!userProfile.globalModeEnabled) {
-                         if (p.distance > (userProfile.distancePreference || 160)) return false;
-                    }
-                    if (userProfile.ageRange && p.dateOfBirth) {
-                        const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-                        if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                             if (!userProfile.expandAgeRange) return false;
-                        }
-                    }
-                }
-
-                // If all checks pass, include the profile
-                return true;
+                // Universal filter: Not the user themselves, and not seen in this session
+                return p.uid && p.uid !== user.uid && !seenUids.has(p.uid);
             });
 
-        // Sort: Real users first, then bots. Then shuffle within each group.
-        fetchedProfiles.sort((a, b) => {
-            const aIsBot = a.isBot ?? false;
-            const bIsBot = b.isBot ?? false;
-            if (aIsBot === bIsBot) {
-                return Math.random() - 0.5; // Shuffle within the same group
-            }
-            return aIsBot ? 1 : -1; // Non-bots come first
-        });
+        let realUsers: UserProfile[] = [];
+        let bots: UserProfile[] = [];
 
-        return fetchedProfiles.slice(0, 20); // Return a decent slice to ensure we have enough profiles
+        for (const p of allProfiles) {
+            // Universal filter: Not already interacted with, and has basic info
+            if (interactedUids.has(p.uid) || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
+                continue;
+            }
+
+            // Assign distance
+            if (userProfile.location && p.location) {
+                p.distance = getDistance(
+                    userProfile.location.latitude!,
+                    userProfile.location.longitude!,
+                    p.location.latitude!,
+                    p.location.longitude!
+                );
+            } else if (p.isBot) {
+                p.distance = Math.floor(Math.random() * 140) + 1;
+            } else {
+                p.distance = Infinity;
+            }
+
+            if (p.isBot) {
+                // Bot requirements: Only filter is not being interacted with.
+                bots.push(p);
+            } else {
+                // Real user requirements: Apply all user preferences
+                let passesFilters = true;
+
+                if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                    if (p.gender !== userProfile.genderPreference) passesFilters = false;
+                }
+                if (!userProfile.globalModeEnabled) {
+                    if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
+                }
+                if (userProfile.ageRange && p.dateOfBirth) {
+                    const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                    if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                        if (!userProfile.expandAgeRange) passesFilters = false;
+                    }
+                }
+                
+                if (passesFilters) {
+                    realUsers.push(p);
+                }
+            }
+        }
+        
+        // 4. Shuffle each group and combine: real users first, then bots.
+        realUsers.sort(() => Math.random() - 0.5);
+        bots.sort(() => Math.random() - 0.5);
+
+        return [...realUsers, ...bots].slice(0, 20);
+
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
         return [];
@@ -132,18 +130,15 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const seenProfileIds = useRef<Set<string>>(new Set());
 
-  const loadProfiles = useCallback(async (ignoreFilters = false) => {
+  const loadProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
-    // Set loading true only if the deck is completely empty
     if(profiles.length === 0) setIsLoading(true);
 
-    // Pass the entire set of seen IDs to the fetch function
-    const newProfiles = await fetchProfiles(firestore, user, userProfile, ignoreFilters, seenProfileIds.current);
+    const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
     
     if (newProfiles.length > 0) {
-        // Add new profile IDs to the seen set and update the state
         setProfiles(prev => {
             const newProfileIds = newProfiles.map(p => p.uid);
             newProfileIds.forEach(id => seenProfileIds.current.add(id));
@@ -409,7 +404,7 @@ function AnasayfaPageContent() {
       setProfiles([]);
       seenProfileIds.current.clear(); // Clear seen profiles as well
       if(user) seenProfileIds.current.add(user.uid);
-      loadProfiles(true);
+      loadProfiles();
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
