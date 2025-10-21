@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -13,16 +14,16 @@ import {
   FormField,
   FormItem,
   FormMessage,
+  FormLabel
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { langTr } from '@/languages/tr';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
@@ -56,7 +57,14 @@ const formSchema = z.object({
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
   lifestyle: lifestyleSchema,
+  email: z.string().email({ message: "Lütfen geçerli bir e-posta adresi girin." }),
+  password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
+  passwordConfirmation: z.string(),
+}).refine((data) => data.password === data.passwordConfirmation, {
+    message: "Şifreler eşleşmiyor.",
+    path: ["passwordConfirmation"],
 });
+
 
 type SignupFormValues = z.infer<typeof formSchema>;
 type LifestyleKeys = keyof z.infer<typeof lifestyleSchema>;
@@ -177,11 +185,41 @@ const DateInput = ({
   );
 };
 
+const PasswordStrength = ({ password }: { password?: string }) => {
+    const getStrength = () => {
+        const length = password?.length || 0;
+        let score = 0;
+        if (length > 7) score++;
+        if (length > 9) score++;
+        if (/\d/.test(password || '')) score++;
+        if (/[a-z]/.test(password || '') && /[A-Z]/.test(password || '')) score++;
+        if (/[^A-Za-z0-9]/.test(password || '')) score++;
+        return score;
+    };
+
+    const strength = getStrength();
+    const strengthText = ['Çok Zayıf', 'Zayıf', 'Orta', 'Güçlü', 'Çok Güçlü'];
+    const strengthColor = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-green-500'];
+
+    if (!password) return null;
+
+    return (
+        <div className="space-y-2">
+            <Progress value={(strength / 4) * 100} className="h-1" indicatorClassName={strengthColor[strength]} />
+            <p className="text-xs font-medium" style={{ color: `hsl(var(--${strengthColor[strength].replace('bg-', '')}-foreground))` }}>
+                Şifre Gücü: {strengthText[strength]}
+            </p>
+        </div>
+    );
+};
+
 export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -193,12 +231,16 @@ export default function SignUpPage() {
       lookingFor: undefined,
       distancePreference: 80,
       lifestyle: {},
+      email: '',
+      password: '',
+      passwordConfirmation: '',
     },
     mode: 'onChange',
   });
   
   const dateOfBirthValue = form.watch('dateOfBirth');
   const lifestyleValues = form.watch('lifestyle');
+  const passwordValue = form.watch('password');
 
   const ageStatus = useMemo(() => {
     if (dateOfBirthValue && !isNaN(dateOfBirthValue.getTime())) {
@@ -225,7 +267,7 @@ export default function SignUpPage() {
       case 1:
         fieldsToValidate = ['dateOfBirth'];
         if (ageStatus !== 'valid') {
-            form.trigger('dateOfBirth'); // Manually trigger to show error
+            form.trigger('dateOfBirth');
             return;
         }
         break;
@@ -239,7 +281,9 @@ export default function SignUpPage() {
         fieldsToValidate = ['distancePreference'];
         break;
        case 5:
-        // This step is optional, so we just move on
+        break;
+      case 6:
+        fieldsToValidate = ['email', 'password', 'passwordConfirmation'];
         break;
     }
 
@@ -247,14 +291,19 @@ export default function SignUpPage() {
     if (isValid) {
       if (step === totalSteps - 1) {
         // Final submit logic here
-        console.log(form.getValues());
+        console.log("Form Submitted:", form.getValues());
+        toast({
+            title: "Kayıt Verileri Hazır",
+            description: "Veriler konsola yazdırıldı. Bir sonraki adıma yönlendiriliyor..."
+        });
+        router.push('/kurallar'); // Placeholder for next step
       } else {
         setStep((s) => s + 1);
       }
     }
   };
 
-  const totalSteps = 6;
+  const totalSteps = 7;
   const progressValue = ((step + 1) / totalSteps) * 100;
 
   const fullNameValue = form.watch('fullName');
@@ -408,7 +457,7 @@ export default function SignUpPage() {
                         </p>
                     </div>
                      <div className="flex-1 flex flex-col justify-center">
-                        <div className="grid grid-cols-2 grid-rows-3 gap-4">
+                        <div className="grid grid-cols-2 grid-rows-3 gap-2">
                             {langTr.signup.step5.options.map((option) => (
                             <div
                                 key={option.id}
@@ -497,6 +546,65 @@ export default function SignUpPage() {
                     </ScrollArea>
                 </div>
             )}
+
+            {step === 6 && (
+                 <div className="space-y-4">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
+                    <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                    <div className="space-y-6 pt-4">
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="E-posta adresini gir..." {...field} className="h-14 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                    <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni belirle..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                        {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                    </button>
+                                    </div>
+                                </FormControl>
+                                <PasswordStrength password={passwordValue} />
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="passwordConfirmation"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
+                                <FormControl>
+                                     <div className="relative">
+                                        <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                            {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                        </button>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+            )}
           </div>
 
           <div className="shrink-0 pt-6">
@@ -509,7 +617,7 @@ export default function SignUpPage() {
               {isSubmitting ? (
                 <Icons.logo width={24} height={24} className="animate-pulse" />
               ) : (
-                step === 5 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle'
+                step === 6 ? 'Bitir' : (step === 5 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle')
               )}
             </Button>
           </div>
