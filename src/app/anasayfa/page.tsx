@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -408,17 +407,15 @@ function AnasayfaPageContent() {
   }
 
   const handleRetry = async () => {
-      if (isFetching.current) return;
-      isFetching.current = true;
-      toast({
-        title: langTr.anasayfa.resetToastTitle,
-        description: langTr.anasayfa.resetToastDescription,
-      });
-      setProfiles([]);
-      seenProfileIds.current.clear(); // Clear seen profiles as well
-      if(user) seenProfileIds.current.add(user.uid);
-      await loadProfiles();
-      isFetching.current = false;
+    if (isFetching.current) return;
+    toast({
+      title: langTr.anasayfa.resetToastTitle,
+      description: langTr.anasayfa.resetToastDescription,
+    });
+    setProfiles([]);
+    seenProfileIds.current.clear(); // Clear seen profiles as well
+    if(user) seenProfileIds.current.add(user.uid);
+    await loadProfiles();
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
