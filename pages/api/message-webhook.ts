@@ -2,7 +2,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, serverTimestamp } from 'firebase-admin/firestore';
-import { BOT_GREETINGS } from '@/lib/bot-data';
+import { BOT_REPLIES } from '@/lib/bot-data';
 
 // Initialize Firebase Admin SDK
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const delay = Math.floor(Math.random() * (60000 - 10000 + 1)) + 10000;
       await new Promise(resolve => setTimeout(resolve, delay));
       
-      const greeting = getRandomItem(BOT_GREETINGS);
+      const greeting = getRandomItem(BOT_REPLIES);
 
       const messagesRef = db.collection(`matches/${matchId}/messages`);
       const user1MatchRef = db.collection('users').doc(userId).collection('matches').doc(matchId);
