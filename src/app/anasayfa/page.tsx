@@ -29,73 +29,76 @@ const fetchProfiles = async (
   try {
     const usersRef = collection(firestore, 'users');
 
-    // Fetch a broad set of users first.
-    // We add a 'where' clause to try and fetch non-interacted users from the backend,
-    // but client-side filtering is still the final guarantee.
-    const usersSnapshot = await getDocs(query(usersRef, limit(200)));
+    // First, try to get real users
+    const realUsersQuery = query(
+        usersRef,
+        where('isBot', '!=', true),
+        limit(100)
+    );
+    const realUsersSnapshot = await getDocs(realUsersQuery);
 
-    const allPotentials = usersSnapshot.docs
+    let potentialProfiles = realUsersSnapshot.docs
       .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+      .filter(p => 
+          p.uid && 
+          p.uid !== currentUser.uid && 
+          !interactedUids.has(p.uid) &&
+          p.images && p.images.length > 0
+      )
       .filter(p => {
-        // Universal filters: not self, not already interacted with, and has at least one image
-        return p.uid && p.uid !== currentUser.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0;
+            // Gender preference filter
+            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                if (p.gender !== userProfile.genderPreference) return false;
+            }
+            
+            // Age range filter
+            if (p.dateOfBirth) {
+                const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+                if (userProfile.ageRange) {
+                    if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                        // If outside range, check if expandAgeRange is false to filter out
+                        if (!userProfile.expandAgeRange) return false;
+                    }
+                }
+            } else {
+                return false; // Don't show users without a date of birth
+            }
+
+            // Distance filter
+            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+                if (!userProfile.globalModeEnabled) {
+                    if(p.distance > (userProfile.distancePreference || 160)) return false;
+                }
+            } else {
+                if (userProfile.globalModeEnabled) {
+                  p.distance = Math.floor(Math.random() * 5000) + 200;
+                } else {
+                  return false;
+                }
+            }
+            return true;
       });
-
-    // Separate into real users and bots
-    const realUsers: UserProfile[] = [];
-    const bots: UserProfile[] = [];
-    allPotentials.forEach(p => {
-      if (p.isBot) {
-        bots.push(p);
-      } else {
-        realUsers.push(p);
-      }
-    });
-
-    // Apply detailed user preferences ONLY to real users
-    const filteredRealUsers = realUsers.filter(p => {
-      // Gender preference filter
-      if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-        if (p.gender !== userProfile.genderPreference) return false;
-      }
       
-      // Age range filter
-      if (p.dateOfBirth) {
-          const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-          if (userProfile.ageRange) {
-              if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                  // If outside range, check if expandAgeRange is false to filter out
-                  if (!userProfile.expandAgeRange) return false;
-              }
-          }
-      } else {
-          return false; // Don't show users without a date of birth
+      // If no real users found, get bots
+      if (potentialProfiles.length === 0) {
+          const botsQuery = query(
+              usersRef,
+              where('isBot', '==', true),
+              limit(50)
+          );
+          const botsSnapshot = await getDocs(botsQuery);
+          potentialProfiles = botsSnapshot.docs
+              .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+              .filter(p => p.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0)
+              .map(p => ({
+                    ...p,
+                    distance: Math.floor(Math.random() * 140) + 1 // Assign a random distance for bots
+              }));
       }
 
 
-      // Distance filter
-      if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-           p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-           if (!userProfile.globalModeEnabled) {
-             if(p.distance > (userProfile.distancePreference || 160)) return false;
-           }
-      } else {
-          // If global mode is on, we don't need to filter out users without location
-          if (userProfile.globalModeEnabled) {
-            p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance
-          } else {
-            // If global mode is off and there's no location data for distance check, filter out.
-            return false;
-          }
-      }
-      
-      return true;
-    });
-
-    // Mix real users and bots
-    const combinedList = [...filteredRealUsers.sort(() => Math.random() - 0.5), ...bots.sort(() => Math.random() - 0.5)];
-
-    return combinedList.slice(0, 25);
+    return potentialProfiles.sort(() => Math.random() - 0.5).slice(0, 25);
 
   } catch (error: any) {
     console.error("Profil getirme hatası:", error);
@@ -134,7 +137,8 @@ function AnasayfaPageContent() {
     
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, firestore, userProfile]);
 
   // Initial load and fetching interacted UIDs
   useEffect(() => {
@@ -413,7 +417,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start items-center p-4 pb-4">
+        <div className="relative flex-1 w-full flex flex-col justify-start items-center px-4 pb-4">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
