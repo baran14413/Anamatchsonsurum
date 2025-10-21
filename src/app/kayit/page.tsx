@@ -28,7 +28,6 @@ import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
@@ -416,11 +415,11 @@ export default function SignUpPage() {
                             key={option.id}
                             onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                             className={cn(
-                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-4 text-center transition-all hover:bg-muted/50",
+                                "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 p-2 text-center transition-all hover:bg-muted/50",
                                 lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                             )}
                         >
-                            <span className="text-3xl">{option.emoji}</span>
+                            <span className="text-2xl">{option.emoji}</span>
                             <p className="font-semibold text-sm">{option.label}</p>
                         </div>
                         ))}
