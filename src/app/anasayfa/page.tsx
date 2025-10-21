@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -20,83 +21,89 @@ import { differenceInCalendarDays } from 'date-fns';
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
-    firestore: Firestore,
-    currentUser: User,
-    userProfile: UserProfile,
-    interactedUids: Set<string>
+  firestore: Firestore,
+  currentUser: User,
+  userProfile: UserProfile,
+  interactedUids: Set<string>
 ): Promise<UserProfile[]> => {
-    try {
-        const usersRef = collection(firestore, 'users');
+  try {
+    const usersRef = collection(firestore, 'users');
 
-        // Fetch a broad set of users (both bots and real users) first.
-        const q = query(usersRef, limit(200));
-        const usersSnapshot = await getDocs(q);
+    // Fetch a broad set of users first, excluding already interacted ones.
+    const usersSnapshot = await getDocs(query(usersRef, limit(200)));
 
-        const allPotentials = usersSnapshot.docs
-            .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
-            .filter(p => {
-                // Universal filters: not self, not already interacted with
-                return p.uid && p.uid !== currentUser.uid && !interactedUids.has(p.uid);
-            });
+    const allPotentials = usersSnapshot.docs
+      .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
+      .filter(p => {
+        // Universal filters: not self, not already interacted with, and has at least one image
+        return p.uid && p.uid !== currentUser.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0;
+      });
 
-        // Separate into real users and bots
-        const realUsers: UserProfile[] = [];
-        const bots: UserProfile[] = [];
-        allPotentials.forEach(p => {
-            // Ensure profile has minimum required fields
-            if (p.fullName && p.dateOfBirth && p.images && p.images.length > 0) {
-                 if (p.isBot) {
-                    bots.push(p);
-                } else {
-                    realUsers.push(p);
-                }
-            }
-        });
+    // Separate into real users and bots
+    const realUsers: UserProfile[] = [];
+    const bots: UserProfile[] = [];
+    allPotentials.forEach(p => {
+      if (p.isBot) {
+        bots.push(p);
+      } else {
+        realUsers.push(p);
+      }
+    });
 
-        // Apply detailed user preferences ONLY to real users
-        const filteredRealUsers = realUsers.filter(p => {
-            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                if (p.gender !== userProfile.genderPreference) return false;
-            }
-           
-            const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
-            if (userProfile.ageRange) {
-                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                     if (!userProfile.expandAgeRange) return false;
-                }
-            }
+    // Apply detailed user preferences ONLY to real users
+    const filteredRealUsers = realUsers.filter(p => {
+      // Gender preference filter
+      if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+        if (p.gender !== userProfile.genderPreference) return false;
+      }
+      
+      // Age range filter
+      if (p.dateOfBirth) {
+          const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+          if (userProfile.ageRange) {
+              if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                  // If outside range, check if expandAgeRange is false to filter out
+                  if (!userProfile.expandAgeRange) return false;
+              }
+          }
+      } else {
+          return false; // Don't show users without a date of birth
+      }
 
-            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                 p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
-            } else {
-                p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance if location is missing
-            }
 
-            if (!userProfile.globalModeEnabled) {
-                if (p.distance > (userProfile.distancePreference || 160)) return false;
-            }
-            
-            return true;
-        });
-        
-        // Assign random distance to bots
-        bots.forEach(bot => {
-            bot.distance = Math.floor(Math.random() * (140 - 1 + 1)) + 1;
-        });
+      // Distance filter
+      if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+           p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+      } else {
+          p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance if location is missing
+      }
+      
+      if (!userProfile.globalModeEnabled) {
+        if(p.distance > (userProfile.distancePreference || 160)) return false;
+      }
+      
+      return true;
+    });
 
-        // Shuffle both lists independently
-        filteredRealUsers.sort(() => Math.random() - 0.5);
-        bots.sort(() => Math.random() - 0.5);
-
-        // Combine them, with real users first, and limit the deck size
-        const finalDeck = [...filteredRealUsers, ...bots];
-
-        return finalDeck.slice(0, 25);
-
-    } catch (error: any) {
-        console.error("Profil getirme hatası:", error);
-        return [];
+    // If there are filtered real users, return them first.
+    if (filteredRealUsers.length > 0) {
+      filteredRealUsers.sort(() => Math.random() - 0.5);
+      return filteredRealUsers.slice(0, 25);
     }
+    
+    // If no real users match, fall back to bots.
+    // Assign random distance to bots
+    bots.forEach(bot => {
+        bot.distance = Math.floor(Math.random() * (140 - 1 + 1)) + 1;
+    });
+    bots.sort(() => Math.random() - 0.5);
+
+    return bots.slice(0, 25);
+
+  } catch (error: any) {
+    console.error("Profil getirme hatası:", error);
+    return [];
+  }
 };
 
 
@@ -409,7 +416,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full h-full flex items-center justify-center">
+        <div className="relative flex-1 w-full h-full flex items-center justify-center p-4 pb-6">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
