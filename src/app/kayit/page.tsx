@@ -157,7 +157,7 @@ export default function SignUpPage() {
             createdAt: serverTimestamp(),
             dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 25)).toISOString(), // Default age 25
             gender: 'male', // Default gender
-            genderPreference: 'female',
+            genderPreference: 'both',
             lookingFor: 'whatever',
             ageRange: {min: 18, max: 40},
             globalModeEnabled: true, // Global mode is ON by default for new users
