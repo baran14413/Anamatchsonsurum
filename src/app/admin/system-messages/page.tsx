@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -195,6 +196,7 @@ export default function SystemMessagesPage() {
             pollQuestion: messageContent,
             pollOptions: finalPollOptions,
             pollResults: finalPollOptions.reduce((acc, opt) => ({ ...acc, [opt]: 0 }), {}),
+            votedBy: [],
           };
         } else {
           centralMessageData = {
@@ -417,3 +419,5 @@ export default function SystemMessagesPage() {
     </AlertDialog>
   );
 }
+
+    
