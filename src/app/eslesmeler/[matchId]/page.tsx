@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen, Crown } from 'lucide-react';
-import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours } from 'date-fns';
+import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours, differenceInMinutes } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, UserProfile, DenormalizedMatch, SystemMessage } from '@/lib/types';
@@ -610,13 +610,24 @@ function ChatPageContent() {
     
     const renderOnlineStatus = () => {
         if (!otherUser) return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
-        if (otherUser.isOnline) {
-            return <span className="text-xs text-green-500">Çevrimiçi</span>;
+        
+        if (otherUser.isBot) {
+            const isActive = Math.random() > 0.5;
+            return <span className="text-xs text-muted-foreground">{isActive ? 'Şu an aktif' : 'Yakınlarda aktifti'}</span>;
         }
+
+        if (otherUser.isOnline) {
+            return <span className="text-xs text-green-500">Şu an aktif</span>;
+        }
+        
         if (otherUser.lastSeen) {
             const lastSeenDate = typeof otherUser.lastSeen === 'number' ? new Date(otherUser.lastSeen) : otherUser.lastSeen?.toDate();
             if (lastSeenDate && !isNaN(lastSeenDate.getTime())) {
-                return <span className="text-xs text-muted-foreground">Son görülme {formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}</span>;
+                const minutesAgo = differenceInMinutes(new Date(), lastSeenDate);
+                if (minutesAgo < 10) {
+                   return <span className="text-xs text-yellow-500">Az önce aktifti</span>;
+                }
+                return <span className="text-xs text-muted-foreground">Yakınlarda aktifti</span>;
             }
         }
         return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;

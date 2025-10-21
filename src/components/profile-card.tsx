@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { ScrollArea } from './ui/scroll-area';
-import { formatDistanceToNow, differenceInHours } from 'date-fns';
+import { formatDistanceToNow, differenceInHours, differenceInMinutes } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
@@ -34,16 +34,24 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
     let statusText: string;
     let iconColor = "bg-gray-400";
 
-    if (isBot || isOnline) {
+    if (isBot) {
+        // For bots, randomly decide if they are "active" or "recently active" for realism
+        const isActive = Math.random() > 0.5;
+        if (isActive) {
+            statusText = "Şu an aktif";
+            iconColor = "bg-green-400";
+        } else {
+            statusText = "Yakınlarda aktifti";
+        }
+    } else if (isOnline) {
         statusText = "Şu an aktif";
         iconColor = "bg-green-400";
     } else if (lastSeen) {
-        // lastSeen could be a Firebase Server Timestamp or a number from RTDB
         const lastSeenDate = typeof lastSeen === 'number' ? new Date(lastSeen) : lastSeen?.toDate();
         if (lastSeenDate && !isNaN(lastSeenDate.getTime())) {
-             const hoursAgo = differenceInHours(new Date(), lastSeenDate);
-             if (hoursAgo < 1) {
-                statusText = `Son görülme ${formatDistanceToNow(lastSeenDate, { locale: tr, addSuffix: true })}`;
+             const minutesAgo = differenceInMinutes(new Date(), lastSeenDate);
+             if (minutesAgo < 10) {
+                statusText = `Az önce aktifti`;
                 iconColor = "bg-yellow-400";
              } else {
                  statusText = "Yakınlarda aktifti";
@@ -52,8 +60,9 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
             statusText = "Yakınlarda aktifti";
         }
     } else {
-        statusText = "Yakınlarda aktifti";
+        statusText = "Çevrimdışı";
     }
+
 
     return (
         <Badge className='bg-black/40 text-white backdrop-blur-sm border-none'>
