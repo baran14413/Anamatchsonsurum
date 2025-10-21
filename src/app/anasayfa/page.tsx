@@ -52,17 +52,22 @@ const fetchProfiles = async (
         let fetchedProfiles = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                 if (p.isBot) {
-                    return !currentProfileIds.has(p.uid) && p.uid !== user.uid;
+                // Universal checks for all profiles (bots and real users)
+                if (!p.uid || p.uid === user.uid || currentProfileIds.has(p.uid)) {
+                    return false;
                 }
 
-                if (!p.uid || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
-                if (p.uid === user.uid) return false;
-                if (interactedUids.has(p.uid)) return false; // This will be empty if ignoreFilters is true
-                if (currentProfileIds.has(p.uid)) return false; // Don't add if already in the state
-                
-                if (!ignoreFilters && userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                    if (p.gender !== userProfile.genderPreference) return false;
+                // For real users, enforce more stringent rules
+                if (!p.isBot) {
+                    if (!p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) return false;
+                    if (interactedUids.has(p.uid)) return false; // Check for previous interactions
+                }
+
+                // Apply user's matching preferences if not ignoring filters
+                if (!ignoreFilters) {
+                    if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                        if (p.gender !== userProfile.genderPreference) return false;
+                    }
                 }
                 
                 if (userProfile.location && p.location) {
@@ -80,8 +85,8 @@ const fetchProfiles = async (
                     if (!userProfile.globalModeEnabled) {
                          if (p.distance > (userProfile.distancePreference || 160)) return false;
                     }
-                    if (userProfile.ageRange) {
-                        const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
+                    if (userProfile.ageRange && p.dateOfBirth) {
+                        const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
                         if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
                              if (!userProfile.expandAgeRange) return false;
                         }
@@ -442,6 +447,8 @@ export default function AnasayfaPage() {
 }
 
 
+
+    
 
     
 
