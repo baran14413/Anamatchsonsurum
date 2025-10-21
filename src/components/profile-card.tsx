@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X as XIcon, ChevronUp, X, Star } from 'lucide-react';
+import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Button } from './ui/button';
@@ -223,35 +222,40 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 >
                     <div className="space-y-2">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                        <div className="flex items-end justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                     <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
-                                     <span className="font-semibold text-white/80 text-3xl">{age}</span>
-                                     {isGoldMember && <Icons.beGold width={28} height={28} />}
-                                </div>
-                                 {displayDistance && (
-                                    <div className="flex items-center gap-1.5 text-base font-medium mt-1">
-                                        <MapPin className="w-5 h-5" />
-                                        <span>{displayDistance}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                    <ChevronUp className="h-6 w-6" />
-                                </Button>
-                            </SheetTrigger>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                            {isGoldMember && <Icons.beGold width={28} height={28} />}
                         </div>
-                        {profile.interests && profile.interests.length > 0 && (
-                            <div className='flex flex-wrap gap-2 pt-2'>
-                                {profile.interests.slice(0, 5).map(interest => (
-                                    <Badge key={interest} variant="secondary" className='bg-white/20 text-white backdrop-blur-sm border-none'>
-                                        {interest}
-                                    </Badge>
-                                ))}
+                        <div className="flex items-center gap-2">
+                            {age && (
+                                <Badge variant="secondary" className="text-base bg-white/20 text-white backdrop-blur-sm border-none">
+                                    {age}
+                                </Badge>
+                            )}
+                            {profile.gender && (
+                                <Badge variant="secondary" className={cn(
+                                    "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize flex gap-1.5",
+                                    profile.gender === 'female' && 'bg-pink-500/50 text-white',
+                                    profile.gender === 'male' && 'bg-blue-500/50 text-white'
+                                )}>
+                                    {profile.gender === 'female' ? <Venus className="w-4 h-4" /> : <Mars className="w-4 h-4" />}
+                                    {profile.gender === 'female' ? 'Kadın' : 'Erkek'}
+                                </Badge>
+                            )}
+                        </div>
+                         {displayDistance && (
+                            <div className="flex items-center gap-1.5 text-base font-medium pt-1">
+                                <MapPin className="w-5 h-5" />
+                                <span>{displayDistance}</span>
                             </div>
                         )}
+                    </div>
+                    <div className="absolute right-4 bottom-6">
+                         <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                <ChevronUp className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
                     </div>
                 </div>
                     
