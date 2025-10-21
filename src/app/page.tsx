@@ -77,7 +77,7 @@ export default function WelcomePage() {
                 className="w-full h-12 rounded-full bg-white/10 text-white hover:bg-white/20 text-base font-semibold justify-start pl-6 backdrop-blur-sm border-white/20"
               >
                 <Mail className="mr-4 h-6 w-6" />
-                E-posta ile Giriş Yap
+                Giriş Yap
               </Button>
             </Link>
             <Link href="/kayit">
