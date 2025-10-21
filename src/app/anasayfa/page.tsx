@@ -50,8 +50,8 @@ const fetchProfiles = async (
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
                 // --- Universal Checks for ALL profiles ---
-                // 1. Must have a UID and must not have been seen before
-                if (!p.uid || seenUids.has(p.uid)) {
+                // 1. Must have a UID, not be the current user, and must not have been seen before in this session
+                if (!p.uid || p.uid === user.uid || seenUids.has(p.uid)) {
                     return false;
                 }
                  // 2. Must not be a user we've already swiped on (liked, disliked, etc.)
@@ -63,7 +63,7 @@ const fetchProfiles = async (
                     return false;
                 }
 
-                // --- Assign Distance ---
+                 // --- Assign Distance ---
                 if (p.isBot) {
                     // Assign a random distance for bots up to 140km
                     p.distance = Math.floor(Math.random() * 140) + 1;
@@ -77,6 +77,7 @@ const fetchProfiles = async (
                 } else {
                     p.distance = Infinity; // Or some other large number
                 }
+
 
                 // --- Apply User's Matching Preferences (if not ignoring) ---
                 if (!ignoreFilters) {
