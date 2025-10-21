@@ -1,5 +1,4 @@
 
-
 export interface UserImage {
   url: string;
   public_id: string;
