@@ -132,7 +132,7 @@ export const langTr = {
       description: 'Potansiyel eşleşmelerin bulunmasını istediğin maksimum mesafeyi ayarlamak için kaydırıcıyı kullan.',
       label: 'Mesafe Tercihi',
       unit: 'Km',
-      info: "Tercihleri daha sonra Ayarlar'dan değiştirebilirsin",
+      info: "Tercihleri daha sonra Ayarlar'dan değiştirebilirsin.",
     },
     step8: {
       title: 'Okulunu yazmak istersen...',

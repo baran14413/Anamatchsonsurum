@@ -23,6 +23,7 @@ import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -43,6 +44,7 @@ const formSchema = z.object({
   }),
   showGender: z.boolean().default(true),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
+  distancePreference: z.number().min(1).max(160).default(80),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
@@ -182,6 +184,7 @@ export default function SignUpPage() {
       fullName: '',
       dateOfBirth: undefined,
       showGender: true,
+      distancePreference: 80,
     },
     mode: 'onChange',
   });
@@ -216,6 +219,9 @@ export default function SignUpPage() {
       case 3:
         fieldsToValidate = ['lookingFor'];
         break;
+      case 4:
+        fieldsToValidate = ['distancePreference'];
+        break;
     }
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -234,6 +240,7 @@ export default function SignUpPage() {
 
   const genderValue = form.watch('gender');
   const lookingForValue = form.watch('lookingFor');
+  const distanceValue = form.watch('distancePreference');
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -256,7 +263,7 @@ export default function SignUpPage() {
           <div className="flex-1 flex flex-col min-h-0">
             {step === 0 && (
               <div className="space-y-4">
-                <h1 className="text-3xl font-bold">Adın ne?</h1>
+                <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -264,7 +271,7 @@ export default function SignUpPage() {
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Adın"
+                          placeholder={langTr.signup.step2.placeholder}
                           {...field}
                           className="h-14 rounded-none border-0 border-b-2 bg-transparent text-2xl focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
                         />
@@ -274,14 +281,14 @@ export default function SignUpPage() {
                   )}
                 />
                 <p className="text-muted-foreground">
-                  Profilinde bu şekilde görünecek. Bunu daha sonra değiştiremezsin.
+                  {langTr.signup.step2.label}
                 </p>
               </div>
             )}
 
             {step === 1 && (
               <div className="space-y-4">
-                <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
+                <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
                 <Controller
                   control={form.control}
                   name="dateOfBirth"
@@ -296,13 +303,13 @@ export default function SignUpPage() {
                       {ageStatus === 'valid' && (
                         <div className="flex items-center pt-2 text-sm text-green-600">
                           <CheckCircle className="mr-2 h-4 w-4" />
-                          18 yaşından büyüksünüz.
+                          {langTr.signup.step3.ageConfirm}
                         </div>
                       )}
                       {ageStatus === 'invalid' && (
                         <div className="flex items-center pt-2 text-sm text-red-600">
                           <XCircle className="mr-2 h-4 w-4" />
-                          18 yaşından küçükler kullanamaz.
+                          {langTr.signup.step3.ageError}
                         </div>
                       )}
                       {fieldState.error && ageStatus !== 'invalid' && (
@@ -312,14 +319,14 @@ export default function SignUpPage() {
                   )}
                 />
                 <p className="text-muted-foreground">
-                  Profilinde yaşın gösterilir, doğum tarihin değil.
+                  {langTr.signup.step3.label}
                 </p>
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-8">
-                <h1 className="text-3xl font-bold">Cinsiyetin ne?</h1>
+                <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
                 <div className="space-y-4">
                   <Button
                     type="button"
@@ -333,7 +340,7 @@ export default function SignUpPage() {
                       form.setValue('gender', 'female', { shouldValidate: true })
                     }
                   >
-                    Kadın
+                    {langTr.signup.step4.woman}
                   </Button>
                   <Button
                     type="button"
@@ -347,7 +354,7 @@ export default function SignUpPage() {
                       form.setValue('gender', 'male', { shouldValidate: true })
                     }
                   >
-                    Erkek
+                    {langTr.signup.step4.man}
                   </Button>
                   <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
                 </div>
@@ -360,6 +367,7 @@ export default function SignUpPage() {
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          id="showGender"
                         />
                       </FormControl>
                       <Label className="font-normal" htmlFor="showGender">
@@ -373,10 +381,9 @@ export default function SignUpPage() {
 
             {step === 3 && (
               <div className="space-y-4">
-                <h1 className="text-3xl font-bold">Ne arıyorsun?</h1>
+                <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
                 <p className="text-muted-foreground">
-                  Daha sonra fikrini değiştirebilirsin. Burada herkes için bir
-                  şeyler var.
+                  {langTr.signup.step5.label}
                 </p>
                  <div className="grid grid-cols-2 gap-4 pt-4">
                   {langTr.signup.step5.options.map((option) => (
@@ -394,6 +401,36 @@ export default function SignUpPage() {
                   ))}
                 </div>
                  <FormMessage>{form.formState.errors.lookingFor?.message}</FormMessage>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-8">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
+                    <p className="text-muted-foreground">{langTr.signup.step7.description}</p>
+                </div>
+                <div className="space-y-4 pt-8">
+                    <div className="flex justify-between items-baseline">
+                        <Label className="text-lg">{langTr.signup.step7.label}</Label>
+                        <span className="text-lg font-bold text-foreground">{distanceValue} {langTr.signup.step7.unit}</span>
+                    </div>
+                    <Controller
+                        control={form.control}
+                        name="distancePreference"
+                        render={({ field }) => (
+                            <Slider
+                                value={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                max={160}
+                                min={1}
+                                step={1}
+                                className="w-full"
+                            />
+                        )}
+                    />
+                </div>
+                <p className="text-muted-foreground text-center pt-8">{langTr.signup.step7.info}</p>
               </div>
             )}
           </div>
