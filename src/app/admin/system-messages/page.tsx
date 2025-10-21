@@ -218,7 +218,6 @@ export default function SystemMessagesPage() {
             timestamp: timestamp,
             fullName: 'BeMatch - Sistem Mesajları',
             profilePicture: '',
-            lastSystemMessageId: centralMessageRef.id,
             hasUnreadSystemMessage: true,
         };
         
