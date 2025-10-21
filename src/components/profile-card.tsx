@@ -224,20 +224,18 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                         <div className="flex items-center gap-2">
                             <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                             <span className="font-semibold text-white/80 text-3xl">{age}</span>
                             {isGoldMember && <Icons.beGold width={28} height={28} />}
                         </div>
-                        <div className="flex items-center gap-2">
-                            {profile.gender && (
-                                <Badge variant="secondary" className={cn(
-                                    "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize flex gap-1.5",
-                                    profile.gender === 'female' && 'bg-pink-500/50 text-white',
-                                    profile.gender === 'male' && 'bg-blue-500/50 text-white'
-                                )}>
-                                    {profile.gender === 'female' ? <Venus className="w-4 h-4" /> : <Mars className="w-4 h-4" />}
-                                    {age}
-                                </Badge>
-                            )}
-                        </div>
+                         {profile.gender && (
+                            <Badge variant="secondary" className={cn(
+                                "text-base bg-white/20 text-white backdrop-blur-sm border-none capitalize",
+                                profile.gender === 'female' && 'bg-pink-500/50 text-white',
+                                profile.gender === 'male' && 'bg-blue-500/50 text-white'
+                            )}>
+                                {profile.gender === 'female' ? 'Kadın' : 'Erkek'}
+                            </Badge>
+                        )}
                          {displayDistance && (
                             <div className="flex items-center gap-1.5 text-base font-medium pt-1">
                                 <MapPin className="w-5 h-5" />

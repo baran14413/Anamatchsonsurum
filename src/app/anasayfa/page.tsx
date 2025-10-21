@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -29,70 +28,68 @@ const fetchProfiles = async (
     try {
         const usersRef = collection(firestore, 'users');
 
-        // Fetch only real users who are not the current user.
-        const q = query(usersRef, where('isBot', '!=', true), limit(200));
+        // Fetch a broad set of users (both bots and real users) first.
+        const q = query(usersRef, limit(200));
         const usersSnapshot = await getDocs(q);
 
-        const filteredUsers = usersSnapshot.docs
+        const allPotentials = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal filters
-                if (!p.uid || p.uid === user.uid || interactedUids.has(p.uid)) {
-                    return false;
-                }
-                
-                // CRITICAL FIX: Profile must have at least one image to be shown.
-                if (!p.images || p.images.length === 0) {
-                    return false;
-                }
-
-                // Basic integrity checks
-                if (!p.fullName || !p.dateOfBirth) {
-                    return false;
-                }
-
-                // --- User Preference Filtering ---
-
-                // Assign distance
-                if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
-                    p.distance = getDistance(
-                        userProfile.location.latitude,
-                        userProfile.location.longitude,
-                        p.location.latitude,
-                        p.location.longitude
-                    );
-                } else if (userProfile.globalModeEnabled) {
-                     // Assign a random large distance for global users without location
-                     p.distance = Math.floor(Math.random() * 5000) + 200;
-                } else {
-                    // If location is required (not global mode) and not available, filter out.
-                    return false;
-                }
-
-                // Apply preference filters
-                if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
-                    if (p.gender !== userProfile.genderPreference) return false;
-                }
-                
-                if (!userProfile.globalModeEnabled) {
-                    if (p.distance! > (userProfile.distancePreference || 160)) return false;
-                }
-
-                if (userProfile.ageRange && p.dateOfBirth) {
-                    const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
-                    if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
-                        // If expand age range is not enabled, filter them out.
-                        if (!userProfile.expandAgeRange) return false;
-                    }
-                }
-            
-                return true;
+                // Universal filters: not self, not already interacted with, and has at least one image.
+                return p.uid && p.uid !== user.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0;
             });
-        
-        // Shuffle and return the final list
-        filteredUsers.sort(() => Math.random() - 0.5);
 
-        return filteredUsers.slice(0, 20);
+        // Separate into real users and bots
+        const realUsers: UserProfile[] = [];
+        const bots: UserProfile[] = [];
+        allPotentials.forEach(p => {
+            if (p.isBot) {
+                bots.push(p);
+            } else {
+                realUsers.push(p);
+            }
+        });
+
+        // Apply detailed user preferences ONLY to real users
+        const filteredRealUsers = realUsers.filter(p => {
+            if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
+                if (p.gender !== userProfile.genderPreference) return false;
+            }
+            if (!p.dateOfBirth) return false; // Must have a birth date
+            const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+            if (userProfile.ageRange) {
+                if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
+                     if (!userProfile.expandAgeRange) return false;
+                }
+            }
+
+            if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
+                 p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
+            } else {
+                // If user has no location, assign a random distance for sorting/display
+                 p.distance = Math.floor(Math.random() * 5000) + 200;
+            }
+
+            if (!userProfile.globalModeEnabled) {
+                if (p.distance > (userProfile.distancePreference || 160)) return false;
+            }
+            
+            return true;
+        });
+        
+         // Assign random distance to bots
+        bots.forEach(bot => {
+            bot.distance = Math.floor(Math.random() * (140 - 1 + 1)) + 1;
+        });
+
+        // Shuffle both lists independently
+        filteredRealUsers.sort(() => Math.random() - 0.5);
+        bots.sort(() => Math.random() - 0.5);
+
+        // Combine them, with real users first
+        const finalDeck = [...filteredRealUsers, ...bots];
+
+        return finalDeck.slice(0, 25); // Return a sizeable deck
 
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
@@ -115,34 +112,28 @@ function AnasayfaPageContent() {
   const [showUndoMessage, setShowUndoMessage] = useState(false);
   
   const isFetching = useRef(false);
-  const seenProfileIds = useRef<Set<string>>(new Set());
   const interactedUids = useRef<Set<string>>(new Set());
 
   const loadProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
   
     isFetching.current = true;
-    setIsLoading(true);
+    if(profiles.length === 0) setIsLoading(true);
   
     const newProfiles = await fetchProfiles(firestore, user, userProfile, interactedUids.current);
-    const unseenProfiles = newProfiles.filter(p => !seenProfileIds.current.has(p.uid));
   
-    if (unseenProfiles.length > 0) {
-      unseenProfiles.forEach(p => seenProfileIds.current.add(p.uid));
-      setProfiles(prev => [...prev, ...unseenProfiles]);
+    if (newProfiles.length > 0) {
+      setProfiles(prev => [...prev, ...newProfiles]);
     }
     
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile]);
+  }, [user, firestore, userProfile, profiles.length]);
 
   // Initial load and fetching interacted UIDs
   useEffect(() => {
     if (!isUserLoading && user && firestore && userProfile) {
-      if(user.uid) {
-        seenProfileIds.current.add(user.uid);
-        interactedUids.current.add(user.uid);
-      }
+      interactedUids.current.add(user.uid);
 
       // Fetch all matches once to know who to exclude
       const fetchInteracted = async () => {
@@ -247,6 +238,23 @@ function AnasayfaPageContent() {
         }
         
         await setDoc(matchDocRef, updateData, { merge: true });
+        
+        if (profileToSwipe.isBot && isMatch) {
+            const webhookUrl = '/api/message-webhook';
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
+                },
+                body: JSON.stringify({
+                    type: 'MATCH',
+                    matchId: matchId,
+                    userId: user.uid,
+                }),
+            }).catch(error => console.error("Error triggering bot message webhook:", error));
+        }
+
 
         const defaultLastMessage = langTr.eslesmeler.defaultMessage;
         
@@ -358,8 +366,6 @@ function AnasayfaPageContent() {
         await batch.commit();
         
         interactedUids.current.delete(lastSwipedProfile.profile.uid);
-        seenProfileIds.current.delete(lastSwipedProfile.profile.uid);
-
 
         setShowUndoMessage(true);
         setTimeout(() => setShowUndoMessage(false), 2000);
@@ -379,8 +385,6 @@ function AnasayfaPageContent() {
       description: langTr.anasayfa.resetToastDescription,
     });
     setProfiles([]);
-    seenProfileIds.current.clear();
-    if(user) seenProfileIds.current.add(user.uid);
     loadProfiles();
   }
 
