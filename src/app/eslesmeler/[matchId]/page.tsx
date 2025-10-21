@@ -612,8 +612,7 @@ function ChatPageContent() {
         if (!otherUser) return <span className="text-xs text-muted-foreground">Çevrimdışı</span>;
         
         if (otherUser.isBot) {
-            const isActive = Math.random() > 0.5;
-            return <span className="text-xs text-muted-foreground">{isActive ? 'Şu an aktif' : 'Yakınlarda aktifti'}</span>;
+            return <span className="text-xs text-green-500">Şu an aktif</span>;
         }
 
         if (otherUser.isOnline) {
@@ -829,8 +828,8 @@ function ChatPageContent() {
                                                         </CarouselItem>
                                                     ))}
                                                 </CarouselContent>
-                                                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1:2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1:2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
                                             </Carousel>
                                         )}
                                         

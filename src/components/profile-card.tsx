@@ -35,14 +35,8 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
     let iconColor = "bg-gray-400";
 
     if (isBot) {
-        // For bots, randomly decide if they are "active" or "recently active" for realism
-        const isActive = Math.random() > 0.5;
-        if (isActive) {
-            statusText = "Şu an aktif";
-            iconColor = "bg-green-400";
-        } else {
-            statusText = "Yakınlarda aktifti";
-        }
+        statusText = "Şu an aktif";
+        iconColor = "bg-green-400";
     } else if (isOnline) {
         statusText = "Şu an aktif";
         iconColor = "bg-green-400";
