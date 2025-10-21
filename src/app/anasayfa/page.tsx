@@ -57,12 +57,12 @@ const fetchProfiles = async (
         let bots: UserProfile[] = [];
 
         for (const p of allProfiles) {
-            // Universal filter: Not already interacted with, and has basic info
+             // Universal filter: Not already interacted with, and has basic info
             if (interactedUids.has(p.uid) || !p.images || p.images.length === 0 || !p.fullName || !p.dateOfBirth) {
                 continue;
             }
 
-            // Assign distance
+            // Assign distance for all valid profiles first
             if (userProfile.location && p.location) {
                 p.distance = getDistance(
                     userProfile.location.latitude!,
@@ -70,14 +70,13 @@ const fetchProfiles = async (
                     p.location.latitude!,
                     p.location.longitude!
                 );
-            } else if (p.isBot) {
-                p.distance = Math.floor(Math.random() * 140) + 1;
             } else {
-                p.distance = Infinity;
+                 p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance if user or target has no location
             }
 
+
             if (p.isBot) {
-                // Bot requirements: Only filter is not being interacted with.
+                // Bots are exempt from user's filters (age, distance, etc.)
                 bots.push(p);
             } else {
                 // Real user requirements: Apply all user preferences
@@ -86,9 +85,11 @@ const fetchProfiles = async (
                 if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                     if (p.gender !== userProfile.genderPreference) passesFilters = false;
                 }
+
                 if (!userProfile.globalModeEnabled) {
-                    if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
+                     if (p.distance > (userProfile.distancePreference || 160)) passesFilters = false;
                 }
+
                 if (userProfile.ageRange && p.dateOfBirth) {
                     const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
                     if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
@@ -135,17 +136,19 @@ function AnasayfaPageContent() {
 
     isFetching.current = true;
     if(profiles.length === 0) setIsLoading(true);
-
+    
+    // Pass the current seen IDs to the fetch function
     const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
     
     if (newProfiles.length > 0) {
+        const newProfileIds = newProfiles.map(p => p.uid);
+        // Add new IDs to the seen set
+        newProfileIds.forEach(id => seenProfileIds.current.add(id));
+        
         setProfiles(prev => {
-            const newProfileIds = newProfiles.map(p => p.uid);
-            newProfileIds.forEach(id => seenProfileIds.current.add(id));
-            
+            // Filter out any profiles that might already be in the state to be safe
             const existingIds = new Set(prev.map(p => p.uid));
             const uniqueNewProfiles = newProfiles.filter(p => !existingIds.has(p.uid));
-            
             return [...prev, ...uniqueNewProfiles];
         });
     }
@@ -206,7 +209,7 @@ function AnasayfaPageContent() {
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         const otherUserAction = matchData[otherUserActionKey];
 
-        const isInstantBotMatch = profileToSwipe.isBot && action === 'liked';
+        const isInstantBotMatch = profileToSwipe.isBot && (action === 'liked' || action === 'superliked');
         const isMatch = isInstantBotMatch || (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
                         (action === 'superliked' && otherUserAction === 'liked');
 
