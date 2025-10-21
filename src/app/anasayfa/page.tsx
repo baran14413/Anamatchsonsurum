@@ -21,7 +21,7 @@ import { differenceInCalendarDays } from 'date-fns';
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
     firestore: Firestore,
-    user: User,
+    currentUser: User,
     userProfile: UserProfile,
     interactedUids: Set<string>
 ): Promise<UserProfile[]> => {
@@ -35,18 +35,21 @@ const fetchProfiles = async (
         const allPotentials = usersSnapshot.docs
             .map(doc => ({ ...doc.data(), id: doc.id, uid: doc.id } as UserProfile))
             .filter(p => {
-                // Universal filters: not self, not already interacted with, and has at least one image.
-                return p.uid && p.uid !== user.uid && !interactedUids.has(p.uid) && p.images && p.images.length > 0;
+                // Universal filters: not self, not already interacted with
+                return p.uid && p.uid !== currentUser.uid && !interactedUids.has(p.uid);
             });
 
         // Separate into real users and bots
         const realUsers: UserProfile[] = [];
         const bots: UserProfile[] = [];
         allPotentials.forEach(p => {
-            if (p.isBot) {
-                bots.push(p);
-            } else {
-                realUsers.push(p);
+            // Ensure profile has minimum required fields
+            if (p.fullName && p.dateOfBirth && p.images && p.images.length > 0) {
+                 if (p.isBot) {
+                    bots.push(p);
+                } else {
+                    realUsers.push(p);
+                }
             }
         });
 
@@ -55,8 +58,8 @@ const fetchProfiles = async (
             if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                 if (p.gender !== userProfile.genderPreference) return false;
             }
-            if (!p.dateOfBirth) return false; // Must have a birth date
-            const age = new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear();
+           
+            const age = new Date().getFullYear() - new Date(p.dateOfBirth!).getFullYear();
             if (userProfile.ageRange) {
                 if (age < userProfile.ageRange.min || age > userProfile.ageRange.max) {
                      if (!userProfile.expandAgeRange) return false;
@@ -66,8 +69,7 @@ const fetchProfiles = async (
             if (userProfile.location?.latitude && userProfile.location?.longitude && p.location?.latitude && p.location?.longitude) {
                  p.distance = getDistance(userProfile.location.latitude, userProfile.location.longitude, p.location.latitude, p.location.longitude);
             } else {
-                // If user has no location, assign a random distance for sorting/display
-                 p.distance = Math.floor(Math.random() * 5000) + 200;
+                p.distance = Math.floor(Math.random() * 5000) + 200; // Assign a random distance if location is missing
             }
 
             if (!userProfile.globalModeEnabled) {
@@ -77,7 +79,7 @@ const fetchProfiles = async (
             return true;
         });
         
-         // Assign random distance to bots
+        // Assign random distance to bots
         bots.forEach(bot => {
             bot.distance = Math.floor(Math.random() * (140 - 1 + 1)) + 1;
         });
@@ -86,10 +88,10 @@ const fetchProfiles = async (
         filteredRealUsers.sort(() => Math.random() - 0.5);
         bots.sort(() => Math.random() - 0.5);
 
-        // Combine them, with real users first
+        // Combine them, with real users first, and limit the deck size
         const finalDeck = [...filteredRealUsers, ...bots];
 
-        return finalDeck.slice(0, 25); // Return a sizeable deck
+        return finalDeck.slice(0, 25);
 
     } catch (error: any) {
         console.error("Profil getirme hatası:", error);
@@ -133,6 +135,8 @@ function AnasayfaPageContent() {
   // Initial load and fetching interacted UIDs
   useEffect(() => {
     if (!isUserLoading && user && firestore && userProfile) {
+      // Clear interacted UIDs on user change, and add self
+      interactedUids.current.clear();
       interactedUids.current.add(user.uid);
 
       // Fetch all matches once to know who to exclude
@@ -385,6 +389,11 @@ function AnasayfaPageContent() {
       description: langTr.anasayfa.resetToastDescription,
     });
     setProfiles([]);
+    // Clear the interacted UIDs but keep the current user's UID
+    if(user) {
+        interactedUids.current.clear();
+        interactedUids.current.add(user.uid);
+    }
     loadProfiles();
   }
 
