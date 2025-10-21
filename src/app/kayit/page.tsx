@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,9 +24,19 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import * as LucideIcons from 'lucide-react';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
+const lifestyleSchema = z.object({
+    drinking: z.string().optional(),
+    smoking: z.string().optional(),
+    workout: z.string().optional(),
+    pets: z.string().optional(),
+}).optional();
+
 
 const formSchema = z.object({
   fullName: z
@@ -38,19 +48,21 @@ const formSchema = z.object({
         required_error: "Lütfen doğum tarihinizi girin.",
         invalid_type_error: "Lütfen geçerli bir tarih girin.",
     })
-    .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' })
-    .refine((date) => date && !isNaN(date.getTime()), {
-      message: 'Lütfen geçerli bir tarih girin.',
-    }),
+    .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' }),
   gender: z.enum(['female', 'male'], {
     required_error: 'Lütfen cinsiyetinizi seçin.',
   }),
   showGender: z.boolean().default(true),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
+  lifestyle: lifestyleSchema,
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
+type LifestyleKeys = keyof z.infer<typeof lifestyleSchema>;
+
+type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
+
 
 const DateInput = ({
   value,
@@ -65,9 +77,9 @@ const DateInput = ({
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
 
-  const dayRef = useRef<HTMLInputElement>(null);
-  const monthRef = useRef<HTMLInputElement>(null);
-  const yearRef = useRef<HTMLInputElement>(null);
+  const dayRef = React.useRef<HTMLInputElement>(null);
+  const monthRef = React.useRef<HTMLInputElement>(null);
+  const yearRef = React.useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (value && !isNaN(value.getTime())) {
@@ -75,7 +87,6 @@ const DateInput = ({
         setMonth(String(value.getMonth() + 1).padStart(2, '0'));
         setYear(String(value.getFullYear()));
     } else {
-        // If the date is invalid or undefined, clear the inputs
         setDay('');
         setMonth('');
         setYear('');
@@ -116,8 +127,6 @@ const DateInput = ({
 
     if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
       const date = new Date(`${newYear}-${newMonth}-${newDay}T00:00:00`);
-      // Check if the constructed date is valid AND matches the input day/month
-      // This prevents dates like "2024-02-31" from becoming "2024-03-02"
       if (
         !isNaN(date.getTime()) &&
         date.getDate() === parseInt(newDay) &&
@@ -128,9 +137,11 @@ const DateInput = ({
          onChange(new Date('invalid'));
       }
     } else {
-      // If any field is not fully filled, we can arguably pass an invalid date
-      // to ensure validation fails until the user completes it.
-      // Or simply don't call onChange until it's complete. Let's try not calling it.
+        // Only trigger onChange with invalid if all fields are touched but invalid
+        if (newDay.length > 0 || newMonth.length > 0 || newYear.length > 0) {
+           const partialDate = new Date('invalid');
+            onChange(partialDate);
+        }
     }
   };
 
@@ -177,10 +188,7 @@ export default function SignUpPage() {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>(
-    'unknown'
-  );
-
+  
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -190,21 +198,22 @@ export default function SignUpPage() {
       showGender: true,
       lookingFor: undefined,
       distancePreference: 80,
+      lifestyle: {},
     },
     mode: 'onChange',
   });
   
   const dateOfBirthValue = form.watch('dateOfBirth');
+  const lifestyleValues = form.watch('lifestyle');
 
-  useEffect(() => {
+  const ageStatus = useMemo(() => {
     if (dateOfBirthValue && !isNaN(dateOfBirthValue.getTime())) {
       const ageDifMs = Date.now() - dateOfBirthValue.getTime();
       const ageDate = new Date(ageDifMs);
       const age = Math.abs(ageDate.getUTCFullYear() - 1970);
-      setAgeStatus(age >= 18 ? 'valid' : 'invalid');
-    } else {
-      setAgeStatus('unknown');
+      return age >= 18 ? 'valid' : 'invalid';
     }
+    return 'unknown';
   }, [dateOfBirthValue]);
 
   const handleDateOfBirthChange = (date: Date) => {
@@ -232,9 +241,12 @@ export default function SignUpPage() {
       case 4:
         fieldsToValidate = ['distancePreference'];
         break;
+       case 5:
+        // This step is optional, so we just move on
+        break;
     }
 
-    const isValid = await form.trigger(fieldsToValidate);
+    const isValid = fieldsToValidate ? await form.trigger(fieldsToValidate) : true;
     if (isValid) {
       if (step === totalSteps - 1) {
         // Final submit logic here
@@ -248,9 +260,12 @@ export default function SignUpPage() {
   const totalSteps = 6;
   const progressValue = ((step + 1) / totalSteps) * 100;
 
+  const fullNameValue = form.watch('fullName');
   const genderValue = form.watch('gender');
   const lookingForValue = form.watch('lookingFor');
   const distanceValue = form.watch('distancePreference');
+  const lifestyleQuestions = langTr.signup.step9;
+  const lifestyleAnswerCount = Object.values(lifestyleValues || {}).filter(v => v).length;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -322,9 +337,7 @@ export default function SignUpPage() {
                           {langTr.signup.step3.ageError}
                         </div>
                       )}
-                      {fieldState.error && ageStatus !== 'invalid' && (
-                        <FormMessage>{fieldState.error.message}</FormMessage>
-                      )}
+                      {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
                     </FormItem>
                   )}
                 />
@@ -397,13 +410,13 @@ export default function SignUpPage() {
                     {langTr.signup.step5.label}
                     </p>
                 </div>
-                 <div className="grid grid-cols-2 gap-2 pt-4">
+                 <div className="grid grid-cols-2 gap-4 pt-4">
                   {langTr.signup.step5.options.map((option) => (
                     <div
                       key={option.id}
                       onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center space-y-1 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
+                        "flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-card bg-card p-2 text-center transition-all hover:bg-muted/50",
                         lookingForValue === option.id && "border-primary"
                       )}
                     >
@@ -445,6 +458,44 @@ export default function SignUpPage() {
                 <p className="text-muted-foreground text-center pt-8">{langTr.signup.step7.info}</p>
               </div>
             )}
+            
+            {step === 5 && (
+                 <div className="space-y-6">
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
+                        <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                    </div>
+                    <div className="space-y-8">
+                        {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
+                            .filter(key => key !== 'title' && key !== 'description')
+                            .map(key => {
+                                const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
+                                const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
+
+                                return (
+                                    <div key={key}>
+                                        <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                                            <Icon className="h-5 w-5 text-muted-foreground" />
+                                            {question.question}
+                                        </h2>
+                                        <div className="flex flex-wrap gap-2">
+                                            {question.options.map(option => (
+                                                <Badge
+                                                    key={option.id}
+                                                    variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
+                                                    onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
+                                                    className="cursor-pointer py-1.5 px-3 text-sm"
+                                                >
+                                                    {option.label}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                        })}
+                    </div>
+                 </div>
+            )}
           </div>
 
           <div className="shrink-0 pt-6">
@@ -457,7 +508,7 @@ export default function SignUpPage() {
               {isSubmitting ? (
                 <Icons.logo width={24} height={24} className="animate-pulse" />
               ) : (
-                'İlerle'
+                step === 5 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle'
               )}
             </Button>
           </div>
