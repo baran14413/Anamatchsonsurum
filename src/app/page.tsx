@@ -59,9 +59,8 @@ export default function WelcomePage() {
           className='object-cover z-0'
           priority
         />
-        <div className="absolute inset-0 bg-black/40 z-10" />
-
-        <div className="flex flex-1 flex-col items-center z-20 pt-8">
+        
+        <div className="z-20 pt-8 flex flex-1 flex-col items-center">
             <Icons.logo width={150} height={150} />
         </div>
 
