@@ -50,11 +50,13 @@ type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'
 
 
 const renderMessageStatus = (message: ChatMessage, isSender: boolean) => {
+    // Since individual read receipts are removed, this is simplified.
+    // You might want a different logic, e.g., showing check only for sent messages.
     if (!isSender || message.type === 'system_superlike_prompt' || message.senderId === 'system') return null;
 
-    if (message.isRead) {
-        return <CheckCheck className="h-4 w-4 text-blue-500" />;
-    }
+    // For simplicity, we show a single check for sent messages.
+    // A double check logic would require knowing if the other user has opened the chat,
+    // which is now managed by unreadCount, not individual message status.
     return <Check className="h-4 w-4 text-muted-foreground" />;
 };
 
@@ -217,50 +219,35 @@ function ChatPageContent() {
     }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat, user, firestore]);
 
 
-    // Effect to mark messages as read and reset unread count
+    // Effect to mark messages as read by resetting the unread count.
     useEffect(() => {
         if (!firestore || !user || !matchId) return;
-        
-        const markAsRead = () => {
-             // 1. Reset unread count on the user's denormalized match document
-            const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
-            getDoc(userMatchRef).then(userMatchSnap => {
-                if (userMatchSnap.exists()) {
-                    const data = userMatchSnap.data();
-                    const updateData: {unreadCount?: number, hasUnreadSystemMessage?: boolean} = {};
-                    if(data.unreadCount > 0) updateData.unreadCount = 0;
-                    if(data.hasUnreadSystemMessage) updateData.hasUnreadSystemMessage = false;
 
-                    if (Object.keys(updateData).length > 0) {
-                        updateDoc(userMatchRef, updateData);
+        const markAsRead = async () => {
+            const userMatchRef = doc(firestore, `users/${user.uid}/matches`, matchId);
+            try {
+                const docSnap = await getDoc(userMatchRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const updatePayload: { unreadCount?: number; hasUnreadSystemMessage?: boolean } = {};
+                    if (data.unreadCount > 0) {
+                        updatePayload.unreadCount = 0;
+                    }
+                    if (data.hasUnreadSystemMessage) {
+                        updatePayload.hasUnreadSystemMessage = false;
+                    }
+
+                    if (Object.keys(updatePayload).length > 0) {
+                        await updateDoc(userMatchRef, updatePayload);
                     }
                 }
-            });
-
-            // 2. Mark individual messages as read (for user-to-user chat)
-            if (!isSystemChat) {
-                const unreadMessagesQuery = query(
-                    collection(firestore, `matches/${matchId}/messages`), 
-                    where('senderId', '!=', user.uid), 
-                    where('isRead', '==', false)
-                );
-                getDocs(unreadMessagesQuery).then(unreadSnapshot => {
-                    if (unreadSnapshot.empty) return;
-                    
-                    const batch = writeBatch(firestore);
-                    unreadSnapshot.forEach(msgDoc => {
-                        batch.update(msgDoc.ref, { 
-                            isRead: true,
-                            readTimestamp: serverTimestamp()
-                        });
-                    });
-                    batch.commit();
-                });
+            } catch (error) {
+                console.error("Error resetting unread count:", error);
             }
         };
 
         markAsRead();
-    }, [messages, firestore, user, matchId, isSystemChat]); 
+    }, [firestore, user, matchId, messages]); // Rerunning on messages ensures it runs after new messages are loaded.
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -294,7 +281,6 @@ function ChatPageContent() {
             matchId: matchId,
             senderId: user.uid,
             timestamp: serverTimestamp(),
-            isRead: false,
             type: content.type || 'user'
         };
     
@@ -729,7 +715,6 @@ function ChatPageContent() {
             senderId: 'system',
             text: statusText,
             timestamp: new Date(),
-            isRead: true,
             type: 'user', // Render as a normal message bubble
         };
     
