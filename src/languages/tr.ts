@@ -110,14 +110,14 @@ export const langTr = {
     },
     step5: {
       title: 'Ne arıyorsun?',
-      label: "Merak etme, bunu daha sonra profilinden istediğin zaman değiştirebilirsin.",
+      label: "Daha sonra fikrini değiştirebilirsin. Burada herkes için bir şeyler var.",
       options: [
-        { id: 'long-term', label: 'Uzun süreli ilişki' },
-        { id: 'short-term', label: 'Kısa süreli ilişki' },
-        { id: 'friends', label: 'Yeni arkadaşlar' },
-        { id: 'casual', label: 'Takılmak için' },
-        { id: 'not-sure', label: "Emin değilim" },
-        { id: 'whatever', label: 'Her şeye açığım' },
+        { id: 'long_term', label: 'Uzun süreli ilişki', emoji: '💘' },
+        { id: 'long_term_short_ok', label: 'Uzun ilişki ama kısa da olur', emoji: '😍' },
+        { id: 'short_term_long_ok', label: 'Kısa ilişki ama uzun da olur', emoji: '🥂' },
+        { id: 'short_term_fun', label: 'Kısa süreli eğlence', emoji: '🎉' },
+        { id: 'new_friends', label: 'Yeni arkadaşlar', emoji: '👋' },
+        { id: 'not_sure', label: 'Henüz karar vermedim', emoji: '🤔' },
       ],
     },
     step6: {
@@ -289,7 +289,7 @@ export const langTr = {
         password: 'Şifre en az 6 karakter olmalıdır.',
         name: 'İsim en az 2 karakter olmalıdır.',
         gender: 'Lütfen cinsiyetini seç.',
-        lookingFor: 'Lütfen birini seç.',
+        lookingFor: 'Lütfen bir seçim yapın.',
         interests: 'En fazla 10 ilgi alanı seçebilirsin.',
         photos: 'En az 2 fotoğraf yüklemelisin.'
       }

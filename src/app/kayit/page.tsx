@@ -1,125 +1,196 @@
 'use client';
 
-import { useState, useEffect } from "react";
 import * as React from 'react';
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { langTr } from "@/languages/tr";
-import { Icons } from "@/components/icons";
-import { cn } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { langTr } from '@/languages/tr';
+import { Icons } from '@/components/icons';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
 const formSchema = z.object({
-    fullName: z.string()
-      .min(2, { message: "İsim en az 2 karakter olmalıdır." })
-      .max(20, { message: "İsim en fazla 20 karakter olabilir." }),
-    dateOfBirth: z.date()
-        .max(eighteenYearsAgo, { message: "En az 18 yaşında olmalısın." })
-        .refine(date => !isNaN(date.getTime()), { message: "Lütfen geçerli bir tarih girin." }),
-    gender: z.enum(['female', 'male'], {
-        required_error: "Lütfen cinsiyetinizi seçin.",
+  fullName: z
+    .string()
+    .min(2, { message: 'İsim en az 2 karakter olmalıdır.' })
+    .max(20, { message: 'İsim en fazla 20 karakter olabilir.' }),
+  dateOfBirth: z
+    .date()
+    .max(eighteenYearsAgo, { message: 'En az 18 yaşında olmalısın.' })
+    .refine((date) => !isNaN(date.getTime()), {
+      message: 'Lütfen geçerli bir tarih girin.',
     }),
-    showGender: z.boolean().default(true),
+  gender: z.enum(['female', 'male'], {
+    required_error: 'Lütfen cinsiyetinizi seçin.',
+  }),
+  showGender: z.boolean().default(true),
+  lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
 });
 
 type SignupFormValues = z.infer<typeof formSchema>;
 
-const DateInput = ({ value, onChange, disabled }: { value?: Date, onChange: (date: Date) => void, disabled?: boolean }) => {
-    const [day, setDay] = useState(() => value ? String(value.getDate()).padStart(2, '0') : '');
-    const [month, setMonth] = useState(() => value ? String(value.getMonth() + 1).padStart(2, '0') : '');
-    const [year, setYear] = useState(() => value ? String(value.getFullYear()) : '');
+const DateInput = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: Date;
+  onChange: (date: Date) => void;
+  disabled?: boolean;
+}) => {
+  const [day, setDay] = useState(() =>
+    value ? String(value.getDate()).padStart(2, '0') : ''
+  );
+  const [month, setMonth] = useState(() =>
+    value ? String(value.getMonth() + 1).padStart(2, '0') : ''
+  );
+  const [year, setYear] = useState(() =>
+    value ? String(value.getFullYear()) : ''
+  );
 
-    const dayRef = React.useRef<HTMLInputElement>(null);
-    const monthRef = React.useRef<HTMLInputElement>(null);
-    const yearRef = React.useRef<HTMLInputElement>(null);
-    
-    useEffect(() => {
-        if(value) {
-            setDay(String(value.getDate()).padStart(2, '0'));
-            setMonth(String(value.getMonth() + 1).padStart(2, '0'));
-            setYear(String(value.getFullYear()));
-        }
-    }, [value]);
+  const dayRef = React.useRef<HTMLInputElement>(null);
+  const monthRef = React.useRef<HTMLInputElement>(null);
+  const yearRef = React.useRef<HTMLInputElement>(null);
 
-    const handleDateChange = (
-      e: React.ChangeEvent<HTMLInputElement>,
-      setter: React.Dispatch<React.SetStateAction<string>>,
-      field: 'day' | 'month' | 'year'
-    ) => {
-        let val = e.target.value.replace(/[^0-9]/g, '');
-        let newDay = day, newMonth = month, newYear = year;
+  useEffect(() => {
+    if (value) {
+      setDay(String(value.getDate()).padStart(2, '0'));
+      setMonth(String(value.getMonth() + 1).padStart(2, '0'));
+      setYear(String(value.getFullYear()));
+    }
+  }, [value]);
 
-        if (field === 'day') {
-            if (val.length > 0 && parseInt(val.charAt(0)) > 3) { /* do nothing */ }
-            else if (val.length > 1 && parseInt(val) > 31) { /* do nothing */ }
-            else { setDay(val); newDay = val; if (val.length === 2) monthRef.current?.focus(); }
-        } else if (field === 'month') {
-             if (val.length > 0 && parseInt(val.charAt(0)) > 1) { /* do nothing */ }
-             else if (val.length > 1 && parseInt(val) > 12) { /* do nothing */ }
-             else { setMonth(val); newMonth = val; if (val.length === 2) yearRef.current?.focus(); }
-        } else { setYear(val); newYear = val; }
+  const handleDateChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    field: 'day' | 'month' | 'year'
+  ) => {
+    let val = e.target.value.replace(/[^0-9]/g, '');
+    let newDay = day,
+      newMonth = month,
+      newYear = year;
 
-        if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
-            const date = new Date(`${newYear}-${newMonth}-${newDay}T00:00:00`);
-            if (!isNaN(date.getTime()) && date.getDate() === parseInt(newDay) && date.getMonth() + 1 === parseInt(newMonth)) {
-                onChange(date);
-            } else { onChange(new Date('invalid')); }
-        } else { onChange(new Date('invalid')); }
-    };
-    
-    return (
-        <div className="flex items-center gap-2">
-            <Input ref={dayRef} placeholder="GG" maxLength={2} value={day} onChange={(e) => handleDateChange(e, setDay, 'day')} disabled={disabled} inputMode="numeric" className="h-14 text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary text-center p-0 w-16 bg-transparent" />
-            <span className="text-2xl text-muted-foreground">/</span>
-            <Input ref={monthRef} placeholder="AA" maxLength={2} value={month} onChange={(e) => handleDateChange(e, setMonth, 'month')} disabled={disabled} inputMode="numeric" className="h-14 text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary text-center p-0 w-16 bg-transparent" />
-            <span className="text-2xl text-muted-foreground">/</span>
-            <Input ref={yearRef} placeholder="YYYY" maxLength={4} value={year} onChange={(e) => handleDateChange(e, setYear, 'year')} disabled={disabled} inputMode="numeric" className="h-14 text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary text-center p-0 w-24 bg-transparent" />
-        </div>
-    )
-}
+    if (field === 'day') {
+      if (val.length > 0 && parseInt(val.charAt(0)) > 3) {
+        /* do nothing */
+      } else if (val.length > 1 && parseInt(val) > 31) {
+        /* do nothing */
+      } else {
+        setDay(val);
+        newDay = val;
+        if (val.length === 2) monthRef.current?.focus();
+      }
+    } else if (field === 'month') {
+      if (val.length > 0 && parseInt(val.charAt(0)) > 1) {
+        /* do nothing */
+      } else if (val.length > 1 && parseInt(val) > 12) {
+        /* do nothing */
+      } else {
+        setMonth(val);
+        newMonth = val;
+        if (val.length === 2) yearRef.current?.focus();
+      }
+    } else {
+      setYear(val);
+      newYear = val;
+    }
 
+    if (newDay.length === 2 && newMonth.length === 2 && newYear.length === 4) {
+      const date = new Date(`${newYear}-${newMonth}-${newDay}T00:00:00`);
+      if (
+        !isNaN(date.getTime()) &&
+        date.getDate() === parseInt(newDay) &&
+        date.getMonth() + 1 === parseInt(newMonth)
+      ) {
+        onChange(date);
+      } else {
+        onChange(new Date('invalid'));
+      }
+    } else {
+      onChange(new Date('invalid'));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        ref={dayRef}
+        placeholder="GG"
+        maxLength={2}
+        value={day}
+        onChange={(e) => handleDateChange(e, setDay, 'day')}
+        disabled={disabled}
+        inputMode="numeric"
+        className="h-14 w-16 bg-transparent p-0 text-center text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
+      />
+      <span className="text-2xl text-muted-foreground">/</span>
+      <Input
+        ref={monthRef}
+        placeholder="AA"
+        maxLength={2}
+        value={month}
+        onChange={(e) => handleDateChange(e, setMonth, 'month')}
+        disabled={disabled}
+        inputMode="numeric"
+        className="h-14 w-16 bg-transparent p-0 text-center text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
+      />
+      <span className="text-2xl text-muted-foreground">/</span>
+      <Input
+        ref={yearRef}
+        placeholder="YYYY"
+        maxLength={4}
+        value={year}
+        onChange={(e) => handleDateChange(e, setYear, 'year')}
+        disabled={disabled}
+        inputMode="numeric"
+        className="h-14 w-24 bg-transparent p-0 text-center text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
+      />
+    </div>
+  );
+};
 
 export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>('unknown');
-  
+  const [ageStatus, setAgeStatus] = useState<'valid' | 'invalid' | 'unknown'>(
+    'unknown'
+  );
+
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
+      fullName: '',
       dateOfBirth: undefined,
       showGender: true,
     },
-    mode: "onChange",
+    mode: 'onChange',
   });
 
   const handleDateOfBirthChange = (date: Date) => {
     form.setValue('dateOfBirth', date, { shouldValidate: true });
     if (isNaN(date.getTime())) {
-        setAgeStatus('unknown');
-        return;
+      setAgeStatus('unknown');
+      return;
     }
     const ageDifMs = Date.now() - date.getTime();
     const ageDate = new Date(ageDifMs);
@@ -127,148 +198,220 @@ export default function SignUpPage() {
 
     setAgeStatus(age >= 18 ? 'valid' : 'invalid');
   };
-  
-  const prevStep = () => step > 0 ? setStep(prev => prev - 1) : router.push('/');
+
+  const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] | undefined;
     switch (step) {
-      case 0: fieldsToValidate = ['fullName']; break;
-      case 1: fieldsToValidate = ['dateOfBirth']; break;
-      case 2: fieldsToValidate = ['gender']; break;
+      case 0:
+        fieldsToValidate = ['fullName'];
+        break;
+      case 1:
+        fieldsToValidate = ['dateOfBirth'];
+        break;
+      case 2:
+        fieldsToValidate = ['gender'];
+        break;
+      case 3:
+        fieldsToValidate = ['lookingFor'];
+        break;
     }
-    
+
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) {
       if (step === totalSteps - 1) {
         // Final submit logic here
         console.log(form.getValues());
       } else {
-        setStep(s => s + 1);
+        setStep((s) => s + 1);
       }
     }
   };
-  
+
   const totalSteps = 6;
   const progressValue = ((step + 1) / totalSteps) * 100;
-  
+
   const genderValue = form.watch('gender');
+  const lookingForValue = form.watch('lookingFor');
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b-0 bg-transparent px-4">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b-0 bg-transparent px-4">
         <div className="flex flex-1 items-center gap-4">
-             <Button variant="ghost" size="icon" onClick={prevStep} disabled={isSubmitting}>
-                <ArrowLeft className="h-6 w-6" />
-            </Button>
-            <Progress value={progressValue} className="h-2" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={prevStep}
+            disabled={isSubmitting}
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <Progress value={progressValue} className="h-2" />
         </div>
       </header>
-      
+
       <Form {...form}>
-         <form className="flex flex-1 flex-col p-6 overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0">
-              
-              {step === 0 && (
-                <div className="space-y-4">
-                  <h1 className="text-3xl font-bold">Adın ne?</h1>
-                  <FormField control={form.control} name="fullName" render={({ field }) => (
+        <form className="flex flex-1 flex-col overflow-hidden p-6">
+          <div className="flex-1 flex flex-col min-h-0">
+            {step === 0 && (
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold">Adın ne?</h1>
+                <FormField
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormControl>
-                            <Input 
-                                placeholder="Adın" 
-                                {...field} 
-                                className="h-14 text-2xl border-0 border-b-2 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary bg-transparent" 
-                            />
-                        </FormControl>
-                        <FormMessage />
+                      <FormControl>
+                        <Input
+                          placeholder="Adın"
+                          {...field}
+                          className="h-14 rounded-none border-0 border-b-2 bg-transparent text-2xl focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
+                        />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                  )} />
-                   <p className="text-muted-foreground">
-                    Profilinde bu şekilde görünecek. Bunu daha sonra değiştiremezsin.
-                   </p>
-                </div>
-              )}
+                  )}
+                />
+                <p className="text-muted-foreground">
+                  Profilinde bu şekilde görünecek. Bunu daha sonra değiştiremezsin.
+                </p>
+              </div>
+            )}
 
-              {step === 1 && (
-                 <div className="space-y-4">
-                    <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
-                    <Controller
-                        control={form.control}
-                        name="dateOfBirth"
-                        render={({ field, fieldState }) => (
-                        <FormItem>
-                            <FormControl>
-                            <DateInput value={field.value} onChange={handleDateOfBirthChange} />
-                            </FormControl>
-                            {ageStatus === 'valid' && <div className="flex items-center text-green-600 pt-2 text-sm"><CheckCircle className="mr-2 h-4 w-4" />18 yaşından büyüksünüz.</div>}
-                            {ageStatus === 'invalid' && <div className="flex items-center text-red-600 pt-2 text-sm"><XCircle className="mr-2 h-4 w-4" />18 yaşından küçükler kullanamaz.</div>}
-                            {fieldState.error && ageStatus !== 'invalid' && <FormMessage>{fieldState.error.message}</FormMessage>}
-                        </FormItem>
-                        )}
-                    />
-                    <p className="text-muted-foreground">
-                        Profilinde yaşın gösterilir, doğum tarihin değil.
-                    </p>
-                </div>
-              )}
+            {step === 1 && (
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold">Doğum tarihin?</h1>
+                <Controller
+                  control={form.control}
+                  name="dateOfBirth"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormControl>
+                        <DateInput
+                          value={field.value}
+                          onChange={handleDateOfBirthChange}
+                        />
+                      </FormControl>
+                      {ageStatus === 'valid' && (
+                        <div className="flex items-center pt-2 text-sm text-green-600">
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          18 yaşından büyüksünüz.
+                        </div>
+                      )}
+                      {ageStatus === 'invalid' && (
+                        <div className="flex items-center pt-2 text-sm text-red-600">
+                          <XCircle className="mr-2 h-4 w-4" />
+                          18 yaşından küçükler kullanamaz.
+                        </div>
+                      )}
+                      {fieldState.error && ageStatus !== 'invalid' && (
+                        <FormMessage>{fieldState.error.message}</FormMessage>
+                      )}
+                    </FormItem>
+                  )}
+                />
+                <p className="text-muted-foreground">
+                  Profilinde yaşın gösterilir, doğum tarihin değil.
+                </p>
+              </div>
+            )}
 
-              {step === 2 && (
-                 <div className="space-y-8">
-                    <h1 className="text-3xl font-bold">Cinsiyetin ne?</h1>
-                    <div className="space-y-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className={cn(
-                                "w-full h-14 rounded-full text-lg",
-                                genderValue === 'female' && "border-primary text-primary border-2"
-                            )}
-                            onClick={() => form.setValue('gender', 'female', { shouldValidate: true })}
-                        >
-                            Kadın
-                        </Button>
-                        <Button
-                             type="button"
-                             variant="outline"
-                             className={cn(
-                                 "w-full h-14 rounded-full text-lg",
-                                 genderValue === 'male' && "border-primary text-primary border-2"
-                             )}
-                             onClick={() => form.setValue('gender', 'male', { shouldValidate: true })}
-                        >
-                            Erkek
-                        </Button>
-                         <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
+            {step === 2 && (
+              <div className="space-y-8">
+                <h1 className="text-3xl font-bold">Cinsiyetin ne?</h1>
+                <div className="space-y-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'h-14 w-full rounded-full text-lg',
+                      genderValue === 'female' &&
+                        'border-2 border-primary text-primary'
+                    )}
+                    onClick={() =>
+                      form.setValue('gender', 'female', { shouldValidate: true })
+                    }
+                  >
+                    Kadın
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'h-14 w-full rounded-full text-lg',
+                      genderValue === 'male' &&
+                        'border-2 border-primary text-primary'
+                    )}
+                    onClick={() =>
+                      form.setValue('gender', 'male', { shouldValidate: true })
+                    }
+                  >
+                    Erkek
+                  </Button>
+                  <FormMessage>{form.formState.errors.gender?.message}</FormMessage>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="showGender"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <Label className="font-normal" htmlFor="showGender">
+                        Profilimde cinsiyetimi göster
+                      </Label>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold">Ne arıyorsun?</h1>
+                <p className="text-muted-foreground">
+                  Daha sonra fikrini değiştirebilirsin. Burada herkes için bir
+                  şeyler var.
+                </p>
+                 <div className="grid grid-cols-2 gap-4 pt-4">
+                  {langTr.signup.step5.options.map((option) => (
+                    <div
+                      key={option.id}
+                      onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
+                      className={cn(
+                        "flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-lg border-2 border-card bg-card p-4 text-center transition-all hover:bg-muted/50",
+                        lookingForValue === option.id && "border-primary"
+                      )}
+                    >
+                      <span className="text-4xl">{option.emoji}</span>
+                      <p className="font-semibold">{option.label}</p>
                     </div>
-                     <FormField
-                        control={form.control}
-                        name="showGender"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <Label className="font-normal" htmlFor="showGender">
-                                    Profilimde cinsiyetimi göster
-                                </Label>
-                            </FormItem>
-                        )}
-                    />
+                  ))}
                 </div>
+                 <FormMessage>{form.formState.errors.lookingFor?.message}</FormMessage>
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 pt-6">
+            <Button
+              type="button"
+              onClick={handleNextStep}
+              className="h-14 w-full rounded-full text-lg font-bold"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Icons.logo width={24} height={24} className="animate-pulse" />
+              ) : (
+                'İlerle'
               )}
-
-
-            </div>
-
-            <div className="shrink-0 pt-6">
-                <Button type="button" onClick={handleNextStep} className="w-full h-14 rounded-full text-lg font-bold" disabled={isSubmitting}>
-                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : "İlerle"}
-                </Button>
-            </div>
+            </Button>
+          </div>
         </form>
       </Form>
     </div>
