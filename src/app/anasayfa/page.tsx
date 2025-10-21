@@ -411,15 +411,13 @@ function AnasayfaPageContent() {
   }
 
   const handleRetry = () => {
-    if (isFetching.current) return;
     toast({
       title: langTr.anasayfa.resetToastTitle,
       description: langTr.anasayfa.resetToastDescription,
     });
     setProfiles([]);
-    seenProfileIds.current.clear(); // Clear seen profiles as well
+    seenProfileIds.current.clear();
     if(user) seenProfileIds.current.add(user.uid);
-    // Directly call loadProfiles, ensuring it uses the now-empty state
     loadProfiles();
   }
   
