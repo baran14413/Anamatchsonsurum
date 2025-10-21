@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -199,7 +198,7 @@ const PasswordStrength = ({ password }: { password?: string }) => {
     };
 
     const strength = getStrength();
-    const strengthIndex = Math.min(strength, 4); // Ensure index is within bounds (0-4)
+    const strengthIndex = Math.min(strength, 4);
     const strengthText = ['Çok Zayıf', 'Zayıf', 'Orta', 'Güçlü', 'Çok Güçlü'];
     const strengthColor = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-green-500'];
 
@@ -458,14 +457,14 @@ export default function SignUpPage() {
                         {langTr.signup.step5.label}
                         </p>
                     </div>
-                     <div className="flex-1 flex flex-col justify-center min-h-0">
-                        <div className="grid grid-cols-2 grid-rows-3 gap-2">
+                    <div className="flex-1 flex flex-col justify-center min-h-0">
+                        <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
                             {langTr.signup.step5.options.map((option) => (
                             <div
                                 key={option.id}
                                 onClick={() => form.setValue('lookingFor', option.id, { shouldValidate: true })}
                                 className={cn(
-                                    "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-1 text-center transition-all hover:bg-muted/50 aspect-square",
+                                    "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-1 text-center transition-all h-28 hover:bg-muted/50",
                                     lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                                 )}
                             >
@@ -474,7 +473,7 @@ export default function SignUpPage() {
                             </div>
                             ))}
                         </div>
-                        <FormMessage className="mt-4">{form.formState.errors.lookingFor?.message}</FormMessage>
+                        <FormMessage className="mt-4 text-center">{form.formState.errors.lookingFor?.message}</FormMessage>
                     </div>
                 </div>
             )}
@@ -510,7 +509,7 @@ export default function SignUpPage() {
             )}
             
             {step === 5 && (
-                 <div className="flex flex-col h-full">
+                <div className="flex flex-col h-full">
                     <div className="space-y-2 mb-6 shrink-0">
                         <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
                         <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
