@@ -28,6 +28,9 @@ import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { useAuth, useFirestore } from '@/firebase/provider';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -207,8 +210,8 @@ const PasswordStrength = ({ password }: { password?: string }) => {
     return (
         <div className="space-y-2">
             <Progress value={(strength / 4) * 100} className="h-1" indicatorClassName={strengthColor[strengthIndex]} />
-            <p className="text-xs font-medium" style={{ color: `hsl(var(--${strengthColor[strengthIndex].replace('bg-', '')}-foreground))` }}>
-                Şifre Gücü: {strengthText[strength]}
+            <p className="text-xs font-medium" style={{ color: `hsl(var(--${strengthColor[strengthIndex]?.replace('bg-', '')}-foreground))` }}>
+                Şifre Gücü: {strengthText[strengthIndex]}
             </p>
         </div>
     );
@@ -217,6 +220,8 @@ const PasswordStrength = ({ password }: { password?: string }) => {
 export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -258,6 +263,58 @@ export default function SignUpPage() {
   };
 
   const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
+  
+  const onSubmit = async (data: SignupFormValues) => {
+    if (!auth || !firestore) {
+      toast({ title: langTr.errors.dbConnectionError, variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Prepare user profile data from the form
+      const profileData = {
+        uid: user.uid,
+        email: data.email,
+        fullName: data.fullName,
+        dateOfBirth: data.dateOfBirth.toISOString(),
+        gender: data.gender,
+        genderPreference: 'both', // default, can be changed later
+        showGenderOnProfile: data.showGender,
+        lookingFor: data.lookingFor,
+        distancePreference: data.distancePreference,
+        lifestyle: data.lifestyle,
+        createdAt: serverTimestamp(),
+        rulesAgreed: false,
+        membershipType: 'free',
+        images: [],
+        superLikeBalance: 5,
+        isBot: false,
+      };
+
+      await setDoc(doc(firestore, "users", user.uid), profileData);
+      
+      // onAuthStateChanged will handle the redirect to /profil/galeri via AppShell
+      // No need for router.push here.
+
+    } catch (error: any) {
+      console.error(error.code, error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        toast({
+            title: langTr.common.emailExistsTitle,
+            description: langTr.common.emailExistsDescription,
+            action: <Button onClick={() => router.push('/giris')}>{langTr.common.goToLogin}</Button>
+        });
+      } else {
+        toast({ title: langTr.errors.signupFailed, description: error.message, variant: 'destructive' });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   const handleNextStep = async () => {
     let fieldsToValidate: (keyof SignupFormValues)[] | undefined;
@@ -284,21 +341,14 @@ export default function SignUpPage() {
        case 5:
         break;
       case 6:
-        fieldsToValidate = ['email', 'password', 'passwordConfirmation'];
-        break;
+        // This is the final step, trigger the main onSubmit handler
+        form.handleSubmit(onSubmit)();
+        return; // Important to return here to not increment step
     }
 
     const isValid = fieldsToValidate ? await form.trigger(fieldsToValidate) : true;
     if (isValid) {
-      if (step === totalSteps - 1) {
-        // Final submit logic here
-        console.log("Form Submitted:", form.getValues());
-        toast({
-            title: "Kayıt Verileri Hazır",
-            description: "Veriler konsola yazdırıldı. Bir sonraki adıma yönlendiriliyor..."
-        });
-        router.push('/kurallar'); // Placeholder for next step
-      } else {
+      if (step < totalSteps - 1) {
         setStep((s) => s + 1);
       }
     }
@@ -332,7 +382,6 @@ export default function SignUpPage() {
 
       <Form {...form}>
         <form className="flex flex-1 flex-col overflow-hidden p-6">
-          <div className="flex-1 flex flex-col min-h-0">
             {step === 0 && (
               <div className="space-y-4">
                 <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
@@ -458,7 +507,7 @@ export default function SignUpPage() {
                         </p>
                     </div>
                     <div className="flex-1 flex flex-col justify-center min-h-0">
-                        <div className="grid grid-cols-2 gap-3 w-full max-w-sm mx-auto">
+                       <div className="grid grid-cols-2 grid-rows-3 gap-3 w-full max-w-sm mx-auto">
                             {langTr.signup.step5.options.map((option) => (
                             <div
                                 key={option.id}
@@ -468,8 +517,8 @@ export default function SignUpPage() {
                                     lookingForValue === option.id ? "border-primary" : "border-card bg-card"
                                 )}
                             >
-                                <span className="text-2xl">{option.emoji}</span>
-                                <p className="font-semibold text-sm">{option.label}</p>
+                                <span className="text-xl">{option.emoji}</span>
+                                <p className="font-semibold text-xs">{option.label}</p>
                             </div>
                             ))}
                         </div>
@@ -509,7 +558,7 @@ export default function SignUpPage() {
             )}
             
             {step === 5 && (
-                <div className="flex flex-col h-full">
+                 <div className="flex flex-col h-full">
                     <div className="space-y-2 mb-6 shrink-0">
                         <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
                         <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
@@ -606,8 +655,6 @@ export default function SignUpPage() {
                     </div>
                 </div>
             )}
-          </div>
-
           <div className="shrink-0 pt-6">
             <Button
               type="button"
