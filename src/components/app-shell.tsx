@@ -210,35 +210,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     })}
                 </TooltipProvider>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
-                            <Settings className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                         <DropdownMenuItem asChild>
-                           <Link href="/ayarlar">
-                            <Settings className='mr-2'/>
-                            <span>Ayarlar ve Hareketler</span>
-                           </Link>
-                        </DropdownMenuItem>
-                         {userProfile?.isAdmin && (
-                            <DropdownMenuItem asChild>
-                               <Link href="/admin/dashboard">
-                                 <AtSign className='mr-2'/>
-                                 <span>Yönetici Paneli</span>
-                               </Link>
-                            </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className='text-red-500 focus:text-red-500'>
-                            <LogOut className='mr-2'/>
-                            <span>Çıkış Yap</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
+                <Link href="/ayarlar">
+                    <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                        <Settings className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                </Link>
             </div>
         </header>
         <main className="flex-1 flex flex-col overflow-hidden">
