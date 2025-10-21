@@ -62,25 +62,33 @@ const fetchProfiles = async (
                 continue;
             }
 
-            // Assign distance for all valid profiles first
-            if (userProfile.location && p.location) {
-                p.distance = getDistance(
-                    userProfile.location.latitude!,
-                    userProfile.location.longitude!,
-                    p.location.latitude!,
-                    p.location.longitude!
-                );
-            } else {
-                 p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance if user or target has no location
-            }
-
 
             if (p.isBot) {
                 // Bots are exempt from user's filters (age, distance, etc.)
+                 p.distance = Math.floor(Math.random() * 140) + 1; // Assign random distance if user or target has no location
                 bots.push(p);
             } else {
                 // Real user requirements: Apply all user preferences
                 let passesFilters = true;
+
+                // Assign distance for real users
+                 if (userProfile.location && p.location) {
+                    p.distance = getDistance(
+                        userProfile.location.latitude!,
+                        userProfile.location.longitude!,
+                        p.location.latitude!,
+                        p.location.longitude!
+                    );
+                } else {
+                    // If a real user has no location, we can't calculate distance.
+                    // Depending on the strictness, we might filter them out.
+                    // For now, let's assign a random distance but maybe they shouldn't be shown
+                    // if global mode is off. Let's filter them if distance is a hard requirement.
+                    if (!userProfile.globalModeEnabled) {
+                        continue; // Skip real user without location data if not in global mode
+                    }
+                    p.distance = Math.floor(Math.random() * 140) + 1;
+                }
 
                 if (userProfile.genderPreference && userProfile.genderPreference !== 'both') {
                     if (p.gender !== userProfile.genderPreference) passesFilters = false;
@@ -135,7 +143,7 @@ function AnasayfaPageContent() {
     if (!user || !firestore || !userProfile || isFetching.current) return;
 
     isFetching.current = true;
-    if(profiles.length === 0) setIsLoading(true);
+    setIsLoading(true);
     
     // Pass the current seen IDs to the fetch function
     const newProfiles = await fetchProfiles(firestore, user, userProfile, seenProfileIds.current);
@@ -155,7 +163,7 @@ function AnasayfaPageContent() {
 
     setIsLoading(false);
     isFetching.current = false;
-  }, [user, firestore, userProfile, profiles.length]);
+  }, [user, firestore, userProfile]);
 
   // Initial load
   useEffect(() => {
@@ -399,7 +407,9 @@ function AnasayfaPageContent() {
     );
   }
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
+      if (isFetching.current) return;
+      isFetching.current = true;
       toast({
         title: langTr.anasayfa.resetToastTitle,
         description: langTr.anasayfa.resetToastDescription,
@@ -407,7 +417,8 @@ function AnasayfaPageContent() {
       setProfiles([]);
       seenProfileIds.current.clear(); // Clear seen profiles as well
       if(user) seenProfileIds.current.add(user.uid);
-      loadProfiles();
+      await loadProfiles();
+      isFetching.current = false;
   }
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
