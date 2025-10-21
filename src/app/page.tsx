@@ -70,7 +70,7 @@ export default function WelcomePage() {
             <p dangerouslySetInnerHTML={{ __html: t.welcome.agreement.replace('<1>', '<a href="/tos" class="underline">').replace('</1>', '</a>').replace('<3>', '<a href="/privacy" class="underline">').replace('</3>', '</a>').replace('<5>', '<a href="/cookies" class="underline">').replace('</5>', '</a>') }} />
           </div>
 
-          <div className="space-y-4">
+          <div className="w-full max-w-sm space-y-8 z-20">
             <Link href="/giris">
               <Button
                 variant="outline"
