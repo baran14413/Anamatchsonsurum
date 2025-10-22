@@ -90,53 +90,55 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
     }
 };
 
-const initializeBilling = (): Promise<BillingPlugin> => {
-  if (initializationPromise) {
-    return initializationPromise;
-  }
+const getBilling = async (): Promise<BillingPlugin | null> => {
+    if (billingInstance) {
+        return billingInstance;
+    }
+    if (initializationPromise) {
+        return await initializationPromise;
+    }
 
-  initializationPromise = new Promise(async (resolve) => {
-    if (Capacitor.isPluginAvailable('Billing')) {
-        const plugin = registerPlugin<BillingPlugin>('Billing');
-        try {
-            await plugin.initialize();
-            plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
-              if (result && result.purchaseState === 'PURCHASED') {
-                  handleSuccessfulPurchase(result as Purchase);
-              }
-            });
-            plugin.addListener('purchaseFailed', (error: any) => {
-              console.error('Global listener: Purchase failed', error);
-            });
-            billingInstance = plugin;
-        } catch(err) {
-            console.error("Failed to initialize Capacitor Billing plugin, using mock.", err);
-            billingInstance = {
+    initializationPromise = new Promise(async (resolve) => {
+        if (Capacitor.isPluginAvailable('Billing')) {
+            const plugin = registerPlugin<BillingPlugin>('Billing');
+            try {
+                await plugin.initialize();
+                plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
+                    if (result && result.purchaseState === 'PURCHASED') {
+                        handleSuccessfulPurchase(result as Purchase);
+                    }
+                });
+                plugin.addListener('purchaseFailed', (error: any) => {
+                    console.error('Global listener: Purchase failed', error);
+                });
+                billingInstance = plugin;
+            } catch (err) {
+                console.error("Failed to initialize Capacitor Billing plugin, using mock.", err);
+                // Fallback to a mock object if initialization fails
+                billingInstance = {
+                    initialize: async () => {},
+                    queryProducts: async () => ({ products: [] }),
+                    purchase: async (options) => console.error(`Capacitor Billing not initialized. Cannot purchase ${options.productId}.`),
+                    checkSubscriptions: async () => ({ activeSubscriptions: [] }),
+                    addListener: async () => {}
+                };
+            }
+        } else {
+            // Fallback for environments where the plugin isn't available
+             billingInstance = {
                 initialize: async () => {},
                 queryProducts: async () => ({ products: [] }),
-                purchase: async (options) => {
-                    console.error(`Capacitor Billing not initialized. Cannot purchase ${options.productId}.`);
-                },
+                purchase: async (options) => console.error(`Capacitor Billing not available. Cannot purchase ${options.productId}.`),
                 checkSubscriptions: async () => ({ activeSubscriptions: [] }),
                 addListener: async () => {}
             };
         }
-    } else {
-        billingInstance = {
-            initialize: async () => {},
-            queryProducts: async () => ({ products: [] }),
-            purchase: async (options) => {
-                console.error(`Capacitor Billing not available. Cannot purchase ${options.productId}.`);
-            },
-            checkSubscriptions: async () => ({ activeSubscriptions: [] }),
-            addListener: async () => {}
-        };
-    }
-    resolve(billingInstance);
-  });
+        resolve(billingInstance);
+    });
 
-  return initializationPromise;
+    return initializationPromise;
 };
+
 
 export const purchase = async (options: { productId: string }): Promise<void> => {
     if (isAndroidInterfaceAvailable()) {
@@ -145,16 +147,22 @@ export const purchase = async (options: { productId: string }): Promise<void> =>
         return;
     }
 
-    const billing = await getBilling();
-    if (billing) {
-        await billing.purchase(options);
-    } else {
-        console.error('Billing service is not available.');
-        throw new Error('Billing service is not available.');
+    try {
+        const billing = await getBilling();
+        if (billing) {
+            await billing.purchase(options);
+        } else {
+             console.error('Billing service is not available and could not be initialized.');
+        }
+    } catch (error) {
+        // The error is now more likely to be from the plugin itself, not the interface check.
+        console.error('An error occurred during the purchase process:', error);
+        // We let the calling function handle the user-facing error toast.
+        throw error;
     }
 };
 
-// Initialize on load
+// Initialize on load if in a browser environment
 if (typeof window !== 'undefined') {
-    initializeBilling();
+    getBilling();
 }
