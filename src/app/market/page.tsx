@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Gem, Star, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,9 +21,25 @@ const isAndroidInterfaceAvailable = (): boolean => {
 
 export default function MarketPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useFirebase();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const source = searchParams.get('source');
+    if (source === 'twa') {
+      toast({
+        title: 'Markete Erişilemiyor',
+        description: 'Ödeme işlemleri yalnızca uygulama mağazası üzerinden yapılabilir.',
+      });
+      router.replace('/anasayfa');
+    } else {
+      setIsLoading(false);
+    }
+  }, [searchParams, router, toast]);
+
 
   const goldProducts = products.filter(p => p.type === 'gold');
   const superLikeProducts = products.filter(p => p.type === 'superlike');
@@ -73,6 +89,15 @@ export default function MarketPage() {
       setIsPurchasing(null);
     }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background">
+        <Icons.logo width={48} height={48} className="animate-pulse" />
+      </div>
+    );
+  }
+
 
   const ProductCard = ({ product }: { product: typeof products[0] }) => (
     <Card className={cn(
