@@ -30,16 +30,9 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-        toast({
-            title: 'Ödeme İşlemi Başlatıldı',
-            description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
-        });
-        
         await purchase({ productId });
-        // The purchase function will now handle the logic. 
-        // We don't immediately expect a result here, especially for native flow.
-        // The native side will call back to window.purchaseSuccessful on success.
-
+        // This will likely not be reached in the new simplified flow, as purchase rejects.
+        // Kept for potential future implementations.
     } catch (error: any) {
       console.error('Satın alma başlatma hatası:', error);
       toast({
@@ -48,7 +41,6 @@ export default function MarketPage() {
           variant: 'destructive',
       });
     } finally {
-      // We can stop the loading indicator as our job (initiating) is done.
       setIsPurchasing(null);
     }
   };
