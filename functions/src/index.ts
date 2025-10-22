@@ -6,63 +6,60 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
-// Generic function to send a notification
-const sendNotification = async (
+// Generic function to send a data-only notification
+const sendDataNotification = async (
   tokens: string[],
-  title: string,
-  body: string,
-  link: string,
+  data: { [key: string]: string }
 ) => {
   if (tokens.length === 0) {
     console.log("No tokens to send notification to.");
     return;
   }
 
+  // Construct a data-only message
   const payload: admin.messaging.MulticastMessage = {
     tokens,
-    notification: {
-      title,
-      body,
-    },
-    webpush: {
-      fcmOptions: {
-        link,
+    data,
+    apns: {
+      payload: {
+        aps: {
+          "content-available": 1,
+        },
       },
     },
   };
 
   try {
     const response = await admin.messaging().sendEachForMulticast(payload);
-    console.log("Notifications sent successfully:", response.successCount);
+    console.log("Data messages sent successfully:", response.successCount);
 
     // Clean up invalid tokens
-    const tokensToRemove: string[] = [];
-    response.responses.forEach((result, index) => {
-      if (!result.success) {
-        const error = result.error;
-        console.error(
-          "Failed to send notification to",
-          tokens[index],
-          error,
-        );
-        if (
-          error.code === "messaging/invalid-registration-token" ||
-          error.code === "messaging/registration-token-not-registered"
-        ) {
-          tokensToRemove.push(tokens[index]);
-        }
-      }
-    });
-
-    if (tokensToRemove.length > 0) {
-      // Here you would typically find the user associated with these tokens
-      // and remove the tokens from their profile. This requires a more complex
-      // lookup (e.g., querying users collection for fcmTokens array containing the token).
-      // For simplicity, we are just logging it here.
-      console.log("Need to remove invalid tokens:", tokensToRemove);
+    if (response.failureCount > 0) {
+        const tokensToRemove: string[] = [];
+        response.responses.forEach((result, index) => {
+            if (!result.success) {
+                const error = result.error;
+                console.error(
+                    "Failure sending notification to",
+                    tokens[index],
+                    error
+                );
+                if (
+                    error.code === "messaging/invalid-registration-token" ||
+                    error.code === "messaging/registration-token-not-registered"
+                ) {
+                    tokensToRemove.push(tokens[index]);
+                }
+            }
+        });
+        
+        // This is a simplified cleanup. A real app might need a more robust
+        // way to find the user document based on the token to remove it.
+        console.log("Need to remove invalid tokens:", tokensToRemove);
     }
+
   } catch (error) {
-    console.error("Error sending notifications:", error);
+    console.error("Error sending data messages:", error);
   }
 };
 
@@ -77,8 +74,8 @@ export const onNewMessage = functions.region("europe-west1").firestore
       return null;
     }
 
-    const {matchId} = context.params;
-    const {senderId} = message;
+    const { matchId } = context.params;
+    const { senderId } = message;
 
     // Get the two user IDs from the matchId
     const [user1Id, user2Id] = matchId.split("_");
@@ -112,12 +109,14 @@ export const onNewMessage = functions.region("europe-west1").firestore
       notificationBody = "▶️ Bir sesli mesaj gönderdi.";
     }
 
-    // Send the notification
-    await sendNotification(
+    // Send the data notification
+    await sendDataNotification(
       fcmTokens,
-      `${sender?.fullName}`, // Notification title
-      notificationBody, // Notification body
-      `/eslesmeler/${matchId}`  // Link to open on click
+      {
+        title: `${sender?.fullName}`,
+        body: notificationBody,
+        link: `/eslesmeler/${matchId}`
+      }
     );
 
     return null;
@@ -133,8 +132,8 @@ export const onNewMatch = functions.region("europe-west1").firestore
 
     // Check if the status has just changed to 'matched'
     if (before.status !== "matched" && after.status === "matched") {
-      const {user1Id, user2Id} = after;
-      const {matchId} = context.params;
+      const { user1Id, user2Id } = after;
+      const { matchId } = context.params;
 
       // Get both user profiles
       const user1Doc = await db.collection("users").doc(user1Id).get();
@@ -150,21 +149,25 @@ export const onNewMatch = functions.region("europe-west1").firestore
 
       // Send notification to User 1
       if (user1 && user1.fcmTokens && user1.fcmTokens.length > 0) {
-        await sendNotification(
+        await sendDataNotification(
           user1.fcmTokens,
-          "Yeni bir eşleşmen var! 🎉",
-          `${user2?.fullName} ile eşleştin.`,
-          `/eslesmeler/${matchId}`
+          {
+            title: "Yeni bir eşleşmen var! 🎉",
+            body: `${user2?.fullName} ile eşleştin.`,
+            link: `/eslesmeler/${matchId}`
+          }
         );
       }
 
       // Send notification to User 2
       if (user2 && user2.fcmTokens && user2.fcmTokens.length > 0) {
-        await sendNotification(
+        await sendDataNotification(
           user2.fcmTokens,
-          "Yeni bir eşleşmen var! 🎉",
-          `${user1?.fullName} ile eşleştin.`,
-          `/eslesmeler/${matchId}`
+          {
+             title: "Yeni bir eşleşmen var! 🎉",
+             body: `${user1?.fullName} ile eşleştin.`,
+             link: `/eslesmeler/${matchId}`
+          }
         );
       }
     }

@@ -9,7 +9,8 @@ import { initializeApp, getApps } from 'firebase/app';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications, Token } from '@capacitor/push-notifications';
+import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 // Ensure Firebase is initialized
 if (!getApps().length) {
@@ -91,10 +92,28 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
     const { firebaseApp, firestore, user } = useFirebase();
 
     useEffect(() => {
-        if (!firebaseApp) return;
+        if (!firebaseApp || !user) return;
+
+        const handleShowNotification = async (notification: PushNotificationSchema) => {
+            await LocalNotifications.schedule({
+                notifications: [
+                    {
+                        title: notification.title || 'Yeni Bildirim',
+                        body: notification.body || '',
+                        id: Math.floor(Math.random() * 10000) + 1,
+                        extra: notification.data,
+                        smallIcon: 'res://drawable/ic_stat_name', // Make sure you have this icon in android/app/src/main/res/drawable
+                    },
+                ],
+            });
+        };
+
 
         const setupListeners = async () => {
             if (Capacitor.isNativePlatform()) {
+                 // Request permissions for local notifications
+                await LocalNotifications.requestPermissions();
+                
                 // Handle mobile push notifications
                 PushNotifications.addListener('registration', async (token: Token) => {
                     console.log('Push registration success, token: ' + token.value);
@@ -105,12 +124,18 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
                     console.error('Error on registration: ' + JSON.stringify(error));
                 });
 
-                PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                    console.log('Push received: ' + JSON.stringify(notification));
-                     toast({
-                        title: notification.title,
-                        description: notification.body,
-                    });
+                // This is for FOREGROUND notifications on native
+                PushNotifications.addListener('pushNotificationReceived', handleShowNotification);
+                
+                // This is for when user taps on a BACKGROUND notification
+                PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
+                    console.log('Push action performed: ' + JSON.stringify(action));
+                    const link = action.notification.data?.link;
+                    if (link) {
+                        // Use Next.js router to navigate
+                        // This requires access to the router instance. You might need to pass it in.
+                        window.location.href = link;
+                    }
                 });
 
             } else if (isNotificationSupported()) {
@@ -123,18 +148,18 @@ export const useNotificationHandler = (toast: (options: any) => void) => {
                         description: payload.notification?.body,
                     });
                 });
-                return () => unsubscribe();
+                return unsubscribe;
             }
         };
 
         const unsubscribePromise = setupListeners();
 
         return () => {
-            if (Capacitor.isNativePlatform()) {
+             if (Capacitor.isNativePlatform()) {
                 PushNotifications.removeAllListeners();
-            } else {
-                 unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
-            }
+             } else {
+                unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+             }
         };
 
     }, [firebaseApp, firestore, user, toast]);
