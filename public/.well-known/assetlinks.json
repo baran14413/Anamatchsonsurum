@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bematch.bematch",
+      "sha256_cert_fingerprints": [
+        "DB:6B:B8:22:DB:90:F5:D7:FE:98:6E:86:35:95:2C:CD:83:31:8B:F7:33:05:AB:02:0E:94:F6:89:17:68:E2:98"
+      ]
+    }
+  }
+]
