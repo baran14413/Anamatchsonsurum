@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
@@ -141,26 +140,53 @@ const getBilling = async (): Promise<BillingPlugin | null> => {
 
 
 export const purchase = async (options: { productId: string }): Promise<void> => {
-    if (isAndroidInterfaceAvailable()) {
-        console.log(`Attempting purchase via Android interface for product: ${options.productId}`);
-        (window as any).AndroidInterface.startPurchase(options.productId);
-        return;
-    }
+  const tryPurchaseNatively = (retries: number): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (isAndroidInterfaceAvailable()) {
+          console.log(`AndroidInterface found after ${5 - retries} retries. Initiating purchase for ${options.productId}`);
+          (window as any).AndroidInterface.startPurchase(options.productId);
+          resolve();
+        } else if (retries > 0) {
+          console.log(`AndroidInterface not found, ${retries} retries left.`);
+          resolve(tryPurchaseNatively(retries - 1));
+        } else {
+          console.error('AndroidInterface not found after multiple attempts.');
+          reject(new Error('Native purchase interface is not available.'));
+        }
+      }, 100); // Wait 100ms between attempts
+    });
+  };
 
+  if (isAndroidInterfaceAvailable()) {
+    console.log(`Attempting purchase via Android interface for product: ${options.productId}`);
+    (window as any).AndroidInterface.startPurchase(options.productId);
+    return;
+  }
+
+  // If the interface is not immediately available, poll for it.
+  // This handles the race condition where the webview loads before the interface is injected.
+  try {
+    await tryPurchaseNatively(5); // Try 5 times (total of ~500ms)
+  } catch (error) {
+    console.error('An error occurred during the native purchase attempt:', error);
+    // If native fails after all retries, fall back to the web/Capacitor method if needed,
+    // or simply throw the final error.
     try {
+        console.log('Falling back to Capacitor billing...');
         const billing = await getBilling();
         if (billing) {
             await billing.purchase(options);
         } else {
-             console.error('Billing service is not available and could not be initialized.');
+            throw new Error('Billing service is not available.');
         }
-    } catch (error) {
-        // The error is now more likely to be from the plugin itself, not the interface check.
-        console.error('An error occurred during the purchase process:', error);
-        // We let the calling function handle the user-facing error toast.
-        throw error;
+    } catch (fallbackError) {
+        console.error('Fallback purchase method also failed:', fallbackError);
+        throw fallbackError; // Re-throw the final error to be caught by the caller.
     }
+  }
 };
+
 
 // Initialize on load if in a browser environment
 if (typeof window !== 'undefined') {

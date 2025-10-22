@@ -1,10 +1,9 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Gem, Star, Zap } from 'lucide-react';
+import { ArrowLeft, Gem, Star } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { products } from '@/lib/products';
 import { purchase } from '@/lib/billing';
@@ -12,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
-
 
 export default function MarketPage() {
   const router = useRouter();
@@ -37,14 +35,16 @@ export default function MarketPage() {
             description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
         });
         
-        // The purchase function in billing.ts will handle platform-specific logic
         await purchase({ productId });
+        // The purchase function will now handle the logic. 
+        // We don't immediately expect a result here, especially for native flow.
+        // The native side will call back to window.purchaseSuccessful on success.
 
     } catch (error: any) {
       console.error('Satın alma başlatma hatası:', error);
       toast({
           title: 'Satın Alma Başlatılamadı',
-          description: 'Ödeme süreci başlatılırken bir sorun oluştu. Lütfen tekrar deneyin.',
+          description: error.message || 'Ödeme süreci başlatılırken bir sorun oluştu. Lütfen tekrar deneyin.',
           variant: 'destructive',
       });
     } finally {
@@ -53,7 +53,6 @@ export default function MarketPage() {
     }
   };
   
-
   const ProductCard = ({ product }: { product: typeof products[0] }) => (
     <Card className={cn(
       "flex flex-col text-center transition-transform duration-300 hover:scale-105 hover:shadow-lg",
