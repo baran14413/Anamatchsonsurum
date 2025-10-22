@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from "@/firebase/provider";
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from "@/components/theme-provider";
+import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,6 +31,16 @@ export default function RootLayout({
           </FirebaseProvider>
           <Toaster />
         </ThemeProvider>
+
+        <Script id="twa-purchase-callback" strategy="afterInteractive">
+          {`
+            window.purchaseSuccessful = function() {
+              alert("Ödemeniz başarıyla tamamlandı! Artık premium üyesiniz.");
+              window.location.href = '/profil';
+            }
+          `}
+        </Script>
+
       </body>
     </html>
   );

@@ -1,45 +1,24 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Gem, Star, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { products } from '@/lib/products';
-import { getBilling } from '@/lib/billing';
+import { purchase } from '@/lib/billing';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 
-// Helper function to check for the native Android interface
-const isAndroidInterfaceAvailable = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Android && typeof (window as any).Android.purchase === 'function';
-};
-
-
 export default function MarketPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useFirebase();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const source = searchParams.get('source');
-    if (source === 'twa') {
-      toast({
-        title: 'Markete Erişilemiyor',
-        description: 'Ödeme işlemleri yalnızca uygulama mağazası üzerinden yapılabilir.',
-      });
-      router.replace('/anasayfa');
-    } else {
-      setIsLoading(false);
-    }
-  }, [searchParams, router, toast]);
-
 
   const goldProducts = products.filter(p => p.type === 'gold');
   const superLikeProducts = products.filter(p => p.type === 'superlike');
@@ -53,29 +32,13 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-      if (isAndroidInterfaceAvailable()) {
-          console.log(`Attempting purchase via Android interface for product: ${productId}`);
-          (window as any).Android.purchase(productId);
-          // Android arayüzü sonrası için bir bekleme durumu veya kullanıcı bildirimi eklenebilir.
-          // Şimdilik sadece çağrıyı yapıyoruz ve işlemi Android tarafına bırakıyoruz.
-          // Native kodun sonucu bildirmesi beklenir.
-          toast({
-              title: 'Ödeme İşlemi Başlatıldı',
-              description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
-          });
-
-      } else {
-          // Get the initialized billing plugin. This now waits for initialization.
-          const Billing = await getBilling();
-          
-          toast({
-              title: 'Ödeme İşlemi Başlatıldı',
-              description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
-          });
-
-          // We only initiate the purchase here. The result is handled by the global listener.
-          await Billing.purchase({ productId });
-      }
+        toast({
+            title: 'Ödeme İşlemi Başlatıldı',
+            description: 'Lütfen satın almayı tamamlamak için yönergeleri izleyin.',
+        });
+        
+        // The purchase function in billing.ts will handle platform-specific logic
+        await purchase({ productId });
 
     } catch (error: any) {
       console.error('Satın alma başlatma hatası:', error);
@@ -90,14 +53,6 @@ export default function MarketPage() {
     }
   };
   
-  if (isLoading) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-background">
-        <Icons.logo width={48} height={48} className="animate-pulse" />
-      </div>
-    );
-  }
-
 
   const ProductCard = ({ product }: { product: typeof products[0] }) => (
     <Card className={cn(

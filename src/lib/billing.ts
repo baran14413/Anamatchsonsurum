@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
@@ -29,35 +30,12 @@ export interface BillingPlugin {
 
 // Helper function to check for the native Android interface
 const isAndroidInterfaceAvailable = (): boolean => {
-  return typeof window !== 'undefined' && (window as any).Android && typeof (window as any).Android.purchase === 'function';
+  return typeof window !== 'undefined' && (window as any).AndroidInterface && typeof (window as any).AndroidInterface.startPurchase === 'function';
 };
 
 
 let billingInstance: BillingPlugin | null = null;
 let initializationPromise: Promise<BillingPlugin> | null = null;
-
-const unavailableBilling: BillingPlugin = {
-  initialize: async () => console.warn('Billing plugin not available on this platform. Using mock.'),
-  queryProducts: async () => {
-    console.warn('Billing plugin not available. Returning empty products.');
-    return { products: [] };
-  },
-  purchase: async (options) => {
-     if (isAndroidInterfaceAvailable()) {
-      console.log(`Attempting purchase via Android interface for product: ${options.productId}`);
-      (window as any).Android.purchase(options.productId);
-      return;
-    }
-    console.error(`Billing plugin not available. Cannot process purchase for ${options.productId}.`);
-    // Return void or throw an error to indicate failure
-    return;
-  },
-  checkSubscriptions: async () => {
-    console.warn('Billing plugin not available. Returning empty subscriptions.');
-    return { activeSubscriptions: [] };
-  },
-  addListener: async () => { console.log("addListener called on unavailable billing"); }
-};
 
 const handleSuccessfulPurchase = async (purchase: Purchase) => {
     console.log("Handling successful purchase:", purchase);
@@ -112,52 +90,71 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
     }
 };
 
-export const initializeBilling = (): Promise<BillingPlugin> => {
+const initializeBilling = (): Promise<BillingPlugin> => {
   if (initializationPromise) {
     return initializationPromise;
   }
 
-  initializationPromise = new Promise(async (resolve, reject) => {
-    if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Billing')) {
+  initializationPromise = new Promise(async (resolve) => {
+    if (Capacitor.isPluginAvailable('Billing')) {
         const plugin = registerPlugin<BillingPlugin>('Billing');
-        
-        // Zorla gerçek eklentiyi başlat, hata olursa yakalama ve fırlat.
-        await plugin.initialize();
-
-        // Başarılı başlatmanın hemen ardından dinleyicileri kur.
-        plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
-          console.log('Global listener: Purchase completed', result);
-          if (result && result.purchaseState === 'PURCHASED') {
-              handleSuccessfulPurchase(result as Purchase);
-          }
-        });
-
-        plugin.addListener('purchaseFailed', (error: any) => {
-          console.error('Global listener: Purchase failed', error);
-        });
-
-        console.log("Billing plugin initialized successfully with listeners.");
-        billingInstance = plugin;
-        resolve(billingInstance);
-
+        try {
+            await plugin.initialize();
+            plugin.addListener('purchaseCompleted', (result: Purchase | any) => {
+              if (result && result.purchaseState === 'PURCHASED') {
+                  handleSuccessfulPurchase(result as Purchase);
+              }
+            });
+            plugin.addListener('purchaseFailed', (error: any) => {
+              console.error('Global listener: Purchase failed', error);
+            });
+            billingInstance = plugin;
+        } catch(err) {
+            console.error("Failed to initialize Capacitor Billing plugin, using mock.", err);
+            billingInstance = {
+                initialize: async () => {},
+                queryProducts: async () => ({ products: [] }),
+                purchase: async (options) => {
+                    console.error(`Capacitor Billing not initialized. Cannot purchase ${options.productId}.`);
+                },
+                checkSubscriptions: async () => ({ activeSubscriptions: [] }),
+                addListener: async () => {}
+            };
+        }
     } else {
-      console.warn('Billing plugin is not native or not available. Using mock implementation.');
-      billingInstance = unavailableBilling;
-      resolve(billingInstance);
+        billingInstance = {
+            initialize: async () => {},
+            queryProducts: async () => ({ products: [] }),
+            purchase: async (options) => {
+                console.error(`Capacitor Billing not available. Cannot purchase ${options.productId}.`);
+            },
+            checkSubscriptions: async () => ({ activeSubscriptions: [] }),
+            addListener: async () => {}
+        };
     }
+    resolve(billingInstance);
   });
 
   return initializationPromise;
 };
 
-export const getBilling = async (): Promise<BillingPlugin> => {
-    if (billingInstance) {
-        return billingInstance;
+export const purchase = async (options: { productId: string }): Promise<void> => {
+    if (isAndroidInterfaceAvailable()) {
+        console.log(`Attempting purchase via Android interface for product: ${options.productId}`);
+        (window as any).AndroidInterface.startPurchase(options.productId);
+        return;
     }
-    // Eğer başlatma sözü yoksa, yeni bir tane başlat ve onun sonucunu bekle.
-    if (!initializationPromise) {
-        return initializeBilling();
+
+    const billing = await getBilling();
+    if (billing) {
+        await billing.purchase(options);
+    } else {
+        console.error('Billing service is not available.');
+        throw new Error('Billing service is not available.');
     }
-    // Eğer başlatma zaten devam ediyorsa, onun bitmesini bekle.
-    return initializationPromise;
+};
+
+// Initialize on load
+if (typeof window !== 'undefined') {
+    initializeBilling();
 }
