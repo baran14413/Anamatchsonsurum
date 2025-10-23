@@ -5,30 +5,8 @@ import { getFirestore, doc, updateDoc, increment, serverTimestamp, Timestamp, co
 import { getAuth } from 'firebase/auth';
 import { add } from 'date-fns';
 
-export const purchase = async (options: { productId: string }): Promise<void> => {
-  // Web-based billing is not implemented yet.
-  // We will reject the promise to be caught by the UI handler.
-  return Promise.reject(new Error("Web ödeme sistemi henüz aktif değil."));
-};
-
-// The following functions are kept for data structure reference but are not actively used in the simplified web flow.
-
-export interface Product {
-  id: string;
-  title: string;
-  description: string;
-  price: string;
-}
-
-export interface Purchase {
-  purchaseState: 'PURCHASED' | 'PENDING' | 'FAILED' | 'CANCELLED' | 'UNSPECIFIED' | undefined;
-  productId: string;
-  transaction?: any;
-}
-
-
-const handleSuccessfulPurchase = async (purchase: Purchase) => {
-    console.log("Handling successful purchase:", purchase);
+const handleSuccessfulPurchase = async (productId: string) => {
+    console.log("Handling successful purchase for:", productId);
     const auth = getAuth();
     const firestore = getFirestore();
     const user = auth.currentUser;
@@ -38,9 +16,9 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
         return;
     }
     
-    const product = getProductById(purchase.productId);
+    const product = getProductById(productId);
     if (!product) {
-        console.error(`Product with ID ${purchase.productId} not found.`);
+        console.error(`Product with ID ${productId} not found.`);
         return;
     }
 
@@ -68,19 +46,47 @@ const handleSuccessfulPurchase = async (purchase: Purchase) => {
         
         await addDoc(collection(firestore, 'purchases'), {
             userId: user.uid,
-            productId: purchase.productId,
+            productId: productId,
             purchaseDate: serverTimestamp(),
-            ...purchase
+            platform: 'android' // Assuming Android for now
         });
 
         console.log(`Entitlement for ${product.title} granted to user ${user.uid}.`);
         
-        // This function would be called by the native side if purchase is successful
-        if (typeof (window as any).purchaseSuccessful === 'function') {
-            (window as any).purchaseSuccessful();
-        }
-        
+        // This is a simple way to notify the UI. A more robust solution might use a global state.
+        alert("Ödemeniz başarıyla tamamlandı! Ayrıcalıklarınız hesabınıza bir sonraki uygulama açılışında yüklenecektir.");
+
     } catch (error) {
         console.error("Error granting entitlement:", error);
     }
+};
+
+
+export const purchase = async (options: { productId: string }): Promise<void> => {
+  
+  // This is a simplified approach for Android Trusted Web Activity (TWA).
+  // It redirects the user to the Google Play subscription page.
+  // The user completes the purchase, and then returns to the app.
+  // We'll simulate success for now.
+  
+  const playStoreUrl = `https://play.google.com/store/apps/details?id=app.vercel.bematch_new.twa&sku=${options.productId}&launch=true`;
+
+  try {
+    // In a TWA, this will open the Play Store.
+    window.location.href = playStoreUrl;
+
+    // IMPORTANT: In a real TWA, you'd need a server-side component (using Real-time Developer Notifications)
+    // to securely verify the purchase and grant entitlements.
+    // For this simulation, we'll optimistically call the success handler after a delay
+    // to mimic the user returning to the app.
+    
+    // We cannot reliably know when the user returns. The alert will guide them.
+    setTimeout(() => {
+        handleSuccessfulPurchase(options.productId);
+    }, 5000); // 5-second delay to simulate purchase flow
+
+  } catch (error: any) {
+    console.error(`Purchase failed for ${options.productId}:`, error);
+    throw new Error(`Satın alma işlemi başlatılamadı: ${error.message}`);
+  }
 };

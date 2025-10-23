@@ -5,11 +5,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MailCheck, MailWarning, Send } from 'lucide-react';
+import { ArrowLeft, MailCheck, MailWarning, Send, Camera, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Icons } from '@/components/icons';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function VerificationsPage() {
     const router = useRouter();
@@ -61,7 +63,8 @@ export default function VerificationsPage() {
         )
     }
 
-    const isVerified = user?.emailVerified ?? false;
+    const isEmailVerified = user?.emailVerified ?? false;
+    const isPhotoVerified = false; // Placeholder
 
     return (
         <div className="flex h-dvh flex-col">
@@ -76,13 +79,13 @@ export default function VerificationsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                           {isVerified ? <MailCheck className="w-6 h-6 text-green-500" /> : <MailWarning className="w-6 h-6 text-yellow-500" />}
+                           {isEmailVerified ? <MailCheck className="w-6 h-6 text-green-500" /> : <MailWarning className="w-6 h-6 text-yellow-500" />}
                            E-posta Doğrulaması
                         </CardTitle>
                         <CardDescription>Hesabınızın güvenliğini artırmak ve tüm özelliklere erişmek için e-posta adresinizi doğrulayın.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {isVerified ? (
+                        {isEmailVerified ? (
                             <div className="flex items-center gap-3 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
                                 <MailCheck className="h-6 w-6 text-green-600" />
                                 <div className="flex-1">
@@ -116,6 +119,43 @@ export default function VerificationsPage() {
                                         </>
                                     )}
                                 </Button>
+                             </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                           {isPhotoVerified ? <ShieldCheck className="w-6 h-6 text-green-500" /> : <Camera className="w-6 h-6 text-blue-500" />}
+                           Profil Fotoğrafı Doğrulaması
+                        </CardTitle>
+                        <CardDescription>Profilinin gerçekliğini kanıtla ve diğer kullanıcılarda güven oluştur. Mavi tik rozetini kap!</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {isPhotoVerified ? (
+                            <div className="flex items-center gap-3 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
+                                <ShieldCheck className="h-6 w-6 text-green-600" />
+                                <div className="flex-1">
+                                    <p className="font-semibold text-green-800 dark:text-green-300">Profilin Doğrulandı</p>
+                                    <p className="text-sm text-green-600 dark:text-green-400">Profilinde mavi tik rozetin görünüyor.</p>
+                                </div>
+                            </div>
+                        ) : (
+                             <div className="space-y-4">
+                                <div className="flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+                                    <Camera className="h-6 w-6 text-blue-600" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-blue-800 dark:text-blue-300">Profilin Doğrulanmadı</p>
+                                        <p className="text-sm text-blue-600 dark:text-blue-400">Profilini doğrulayarak daha fazla güven kazan.</p>
+                                    </div>
+                                </div>
+                                <Link href="/ayarlar/dogrulamalar/yuz">
+                                    <Button className={cn('bg-blue-500 hover:bg-blue-600')}>
+                                        <Camera className='mr-2 h-4 w-4' />
+                                        Şimdi Doğrula
+                                    </Button>
+                                </Link>
                              </div>
                         )}
                     </CardContent>
