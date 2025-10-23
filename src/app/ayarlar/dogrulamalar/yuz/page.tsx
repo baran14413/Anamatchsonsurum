@@ -116,7 +116,7 @@ export default function FaceVerificationPage() {
                 });
                 toast({
                     title: 'Doğrulama Başarılı!',
-                    description: 'Profiliniz başarıyla doğrulandı. Artık mavi tik rozetine sahipsiniz.',
+                    description: 'Profiliniz başarıyla doğrulandı. Artık kırmızı tik rozetine sahipsiniz.',
                 });
                 router.back();
             } else {
@@ -147,8 +147,12 @@ export default function FaceVerificationPage() {
                 <div className='w-9'></div>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div className="relative w-full max-w-[280px] aspect-[3/4] mb-8">
+            <main className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
+                 <div className="space-y-2">
+                    <h1 className="text-2xl font-bold">Profilini Doğrula</h1>
+                    <p className="text-white/80">Sistemin yapay zeka ile yönetildiğini unutma.</p>
+                </div>
+                <div className="relative w-full max-w-[280px] aspect-[3/4]">
                     <div className="absolute inset-0 flex items-center justify-center">
                          {hasCameraPermission === null && (
                             <Icons.logo className="h-16 w-16 animate-pulse text-white/50" />
@@ -173,15 +177,20 @@ export default function FaceVerificationPage() {
                 </div>
 
                  <Button 
-                    className="h-16 w-16 rounded-full"
-                    size="icon"
+                    className="h-16 rounded-full px-6 text-lg font-bold"
                     onClick={handleVerify}
                     disabled={!hasCameraPermission || isVerifying}
                 >
                     {isVerifying ? (
-                        <Icons.logo className="h-6 w-6 animate-pulse" />
+                        <>
+                            <Icons.logo className="h-6 w-6 animate-pulse mr-3" />
+                            <span>Doğrulama yapılıyor...</span>
+                        </>
                     ) : (
-                        <Camera className="h-7 w-7" />
+                        <>
+                            <Camera className="h-6 w-6 mr-3" />
+                            <span>Doğrula</span>
+                        </>
                     )}
                 </Button>
             </main>
