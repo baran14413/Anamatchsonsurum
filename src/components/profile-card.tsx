@@ -207,7 +207,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
             {profile.images && profile.images.length > 1 && (
                 <>
-                    <div className='absolute top-4 left-2 right-2 flex gap-1 z-30'>
+                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
                         {profile.images.map((_, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
