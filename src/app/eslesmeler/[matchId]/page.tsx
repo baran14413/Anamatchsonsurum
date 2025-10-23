@@ -119,7 +119,7 @@ function ChatPageContent() {
 
     const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
     const [matchData, setMatchData] = useState<DenormalizedMatch | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<(ChatMessage | SystemMessage)[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -185,13 +185,6 @@ function ChatPageContent() {
             const unsub = onSnapshot(matchDataDocRef, (doc) => {
                 const data = doc.exists() ? doc.data() as DenormalizedMatch : null;
                 setMatchData(data);
-                // Mark message as seen when match data is loaded
-                if (data?.lastSystemMessageId && user?.uid && firestore) {
-                    const centralMessageRef = doc(firestore, 'system_messages', data.lastSystemMessageId);
-                    updateDoc(centralMessageRef, {
-                        seenBy: arrayUnion(user.uid)
-                    }).catch(err => console.log("Already marked as seen or error:", err)); // Silently fail
-                }
             });
             unsubs.push(unsub);
         } else if (!isSystemChat) {
@@ -202,8 +195,19 @@ function ChatPageContent() {
         if (messagesQuery) {
             setIsLoading(true);
             const unsub = onSnapshot(messagesQuery, (snapshot) => {
-                const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-                setMessages(fetchedMessages);
+                const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage | SystemMessage));
+                
+                if (isSystemChat) {
+                    const systemMessages = fetchedMessages as SystemMessage[];
+                    setMessages(systemMessages.map(msg => ({
+                        ...msg,
+                        senderId: 'system',
+                        matchId: 'system',
+                    })));
+                } else {
+                     setMessages(fetchedMessages as ChatMessage[]);
+                }
+
                 setIsLoading(false);
             }, (error) => {
                 console.error("Error fetching messages:", error);
@@ -216,7 +220,7 @@ function ChatPageContent() {
         
         return () => unsubs.forEach(unsub => unsub());
 
-    }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat, user, firestore]);
+    }, [otherUserDocRef, matchDataDocRef, messagesQuery, isSystemChat]);
 
 
     // Effect to mark messages as read by resetting the unread count.
@@ -235,6 +239,14 @@ function ChatPageContent() {
                     }
                     if (data.hasUnreadSystemMessage) {
                         updatePayload.hasUnreadSystemMessage = false;
+                        // Also mark the central message as seen by this user
+                        const systemMessages = messages.filter(m => m.senderId === 'system');
+                        const batch = writeBatch(firestore);
+                        systemMessages.forEach(msg => {
+                             const centralMessageRef = doc(firestore, 'system_messages', msg.id);
+                             batch.update(centralMessageRef, { seenBy: arrayUnion(user.uid) });
+                        })
+                        await batch.commit().catch(err => console.log("Already seen or error:", err));
                     }
 
                     if (Object.keys(updatePayload).length > 0) {
@@ -247,7 +259,7 @@ function ChatPageContent() {
         };
 
         markAsRead();
-    }, [firestore, user, matchId, messages]); // Rerunning on messages ensures it runs after new messages are loaded.
+    }, [firestore, user, matchId, messages]);
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -689,39 +701,7 @@ function ChatPageContent() {
         const ageDate = new Date(Date.now() - birthday.getTime());
         return Math.abs(ageDate.getUTCFullYear() - 1970);
     };
-
-    const handleCheckPremiumStatus = () => {
-        if (!userProfile) return;
     
-        let statusText = '';
-        if (userProfile.membershipType === 'gold') {
-            if (userProfile.goldMembershipExpiresAt) {
-                 try {
-                    const expiryDate = userProfile.goldMembershipExpiresAt.toDate();
-                    statusText = `Gold üyeliğiniz ${format(expiryDate, "d MMMM yyyy 'tarihine kadar geçerlidir'", { locale: tr })}.`;
-                } catch (e) {
-                    statusText = 'Kalıcı Gold üyeliğiniz bulunmaktadır.';
-                }
-            } else {
-                statusText = 'Kalıcı Gold üyeliğiniz bulunmaktadır.';
-            }
-        } else {
-            statusText = "Şu anda Gold üyeliğiniz bulunmamaktadır. Marketi ziyaret ederek Gold ayrıcalıklarından yararlanabilirsiniz.";
-        }
-    
-        const statusMessage: ChatMessage = {
-            id: `status-check-${Date.now()}`,
-            matchId: 'system',
-            senderId: 'system',
-            text: statusText,
-            timestamp: new Date(),
-            type: 'user', // Render as a normal message bubble
-        };
-    
-        // Add to local state to display instantly, without writing to DB
-        setMessages(prev => [...prev, statusMessage]);
-    };
-
     const isSuperLikePendingAndIsRecipient = !isSystemChat && matchData?.status === 'superlike_pending' && matchData?.superLikeInitiator !== user?.uid;
     const canSendMessage = !isSystemChat && matchData?.status === 'matched' && otherUser !== null;
     const showSendButton = newMessage.trim() !== '' && !editingMessage;
@@ -941,7 +921,7 @@ function ChatPageContent() {
                  {isSystemChat && (
                     <div className="p-4 mb-4 text-center rounded-lg bg-muted">
                         <p className="text-sm text-muted-foreground">
-                            Burası BeMatch ekibinden gelen resmi duyuruları ve anketleri bulabileceğin yerdir.
+                            Burası BeMatch ekibinden gelen resmi duyuruları bulabileceğin yerdir.
                         </p>
                         <div className="mt-4 flex flex-wrap justify-center gap-2">
                              <Button asChild variant="link">
@@ -950,15 +930,12 @@ function ChatPageContent() {
                             <Button asChild variant="link">
                                 <Link href="/privacy"><Shield className="mr-2 h-4 w-4" />Gizlilik Politikası</Link>
                             </Button>
-                            <Button asChild variant="link">
-                                <Link href="/cookies"><File className="mr-2 h-4 w-4" />Topluluk Kuralları</Link>
-                            </Button>
                         </div>
                     </div>
                 )}
                 <div className="space-y-1">
                     {messages.map((message, index) => {
-                        const isSender = message.senderId === user?.uid;
+                        const isSender = 'senderId' in message && message.senderId === user?.uid;
                         const isSystemGenerated = message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
@@ -977,11 +954,13 @@ function ChatPageContent() {
                                 </div>
                             );
                         }
+                        
+                        const chatMessage = message as ChatMessage;
 
-                        if (message.type === 'view-once-viewed') {
+                        if (chatMessage.type === 'view-once-viewed') {
                             return (
-                                <div key={message.id}>
-                                    {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                                <div key={chatMessage.id}>
+                                    {renderTimestampLabel(chatMessage.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                         {!isSender && (
                                             <Avatar className="h-8 w-8 self-end mb-1">
@@ -999,8 +978,8 @@ function ChatPageContent() {
                                             <span>Açıldı</span>
                                         </div>
                                         <div className="flex items-center gap-1.5 self-end">
-                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
-                                            {isSender && renderMessageStatus(message, isSender)}
+                                            <span className="text-xs shrink-0">{chatMessage.timestamp?.toDate ? format(chatMessage.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(chatMessage, isSender)}
                                         </div>
                                     </div>
                                 </div>
@@ -1009,8 +988,8 @@ function ChatPageContent() {
 
 
                         return (
-                            <div key={message.id}>
-                                {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
+                            <div key={chatMessage.id}>
+                                {renderTimestampLabel(chatMessage.timestamp, prevMessage?.timestamp)}
                                 <div className={cn("flex items-end gap-2 group", isSender ? "justify-end" : "justify-start")}>
                                     {!isSender && (
                                         <Avatar className="h-8 w-8 self-end mb-1">
@@ -1020,48 +999,48 @@ function ChatPageContent() {
                                     )}
                                     {isSender && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(message)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                                            {message.text && !message.imageUrl && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(message)}><Pencil className="w-4 h-4" /></Button>}
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setDeletingMessage(chatMessage)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                                            {chatMessage.text && !chatMessage.imageUrl && <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleStartEditMessage(chatMessage)}><Pencil className="w-4 h-4" /></Button>}
                                         </div>
                                     )}
                                     <div
                                         className={cn(
                                             "max-w-[70%] rounded-2xl flex flex-col items-end",
                                             isSender ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none",
-                                            message.type === 'view-once' ? 'p-0' : (message.imageUrl ? 'p-1.5' : 'px-3 py-2'),
-                                            message.audioUrl && 'p-2 w-[250px]'
+                                            chatMessage.type === 'view-once' ? 'p-0' : (chatMessage.imageUrl ? 'p-1.5' : 'px-3 py-2'),
+                                            chatMessage.audioUrl && 'p-2 w-[250px]'
                                         )}
                                     >
-                                        {message.type === 'view-once' ? (
+                                        {chatMessage.type === 'view-once' ? (
                                             <button
                                                 className={cn(
                                                     "flex items-center gap-3 p-3 rounded-2xl w-[180px]",
                                                     isSender ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
                                                     (isSender) && "cursor-not-allowed"
                                                 )}
-                                                onClick={() => isSender ? null : handleOpenViewOnce(message)}
+                                                onClick={() => isSender ? null : handleOpenViewOnce(chatMessage)}
                                             >
                                                 <History className="w-6 h-6 text-green-400" />
                                                 <span className="font-medium text-base">{isSender ? "Fotoğraf Gönderildi" : "Fotoğraf"}</span>
                                             </button>
-                                        ) : message.imageUrl ? (
-                                            <Image src={message.imageUrl} alt={message.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
+                                        ) : chatMessage.imageUrl ? (
+                                            <Image src={chatMessage.imageUrl} alt={chatMessage.text || "Gönderilen fotoğraf"} width={200} height={200} className="rounded-xl w-full h-auto" />
                                         ) : null }
 
-                                        {message.text && message.type !== 'view-once' && (
+                                        {chatMessage.text && chatMessage.type !== 'view-once' && (
                                         <p className={cn('break-words text-left w-full', 
-                                            message.imageUrl && 'px-2 pb-1 pt-2'
+                                            chatMessage.imageUrl && 'px-2 pb-1 pt-2'
                                         )}>
-                                            {message.text}
+                                            {chatMessage.text}
                                         </p>
                                         )}
-                                        {message.audioUrl && (
-                                            <AudioPlayer src={message.audioUrl} />
+                                        {chatMessage.audioUrl && (
+                                            <AudioPlayer src={chatMessage.audioUrl} />
                                         )}
-                                        <div className={cn("flex items-center gap-1.5 self-end", !message.imageUrl && !message.audioUrl && message.type !== 'view-once' && '-mb-1', message.imageUrl && message.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
-                                            {message.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
-                                            <span className="text-xs shrink-0">{message.timestamp?.toDate ? format(message.timestamp.toDate(), 'HH:mm') : ''}</span>
-                                            {isSender && renderMessageStatus(message, isSender)}
+                                        <div className={cn("flex items-center gap-1.5 self-end", !chatMessage.imageUrl && !chatMessage.audioUrl && chatMessage.type !== 'view-once' && '-mb-1', chatMessage.imageUrl && chatMessage.type !== 'view-once' && 'pr-1.5 pb-0.5')}>
+                                            {chatMessage.isEdited && <span className="text-xs opacity-70">(düzenlendi)</span>}
+                                            <span className="text-xs shrink-0">{chatMessage.timestamp?.toDate ? format(chatMessage.timestamp.toDate(), 'HH:mm') : ''}</span>
+                                            {isSender && renderMessageStatus(chatMessage, isSender)}
                                         </div>
                                     </div>
                                 </div>
@@ -1072,14 +1051,7 @@ function ChatPageContent() {
                 <div ref={messagesEndRef} />
             </main>
             
-            {isSystemChat ? (
-                 <footer className="sticky bottom-0 z-10 border-t bg-background p-4 flex flex-col gap-2">
-                    <Button onClick={handleCheckPremiumStatus}>
-                        <Crown className="mr-2 h-4 w-4" />
-                        Premium Durumumu Kontrol Et
-                    </Button>
-                </footer>
-            ) : canSendMessage ? (
+            {isSystemChat ? null : canSendMessage ? (
             <footer className="sticky bottom-0 z-10 border-t bg-background p-2">
                 {recordingStatus === 'idle' && (
                     <form onSubmit={handleFormSubmit} className="flex items-center gap-2">

@@ -37,7 +37,6 @@ function EslesmelerPageContent() {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, `users/${user.uid}/matches`),
-        where('status', '==', 'matched'),
         orderBy('timestamp', 'desc')
     );
   }, [user, firestore]);
@@ -69,16 +68,16 @@ function EslesmelerPageContent() {
 
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
-    // Temporarily, we will also show system chat here if it exists.
-    // A more robust solution might handle this differently.
+    
+    const realMatches = matches.filter(m => m.id !== 'system' && m.status === 'matched');
+    const pendingSuperLikes = matches.filter(m => m.status === 'superlike_pending' && m.superLikeInitiator !== user?.uid);
     const systemMatch = matches.find(m => m.id === 'system');
-    const otherMatches = matches.filter(m => m.id !== 'system' && (!searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())));
 
-    // If there is a system message, it should always be at the top.
-    // The query already orders by timestamp, so we prepend the system match if it exists.
-    // This logic might need refinement based on desired UX for system messages.
-    return systemMatch ? [systemMatch, ...otherMatches] : otherMatches;
-  }, [matches, searchTerm]);
+    const searchFiltered = [...pendingSuperLikes, ...realMatches]
+        .filter(m => !searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+    return systemMatch ? [systemMatch, ...searchFiltered] : searchFiltered;
+  }, [matches, searchTerm, user?.uid]);
 
   const handleDeleteChat = async () => {
     if (!chatToInteract || !user || !firestore) return;
@@ -194,7 +193,7 @@ function EslesmelerPageContent() {
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
                                 const profilePictureUrl = match.profilePicture;
-
+                                const isPendingSuperlike = match.status === 'superlike_pending';
 
                                 const MatchItemContent = () => (
                                     <div className="flex items-center p-4 hover:bg-muted/50">
@@ -203,15 +202,20 @@ function EslesmelerPageContent() {
                                                 {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={profilePictureUrl} />)}
                                                 <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
                                             </Avatar>
-                                            {hasUnread && (
+                                            {hasUnread && !isPendingSuperlike && (
                                                 <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-background" />
+                                            )}
+                                            {isPendingSuperlike && (
+                                                 <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 ring-2 ring-background">
+                                                    <Star className='h-3 w-3 text-white fill-white' />
+                                                 </span>
                                             )}
                                         </div>
                                         <div className="ml-4 flex-1 overflow-hidden">
                                             <div className="flex justify-between items-center">
                                                 <h3 className={cn("font-semibold flex items-center gap-1.5 truncate", hasUnread && "text-foreground")}>
                                                   {isUserDeleted ? 'Kullanıcı Bulunamadı' : match.fullName}
-                                                  {match.isSuperLike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+                                                  {match.isSuperLike && !isPendingSuperlike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
                                                 </h3>
                                                 {match.timestamp && (
                                                     <p className="text-xs text-muted-foreground shrink-0 pl-2">
@@ -220,13 +224,18 @@ function EslesmelerPageContent() {
                                                 )}
                                             </div>
                                             <p className={cn("text-sm truncate", hasUnread && "text-foreground font-medium", "text-muted-foreground")}>
-                                                {match.lastMessage}
+                                                {isPendingSuperlike ? <span className='font-bold text-blue-600 dark:text-blue-400'>Sana Super Like gönderdi!</span> : match.lastMessage}
                                             </p>
                                         </div>
+                                         {isPendingSuperlike && (
+                                            <Button size="sm" onClick={(e) => handleAcceptSuperLike(e, match)} className='ml-2 shrink-0 bg-green-500 hover:bg-green-600'>
+                                                <Check className='mr-1 h-4 w-4'/> Eşleş
+                                            </Button>
+                                        )}
                                     </div>
                                 );
                                 
-                                const isClickable = !isUserDeleted;
+                                const isClickable = !isUserDeleted && !isPendingSuperlike;
 
                                 return (
                                     <motion.div
@@ -249,7 +258,7 @@ function EslesmelerPageContent() {
                                                 <MatchItemContent />
                                             </Link>
                                         ) : (
-                                            <div className="cursor-not-allowed opacity-70">
+                                            <div className={cn("relative", !isPendingSuperlike && "cursor-not-allowed opacity-70")}>
                                                 <MatchItemContent />
                                             </div>
                                         )}
