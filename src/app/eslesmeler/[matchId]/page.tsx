@@ -197,16 +197,7 @@ function ChatPageContent() {
             const unsub = onSnapshot(messagesQuery, (snapshot) => {
                 const fetchedMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage | SystemMessage));
                 
-                if (isSystemChat) {
-                    const systemMessages = fetchedMessages as SystemMessage[];
-                    setMessages(systemMessages.map(msg => ({
-                        ...msg,
-                        senderId: 'system',
-                        matchId: 'system',
-                    })));
-                } else {
-                     setMessages(fetchedMessages as ChatMessage[]);
-                }
+                setMessages(fetchedMessages);
 
                 setIsLoading(false);
             }, (error) => {
@@ -233,22 +224,28 @@ function ChatPageContent() {
                 const docSnap = await getDoc(userMatchRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    const updatePayload: { unreadCount?: number; hasUnreadSystemMessage?: boolean } = {};
-                    if (data.unreadCount > 0) {
-                        updatePayload.unreadCount = 0;
-                    }
-                    if (data.hasUnreadSystemMessage) {
-                        updatePayload.hasUnreadSystemMessage = false;
-                        // Also mark the central message as seen by this user
-                        const systemMessages = messages.filter(m => m.senderId === 'system');
-                        const batch = writeBatch(firestore);
-                        systemMessages.forEach(msg => {
-                             const centralMessageRef = doc(firestore, 'system_messages', msg.id);
-                             batch.update(centralMessageRef, { seenBy: arrayUnion(user.uid) });
-                        })
-                        await batch.commit().catch(err => console.log("Already seen or error:", err));
-                    }
+                    let updatePayload: { [key: string]: any } = {};
 
+                    if (isSystemChat) {
+                        if (data.hasUnreadSystemMessage) {
+                            updatePayload.hasUnreadSystemMessage = false;
+                            
+                            const systemMessageIds = messages.map(m => m.id);
+                            if (systemMessageIds.length > 0) {
+                                const batch = writeBatch(firestore);
+                                systemMessageIds.forEach(msgId => {
+                                    const centralMessageRef = doc(firestore, 'system_messages', msgId);
+                                    batch.update(centralMessageRef, { seenBy: arrayUnion(user.uid) });
+                                });
+                                await batch.commit().catch(err => console.log("System message seen update error:", err));
+                            }
+                        }
+                    } else {
+                        if (data.unreadCount && data.unreadCount > 0) {
+                            updatePayload.unreadCount = 0;
+                        }
+                    }
+                    
                     if (Object.keys(updatePayload).length > 0) {
                         await updateDoc(userMatchRef, updatePayload);
                     }
@@ -259,7 +256,7 @@ function ChatPageContent() {
         };
 
         markAsRead();
-    }, [firestore, user, matchId, messages]);
+    }, [firestore, user, matchId, messages, isSystemChat]);
     
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -936,11 +933,11 @@ function ChatPageContent() {
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = 'senderId' in message && message.senderId === user?.uid;
-                        const isSystemGenerated = message.senderId === 'system';
+                        const isSystemGenerated = 'senderId' in message && message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
-                        if (isSystemGenerated) {
-                            return (
+                        if (isSystemChat && 'text' in message) {
+                             return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group justify-start")}>
