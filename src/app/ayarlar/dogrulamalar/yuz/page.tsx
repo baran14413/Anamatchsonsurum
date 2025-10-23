@@ -160,6 +160,7 @@ export default function FaceVerificationPage() {
                 <div className="w-full max-w-sm text-center">
                     <h2 className="text-2xl font-bold">Kameraya Bak</h2>
                     <p className="text-muted-foreground">Yüzünü çerçevenin içine ortala ve hazır olduğunda butona bas.</p>
+                     <p className="text-xs text-muted-foreground mt-2">Doğrulama sistemi yapay zeka ile yönetilmektedir.</p>
                 </div>
                 
                 <Card className="w-full max-w-sm overflow-hidden">

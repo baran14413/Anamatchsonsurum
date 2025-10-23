@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -15,6 +16,8 @@ import { Progress } from "@/components/ui/progress";
 import type { UserImage } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Shield } from 'lucide-react';
 
 type ImageSlot = {
     file: File | null;
@@ -237,6 +240,12 @@ export default function GalleryPage() {
                     <p className="text-muted-foreground text-sm mb-4">
                         {isOnboarding ? "Harika bir profil için ilk adımı at! Profilinde göstereceğin fotoğrafları ekle." : "Profilinde göstereceğin fotoğrafları yönet. En az 1, en fazla 10 fotoğraf ekleyebilirsin."}
                     </p>
+                    <Alert className="mb-4">
+                        <Shield className="h-4 w-4" />
+                        <AlertDescription>
+                        Yüklediğiniz ilk fotoğraf, daha sonra sizin olduğunuzu doğrulamak için kullanılacaktır.
+                        </AlertDescription>
+                    </Alert>
                     <div className="space-y-2">
                         <Progress value={(uploadedImageCount / 10) * 100} className="h-2" />
                         <p className="text-sm font-medium text-muted-foreground text-right">{uploadedImageCount} / 10</p>
