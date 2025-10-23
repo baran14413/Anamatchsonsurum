@@ -423,7 +423,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start pb-28">
+        <div className="absolute inset-0 mt-0 pb-24 flex justify-center">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
@@ -494,3 +494,4 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
