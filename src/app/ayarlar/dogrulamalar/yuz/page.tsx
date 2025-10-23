@@ -39,6 +39,7 @@ export default function FaceVerificationPage() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
 
@@ -47,6 +48,7 @@ export default function FaceVerificationPage() {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             setHasCameraPermission(true);
+            streamRef.current = stream;
     
             if (videoRef.current) {
               videoRef.current.srcObject = stream;
@@ -65,9 +67,8 @@ export default function FaceVerificationPage() {
         getCameraPermission();
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
         }
       }, [toast]);
@@ -83,6 +84,15 @@ export default function FaceVerificationPage() {
         return canvas.toDataURL('image/jpeg');
     };
 
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+    };
+
     const handleVerify = async () => {
         if (!videoRef.current || !hasCameraPermission || !userProfile?.profilePicture || !user || !firestore) {
             toast({
@@ -93,14 +103,15 @@ export default function FaceVerificationPage() {
             return;
         }
 
-        setIsVerifying(true);
         const cameraFrameDataUri = captureFrame();
 
         if (!cameraFrameDataUri) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Kamera görüntüsü alınamadı.' });
-            setIsVerifying(false);
             return;
         }
+        
+        setIsVerifying(true);
+        stopCamera();
 
         try {
             const profileImageDataUri = await toDataURL(userProfile.profilePicture);
@@ -116,15 +127,16 @@ export default function FaceVerificationPage() {
                 });
                 toast({
                     title: 'Doğrulama Başarılı!',
-                    description: 'Profiliniz başarıyla doğrulandı. Artık kırmızı tik rozetine sahipsiniz.',
+                    description: 'Profiliniz başarıyla doğrulandı. Artık mavi tik rozetine sahipsiniz.',
                 });
                 router.back();
             } else {
                 toast({
                     variant: 'destructive',
                     title: 'Doğrulama Başarısız',
-                    description: 'Profil fotoğrafınızla yüzünüz eşleşmedi. Lütfen daha net bir poz deneyin.',
+                    description: `Yüzünüz profil fotoğrafınızla eşleşmedi. (${result.reason}) Lütfen daha net bir poz deneyin.`,
                 });
+                router.back(); // Also navigate back on failure
             }
         } catch (error) {
             console.error("Yüz doğrulama hatası:", error);
@@ -133,8 +145,7 @@ export default function FaceVerificationPage() {
                 title: 'Bir Hata Oluştu',
                 description: 'Yapay zeka doğrulaması sırasında bir sorun yaşandı. Lütfen tekrar deneyin.',
             });
-        } finally {
-            setIsVerifying(false);
+            router.back();
         }
     };
 
@@ -148,16 +159,16 @@ export default function FaceVerificationPage() {
             </header>
 
             <main className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8">
-                 <div className="space-y-2">
-                    <h1 className="text-2xl font-bold">Profilini Doğrula</h1>
-                    <p className="text-white/80">Sistemin yapay zeka ile yönetildiğini unutma.</p>
-                </div>
                 <div className="relative w-full max-w-[280px] aspect-[3/4]">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                         {hasCameraPermission === null && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 rounded-[48px]">
+                         {isVerifying ? (
+                            <div className="flex flex-col items-center gap-4 text-white/80">
+                                <Icons.logo className="h-16 w-16 animate-pulse" />
+                                <span className='font-semibold'>Doğrulanıyor...</span>
+                            </div>
+                         ) : hasCameraPermission === null ? (
                             <Icons.logo className="h-16 w-16 animate-pulse text-white/50" />
-                         )}
-                         {hasCameraPermission === false && (
+                         ) : hasCameraPermission === false ? (
                             <Alert variant="destructive" className="bg-red-900/80 border-red-500 text-white">
                                 <AlertTriangle className="h-4 w-4 text-red-400" />
                                 <AlertTitle>Kamera Erişimi Gerekli</AlertTitle>
@@ -165,35 +176,30 @@ export default function FaceVerificationPage() {
                                     Lütfen bu özelliği kullanmak için kamera erişimine izin verin.
                                 </AlertDescription>
                             </Alert>
+                         ) : (
+                             <video 
+                                ref={videoRef} 
+                                className="h-full w-full object-cover scale-x-[-1] rounded-[48px]" // Flip horizontally and apply oval shape
+                                autoPlay 
+                                muted 
+                                playsInline 
+                             />
                          )}
-                         <video 
-                            ref={videoRef} 
-                            className="h-full w-full object-cover scale-x-[-1] rounded-[48%]" // Flip horizontally and apply oval shape
-                            autoPlay 
-                            muted 
-                            playsInline 
-                         />
                     </div>
                 </div>
 
-                 <Button 
-                    className="h-16 rounded-full px-6 text-lg font-bold"
-                    onClick={handleVerify}
-                    disabled={!hasCameraPermission || isVerifying}
-                >
-                    {isVerifying ? (
-                        <>
-                            <Icons.logo className="h-6 w-6 animate-pulse mr-3" />
-                            <span>Doğrulama yapılıyor...</span>
-                        </>
-                    ) : (
-                        <>
-                            <Camera className="h-6 w-6 mr-3" />
-                            <span>Doğrula</span>
-                        </>
-                    )}
-                </Button>
+                 {!isVerifying && (
+                    <Button 
+                        className="h-20 w-20 rounded-full"
+                        size="icon"
+                        onClick={handleVerify}
+                        disabled={!hasCameraPermission}
+                    >
+                        <Camera className="h-8 w-8" />
+                    </Button>
+                )}
             </main>
         </div>
     );
 }
+
