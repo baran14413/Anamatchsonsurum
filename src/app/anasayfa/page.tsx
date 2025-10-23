@@ -15,7 +15,7 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import { Undo } from 'lucide-react';
+import { Undo, Heart, X as XIcon, Star } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -415,9 +415,15 @@ function AnasayfaPageContent() {
   
   const topCard = profiles.length > 0 ? profiles[profiles.length - 1] : null;
 
+  const handleActionClick = (direction: 'left' | 'right' | 'up') => {
+    if (topCard) {
+      handleSwipe(topCard, direction);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start pb-6">
+        <div className="relative flex-1 w-full flex flex-col justify-start pb-28">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
@@ -461,6 +467,20 @@ function AnasayfaPageContent() {
                     )}
                 </AnimatePresence>
              </div>
+
+             {topCard && (
+                 <div className="absolute bottom-4 left-0 right-0 z-50 flex justify-center items-center gap-4">
+                    <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+                        <XIcon className="w-8 h-8 text-red-500" strokeWidth={3} />
+                    </Button>
+                    <Button onClick={() => handleActionClick('up')} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+                        <Star className="w-6 h-6 text-blue-500" fill="currentColor"/>
+                    </Button>
+                    <Button onClick={() => handleActionClick('right')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+                        <Heart className="w-8 h-8 text-green-500" fill="currentColor"/>
+                    </Button>
+                </div>
+             )}
         </div>
     </div>
   );
