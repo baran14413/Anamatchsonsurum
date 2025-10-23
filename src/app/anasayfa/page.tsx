@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -423,7 +422,7 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start px-4 pb-6">
+        <div className="relative flex-1 w-full flex flex-col justify-start pb-28">
             {topCard ? (
                  <AnimatePresence>
                     {profiles.map((profile, index) => {
@@ -494,4 +493,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
