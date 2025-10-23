@@ -197,6 +197,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             )}
             
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
             {isNewUser && (
                 <Badge className="absolute top-10 left-4 z-20 bg-blue-500 text-white border-blue-500">
@@ -222,7 +223,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
             <Sheet>
                 <div
-                    className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
+                    className="absolute bottom-0 left-0 right-0 p-4 pb-6 text-white z-20"
                 >
                     <div className="space-y-2">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
@@ -285,8 +286,8 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                             </CarouselItem>
                                         ))}
                                     </CarouselContent>
-                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1:2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1:2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
                                 </Carousel>
                             )}
                             
