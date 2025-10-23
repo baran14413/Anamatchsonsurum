@@ -53,7 +53,6 @@ const handleSuccessfulPurchase = async (productId: string) => {
 
         console.log(`Entitlement for ${product.title} granted to user ${user.uid}.`);
         
-        // This is a simple way to notify the UI. A more robust solution might use a global state.
         alert("Ödemeniz başarıyla tamamlandı! Ayrıcalıklarınız hesabınıza bir sonraki uygulama açılışında yüklenecektir.");
 
     } catch (error) {
@@ -63,27 +62,18 @@ const handleSuccessfulPurchase = async (productId: string) => {
 
 
 export const purchase = async (options: { productId: string }): Promise<void> => {
-  
-  // This is a simplified approach for Android Trusted Web Activity (TWA).
-  // It redirects the user to the Google Play subscription page.
-  // The user completes the purchase, and then returns to the app.
-  // We'll simulate success for now.
-  
   const playStoreUrl = `https://play.google.com/store/apps/details?id=app.vercel.bematch_new.twa&sku=${options.productId}&launch=true`;
 
   try {
-    // In a TWA, this will open the Play Store.
+    // This will open the Play Store in a TWA context.
     window.location.href = playStoreUrl;
 
-    // IMPORTANT: In a real TWA, you'd need a server-side component (using Real-time Developer Notifications)
-    // to securely verify the purchase and grant entitlements.
-    // For this simulation, we'll optimistically call the success handler after a delay
-    // to mimic the user returning to the app.
-    
-    // We cannot reliably know when the user returns. The alert will guide them.
+    // This is a simulation. In a real TWA, a server with Real-time Developer Notifications
+    // is needed to securely verify purchases and grant entitlements. We will use a timeout
+    // and an alert to guide the user for this simulation.
     setTimeout(() => {
         handleSuccessfulPurchase(options.productId);
-    }, 5000); // 5-second delay to simulate purchase flow
+    }, 5000); 
 
   } catch (error: any) {
     console.error(`Purchase failed for ${options.productId}:`, error);

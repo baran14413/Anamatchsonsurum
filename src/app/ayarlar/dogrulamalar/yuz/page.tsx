@@ -13,30 +13,18 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { verifyFace } from '@/ai/flows/verify-face-flow';
 import { doc, updateDoc } from 'firebase/firestore';
 
-// Helper function to convert a data URL to a Blob
-const dataURLtoBlob = (dataurl: string) => {
-    const arr = dataurl.split(',');
-    if (arr.length < 2) return null;
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) return null;
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-};
-
 // Helper function to fetch and convert an image URL to a data URI via a server-side proxy
 const toDataURL = async (url: string): Promise<string> => {
     try {
         const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
         if (!response.ok) {
-            throw new Error(`Failed to fetch image via proxy: ${response.statusText}`);
+            const errorBody = await response.text();
+            throw new Error(`Proxy fetch failed with status ${response.status}: ${errorBody}`);
         }
         const { dataUri } = await response.json();
+        if (!dataUri) {
+            throw new Error("Proxy response did not include dataUri.");
+        }
         return dataUri;
     } catch (error) {
         console.error("Error fetching image via proxy:", error);
@@ -159,14 +147,8 @@ export default function FaceVerificationPage() {
                 <div className='w-9'></div>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-between p-8 pt-24 text-center">
-                <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">Profilini Doğrula</h1>
-                    <p className="text-white/80">Yüzünü aşağıdaki oval çerçevenin içine ortala.</p>
-                     <p className="text-xs text-white/60 mt-2">Doğrulama sistemi yapay zeka ile yönetilmektedir.</p>
-                </div>
-                
-                <div className="relative w-full max-w-[280px] aspect-[3/4]">
+            <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div className="relative w-full max-w-[280px] aspect-[3/4] mb-8">
                     <div className="absolute inset-0 flex items-center justify-center">
                          {hasCameraPermission === null && (
                             <Icons.logo className="h-16 w-16 animate-pulse text-white/50" />
