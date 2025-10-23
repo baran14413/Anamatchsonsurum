@@ -28,7 +28,7 @@ Online tanışma uygulamaları pazarı, 2023 itibarıyla küresel olarak **8 mil
 Rakiplerimiz genellikle eski teknolojiler üzerine kurulu iken, BeMatch en güncel ve ölçeklenebilir teknolojiler üzerine inşa edilmiştir:
 *   **Altyapı:** **Next.js** ve **React** ile oluşturulmuş, olağanüstü hızlı, SEO dostu ve modern bir web altyapısı.
 *   **Backend ve Veritabanı:** **Google Firebase**'in sunduğu **Firestore** veritabanı sayesinde, milyonlarca kullanıcıya anlık veri akışı sağlayabilen, son derece güvenli ve ölçeklenebilir bir backend mimarisi.
-*   **Yapay Zeka:** **Google Gemini AI** ve **Genkit** entegrasyonu ile sadece eşleşme algoritmalarımızı değil, aynı zamanda sohbet önerileri ve sahte profil tespiti gibi kritik güvenlik katmanlarımızı da sürekli olarak daha akıllı hale getiriyoruz.
+*   **Yapay Zeka:** **Google Gemini AI** ve **Genkit** entegrasyonu ile sadece eşleşme algoritmalarımızı ve sahte profil tespitini değil, aynı zamanda **hiper-gerçekçi bot sohbetleri** gibi özelliklerle kullanıcı etkileşimini zirveye taşıma potansiyeline sahibiz. Bu teknoloji, botlarımızın sadece hazır cevaplar vermek yerine, her kullanıcıya özel, bağlama uygun ve doğal sohbetler geliştirmesini sağlayarak platformdaki canlılığı ve kullanıcı bağlılığını artıracaktır.
 
 Bu teknoloji yığını, bize rakiplerimizden daha hızlı özellik geliştirme, daha düşük operasyonel maliyet ve daha üstün bir kullanıcı deneyimi sunma imkanı tanımaktadır.
 
@@ -57,10 +57,11 @@ Gelir modelimiz, kullanıcı deneyimini asla kesintiye uğratmadan, onlara katma
 
 Sürekli gelişim DNA'mızda var. İşte BeMatch'in geleceğine yön verecek adımlardan bazıları:
 
-1.  **Dinamik Profiller (2025 Q1):** Statik fotoğrafların yerini, kullanıcıların karakterini yansıtan kısa **video profiller** ve **hikayeler** alacak.
-2.  **Gerçek Dünya Etkileşimleri (2025 Q2):** Kullanıcıları, ortak ilgi alanlarına yönelik **gerçek hayattaki etkinliklerde** (konser, atölye vb.) buluşturarak dijital ve fiziksel dünya arasında köprü kuracağız.
-3.  **Hiper-Kişiselleştirilmiş Eşleşme (2025 Q3):** **Gemini AI** ile güçlendirilmiş algoritmamız, iletişim tarzlarını ve kişilik özelliklerini analiz ederek ruh eşi hassasiyetinde öneriler sunacak.
-4.  **Global Mod ve Entegrasyonlar (2025 Q4):** Farklı kültürlerden insanları bir araya getiren ve dil bariyerini yapay zeka çevirisiyle ortadan kaldıran bir platform haline geleceğiz.
+1.  **Hiper-Gerçekçi Akıllı Botlar (2024 Q4):** Mevcut bot altyapımızı **Google Gemini** ile güçlendirerek, kullanıcılarla dinamik, akıllı ve bağlama duyarlı sohbetler kurabilen yapay zeka ajanları oluşturmak. Bu, yeni kullanıcıların platforma adaptasyonunu hızlandıracak ve genel etkileşimi artıracaktır.
+2.  **Dinamik Profiller (2025 Q1):** Statik fotoğrafların yerini, kullanıcıların karakterini yansıtan kısa **video profiller** ve **hikayeler** alacak.
+3.  **Gerçek Dünya Etkileşimleri (2025 Q2):** Kullanıcıları, ortak ilgi alanlarına yönelik **gerçek hayattaki etkinliklerde** (konser, atölye vb.) buluşturarak dijital ve fiziksel dünya arasında köprü kuracağız.
+4.  **Hiper-Kişiselleştirilmiş Eşleşme (2025 Q3):** **Gemini AI** ile güçlendirilmiş algoritmamız, iletişim tarzlarını ve kişilik özelliklerini analiz ederek ruh eşi hassasiyetinde öneriler sunacak.
+5.  **Global Mod ve Entegrasyonlar (2025 Q4):** Farklı kültürlerden insanları bir araya getiren ve dil bariyerini yapay zeka çevirisiyle ortadan kaldıran bir platform haline geleceğiz.
 
 #### **Ekip**
 
