@@ -151,57 +151,55 @@ export default function FaceVerificationPage() {
     };
 
     return (
-        <div className="flex h-dvh flex-col">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isVerifying}>
+        <div className="flex h-dvh flex-col bg-black text-white">
+             <header className="absolute top-0 left-0 right-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 bg-transparent px-4">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isVerifying} className="bg-black/30 hover:bg-black/50 text-white hover:text-white rounded-full">
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <h1 className="text-lg font-semibold">Yüz Doğrulama</h1>
                 <div className='w-9'></div>
             </header>
-            <main className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center space-y-6">
-                <div className="w-full max-w-sm text-center">
-                    <h2 className="text-2xl font-bold">Kameraya Bak</h2>
-                    <p className="text-muted-foreground">Yüzünü çerçevenin içine ortala ve hazır olduğunda butona bas.</p>
-                     <p className="text-xs text-muted-foreground mt-2">Doğrulama sistemi yapay zeka ile yönetilmektedir.</p>
+
+            <main className="flex-1 flex flex-col items-center justify-between p-8 pt-24 text-center">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold">Profilini Doğrula</h1>
+                    <p className="text-white/80">Yüzünü aşağıdaki oval çerçevenin içine ortala.</p>
+                     <p className="text-xs text-white/60 mt-2">Doğrulama sistemi yapay zeka ile yönetilmektedir.</p>
                 </div>
                 
-                <Card className="w-full max-w-sm overflow-hidden">
-                    <CardContent className="p-0">
-                        <div className="relative aspect-square w-full bg-muted flex items-center justify-center">
-                            {hasCameraPermission === null ? (
-                                <Icons.logo className="h-12 w-12 animate-pulse text-muted-foreground" />
-                            ) : (
-                                <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />
-                            )}
-                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="relative w-full max-w-[280px] aspect-[3/4]">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                         {hasCameraPermission === null && (
+                            <Icons.logo className="h-16 w-16 animate-pulse text-white/50" />
+                         )}
+                         {hasCameraPermission === false && (
+                            <Alert variant="destructive" className="bg-red-900/80 border-red-500 text-white">
+                                <AlertTriangle className="h-4 w-4 text-red-400" />
+                                <AlertTitle>Kamera Erişimi Gerekli</AlertTitle>
+                                <AlertDescription>
+                                    Lütfen bu özelliği kullanmak için kamera erişimine izin verin.
+                                </AlertDescription>
+                            </Alert>
+                         )}
+                         <video 
+                            ref={videoRef} 
+                            className="h-full w-full object-cover scale-x-[-1] rounded-[48%]" // Flip horizontally and apply oval shape
+                            autoPlay 
+                            muted 
+                            playsInline 
+                         />
+                    </div>
+                </div>
 
-                {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Kamera Erişimi Gerekli</AlertTitle>
-                        <AlertDescription>
-                            Lütfen bu özelliği kullanmak için kamera erişimine izin verin.
-                        </AlertDescription>
-                    </Alert>
-                )}
-
-                <Button 
-                    className="w-full max-w-sm h-14 rounded-full text-lg"
+                 <Button 
+                    className="h-16 w-16 rounded-full"
+                    size="icon"
                     onClick={handleVerify}
                     disabled={!hasCameraPermission || isVerifying}
                 >
                     {isVerifying ? (
-                        <>
-                           <Icons.logo className="mr-2 h-5 w-5 animate-pulse" /> Doğrulanıyor...
-                        </>
+                        <Icons.logo className="h-6 w-6 animate-pulse" />
                     ) : (
-                        <>
-                           <Camera className="mr-2 h-5 w-5" /> Doğrula
-                        </>
+                        <Camera className="h-7 w-7" />
                     )}
                 </Button>
             </main>

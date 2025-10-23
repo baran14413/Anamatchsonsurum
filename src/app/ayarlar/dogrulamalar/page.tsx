@@ -5,13 +5,61 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MailCheck, MailWarning, Send, Camera, ShieldCheck } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, MailCheck, MailWarning, Send, Camera, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
+const VerificationItem = ({ icon: Icon, title, description, isVerified, actionText, onAction, disabled = false, href }: {
+    icon: React.ElementType;
+    title: string;
+    description: string;
+    isVerified: boolean;
+    actionText: string;
+    onAction?: () => void;
+    disabled?: boolean;
+    href?: string;
+}) => {
+    const content = (
+        <div className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+            <div className="p-3 rounded-full bg-primary/10 text-primary">
+                <Icon className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+                <h3 className="font-semibold">{title}</h3>
+                <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+            {isVerified ? (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                    <ShieldCheck className="w-4 h-4 mr-1" />
+                    Doğrulandı
+                </Badge>
+            ) : (
+                <Button variant="ghost" size="sm" disabled={disabled} onClick={onAction}>
+                    {disabled ? (
+                        <>
+                            <Icons.logo width={16} height={16} className="mr-2 animate-pulse" />
+                            Gönderiliyor...
+                        </>
+                    ) : (
+                       actionText
+                    )}
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+            )}
+        </div>
+    );
+
+    if (href && !isVerified) {
+        return <Link href={href}>{content}</Link>;
+    }
+
+    return <div onClick={!isVerified ? onAction : undefined}>{content}</div>;
+};
+
 
 export default function VerificationsPage() {
     const router = useRouter();
@@ -76,90 +124,25 @@ export default function VerificationsPage() {
                 <div className='w-9'></div>
             </header>
             <main className="flex-1 overflow-y-auto p-6 space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                           {isEmailVerified ? <MailCheck className="w-6 h-6 text-green-500" /> : <MailWarning className="w-6 h-6 text-yellow-500" />}
-                           E-posta Doğrulaması
-                        </CardTitle>
-                        <CardDescription>Hesabınızın güvenliğini artırmak ve tüm özelliklere erişmek için e-posta adresinizi doğrulayın.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isEmailVerified ? (
-                            <div className="flex items-center gap-3 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-                                <MailCheck className="h-6 w-6 text-green-600" />
-                                <div className="flex-1">
-                                    <p className="font-semibold text-green-800 dark:text-green-300">E-postanız Doğrulandı</p>
-                                    <p className="text-sm text-green-600 dark:text-green-400">{user?.email}</p>
-                                </div>
-                            </div>
-                        ) : (
-                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 rounded-md border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950">
-                                    <MailWarning className="h-6 w-6 text-yellow-600" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-yellow-800 dark:text-yellow-300">E-postanız Doğrulanmadı</p>
-                                        <p className="text-sm text-yellow-600 dark:text-yellow-400">Lütfen e-postanızı doğrulayın.</p>
-                                    </div>
-                                </div>
-                                <Button onClick={handleSendVerificationEmail} disabled={isSending || cooldown > 0}>
-                                    {isSending ? (
-                                        <>
-                                            <Icons.logo width={16} height={16} className="mr-2 animate-pulse" />
-                                            Gönderiliyor...
-                                        </>
-                                    ) : cooldown > 0 ? (
-                                        <>
-                                            Tekrar Gönder ({cooldown}s)
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className='mr-2 h-4 w-4' />
-                                            Doğrulama E-postası Gönder
-                                        </>
-                                    )}
-                                </Button>
-                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                           {isPhotoVerified ? <ShieldCheck className="w-6 h-6 text-green-500" /> : <Camera className="w-6 h-6 text-blue-500" />}
-                           Profil Fotoğrafı Doğrulaması
-                        </CardTitle>
-                        <CardDescription>Profilinin gerçekliğini kanıtla ve diğer kullanıcılarda güven oluştur. Mavi tik rozetini kap!</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isPhotoVerified ? (
-                            <div className="flex items-center gap-3 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-                                <ShieldCheck className="h-6 w-6 text-green-600" />
-                                <div className="flex-1">
-                                    <p className="font-semibold text-green-800 dark:text-green-300">Profilin Doğrulandı</p>
-                                    <p className="text-sm text-green-600 dark:text-green-400">Profilinde mavi tik rozetin görünüyor.</p>
-                                </div>
-                            </div>
-                        ) : (
-                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-                                    <Camera className="h-6 w-6 text-blue-600" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-blue-800 dark:text-blue-300">Profilin Doğrulanmadı</p>
-                                        <p className="text-sm text-blue-600 dark:text-blue-400">Profilini doğrulayarak daha fazla güven kazan.</p>
-                                    </div>
-                                </div>
-                                <Link href="/ayarlar/dogrulamalar/yuz">
-                                    <Button className={cn('bg-blue-500 hover:bg-blue-600')}>
-                                        <Camera className='mr-2 h-4 w-4' />
-                                        Şimdi Doğrula
-                                    </Button>
-                                </Link>
-                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <div className="divide-y border rounded-lg">
+                    <VerificationItem
+                        icon={MailCheck}
+                        title="E-posta Doğrulaması"
+                        description={isEmailVerified ? user?.email || 'E-posta adresiniz doğrulandı' : 'Hesap güvenliğinizi artırın'}
+                        isVerified={isEmailVerified}
+                        actionText={cooldown > 0 ? `Tekrar Gönder (${cooldown}s)` : 'Doğrulama E-postası Gönder'}
+                        onAction={handleSendVerificationEmail}
+                        disabled={isSending || cooldown > 0}
+                    />
+                     <VerificationItem
+                        icon={Camera}
+                        title="Profil Fotoğrafı Doğrulaması"
+                        description="Profilinin gerçekliğini kanıtla, mavi tik rozetini kap."
+                        isVerified={isPhotoVerified}
+                        actionText="Şimdi Doğrula"
+                        href="/ayarlar/dogrulamalar/yuz"
+                    />
+                </div>
             </main>
         </div>
     )
