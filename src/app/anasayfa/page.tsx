@@ -422,33 +422,9 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-        <div className="relative flex-1 w-full flex flex-col justify-start pb-28">
-            {topCard ? (
-                 <AnimatePresence>
-                    {profiles.map((profile, index) => {
-                        const isTop = index === profiles.length - 1;
-                        if (!isTop) return null; // Only render the top card for interaction
-                        return (
-                            <MemoizedProfileCard
-                                key={profile.uid}
-                                profile={profile}
-                                onSwipe={handleSwipe}
-                            />
-                        )
-                    })}
-                </AnimatePresence>
-            ) : !isLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
-                    <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-                    <p className="text-muted-foreground">
-                    {langTr.anasayfa.outOfProfilesDescription}
-                    </p>
-                    <Button onClick={handleRetry} disabled={isFetching.current}>
-                        {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
-                    </Button>
-                </div>
-            )}
-             <div className="absolute top-2 right-4 z-50 flex flex-col items-center">
+        <div className="relative h-full w-full flex flex-col justify-center pb-6">
+            
+            <div className="absolute top-2 right-4 z-50 flex flex-col items-center">
                 <Button onClick={handleUndo} variant="outline" size="icon" className="w-10 h-10 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
                     <Undo className="w-5 h-5" />
                 </Button>
@@ -466,6 +442,35 @@ function AnasayfaPageContent() {
                     )}
                 </AnimatePresence>
              </div>
+
+            <div className="relative h-[85%]">
+              {topCard ? (
+                  <AnimatePresence>
+                      {profiles.map((profile, index) => {
+                          const isTop = index === profiles.length - 1;
+                          if (!isTop) return null; // Only render the top card for interaction
+                          return (
+                              <MemoizedProfileCard
+                                  key={profile.uid}
+                                  profile={profile}
+                                  onSwipe={handleSwipe}
+                              />
+                          )
+                      })}
+                  </AnimatePresence>
+              ) : !isLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                      <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                      <p className="text-muted-foreground">
+                      {langTr.anasayfa.outOfProfilesDescription}
+                      </p>
+                      <Button onClick={handleRetry} disabled={isFetching.current}>
+                          {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
+                      </Button>
+                  </div>
+              )}
+            </div>
+
 
              {topCard && (
                  <div className="absolute bottom-4 left-0 right-0 z-50 flex justify-center items-center gap-4">
