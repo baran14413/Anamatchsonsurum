@@ -97,7 +97,7 @@ export default function GalleryPage() {
         if (!storage || !user) return;
         
         const isReplacing = !!imageSlots[slotIndex].preview;
-        if (isReplacing && imageSlots[slotIndex].public_id) {
+        if (isReplacing) {
             const oldSlot = imageSlots[slotIndex];
             // Only attempt to delete if it's a Firebase Storage URL, not a Google profile pic
             if (oldSlot.public_id && !oldSlot.public_id.startsWith('google_')) {
@@ -295,3 +295,5 @@ export default function GalleryPage() {
         </div>
     );
 }
+
+    
