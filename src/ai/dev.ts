@@ -3,3 +3,5 @@
 // Flows will be imported for their side effects in this file.
 import '@/ai/flows/translate-text-flow';
 import '@/ai/flows/verify-face-flow';
+import '@/ai/flows/daily-quote-flow';
+

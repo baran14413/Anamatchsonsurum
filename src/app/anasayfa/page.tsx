@@ -15,9 +15,61 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import { Undo, Heart, X as XIcon, Star } from 'lucide-react';
+import { Undo, Heart, X as XIcon, Star, Lightbulb } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { differenceInCalendarDays } from 'date-fns';
+import { getDailyQuote } from '@/ai/flows/daily-quote-flow';
+import { Card, CardContent } from '@/components/ui/card';
+
+// Daily Quote Component
+const DailyQuoteCard = () => {
+    const [quote, setQuote] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Fetch quote only once per day on the client side for now
+        const today = new Date().toISOString().split('T')[0];
+        const lastFetched = localStorage.getItem('dailyQuoteDate');
+        const cachedQuote = localStorage.getItem('dailyQuote');
+
+        if (lastFetched === today && cachedQuote) {
+            setQuote(cachedQuote);
+            setIsLoading(false);
+        } else {
+            getDailyQuote()
+                .then(result => {
+                    setQuote(result.quote);
+                    localStorage.setItem('dailyQuote', result.quote);
+                    localStorage.setItem('dailyQuoteDate', today);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch daily quote:", err);
+                    setQuote("Yeni bağlantılar kurmak için harika bir gün!"); // Fallback quote
+                })
+                .finally(() => setIsLoading(false));
+        }
+    }, []);
+
+    if (isLoading) {
+        return (
+            <Card className="mb-4 bg-blue-500/10 border-blue-500/20 animate-pulse">
+                <CardContent className="p-3">
+                    <div className="h-4 w-3/4 bg-muted-foreground/30 rounded-md"></div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card className="mb-4 bg-blue-500/10 border-blue-500/20">
+            <CardContent className="p-3 flex items-center gap-3">
+                <Lightbulb className="w-5 h-5 text-blue-400 shrink-0" />
+                <p className="text-sm font-medium text-blue-200">{quote}</p>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -418,7 +470,8 @@ function AnasayfaPageContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col p-4">
+       <DailyQuoteCard />
       <div className="flex-1 relative">
          <div className="absolute inset-0">
           <AnimatePresence>
