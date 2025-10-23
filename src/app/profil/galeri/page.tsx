@@ -16,6 +16,8 @@ import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+
 
 type ImageSlot = {
     file: File | null;
@@ -81,16 +83,6 @@ export default function GalleryPage() {
 
     const uploadFile = async (file: File) => {
         if (!storage || !user) return;
-        
-        if (imageSlot.public_id && typeof imageSlot.public_id === 'string' && imageSlot.public_id.startsWith('bematch_profiles')) {
-            const imageRefToDelete = storageRef(storage, imageSlot.public_id);
-            await deleteObject(imageRefToDelete).catch(err => {
-                if (err.code !== 'storage/object-not-found') {
-                    console.error("Failed to delete old image from storage:", err);
-                }
-            });
-        }
-        
         handleImageUpload(file);
     }
 
@@ -199,6 +191,10 @@ export default function GalleryPage() {
                                             <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect();}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
                                         </div>
                                     )}
+                                     <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
+                                        <Star className="w-3 h-3"/>
+                                        Profil Fotoğrafı
+                                    </Badge>
                                 </>
                             ) : (
                                 <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
