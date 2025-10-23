@@ -422,43 +422,37 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 relative">
+      <div className="relative flex-1">
         <AnimatePresence>
-          {profiles.map((profile, index) => {
-            const isTop = index === profiles.length - 1;
-            if (!isTop) return null; // Only render the top card for interaction
-            return (
+            {topCard ? (
               <MemoizedProfileCard
-                key={profile.uid}
-                profile={profile}
+                key={topCard.uid}
+                profile={topCard}
                 onSwipe={handleSwipe}
               />
-            )
-          })}
+            ) : !isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                  <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                  <p className="text-muted-foreground">
+                  {langTr.anasayfa.outOfProfilesDescription}
+                  </p>
+                  <Button onClick={handleRetry} disabled={isFetching.current}>
+                      {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
+                  </Button>
+              </div>
+            )}
         </AnimatePresence>
-
-        {!topCard && !isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
-              <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-              <p className="text-muted-foreground">
-              {langTr.anasayfa.outOfProfilesDescription}
-              </p>
-              <Button onClick={handleRetry} disabled={isFetching.current}>
-                  {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
-              </Button>
-          </div>
-        )}
       </div>
 
       {topCard && (
         <div className="shrink-0 z-10 flex justify-center items-center gap-4 py-4">
-          <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+          <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-red-500/50">
               <XIcon className="w-8 h-8 text-red-500" strokeWidth={3} />
           </Button>
-          <Button onClick={() => handleActionClick('up')} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+          <Button onClick={() => handleActionClick('up')} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-blue-500/50">
               <Star className="w-6 h-6 text-blue-500" fill="currentColor"/>
           </Button>
-          <Button onClick={() => handleActionClick('right')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+          <Button onClick={() => handleActionClick('right')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-green-500/50">
               <Heart className="w-8 h-8 text-green-500" fill="currentColor"/>
           </Button>
         </div>
@@ -475,3 +469,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    
