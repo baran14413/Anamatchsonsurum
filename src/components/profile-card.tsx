@@ -177,22 +177,25 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             
             {profile.images && profile.images.length > 0 && (
                 <>
-                    {profile.images.map((image, index) => (
-                        <div
-                        key={`${profile.uid}-img-${index}`}
-                        className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
-                        style={{ opacity: index === activeImageIndex ? 1 : 0 }}
-                        >
-                        <Image
-                            src={image.url}
-                            alt={`${profile.fullName} profile image ${index + 1}`}
-                            fill
-                            sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                            className="object-cover"
-                            priority={index === 0}
-                        />
-                        </div>
-                    ))}
+                    {profile.images.map((image, index) => {
+                        if (!image || !image.url) return null;
+                        return (
+                          <div
+                            key={`${profile.uid}-img-${index}`}
+                            className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
+                            style={{ opacity: index === activeImageIndex ? 1 : 0 }}
+                          >
+                            <Image
+                                src={image.url}
+                                alt={`${profile.fullName} profile image ${index + 1}`}
+                                fill
+                                sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                                className="object-cover"
+                                priority={index === 0}
+                            />
+                          </div>
+                        );
+                    })}
                 </>
             )}
             
