@@ -13,6 +13,7 @@ import Image from 'next/image';
 import { langTr } from '@/languages/tr';
 import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const MAX_IMAGES = 6;
 
@@ -90,25 +91,16 @@ export default function GalleryPage() {
 
     const uploadFile = async (file: File, index: number) => {
         if (!storage || !user) return;
-        const oldSlot = imageSlots[index];
-
+        
         setImageSlots(prev => prev.map((s, i) => i === index ? { ...s, file, preview: URL.createObjectURL(file), isUploading: true } : s));
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
         const imageRef = storageRef(storage, uniqueFileName);
 
         try {
-            // New image upload
             const snapshot = await uploadBytes(imageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            // If there was an old image hosted by us, delete it from storage
-            if (oldSlot.public_id && typeof oldSlot.public_id === 'string') {
-                 const oldImageRef = storageRef(storage, oldSlot.public_id);
-                 await deleteObject(oldImageRef).catch(err => console.warn("Old image deletion failed (it may not exist):", err));
-            }
-
-            // Update slot state with the new image URL and public_id
             setImageSlots(prev => prev.map((s, i) => i === index ? { isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null } : s));
 
         } catch (error: any) {
@@ -226,10 +218,10 @@ export default function GalleryPage() {
                                         </div>
                                     )}
                                     {index === 0 && (
-                                         <div className="absolute top-1.5 left-1.5 z-10 text-xs font-semibold bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1">
+                                        <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
                                             <Star className="w-3 h-3"/>
-                                            Profil
-                                        </div>
+                                            Profil Fotoğrafı
+                                        </Badge>
                                     )}
                                 </>
                             ) : (
