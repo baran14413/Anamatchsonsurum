@@ -118,7 +118,6 @@ function AnasayfaPageContent() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<{profile: UserProfile, direction: 'left' | 'right' | 'up'} | null>(null);
-  const [showUndoMessage, setShowUndoMessage] = useState(false);
   
   const isFetching = useRef(false);
   const interactedUids = useRef<Set<string>>(new Set());
@@ -378,9 +377,6 @@ function AnasayfaPageContent() {
         await batch.commit();
         
         interactedUids.current.delete(lastSwipedProfile.profile.uid);
-
-        setShowUndoMessage(true);
-        setTimeout(() => setShowUndoMessage(false), 2000);
         
         setProfiles(prev => [lastSwipedProfile.profile, ...prev]);
         setLastSwipedProfile(null);
@@ -424,7 +420,7 @@ function AnasayfaPageContent() {
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex-1 relative">
-        <div className="absolute inset-0">
+         <div className="absolute inset-0">
           <AnimatePresence>
               {topCard ? (
                 <MemoizedProfileCard
@@ -448,7 +444,7 @@ function AnasayfaPageContent() {
       </div>
 
       {topCard && (
-        <div className="shrink-0 flex justify-center items-center gap-4 py-4">
+        <div className="shrink-0 flex justify-center items-center gap-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <Button onClick={handleUndo} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-yellow-500/50" disabled={!lastSwipedProfile}>
               <Undo className="w-6 h-6 text-yellow-500" />
           </Button>
