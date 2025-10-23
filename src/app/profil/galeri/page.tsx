@@ -16,7 +16,6 @@ import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 type ImageSlot = {
     file: File | null;
@@ -83,10 +82,8 @@ export default function GalleryPage() {
     const uploadFile = async (file: File) => {
         if (!storage || !user) return;
         
-        // If there's an existing image with a public_id, try to delete it from storage
-        if (imageSlot.public_id && typeof imageSlot.public_id === 'string') {
+        if (imageSlot.public_id && typeof imageSlot.public_id === 'string' && imageSlot.public_id.startsWith('bematch_profiles')) {
             const imageRefToDelete = storageRef(storage, imageSlot.public_id);
-            // It's safe to try to delete, if it fails because it doesn't exist (e.g. google pfp), it won't throw a critical error.
             await deleteObject(imageRefToDelete).catch(err => {
                 if (err.code !== 'storage/object-not-found') {
                     console.error("Failed to delete old image from storage:", err);
@@ -104,7 +101,7 @@ export default function GalleryPage() {
             return;
         }
 
-        setImageSlot({ file, preview: URL.createObjectURL(file), isUploading: true });
+        setImageSlot({ file, preview: URL.createObjectURL(file), isUploading: true, public_id: null });
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
         const imageRef = storageRef(storage, uniqueFileName);
@@ -197,10 +194,6 @@ export default function GalleryPage() {
                                             </div>
                                         </div>
                                     )}
-                                    <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
-                                        <Star className="w-3 h-3"/>
-                                        Profil Fotoğrafı
-                                    </Badge>
                                     {!isSubmitting && !imageSlot.isUploading && (
                                         <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect();}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
