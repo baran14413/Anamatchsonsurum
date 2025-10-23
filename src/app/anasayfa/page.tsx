@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
@@ -421,31 +422,36 @@ function AnasayfaPageContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="relative flex-1">
-        <AnimatePresence>
-            {topCard ? (
-              <MemoizedProfileCard
-                key={topCard.uid}
-                profile={topCard}
-                onSwipe={handleSwipe}
-              />
-            ) : !isLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
-                  <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-                  <p className="text-muted-foreground">
-                  {langTr.anasayfa.outOfProfilesDescription}
-                  </p>
-                  <Button onClick={handleRetry} disabled={isFetching.current}>
-                      {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
-                  </Button>
-              </div>
-            )}
-        </AnimatePresence>
+    <div className="flex-1 flex flex-col">
+      <div className="flex-1 relative">
+        <div className="absolute inset-0">
+          <AnimatePresence>
+              {topCard ? (
+                <MemoizedProfileCard
+                  key={topCard.uid}
+                  profile={topCard}
+                  onSwipe={handleSwipe}
+                />
+              ) : !isLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                    <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+                    <p className="text-muted-foreground">
+                    {langTr.anasayfa.outOfProfilesDescription}
+                    </p>
+                    <Button onClick={handleRetry} disabled={isFetching.current}>
+                        {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
+                    </Button>
+                </div>
+              )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {topCard && (
-        <div className="shrink-0 z-10 flex justify-center items-center gap-4 py-4">
+        <div className="shrink-0 flex justify-center items-center gap-4 py-4">
+          <Button onClick={handleUndo} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-yellow-500/50" disabled={!lastSwipedProfile}>
+              <Undo className="w-6 h-6 text-yellow-500" />
+          </Button>
           <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm shadow-red-500/50">
               <XIcon className="w-8 h-8 text-red-500" strokeWidth={3} />
           </Button>
@@ -469,5 +475,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
-    
