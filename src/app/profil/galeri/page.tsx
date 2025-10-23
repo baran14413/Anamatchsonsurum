@@ -16,6 +16,7 @@ import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 type ImageSlot = {
     file: File | null;
@@ -83,7 +84,7 @@ export default function GalleryPage() {
         if (!storage || !user) return;
         
         // If there's an existing image with a public_id, try to delete it from storage
-        if (imageSlot.public_id) {
+        if (imageSlot.public_id && typeof imageSlot.public_id === 'string') {
             const imageRefToDelete = storageRef(storage, imageSlot.public_id);
             // It's safe to try to delete, if it fails because it doesn't exist (e.g. google pfp), it won't throw a critical error.
             await deleteObject(imageRefToDelete).catch(err => {
