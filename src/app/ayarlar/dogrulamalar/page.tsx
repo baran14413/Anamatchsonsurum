@@ -1,19 +1,16 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MailCheck, MailWarning, Send, Camera, ShieldCheck, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MailCheck, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Icons } from '@/components/icons';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-const VerificationItem = ({ icon: Icon, title, description, isVerified, actionText, onAction, disabled = false, href }: {
+const VerificationItem = ({ icon: Icon, title, description, isVerified, actionText, onAction, disabled = false }: {
     icon: React.ElementType;
     title: string;
     description: string;
@@ -21,7 +18,6 @@ const VerificationItem = ({ icon: Icon, title, description, isVerified, actionTe
     actionText: string;
     onAction?: () => void;
     disabled?: boolean;
-    href?: string;
 }) => {
     const content = (
         <div className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
@@ -53,17 +49,13 @@ const VerificationItem = ({ icon: Icon, title, description, isVerified, actionTe
         </div>
     );
 
-    if (href && !isVerified) {
-        return <Link href={href}>{content}</Link>;
-    }
-
     return <div onClick={!isVerified ? onAction : undefined}>{content}</div>;
 };
 
 
 export default function VerificationsPage() {
     const router = useRouter();
-    const { user, userProfile, isUserLoading } = useUser();
+    const { user, isUserLoading } = useUser();
     const { toast } = useToast();
     const [isSending, setIsSending] = useState(false);
     const [cooldown, setCooldown] = useState(0);
@@ -112,7 +104,6 @@ export default function VerificationsPage() {
     }
 
     const isEmailVerified = user?.emailVerified ?? false;
-    const isPhotoVerified = userProfile?.isPhotoVerified ?? false;
 
     return (
         <div className="flex h-dvh flex-col">
@@ -133,14 +124,6 @@ export default function VerificationsPage() {
                         actionText={cooldown > 0 ? `Tekrar Gönder (${cooldown}s)` : 'Doğrulama E-postası Gönder'}
                         onAction={handleSendVerificationEmail}
                         disabled={isSending || cooldown > 0}
-                    />
-                     <VerificationItem
-                        icon={Camera}
-                        title="Profil Fotoğrafı Doğrulaması"
-                        description="Profilinin gerçekliğini kanıtla, mavi tik rozetini kap."
-                        isVerified={isPhotoVerified}
-                        actionText="Şimdi Doğrula"
-                        href="/ayarlar/dogrulamalar/yuz"
                     />
                 </div>
             </main>
