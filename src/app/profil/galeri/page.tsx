@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -14,10 +13,8 @@ import Image from 'next/image';
 import { langTr } from '@/languages/tr';
 import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
+const MAX_IMAGES = 6;
 
 type ImageSlot = {
     file: File | null;
@@ -26,19 +23,27 @@ type ImageSlot = {
     isUploading: boolean;
 };
 
-const getInitialImageSlot = (userProfile: any): ImageSlot => {
-    let slot: ImageSlot = { file: null, preview: null, public_id: null, isUploading: false };
+const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
+    const slots: ImageSlot[] = Array(MAX_IMAGES).fill(null).map(() => ({
+        file: null,
+        preview: null,
+        public_id: null,
+        isUploading: false
+    }));
 
-    if (userProfile?.images && userProfile.images.length > 0) {
-        const mainImage = userProfile.images[0];
-        slot = {
-            file: null,
-            preview: mainImage.url,
-            public_id: mainImage.public_id,
-            isUploading: false
-        };
+    if (userProfile?.images) {
+        userProfile.images.forEach((img: UserImage, index: number) => {
+            if (index < MAX_IMAGES) {
+                slots[index] = {
+                    file: null,
+                    preview: img.url,
+                    public_id: img.public_id,
+                    isUploading: false
+                };
+            }
+        });
     }
-    return slot;
+    return slots;
 };
 
 
@@ -48,9 +53,10 @@ export default function GalleryPage() {
     const { user, userProfile, firestore, storage } = useFirebase();
     const t = langTr.ayarlarGaleri;
 
-    const [imageSlot, setImageSlot] = useState<ImageSlot>(() => getInitialImageSlot(userProfile));
+    const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(userProfile));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const activeSlotIndex = useRef<number | null>(null);
 
     const [isOnboarding, setIsOnboarding] = useState(false);
 
@@ -63,72 +69,106 @@ export default function GalleryPage() {
 
     useEffect(() => {
         if (userProfile) {
-            setImageSlot(getInitialImageSlot(userProfile));
+            setImageSlots(getInitialImageSlots(userProfile));
         }
     }, [userProfile]);
 
-    const uploadedImageCount = useMemo(() => imageSlot.preview ? 1 : 0, [imageSlot]);
+    const uploadedImageCount = useMemo(() => imageSlots.filter(slot => slot.preview).length, [imageSlots]);
 
-    const handleFileSelect = () => {
+    const handleFileSelect = (index: number) => {
         if(isSubmitting) return;
+        activeSlotIndex.current = index;
         fileInputRef.current?.click();
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
+        if (!e.target.files || e.target.files.length === 0 || activeSlotIndex.current === null) return;
         const file = e.target.files[0];
-        uploadFile(file);
+        uploadFile(file, activeSlotIndex.current);
         if (e.target) e.target.value = '';
     };
 
-    const uploadFile = async (file: File) => {
+    const uploadFile = async (file: File, index: number) => {
         if (!storage || !user) return;
-        handleImageUpload(file);
-    }
+        const oldSlot = imageSlots[index];
 
-
-    const handleImageUpload = async (file: File) => {
-        if (!storage || !user) {
-            toast({ title: "Hata", description: "Depolama servisi başlatılamadı.", variant: "destructive" });
-            return;
-        }
-
-        setImageSlot({ file, preview: URL.createObjectURL(file), isUploading: true, public_id: null });
+        setImageSlots(prev => prev.map((s, i) => i === index ? { ...s, file, preview: URL.createObjectURL(file), isUploading: true } : s));
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
         const imageRef = storageRef(storage, uniqueFileName);
 
         try {
+            // New image upload
             const snapshot = await uploadBytes(imageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
-            setImageSlot({ isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null });
+            // If there was an old image hosted by us, delete it from storage
+            if (oldSlot.public_id && typeof oldSlot.public_id === 'string') {
+                 const oldImageRef = storageRef(storage, oldSlot.public_id);
+                 await deleteObject(oldImageRef).catch(err => console.warn("Old image deletion failed (it may not exist):", err));
+            }
+
+            // Update slot state with the new image URL and public_id
+            setImageSlots(prev => prev.map((s, i) => i === index ? { isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null } : s));
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            setImageSlot(getInitialImageSlot(userProfile));
+            setImageSlots(prev => prev.map((s, i) => i === index ? getInitialImageSlots(userProfile)[i] : s));
         }
     };
     
-    const handleDeleteImage = async (e: React.MouseEvent) => {
+    const handleDeleteImage = async (e: React.MouseEvent, index: number) => {
         e.stopPropagation();
-        toast({ title: "Profil Fotoğrafı Gerekli", description: "Profilinizde en az 1 fotoğraf bulunmalıdır.", variant: "destructive" });
+        if (uploadedImageCount <= 2 && isOnboarding) {
+             toast({ title: "En Az 2 Fotoğraf Gerekli", description: "Devam etmek için en az 2 fotoğraf yüklemelisin.", variant: "destructive" });
+             return;
+        }
+        if (uploadedImageCount <= 1 && !isOnboarding) {
+            toast({ title: "Profil Fotoğrafı Gerekli", description: "Profilinizde en az 1 fotoğraf bulunmalıdır.", variant: "destructive" });
+            return;
+        }
+
+        const slotToDelete = imageSlots[index];
+        const newSlots = [...imageSlots];
+        newSlots.splice(index, 1);
+        newSlots.push({ file: null, preview: null, public_id: null, isUploading: false });
+        setImageSlots(newSlots);
+
+        if (slotToDelete.public_id && storage) {
+            try {
+                const imageRef = storageRef(storage, slotToDelete.public_id);
+                await deleteObject(imageRef);
+                 toast({ title: t.toasts.deleteSuccessTitle, description: t.toasts.deleteSuccessDesc });
+            } catch (err: any) {
+                 if (err.code !== 'storage/object-not-found') {
+                     console.error("Failed to delete image from Firebase Storage:", err);
+                     toast({ title: t.toasts.deleteErrorTitle, description: t.toasts.deleteErrorDesc, variant: "destructive" });
+                     setImageSlots(getInitialImageSlots(userProfile)); // Revert on error
+                 }
+            }
+        }
     };
 
     const handleSaveChanges = async () => {
         if (!firestore || !user) return;
-        if (uploadedImageCount < 1 || !imageSlot.preview || !imageSlot.public_id) {
-             toast({ title: "Hata", description: "Lütfen bir profil fotoğrafı yükleyin.", variant: "destructive" });
+        if (uploadedImageCount < 1) {
+             toast({ title: "Hata", description: "Lütfen en az 1 fotoğraf yükleyin.", variant: "destructive" });
+             return;
+        }
+        if (isOnboarding && uploadedImageCount < 2) {
+             toast({ title: "Hata", description: "Devam etmek için en az 2 fotoğraf yüklemelisiniz.", variant: "destructive" });
              return;
         }
 
         setIsSubmitting(true);
         try {
-            const finalImages: UserImage[] = [{ url: imageSlot.preview, public_id: imageSlot.public_id }];
+            const finalImages: UserImage[] = imageSlots
+                .filter(slot => slot.preview && slot.public_id)
+                .map(slot => ({ url: slot.preview!, public_id: slot.public_id! }));
 
             await updateDoc(doc(firestore, "users", user.uid), {
                 images: finalImages,
-                profilePicture: finalImages[0].url,
+                profilePicture: finalImages.length > 0 ? finalImages[0].url : null,
             });
             
             toast({
@@ -156,58 +196,53 @@ export default function GalleryPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting || isOnboarding}>
                     <ArrowLeft className="h-6 w-6" />
                 </Button>
-                <h1 className="text-lg font-semibold">{isOnboarding ? "Profil Fotoğrafı" : t.title}</h1>
-                <Button onClick={handleSaveChanges} disabled={isSubmitting || uploadedImageCount < 1}>
+                <h1 className="text-lg font-semibold">{isOnboarding ? "Profil Fotoğrafları" : t.title}</h1>
+                <Button onClick={handleSaveChanges} disabled={isSubmitting || (isOnboarding && uploadedImageCount < 2) || (!isOnboarding && uploadedImageCount < 1)}>
                     {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (isOnboarding ? langTr.common.next : langTr.common.save)}
                 </Button>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col justify-center items-center">
-                 <div className="w-full max-w-xs space-y-6">
-                    <p className="text-muted-foreground text-sm text-center">
-                        {isOnboarding ? "Harika bir profil için ilk adımı at! Profilinde göstereceğin fotoğrafı ekle." : "Profil fotoğrafını buradan yönetebilirsin."}
-                    </p>
-                    <Alert className="mb-4">
-                        <Shield className="h-4 w-4" />
-                        <AlertDescription>
-                            Yüklediğiniz fotoğraf, daha sonra sizin olduğunuzu doğrulamak için kullanılacaktır.
-                        </AlertDescription>
-                    </Alert>
-
-                    <div className="relative aspect-square w-full">
-                         <div onClick={handleFileSelect} className={cn("cursor-pointer w-full h-full border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", imageSlot.preview && "border-solid border-primary")}>
-                            {imageSlot.preview ? (
+            <main className="flex-1 overflow-y-auto p-4 space-y-4">
+                <p className="text-muted-foreground text-sm text-center">
+                    {isOnboarding ? `Harika bir profil için ilk adımı at! Profilinde göstereceğin en az 2 fotoğraf ekle. (${uploadedImageCount}/${MAX_IMAGES})` : `Profil fotoğraflarını buradan yönetebilirsin. (${uploadedImageCount}/${MAX_IMAGES})`}
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                    {imageSlots.map((slot, index) => (
+                        <div key={index} onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full aspect-square border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-primary")}>
+                            {slot.preview ? (
                                 <>
-                                    <Image src={imageSlot.preview} alt="Profil Fotoğrafı Önizlemesi" fill style={{ objectFit: "cover" }} className="rounded-lg" />
-                                    {imageSlot.isUploading && (
+                                    <Image src={slot.preview} alt={`Fotoğraf ${index + 1}`} fill style={{ objectFit: "cover" }} className="rounded-lg" />
+                                    {slot.isUploading && (
                                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                            <div className="w-16 h-16">
-                                               <Icons.logo width={64} height={64} className="animate-pulse" />
+                                            <div className="w-8 h-8">
+                                               <Icons.logo width={32} height={32} className="animate-pulse" />
                                             </div>
                                         </div>
                                     )}
-                                    {!isSubmitting && !imageSlot.isUploading && (
-                                        <div className="absolute bottom-2 right-2 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect();}} className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-4 h-4" /></button>
+                                    {!isSubmitting && !slot.isUploading && (
+                                        <div className="absolute bottom-1 right-1 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <button type="button" onClick={(e) => handleDeleteImage(e, index)} className="h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                                            <button type="button" onClick={(e) => {e.stopPropagation(); handleFileSelect(index);}} className="h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-sm"><Pencil className="w-3.5 h-3.5" /></button>
                                         </div>
                                     )}
-                                     <Badge className="absolute top-2 left-2 z-10 bg-primary/80 backdrop-blur-sm gap-1.5 border-none">
-                                        <Star className="w-3 h-3"/>
-                                        Profil Fotoğrafı
-                                    </Badge>
+                                    {index === 0 && (
+                                         <div className="absolute top-1.5 left-1.5 z-10 text-xs font-semibold bg-primary/80 text-primary-foreground px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1">
+                                            <Star className="w-3 h-3"/>
+                                            Profil
+                                        </div>
+                                    )}
                                 </>
                             ) : (
-                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-2">
-                                    <div className='h-16 w-16 rounded-full flex items-center justify-center bg-primary/20 text-primary'>
-                                        <Plus className="w-8 h-8" />
+                                <div className="text-center text-muted-foreground p-2 flex flex-col items-center justify-center gap-1">
+                                    <div className='h-8 w-8 rounded-full flex items-center justify-center bg-primary/20 text-primary'>
+                                        <Plus className="w-5 h-5" />
                                     </div>
-                                    <span className="font-semibold">Fotoğraf Yükle</span>
                                 </div>
                             )}
                         </div>
-                    </div>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                 </div>
+                    ))}
+                </div>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
             </main>
         </div>
     );
