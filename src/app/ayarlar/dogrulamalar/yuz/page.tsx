@@ -94,11 +94,25 @@ export default function FaceVerificationPage() {
     };
 
     const handleVerify = async () => {
-        if (!videoRef.current || !hasCameraPermission || !userProfile?.profilePicture || !user || !firestore) {
+        if (!user || !firestore) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Kullanıcı oturumu bulunamadı.' });
+            return;
+        }
+
+        if (!userProfile?.profilePicture) {
             toast({
                 variant: 'destructive',
                 title: 'Doğrulama Başarısız',
-                description: 'Kamera erişimi, profil fotoğrafı ve kullanıcı oturumu olmadan doğrulama yapılamaz.',
+                description: 'Doğrulama için bir profil fotoğrafı bulunamadı. Lütfen önce bir profil fotoğrafı yükleyin.',
+            });
+            return;
+        }
+
+        if (!videoRef.current || !hasCameraPermission) {
+            toast({
+                variant: 'destructive',
+                title: 'Doğrulama Başarısız',
+                description: 'Kamera erişimi olmadan doğrulama yapılamaz.',
             });
             return;
         }
@@ -189,17 +203,18 @@ export default function FaceVerificationPage() {
                 </div>
 
                  {!isVerifying && (
-                    <Button 
-                        className="h-20 w-20 rounded-full"
-                        size="icon"
-                        onClick={handleVerify}
-                        disabled={!hasCameraPermission}
-                    >
-                        <Camera className="h-8 w-8" />
-                    </Button>
+                    <div className='flex flex-col items-center gap-4'>
+                        <Button 
+                            className="h-20 w-20 rounded-full"
+                            size="icon"
+                            onClick={handleVerify}
+                            disabled={!hasCameraPermission || isVerifying}
+                        >
+                            <Camera className="h-8 w-8" />
+                        </Button>
+                    </div>
                 )}
             </main>
         </div>
     );
 }
-
