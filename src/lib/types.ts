@@ -50,6 +50,7 @@ export type UserProfile = {
     zodiacSign?: string;
   }
   isOnline?: boolean;
+  isPhotoVerified?: boolean;
   lastSeen?: any;
   createdAt?: any;
   rulesAgreed?: boolean;

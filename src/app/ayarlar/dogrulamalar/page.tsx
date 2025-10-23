@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 
 export default function VerificationsPage() {
     const router = useRouter();
-    const { user, isUserLoading } = useUser();
+    const { user, userProfile, isUserLoading } = useUser();
     const { toast } = useToast();
     const [isSending, setIsSending] = useState(false);
     const [cooldown, setCooldown] = useState(0);
@@ -64,7 +64,7 @@ export default function VerificationsPage() {
     }
 
     const isEmailVerified = user?.emailVerified ?? false;
-    const isPhotoVerified = false; // Placeholder
+    const isPhotoVerified = userProfile?.isPhotoVerified ?? false;
 
     return (
         <div className="flex h-dvh flex-col">

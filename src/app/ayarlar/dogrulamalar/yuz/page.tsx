@@ -3,18 +3,50 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Camera, Video, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { verifyFace } from '@/ai/flows/verify-face-flow';
+import { doc, updateDoc } from 'firebase/firestore';
+
+// Helper function to convert a data URL to a Blob
+const dataURLtoBlob = (dataurl: string) => {
+    const arr = dataurl.split(',');
+    if (arr.length < 2) return null;
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) return null;
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
+
+// Helper function to fetch and convert an image URL to a data URI
+const toDataURL = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
 
 export default function FaceVerificationPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { user } = useUser();
+    const { user, userProfile } = useUser();
+    const firestore = useFirestore();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -49,27 +81,70 @@ export default function FaceVerificationPage() {
         }
       }, [toast]);
 
+    const captureFrame = (): string | null => {
+        if (!videoRef.current) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg');
+    };
+
     const handleVerify = async () => {
-        if (!videoRef.current || !hasCameraPermission) {
+        if (!videoRef.current || !hasCameraPermission || !userProfile?.profilePicture || !user || !firestore) {
             toast({
                 variant: 'destructive',
                 title: 'Doğrulama Başarısız',
-                description: 'Kamera erişimi olmadan doğrulama yapılamaz.',
+                description: 'Kamera erişimi, profil fotoğrafı ve kullanıcı oturumu olmadan doğrulama yapılamaz.',
             });
             return;
         }
 
         setIsVerifying(true);
-        // In a real scenario, you would capture a frame and send it to your AI backend.
-        // For now, we will simulate the process.
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const cameraFrameDataUri = captureFrame();
 
-        toast({
-            title: 'Doğrulama Başarılı (Simülasyon)',
-            description: 'Yüz doğrulama altyapısı hazır. Bir sonraki adımda yapay zeka entegrasyonu yapılacak.',
-        });
-        setIsVerifying(false);
-        router.back();
+        if (!cameraFrameDataUri) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Kamera görüntüsü alınamadı.' });
+            setIsVerifying(false);
+            return;
+        }
+
+        try {
+            const profileImageDataUri = await toDataURL(userProfile.profilePicture);
+
+            const result = await verifyFace({
+                profileImageDataUri: profileImageDataUri,
+                cameraFrameDataUri: cameraFrameDataUri,
+            });
+
+            if (result.isSamePerson) {
+                await updateDoc(doc(firestore, 'users', user.uid), {
+                    isPhotoVerified: true
+                });
+                toast({
+                    title: 'Doğrulama Başarılı!',
+                    description: 'Profiliniz başarıyla doğrulandı. Artık mavi tik rozetine sahipsiniz.',
+                });
+                router.back();
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Doğrulama Başarısız',
+                    description: 'Profil fotoğrafınızla yüzünüz eşleşmedi. Lütfen daha net bir poz deneyin.',
+                });
+            }
+        } catch (error) {
+            console.error("Yüz doğrulama hatası:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Bir Hata Oluştu',
+                description: 'Yapay zeka doğrulaması sırasında bir sorun yaşandı. Lütfen tekrar deneyin.',
+            });
+        } finally {
+            setIsVerifying(false);
+        }
     };
 
     return (

@@ -106,6 +106,10 @@
             "type": "boolean",
             "description": "Indicates if the user is currently online."
         },
+        "isPhotoVerified": {
+            "type": "boolean",
+            "description": "Indicates if the user has verified their profile with a photo."
+        },
         "lastSeen": {
             "type": "string",
             "format": "date-time",
