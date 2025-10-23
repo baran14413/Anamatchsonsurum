@@ -423,67 +423,46 @@ function AnasayfaPageContent() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 relative">
-        <div className="absolute top-2 right-4 z-50 flex flex-col items-center">
-          <Button onClick={handleUndo} variant="outline" size="icon" className="w-10 h-10 rounded-full shadow-lg border-2 border-yellow-500 text-yellow-500 bg-background/50 backdrop-blur-sm hover:bg-yellow-500/10 disabled:opacity-50" disabled={!lastSwipedProfile}>
-              <Undo className="w-5 h-5" />
-          </Button>
-          <AnimatePresence>
-              {showUndoMessage && (
-                  <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400"
-                  >
-                      Geri Alındı
-                  </motion.div>
-              )}
-          </AnimatePresence>
-        </div>
+        <AnimatePresence>
+          {profiles.map((profile, index) => {
+            const isTop = index === profiles.length - 1;
+            if (!isTop) return null; // Only render the top card for interaction
+            return (
+              <MemoizedProfileCard
+                key={profile.uid}
+                profile={profile}
+                onSwipe={handleSwipe}
+              />
+            )
+          })}
+        </AnimatePresence>
 
-        <div className="absolute inset-0">
-          {topCard ? (
-              <AnimatePresence>
-                  {profiles.map((profile, index) => {
-                      const isTop = index === profiles.length - 1;
-                      if (!isTop) return null; // Only render the top card for interaction
-                      return (
-                          <MemoizedProfileCard
-                              key={profile.uid}
-                              profile={profile}
-                              onSwipe={handleSwipe}
-                          />
-                      )
-                  })}
-              </AnimatePresence>
-          ) : !isLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
-                  <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
-                  <p className="text-muted-foreground">
-                  {langTr.anasayfa.outOfProfilesDescription}
-                  </p>
-                  <Button onClick={handleRetry} disabled={isFetching.current}>
-                      {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
-                  </Button>
-              </div>
-          )}
-        </div>
-
-        {topCard && (
-            <div className="absolute bottom-6 left-0 right-0 z-50 flex justify-center items-center gap-4">
-              <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
-                  <XIcon className="w-8 h-8 text-red-500" strokeWidth={3} />
-              </Button>
-              <Button onClick={() => handleActionClick('up')} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
-                  <Star className="w-6 h-6 text-blue-500" fill="currentColor"/>
-              </Button>
-              <Button onClick={() => handleActionClick('right')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
-                  <Heart className="w-8 h-8 text-green-500" fill="currentColor"/>
+        {!topCard && !isLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 space-y-4">
+              <h3 className="text-2xl font-bold">{langTr.anasayfa.outOfProfilesTitle}</h3>
+              <p className="text-muted-foreground">
+              {langTr.anasayfa.outOfProfilesDescription}
+              </p>
+              <Button onClick={handleRetry} disabled={isFetching.current}>
+                  {isFetching.current ? "Yükleniyor..." : "Tekrar Dene"}
               </Button>
           </div>
         )}
       </div>
+
+      {topCard && (
+        <div className="shrink-0 z-10 flex justify-center items-center gap-4 py-4">
+          <Button onClick={() => handleActionClick('left')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+              <XIcon className="w-8 h-8 text-red-500" strokeWidth={3} />
+          </Button>
+          <Button onClick={() => handleActionClick('up')} variant="outline" size="icon" className="w-12 h-12 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+              <Star className="w-6 h-6 text-blue-500" fill="currentColor"/>
+          </Button>
+          <Button onClick={() => handleActionClick('right')} variant="outline" size="icon" className="w-16 h-16 rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
+              <Heart className="w-8 h-8 text-green-500" fill="currentColor"/>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
