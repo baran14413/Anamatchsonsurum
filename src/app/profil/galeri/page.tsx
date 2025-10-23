@@ -15,7 +15,7 @@ import type { UserImage } from "@/lib/types";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-const MAX_IMAGES = 6;
+const MAX_IMAGES = 10;
 
 type ImageSlot = {
     file: File | null;
