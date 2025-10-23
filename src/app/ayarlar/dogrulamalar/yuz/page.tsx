@@ -29,16 +29,19 @@ const dataURLtoBlob = (dataurl: string) => {
     return new Blob([u8arr], { type: mime });
 };
 
-// Helper function to fetch and convert an image URL to a data URI
+// Helper function to fetch and convert an image URL to a data URI via a server-side proxy
 const toDataURL = async (url: string): Promise<string> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+    try {
+        const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image via proxy: ${response.statusText}`);
+        }
+        const { dataUri } = await response.json();
+        return dataUri;
+    } catch (error) {
+        console.error("Error fetching image via proxy:", error);
+        throw error;
+    }
 };
 
 
