@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -47,7 +46,7 @@ export default function AdminUsersPage() {
 
   const users = useMemo(() => {
     if (!allUsers) return [];
-    return allUsers.filter(user => user.isBot !== true);
+    return allUsers.filter(user => user.isBot !== true).sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
   }, [allUsers]);
 
   const handleToggleAdmin = async (user: UserProfile) => {
@@ -73,6 +72,7 @@ export default function AdminUsersPage() {
     if (!firestore || !userToBan) return;
     try {
         await deleteDoc(doc(firestore, 'users', userToBan.uid));
+        // Also delete the auth user in a real scenario
         toast({
             title: 'Kullanıcı Yasaklandı',
             description: `${userToBan.fullName} başarıyla sistemden yasaklandı.`
@@ -168,13 +168,10 @@ export default function AdminUsersPage() {
                 <Table>
                 <TableHeader>
                     <TableRow>
-                    <TableHead className="w-[80px]">Avatar</TableHead>
-                    <TableHead>İsim</TableHead>
-                    <TableHead>E-posta</TableHead>
-                    <TableHead>Üyelik</TableHead>
-                    <TableHead>Super Like</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead>Kayıt Tarihi</TableHead>
+                    <TableHead>Kullanıcı</TableHead>
+                    <TableHead className="hidden sm:table-cell">E-posta</TableHead>
+                    <TableHead className="hidden md:table-cell">Üyelik</TableHead>
+                    <TableHead className="hidden lg:table-cell">Kayıt Tarihi</TableHead>
                     <TableHead className='text-right'>Eylemler</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -195,39 +192,26 @@ export default function AdminUsersPage() {
                       return (
                       <TableRow key={user.id}>
                           <TableCell>
-                          <Avatar>
-                              <AvatarImage src={user.profilePicture} />
-                              <AvatarFallback>{user.fullName?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          </TableCell>
-                          <TableCell className="font-medium">{user.fullName}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                           <TableCell>
-                              <div className='flex items-center gap-2 min-w-max'>
-                                <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManage(user)}>
-                                    <Gem className={isGold ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground hover:text-yellow-500'} />
-                                </Button>
-                                {isGold && <span className='text-xs text-muted-foreground'>{expiryDate || 'Kalıcı'}</span>}
-                              </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className='flex items-center gap-2'>
-                                <Button variant="ghost" size="icon" className='h-8 w-8' onClick={() => setUserToManage(user)}>
-                                    <Star className={(user.superLikeBalance || 0) > 0 ? 'text-blue-500 fill-blue-500' : 'text-muted-foreground hover:text-blue-500'} />
-                                </Button>
-                                <span className='text-sm font-medium'>{user.superLikeBalance || 0}</span>
+                            <div className="flex items-center gap-3">
+                                <Avatar>
+                                    <AvatarImage src={user.profilePicture} />
+                                    <AvatarFallback>{user.fullName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className='flex flex-col'>
+                                  <span className="font-medium">{user.fullName}</span>
+                                  <span className='text-muted-foreground sm:hidden'>{user.email}</span>
+                                </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                          <div className='flex items-center gap-2'>
-                              <Badge variant={user.isOnline ? 'default' : 'secondary'}>
-                              {user.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
-                              </Badge>
-                              {user.isAdmin && <Badge variant='destructive' className='gap-1'><Shield className='h-3 w-3'/> Admin</Badge>}
-                          </div>
+                          <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
+                           <TableCell className="hidden md:table-cell">
+                              <div className='flex items-center gap-2 min-w-max'>
+                                <Gem className={isGold ? 'text-yellow-500' : 'text-muted-foreground'} />
+                                {isGold ? (expiryDate || 'Kalıcı') : 'Free'}
+                              </div>
                           </TableCell>
-                          <TableCell className="min-w-[150px]">
-                          {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
+                          <TableCell className="hidden lg:table-cell min-w-[150px]">
+                            {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                           </TableCell>
                           <TableCell className='text-right'>
                               <DropdownMenu>
@@ -261,7 +245,7 @@ export default function AdminUsersPage() {
                     })}
                     {(!users || users.length === 0) && (
                         <TableRow>
-                            <TableCell colSpan={8} className="h-24 text-center">
+                            <TableCell colSpan={5} className="h-24 text-center">
                             Gerçek kullanıcı bulunamadı.
                             </TableCell>
                         </TableRow>

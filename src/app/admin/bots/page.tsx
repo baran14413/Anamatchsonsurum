@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -203,7 +202,7 @@ export default function AdminBotsPage() {
         <h1 className="text-2xl font-bold">Bot Yönetim Merkezi</h1>
 
         {/* Deck Status Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Kadın Resim Havuzu</CardTitle>
@@ -247,7 +246,7 @@ export default function AdminBotsPage() {
         </div>
         
         {/* Bot Creation and List */}
-        <div className="pt-4 grid md:grid-cols-2 gap-6">
+        <div className="pt-4 grid lg:grid-cols-2 gap-6">
              <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -259,8 +258,8 @@ export default function AdminBotsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                     <div className="flex items-center gap-4">
-                        <div className="space-y-2 flex-1">
+                     <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="space-y-2 flex-1 w-full">
                             <Label htmlFor="bot-count">Bot Sayısı</Label>
                             <Input 
                                 id="bot-count"
@@ -272,7 +271,7 @@ export default function AdminBotsPage() {
                                 disabled={isCreatingBots}
                              />
                         </div>
-                         <div className="space-y-2 flex-1">
+                         <div className="space-y-2 flex-1 w-full">
                             <Label htmlFor="bot-gender">Cinsiyet</Label>
                             <Select 
                                 value={botGender}
@@ -299,19 +298,18 @@ export default function AdminBotsPage() {
                     </Button>
                 </CardContent>
             </Card>
-            <Card className='md:col-span-2'>
+            <Card className='lg:col-span-2'>
                 <CardHeader>
                     <CardTitle>Oluşturulan Botlar ({bots?.length || 0})</CardTitle>
                     <CardDescription>Sistemde aktif olan tüm botların listesi.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                            <TableHead className="w-[80px]">Avatar</TableHead>
-                            <TableHead>İsim</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Oluşturulma Tarihi</TableHead>
+                            <TableHead>Bot</TableHead>
+                            <TableHead className="hidden sm:table-cell">Email</TableHead>
+                            <TableHead className="hidden md:table-cell">Oluşturulma Tarihi</TableHead>
                             <TableHead className='text-right'>Eylemler</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -319,19 +317,21 @@ export default function AdminBotsPage() {
                             {bots && bots.map((bot) => (
                             <TableRow key={bot.id}>
                                 <TableCell>
-                                <Avatar>
-                                    <AvatarImage src={bot.profilePicture} />
-                                    <AvatarFallback>{bot.fullName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar>
+                                            <AvatarImage src={bot.profilePicture} />
+                                            <AvatarFallback>{bot.fullName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className='font-medium'>{bot.fullName}</span>
+                                    </div>
                                 </TableCell>
-                                <TableCell className="font-medium">{bot.fullName}</TableCell>
-                                <TableCell>
+                                <TableCell className="hidden sm:table-cell">
                                     <div className="text-sm relative group w-fit">
                                         <p>{bot.email}</p>
                                     </div>
                                 </TableCell>
-                                <TableCell>
-                                {bot.createdAt ? format(bot.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
+                                <TableCell className="hidden md:table-cell">
+                                    {bot.createdAt ? format(bot.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}
                                 </TableCell>
                                 <TableCell className='text-right'>
                                      <DropdownMenu>
@@ -356,7 +356,7 @@ export default function AdminBotsPage() {
                             ))}
                             {(!bots || bots.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
+                                    <TableCell colSpan={4} className="h-24 text-center">
                                     Bot bulunamadı.
                                     </TableCell>
                                 </TableRow>
@@ -384,5 +384,3 @@ export default function AdminBotsPage() {
      </AlertDialog>
   );
 }
-
-    

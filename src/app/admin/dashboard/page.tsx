@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -39,6 +38,7 @@ export default function AdminDashboardPage() {
 
   const messagesQuery = useMemo(() => {
         if (!firestore) return null;
+        // Assuming system_messages is a root collection
         return query(collection(firestore, 'system_messages'));
     }, [firestore]);
     const { data: systemMessages, isLoading: isLoadingMessages } = useCollection(messagesQuery);
@@ -53,10 +53,15 @@ export default function AdminDashboardPage() {
     try {
       const batch = writeBatch(firestore);
       
-      // 1. Delete all documents in the 'matches' collection
+      // 1. Delete all documents in the 'matches' collection and their subcollections
       const allMatchesQuery = collection(firestore, 'matches');
       const allMatchesSnapshot = await getDocs(allMatchesQuery);
-      allMatchesSnapshot.forEach(doc => batch.delete(doc.ref));
+      for (const matchDoc of allMatchesSnapshot.docs) {
+          const messagesQuery = collection(matchDoc.ref, 'messages');
+          const messagesSnapshot = await getDocs(messagesQuery);
+          messagesSnapshot.forEach(msgDoc => batch.delete(msgDoc.ref));
+          batch.delete(matchDoc.ref);
+      }
 
       // 2. Delete the 'matches' subcollection for every user
       if (allUsers) {
@@ -88,7 +93,7 @@ export default function AdminDashboardPage() {
         <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <div className="space-y-6">
                 <h1 className="text-2xl font-bold">Genel Bakış</h1>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">

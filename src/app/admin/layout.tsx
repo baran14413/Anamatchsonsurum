@@ -49,43 +49,45 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         <h2 className="text-lg font-semibold">Admin Paneli</h2>
                     </div>
                 </SidebarHeader>
-                <SidebarMenu>
-                    <SidebarGroup>
-                        <SidebarGroupLabel>Sistem Kontrolü</SidebarGroupLabel>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Dashboard" asChild>
-                                <Link href="/admin/dashboard">
-                                    <Home />
-                                    <span>Genel Bakış</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Kullanıcılar" asChild>
-                               <Link href="/admin/users">
-                                    <Users />
-                                    <span>Kullanıcılar</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Botlar" asChild>
-                               <Link href="/admin/bots">
-                                    <Bot />
-                                    <span>Botlar</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                         <SidebarMenuItem>
-                            <SidebarMenuButton tooltip="Sistem Mesajları" asChild>
-                               <Link href="/admin/system-messages">
-                                    <MessageSquare />
-                                    <span>Sistem Mesajları</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarGroup>
-                </SidebarMenu>
+                <ScrollArea className="flex-1">
+                    <SidebarMenu>
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Sistem Kontrolü</SidebarGroupLabel>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Dashboard" asChild>
+                                    <Link href="/admin/dashboard">
+                                        <Home />
+                                        <span>Genel Bakış</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Kullanıcılar" asChild>
+                                   <Link href="/admin/users">
+                                        <Users />
+                                        <span>Kullanıcılar</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Botlar" asChild>
+                                   <Link href="/admin/bots">
+                                        <Bot />
+                                        <span>Botlar</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Sistem Mesajları" asChild>
+                                   <Link href="/admin/system-messages">
+                                        <MessageSquare />
+                                        <span>Sistem Mesajları</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarGroup>
+                    </SidebarMenu>
+                </ScrollArea>
             </SidebarContent>
         </Sidebar>
         <SidebarInset>
@@ -93,10 +95,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                  <SidebarTrigger className="md:hidden" />
                  {/* You can add a breadcrumb or title here if needed */}
             </header>
-            <main className="relative flex-1 p-4 pt-0 md:p-6 md:pt-0">
-                <ScrollArea className="h-[calc(100vh-5rem)]">
-                    {children}
-                </ScrollArea>
+            <main className="flex-1 p-4 pt-0 md:p-6 md:pt-0 overflow-auto">
+                 {children}
             </main>
         </SidebarInset>
     </SidebarProvider>

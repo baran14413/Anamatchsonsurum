@@ -211,7 +211,7 @@ export default function SystemMessagesPage() {
         <div className="space-y-6">
         <h1 className="text-2xl font-bold">Sistem Mesajları</h1>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8">
             <Card>
             <CardHeader>
                 <CardTitle>Toplu Mesaj Paneli</CardTitle>
