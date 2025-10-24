@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,6 +19,7 @@ import { Icons } from './icons';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useUser } from '@/firebase/provider';
 import CircularProgress from './circular-progress';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 interface ProfileCardProps {
   profile: UserProfile & { distance?: number };
@@ -309,12 +309,14 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
             <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
-             <Badge className="absolute top-4 left-4 z-20 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-              <Star className="w-3.5 h-3.5 fill-white"/>
-              <span className='font-bold text-sm'>Yeni Üye</span>
-            </Badge>
+            {isNewUser &&
+              <Badge className="absolute top-4 left-4 z-20 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                <Star className="w-3.5 h-3.5 fill-white"/>
+                <span className='font-bold text-sm'>Yeni Üye</span>
+              </Badge>
+            }
 
-             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
+            <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
                 <BarChart2 className="h-5 w-5" />
             </Button>
 
@@ -477,21 +479,35 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         </div>
 
         {compatibilityResult && (
-             <DialogContent>
-                <DialogHeader className="items-center text-center">
-                    <div className='relative w-40 h-40'>
+             <DialogContent className="sm:max-w-sm">
+                <DialogHeader className="items-center text-center space-y-4">
+                    <div className="flex items-center justify-center space-x-4">
+                         <Avatar className="w-16 h-16 border-2">
+                            <AvatarImage src={currentUserProfile?.profilePicture || ''} />
+                            <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        
+                        <Heart className="w-8 h-8 text-red-500 fill-red-500 animate-pulse" />
+
+                        <Avatar className="w-16 h-16 border-2">
+                            <AvatarImage src={profile.profilePicture || ''} />
+                            <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    </div>
+
+                    <div className='relative w-40 h-40 mx-auto'>
                         <CircularProgress progress={compatibilityResult.score} size={160} strokeWidth={10} />
                          <div className='absolute inset-0 flex items-center justify-center text-4xl font-bold'>
                             {compatibilityResult.score}%
                         </div>
                     </div>
-                    <DialogTitle className="text-2xl pt-4">{compatibilityResult.message}</DialogTitle>
+                    <DialogTitle className="text-2xl pt-2">{compatibilityResult.message}</DialogTitle>
                     <DialogDescription>
                         Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
                     </DialogDescription>
                 </DialogHeader>
                 {compatibilityResult.commonInterests.length > 0 && (
-                    <div className="text-center">
+                    <div className="text-center py-4">
                         <h4 className="font-semibold mb-2">Ortak İlgi Alanlarınız</h4>
                         <div className="flex flex-wrap justify-center gap-2">
                         {compatibilityResult.commonInterests.map(interest => (
