@@ -8,10 +8,8 @@ body {
   -webkit-user-select: none; /* Safari */
   -ms-user-select: none; /* IE 10+ and Edge */
   user-select: none; /* Standard syntax */
-  overflow: hidden;
   margin: 0;
   padding-top: max(0px, env(safe-area-inset-top));
-  padding-bottom: 1rem; /* Added explicit bottom padding */
   background-color: hsl(var(--background));
   box-sizing: border-box;
 }
