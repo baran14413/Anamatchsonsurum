@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars, BarChart2, Hand } from 'lucide-react';
+import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars, BarChart2, Hand, ChevronLeft, ChevronRight } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -19,7 +19,6 @@ import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { useUser } from '@/firebase/provider';
-import CircularProgress from './circular-progress';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 interface ProfileCardProps {
@@ -207,7 +206,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     setShowSwipeHint(false);
     pressTimer.current = setTimeout(() => {
         setIsLongPress(true);
-    }, 3000); // 3 seconds for long press
+    }, 1000); // 1 second for long press
   };
 
   const handlePressEnd = () => {
@@ -349,7 +348,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 fill
                                 sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
                                 className="object-cover"
-                                priority={index === 0}
+                                priority={true}
                             />
                           </div>
                         );
@@ -375,11 +374,13 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 )}
             </AnimatePresence>
             
-             <div className={cn("absolute inset-0 transition-opacity duration-300", isLongPress ? "opacity-0" : "opacity-100")}>
+             <div className={cn("absolute inset-0 transition-opacity duration-300 z-20 pointer-events-none", isLongPress ? "opacity-0" : "opacity-100")}>
+                {/* Gradient Overlays */}
+                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
 
-                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
-
-                <div className="absolute top-4 left-4 z-20 flex flex-col items-start gap-2">
+                {/* Top-left Badges */}
+                <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
                     <div className='flex items-center gap-2'>
                         {isNewUser && (
                             <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
@@ -394,32 +395,33 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         <span className='font-bold'>%{likeRatio} Beğenilme</span>
                     </Badge>
                 </div>
-
-                <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
+                
+                 {/* Top-right Actions */}
+                 <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse pointer-events-auto">
                     <BarChart2 className="h-5 w-5" />
                 </Button>
 
+                {/* Image Navigation */}
                 {profile.images && profile.images.length > 1 && (
-                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
-                        {profile.images.map((_, index) => (
-                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
-                            </div>
-                        ))}
-                    </div>
+                    <>
+                        <div className='absolute top-2 left-2 right-2 flex gap-1'>
+                            {profile.images.map((_, index) => (
+                                <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                    <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                                </div>
+                            ))}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={handlePrevImage} className="absolute left-1 top-1/2 -translate-y-1/2 h-full w-1/4 text-white/0 hover:text-white/80 hover:bg-transparent pointer-events-auto">
+                           <ChevronLeft className="h-8 w-8" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={handleNextImage} className="absolute right-1 top-1/2 -translate-y-1/2 h-full w-1/4 text-white/0 hover:text-white/80 hover:bg-transparent pointer-events-auto">
+                            <ChevronRight className="h-8 w-8" />
+                        </Button>
+                    </>
                 )}
 
-                 {/* Clickable areas for image navigation */}
-                <div className='absolute inset-0 flex z-10'>
-                    <div className='flex-1 h-full' onClick={handlePrevImage} />
-                    <div className='flex-1 h-full' onClick={handleNextImage} />
-                </div>
-
-
                 <Sheet>
-                    <div
-                        className="absolute bottom-0 left-0 right-0 p-4 pb-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
-                    >
+                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-2 text-white pointer-events-auto">
                         <div className="space-y-1">
                             <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                             
