@@ -179,11 +179,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link href="/anasayfa">
                     <Icons.logo width={32} height={32} />
                 </Link>
-                <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground">
-                        <AtSign className="h-4 w-4" />
-                    </Button>
-                </AlertDialogTrigger>
             </div>
 
             <div className='flex items-center gap-1'>
