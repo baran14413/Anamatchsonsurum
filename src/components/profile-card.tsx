@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars, BarChart2 } from 'lucide-react';
@@ -166,6 +166,8 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const { userProfile: currentUserProfile } = useUser();
   const [compatibilityResult, setCompatibilityResult] = useState<{ score: number; message: string; commonInterests: string[] } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLongPress, setIsLongPress] = useState(false);
+  const pressTimer = useRef<NodeJS.Timeout>();
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -184,13 +186,26 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const isGoldMember = profile.membershipType === 'gold';
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
+  const handlePressStart = () => {
+    pressTimer.current = setTimeout(() => {
+        setIsLongPress(true);
+    }, 500); // 500ms for long press
+  };
+
+  const handlePressEnd = () => {
+      clearTimeout(pressTimer.current);
+      setIsLongPress(false);
+  };
+  
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isLongPress) return;
     setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
   };
   
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+     if (isLongPress) return;
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
   
@@ -253,6 +268,11 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragEnd={handleDragEnd}
+        onMouseDown={handlePressStart}
+        onMouseUp={handlePressEnd}
+        onTouchStart={handlePressStart}
+        onTouchEnd={handlePressEnd}
+        onMouseLeave={handlePressEnd}
         style={{ x, y, rotate }}
         exit={{
             x: x.get() > 0 ? 500 : (x.get() < 0 ? -500 : 0),
@@ -306,204 +326,210 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </>
             )}
             
-            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+             <div className={cn("absolute inset-0 transition-opacity duration-300", isLongPress ? "opacity-0" : "opacity-100")}>
 
-            <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2">
-                {isNewUser && (
-                    <Badge className="bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                        <Star className="w-3.5 h-3.5 fill-white"/>
-                        <span className='font-bold text-sm'>Yeni Üye</span>
+                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+
+                <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2">
+                    {isNewUser && (
+                        <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                            <Star className="w-3.5 h-3.5 fill-white"/>
+                            <span className='font-bold text-xs'>Yeni Üye</span>
+                        </Badge>
+                    )}
+                    <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2">
+                        <Heart className="w-3 h-3 fill-white"/>
+                        <span className='font-bold text-xs'>%{likeRatio} Beğenilme</span>
                     </Badge>
-                )}
-                 <Badge className="bg-gradient-to-r from-pink-500/70 to-orange-400/70 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                    <Heart className="w-3.5 h-3.5 fill-white"/>
-                    <span className='font-bold text-sm'>%{likeRatio} Beğenilme</span>
-                </Badge>
-            </div>
+                </div>
 
-            <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
-                <BarChart2 className="h-5 w-5" />
-            </Button>
+                <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
+                    <BarChart2 className="h-5 w-5" />
+                </Button>
 
-            {profile.images && profile.images.length > 1 && (
-                <>
-                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-20'>
-                        {profile.images.map((_, index) => (
-                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
-                            </div>
-                        ))}
-                    </div>
-                    <div className='absolute inset-0 flex z-20'>
-                        <div className='flex-1 h-full' onClick={handlePrevImage} />
-                        <div className='flex-1 h-full' onClick={handleNextImage} />
-                    </div>
-                </>
-            )}
-
-            <Sheet>
-                <div
-                    className="absolute bottom-0 left-0 right-0 p-4 pb-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
-                >
-                     <div className="space-y-1">
-                        <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                        
-                        <div className="inline-flex items-center gap-3 p-1 rounded-lg">
-                            <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
-                            <span className="text-2xl font-semibold text-white/90">{age}</span>
-                            {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
-                            {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
-                             {displayDistance && (
-                                <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{displayDistance}</span>
+                {profile.images && profile.images.length > 1 && (
+                    <>
+                        <div className='absolute top-2 left-2 right-2 flex gap-1 z-20'>
+                            {profile.images.map((_, index) => (
+                                <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                    <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                                 </div>
-                            )}
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                 {/* Clickable areas for image navigation */}
+                <div className='absolute inset-0 flex z-10'>
+                    <div className='flex-1 h-full' onClick={handlePrevImage} />
+                    <div className='flex-1 h-full' onClick={handleNextImage} />
+                </div>
+
+
+                <Sheet>
+                    <div
+                        className="absolute bottom-0 left-0 right-0 p-4 pb-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
+                    >
+                        <div className="space-y-1">
+                            <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
+                            
+                            <div className="inline-flex items-center gap-3 p-1 rounded-lg">
+                                <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
+                                <span className="text-2xl font-semibold text-white/90">{age}</span>
+                                {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
+                                {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
+                                {displayDistance && (
+                                    <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
+                                        <MapPin className="w-4 h-4" />
+                                        <span>{displayDistance}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="absolute right-4 bottom-6">
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
+                                    <ChevronUp className="h-6 w-6" />
+                                </Button>
+                            </SheetTrigger>
                         </div>
                     </div>
-                    <div className="absolute right-4 bottom-6">
-                         <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full text-foreground bg-background/80 hover:bg-background/90 backdrop-blur-sm border shrink-0">
-                                <ChevronUp className="h-6 w-6" />
-                            </Button>
-                        </SheetTrigger>
-                    </div>
-                </div>
-                    
-                <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
-                    <SheetHeader className='p-2 flex-row items-center justify-between'>
-                            <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
-                            <SheetClose asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" type="button">
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </SheetClose>
-                    </SheetHeader>
-                    <ScrollArea className='flex-1'>
-                        <div className="space-y-6">
-                            {profile.images && profile.images.length > 0 && (
-                                    <Carousel className="w-full">
-                                    <CarouselContent>
-                                        {profile.images
-                                            .map((image, index) => (
-                                            <CarouselItem key={index}>
-                                                <div className="relative w-full aspect-[4/3]">
-                                                    <Image
-                                                        src={image.url}
-                                                        alt={`${profile.fullName} profil medyası ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                    />
+                        
+                    <SheetContent side="bottom" className='h-[90vh] rounded-t-2xl bg-card text-card-foreground border-none p-0 flex flex-col'>
+                        <SheetHeader className='p-2 flex-row items-center justify-between'>
+                                <SheetTitle className="text-xl">{profile.fullName}</SheetTitle>
+                                <SheetClose asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full" type="button">
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </SheetClose>
+                        </SheetHeader>
+                        <ScrollArea className='flex-1'>
+                            <div className="space-y-6">
+                                {profile.images && profile.images.length > 0 && (
+                                        <Carousel className="w-full">
+                                        <CarouselContent>
+                                            {profile.images
+                                                .map((image, index) => (
+                                                <CarouselItem key={index}>
+                                                    <div className="relative w-full aspect-[4/3]">
+                                                        <Image
+                                                            src={image.url}
+                                                            alt={`${profile.fullName} profil medyası ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                        <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
+                                    </Carousel>
+                                )}
+                                
+                                <div className="p-6 space-y-6 !pt-2">
+                                    <div className="text-left space-y-2">
+                                            <div className='flex flex-col items-start'>
+                                            {profile.membershipType === 'gold' && (
+                                                <div className='flex items-center gap-2'>
+                                                <Icons.beGold width={24} height={24} />
+                                                <p className="font-semibold text-yellow-500">Gold Üye</p>
                                                 </div>
-                                            </CarouselItem>
-                                        ))}
-                                    </CarouselContent>
-                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/30 text-white border-none hover:bg-black/50" />
-                                </Carousel>
-                            )}
-                            
-                            <div className="p-6 space-y-6 !pt-2">
-                                <div className="text-left space-y-2">
-                                        <div className='flex flex-col items-start'>
-                                        {profile.membershipType === 'gold' && (
-                                            <div className='flex items-center gap-2'>
-                                            <Icons.beGold width={24} height={24} />
-                                            <p className="font-semibold text-yellow-500">Gold Üye</p>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-3xl font-bold">
+                                                    {profile.fullName}
+                                                </h3>
+                                                <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                            </div>
+                                        </div>
+                                        {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                        
+                                        {displayDistance && (
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>
+                                                    {displayDistance}
+                                                </span>
                                             </div>
                                         )}
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-3xl font-bold">
-                                                {profile.fullName}
-                                            </h3>
-                                            <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
+                                    </div>
+                                    
+                                    {likeRatio && (
+                                        <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
+                                        <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
+                                        <div className='flex-1'>
+                                            <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
+                                            <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
                                         </div>
                                     </div>
-                                    {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                    )}
                                     
-                                    {displayDistance && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <MapPin className="w-4 h-4" />
-                                            <span>
-                                                {displayDistance}
-                                            </span>
+                                    {profile.bio && (
+                                        <div>
+                                            <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
+                                            <p className='text-muted-foreground'>{profile.bio}</p>
                                         </div>
                                     )}
-                                </div>
-                                
-                                {likeRatio && (
-                                    <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 p-3">
-                                    <Heart className="w-6 h-6 text-red-400 fill-red-400 shrink-0" />
-                                    <div className='flex-1'>
-                                        <p className="font-bold text-base">Beğenilme Oranı: %{likeRatio}</p>
-                                        <p className='text-sm text-muted-foreground'>Kullanıcıların %{likeRatio}'si bu profili beğendi.</p>
-                                    </div>
-                                </div>
-                                )}
-                                
-                                {profile.bio && (
-                                    <div>
-                                        <h4 className='text-lg font-semibold mb-2'>Hakkında</h4>
-                                        <p className='text-muted-foreground'>{profile.bio}</p>
-                                    </div>
-                                )}
-                                
-                                {interestEntries.length > 0 && (
-                                    <div>
-                                        <h4 className='text-lg font-semibold mb-4'>İlgi Alanları</h4>
-                                        <div className="space-y-4">
-                                            {interestEntries.map(([category, { icon, interests }]) => {
-                                                const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
-                                                return (
-                                                    <div key={category} className="flex items-start gap-3">
-                                                        <div className="w-8 h-8 flex items-center justify-center shrink-0">
-                                                            <IconComponent className="w-6 h-6 text-primary" />
-                                                        </div>
-                                                        <div className='flex flex-col'>
-                                                                <span className="font-medium text-sm">{category}</span>
-                                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                                {interests.map(interest => (
-                                                                    <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
-                                                                ))}
+                                    
+                                    {interestEntries.length > 0 && (
+                                        <div>
+                                            <h4 className='text-lg font-semibold mb-4'>İlgi Alanları</h4>
+                                            <div className="space-y-4">
+                                                {interestEntries.map(([category, { icon, interests }]) => {
+                                                    const IconComponent = LucideIcons[icon] as React.ElementType || LucideIcons.Sparkles;
+                                                    return (
+                                                        <div key={category} className="flex items-start gap-3">
+                                                            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                                                                <IconComponent className="w-6 h-6 text-primary" />
+                                                            </div>
+                                                            <div className='flex flex-col'>
+                                                                    <span className="font-medium text-sm">{category}</span>
+                                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                                    {interests.map(interest => (
+                                                                        <Badge key={interest} variant="secondary" className='text-base py-1 px-3'>{interest}</Badge>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
+                                </div>
                             </div>
-                        </div>
-                    </ScrollArea>
-                </SheetContent>
-            </Sheet>
+                        </ScrollArea>
+                    </SheetContent>
+                </Sheet>
+            </div>
         </div>
 
         {compatibilityResult && (
-             <DialogContent className="sm:max-w-[280px] bg-background/60 backdrop-blur-sm border-border rounded-xl">
+             <DialogContent className="sm:max-w-xs bg-background/60 backdrop-blur-sm border-border rounded-xl">
                 <DialogHeader className="items-center text-center space-y-4">
-                    <div className="flex items-center justify-center space-x-4">
-                         <Avatar className="w-20 h-20 border-2">
+                    <div className="flex items-center justify-center space-x-2">
+                         <Avatar className="w-16 h-16 border-2">
                             <AvatarImage src={currentUserProfile?.profilePicture || ''} />
                             <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         
                         <div className="relative">
-                            <Heart className="w-12 h-12 text-red-500 fill-red-500 animate-pulse" />
-                             <div className='absolute inset-0 flex items-center justify-center text-lg font-bold text-white'>
+                            <Heart className="w-10 h-10 text-red-500 fill-red-500 animate-pulse" />
+                             <div className='absolute inset-0 flex items-center justify-center text-sm font-bold text-white'>
                                 {compatibilityResult.score}%
                             </div>
                         </div>
 
-                        <Avatar className="w-20 h-20 border-2">
+                        <Avatar className="w-16 h-16 border-2">
                             <AvatarImage src={profile.profilePicture || ''} />
                             <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                     </div>
 
-                    <DialogTitle className="text-2xl pt-2">{compatibilityResult.message}</DialogTitle>
+                    <DialogTitle className="text-xl pt-2">{compatibilityResult.message}</DialogTitle>
                     <DialogDescription>
                         Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
                     </DialogDescription>
