@@ -386,10 +386,13 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                             <span className='font-bold'>Yeni Üye</span>
                         </Badge>
                     )}
-                    <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
-                        <Heart className="w-3 h-3 fill-white"/>
-                        <span className='font-bold'>%{likeRatio} Beğenilme</span>
-                    </Badge>
+                     <div className="flex items-center gap-2">
+                        <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
+                            <Heart className="w-3 h-3 fill-white"/>
+                            <span className='font-bold'>%{likeRatio} Beğenilme</span>
+                        </Badge>
+                        {profile.address?.countryCode && <span className='text-base'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
+                     </div>
                 </div>
 
                 <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
@@ -425,7 +428,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 <span className="text-2xl font-semibold text-white/90">{age}</span>
                                 {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
                                 {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
-                                {profile.address?.countryCode && <span className='text-lg'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
                                 {displayDistance && (
                                     <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
                                         <MapPin className="w-4 h-4" />
