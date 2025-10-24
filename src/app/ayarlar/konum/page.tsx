@@ -44,8 +44,18 @@ export default function LocationSettingsPage() {
                 const userDocRef = doc(firestore, 'users', user.uid);
 
                 try {
+                    // First, get geocode data
+                    const geocodeResponse = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+                    let addressData = {};
+                    if (geocodeResponse.ok) {
+                        addressData = await geocodeResponse.json();
+                    } else {
+                        console.warn("Geocoding failed, location will be saved without address.");
+                    }
+
                     await updateDoc(userDocRef, {
                         location: { latitude, longitude },
+                        address: addressData, // Save geocoded address
                         locationLastUpdated: serverTimestamp(),
                     });
                     
@@ -76,6 +86,7 @@ export default function LocationSettingsPage() {
     };
 
     const lastUpdatedDate = userProfile?.locationLastUpdated?.toDate();
+    const currentAddress = userProfile?.address;
 
     return (
         <div className="flex h-dvh flex-col">
@@ -97,12 +108,20 @@ export default function LocationSettingsPage() {
                         <CardDescription>{tc.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {currentAddress && (currentAddress.city || currentAddress.country) ? (
+                            <p className="text-base font-semibold">
+                                {currentAddress.city}, {currentAddress.country}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">{tc.addressNotFound}</p>
+                        )}
+                        
                         {lastUpdatedDate ? (
                             <p className="text-sm text-muted-foreground">
                                 Son Güncelleme: {format(lastUpdatedDate, "d MMMM yyyy, HH:mm", { locale: tr })}
                             </p>
                         ) : (
-                           <p className="text-sm text-destructive mt-2">Konum bilgisi mevcut değil.</p>
+                           <p className="text-sm text-destructive mt-2">{tc.locationMissingTitle}</p>
                         )}
                        
                         <Button onClick={handleLocationRequest} disabled={isLocationLoading}>
