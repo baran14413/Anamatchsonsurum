@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
-import { useUser, useFirestore, useCollection } from '@/firebase/provider';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
