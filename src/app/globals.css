@@ -40,7 +40,6 @@ input, textarea {
 }
 
 .prevent-context-menu {
-    pointer-events: none;
     -webkit-touch-callout: none;
 }
 
