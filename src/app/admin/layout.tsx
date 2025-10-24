@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare, LogOut, Heart, BarChart, Bug, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 
