@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -29,7 +30,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -147,7 +147,11 @@ function ChatPageContent() {
     const [viewOnceProgress, setViewOnceProgress] = useState(0);
     
     const isSystemChat = matchId === 'system';
-    const otherUserId = user && !isSystemChat ? matchId?.replace(user.uid, '').replace('_', '') : null;
+    
+    const otherUserId = useMemo(() => {
+        if (!user || isSystemChat || !matchId) return null;
+        return matchId.replace(user.uid, '').replace('_', '');
+    }, [user, isSystemChat, matchId]);
     
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
@@ -1247,3 +1251,4 @@ export default function ChatPage() {
         </AppShell>
     )
 }
+

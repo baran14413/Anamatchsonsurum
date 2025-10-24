@@ -31,8 +31,8 @@ export interface UseCollectionResult<T> {
  * 
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted targetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence. Also make sure that it's dependencies are stable
- * references
+ * use useMemoFirebase (from @/firebase/provider) to memoize it per React guidence. 
+ * Also make sure that its dependencies are stable references.
  *  
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
@@ -71,7 +71,7 @@ export function useCollection<T = any>(
       (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path: targetRefOrQuery.type === 'collection' ? (targetRefOrQuery as CollectionReference).path : 'query',
+          path: 'path' in targetRefOrQuery ? targetRefOrQuery.path : 'query',
         });
         errorEmitter.emit('permission-error', contextualError);
         setError(contextualError);

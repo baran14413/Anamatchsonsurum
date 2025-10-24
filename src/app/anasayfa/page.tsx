@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
@@ -135,8 +135,12 @@ function AnasayfaPageContent() {
   const isFetching = useRef(false);
   const interactedUids = useRef<Set<string>>(new Set());
   
-  // Welcome Gift Logic
-  const allUsersQuery = useMemo(() => {
+  // Welcome Gift Logic - THIS IS NOW REMOVED TO PREVENT MASSIVE READS
+  // In a real app, this logic should be handled by a Cloud Function on user creation.
+  // The function would calculate the rank and save it to the user's profile.
+  // The client would then just read a single field from the user's own profile document.
+  /*
+  const allUsersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'users'), orderBy('createdAt', 'asc'));
   }, [firestore]);
@@ -152,7 +156,8 @@ function AnasayfaPageContent() {
       }
     }
   }, [user, userProfile, allUsers]);
-
+  */
+  
   const handleClaimWelcomeGift = async () => {
     if (!user || !firestore || !welcomeGiftRank) return;
 
