@@ -202,6 +202,13 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
             <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
+            {isNewUser && (
+                <Badge className="absolute top-4 left-4 z-20 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5">
+                    <Star className="w-3 h-3 fill-white"/>
+                    Yeni Üye
+                </Badge>
+            )}
+
             {profile.images && profile.images.length > 1 && (
                 <>
                     <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
@@ -224,12 +231,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 >
                     <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                         {isNewUser && (
-                            <div className="inline-flex items-center gap-1.5 p-1 px-2 rounded-full bg-blue-500/80 backdrop-blur-sm text-xs font-bold">
-                                <Star className="w-3 h-3 fill-white"/>
-                                YENİ ÜYE
-                            </div>
-                        )}
                         <div className="inline-flex items-center gap-3 p-2 rounded-lg bg-black/30 backdrop-blur-sm">
                            <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                            <span className="text-2xl font-semibold text-white/90">{age}</span>
