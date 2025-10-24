@@ -50,46 +50,46 @@ input, textarea {
 @layer base {
   :root {
     --background: 220 20% 98%; /* #F9F9FB */
-    --foreground: 0 0% 17.6%; /* #2D2D2D */
+    --foreground: 240 10% 3.9%;
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 17.6%;
+    --card-foreground: 240 10% 3.9%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 17.6%;
+    --popover-foreground: 240 10% 3.9%;
     
     --primary: 349 100% 64.9%; /* #FF4B6E */
     --primary-foreground: 0 0% 100%;
     
     --secondary: 347 100% 90%; /* #FFC3CF */
-    --secondary-foreground: 0 0% 17.6%;
+    --secondary-foreground: 240 5.9% 10%;
     
-    --muted: 220 10% 94%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
     
-    --accent: 220 10% 90%;
-    --accent-foreground: 0 0% 17.6%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
     
-    --destructive: 0 100% 61.8%; /* #FF3D3D */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     
-    --success: 120 60.9% 40.2%; /* #4CAF50 */
+    --success: 142.1 76.2% 36.3%;
     --success-foreground: 0 0% 100%;
     
-    --info: 217 91.2% 59.8%; /* #3B82F6 */
+    --info: 217 91.2% 59.8%;
     --info-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
     --ring: 349 100% 64.9%;
     
-    --radius: 0.625rem; /* 10px */
+    --radius: 0.75rem; /* 12px */
   }
 
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 10% 10%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
@@ -103,6 +103,8 @@ input, textarea {
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 348 70.3% 47.5%;

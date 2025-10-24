@@ -206,10 +206,10 @@ export default function AdminUsersPage() {
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
                            <TableCell className="hidden md:table-cell">
-                              <div className='flex items-center gap-2 min-w-max'>
-                                <Gem className={isGold ? 'text-yellow-500' : 'text-muted-foreground'} />
+                              <Badge variant={isGold ? 'default' : 'secondary'} className={isGold ? 'bg-yellow-400 text-black' : ''}>
+                                <Gem className="mr-2 h-3 w-3" />
                                 {isGold ? (expiryDate || 'Kalıcı') : 'Free'}
-                              </div>
+                              </Badge>
                           </TableCell>
                           <TableCell className="hidden lg:table-cell min-w-[150px]">
                             {user.createdAt ? format(user.createdAt.toDate(), 'd MMMM yyyy', { locale: tr }) : '-'}

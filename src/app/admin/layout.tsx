@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
-import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare, LogOut, Heart, BarChart, Bug, UserCog } from 'lucide-react';
+import { Home, Users, Settings, Bug, UserCog, Bot, MessageSquare, LogOut, Heart, BarChart } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
