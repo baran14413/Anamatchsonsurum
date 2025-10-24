@@ -40,7 +40,10 @@ input, textarea {
 }
 
 .prevent-context-menu {
-    -webkit-touch-callout: none;
+    -webkit-touch-callout: none; /* iOS Safari */
+    user-select: none; /* Standard syntax */
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ and Edge */
 }
 
 

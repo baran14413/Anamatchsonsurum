@@ -319,8 +319,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
           }
       }}>
         <div 
+          onContextMenu={(e) => e.preventDefault()}
           className={cn(
-            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
+            "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200 prevent-context-menu",
             isGoldMember && "border-4 border-yellow-400"
           )}
         >
@@ -378,12 +379,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 )}
             </AnimatePresence>
             
-             <div className={cn("absolute inset-0 transition-opacity duration-300 z-20 pointer-events-none", isLongPress ? "opacity-0" : "opacity-100")}>
+             <div className={cn("absolute inset-0 transition-opacity duration-300 z-20", isLongPress ? "opacity-0" : "opacity-100")}>
                 {/* Gradient Overlays */}
-                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent" />
+                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
                 
                 {/* Top-left Badges */}
-                <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
+                <div className="absolute top-4 left-4 flex flex-col items-start gap-2 pointer-events-none">
                     <div className='flex items-center gap-2'>
                          {isNewUser && (
                             <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
@@ -407,25 +408,21 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 {/* Image Navigation */}
                 {profile.images && profile.images.length > 1 && (
                     <>
-                        <div className='absolute top-2 left-2 right-2 flex gap-1'>
+                        <div className='absolute top-2 left-2 right-2 flex gap-1 pointer-events-none'>
                             {profile.images.map((_, index) => (
                                 <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                     <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                                 </div>
                             ))}
                         </div>
-                        <Button variant="ghost" size="icon" onClick={handlePrevImage} className="absolute left-1 top-1/2 -translate-y-1/2 h-full w-1/4 text-white/0 hover:text-white/80 hover:bg-transparent pointer-events-auto">
-                           <ChevronLeft className="h-8 w-8" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={handleNextImage} className="absolute right-1 top-1/2 -translate-y-1/2 h-full w-1/4 text-white/0 hover:text-white/80 hover:bg-transparent pointer-events-auto">
-                            <ChevronRight className="h-8 w-8" />
-                        </Button>
+                        <div className='absolute inset-y-0 left-0 w-1/2' onClick={handlePrevImage} />
+                        <div className='absolute inset-y-0 right-0 w-1/2' onClick={handleNextImage} />
                     </>
                 )}
             </div>
             
             <div className={cn("absolute bottom-0 left-0 right-0 transition-opacity duration-300 z-20", isLongPress ? "opacity-0" : "opacity-100")}>
-                <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/50 to-transparent pointer-events-none" />
+                 <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/50 to-transparent pointer-events-none" />
                 <Sheet>
                     <div className="p-4 pb-2 text-white pointer-events-auto relative z-10">
                         <div className="space-y-1">
@@ -476,6 +473,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                                             alt={`${profile.fullName} profil medyası ${index + 1}`}
                                                             fill
                                                             className="object-cover"
+                                                            priority
                                                         />
                                                     </div>
                                                 </CarouselItem>
