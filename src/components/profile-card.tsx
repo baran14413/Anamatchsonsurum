@@ -318,10 +318,13 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
               setCompatibilityResult(null);
           }
       }}>
-        <div className={cn(
+        <div 
+          className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             isGoldMember && "border-4 border-yellow-400"
-        )}>
+          )}
+          onContextMenu={(e) => e.preventDefault()}
+        >
             <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 right-10 z-30 pointer-events-none -rotate-[20deg]">
                 <Heart className="w-32 h-32 text-green-400 fill-green-400" strokeWidth={4} />
             </motion.div>
@@ -339,7 +342,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         return (
                           <div
                             key={`${profile.uid}-img-${index}`}
-                            className="absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
+                            className={cn(
+                                "absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out",
+                                "prevent-context-menu" // Added class
+                            )}
                             style={{ opacity: index === activeImageIndex ? 1 : 0 }}
                           >
                             <Image
@@ -378,7 +384,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 {/* Gradient Overlays */}
                 <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
-
+                
                 {/* Top-left Badges */}
                 <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
                     <div className='flex items-center gap-2'>
@@ -419,9 +425,11 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         </Button>
                     </>
                 )}
-
+            </div>
+            
+            <div className={cn("absolute bottom-0 left-0 right-0 transition-opacity duration-300 z-20", isLongPress ? "opacity-0" : "opacity-100")}>
                 <Sheet>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-2 text-white pointer-events-auto">
+                    <div className="p-4 pb-2 text-white pointer-events-auto">
                         <div className="space-y-1">
                             <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                             

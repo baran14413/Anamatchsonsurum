@@ -39,6 +39,12 @@ input, textarea {
     }
 }
 
+.prevent-context-menu {
+    pointer-events: none;
+    -webkit-touch-callout: none;
+}
+
+
 @layer base {
   :root {
     --background: 0 0% 100%;
