@@ -20,6 +20,7 @@ import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestor
 import type { Match, UserImage, DenormalizedMatch } from '@/lib/types';
 import AppShell from '@/components/app-shell';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 
 const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.ElementType, title: string, value: string | number, href?: string, iconClass?: string }) => {
@@ -181,7 +182,6 @@ function ProfilePageContent() {
         {/* Profile Header */}
         <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
           <div className="flex items-center justify-between gap-4">
-              {/* Left side: Name and Stats */}
               <div className="flex flex-col gap-4 flex-1">
                   <h1 className="text-2xl font-bold">
                       {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
@@ -209,18 +209,14 @@ function ProfilePageContent() {
                       />
                   </div>
               </div>
-
-              {/* Right side: Avatar */}
-              <div className="relative shrink-0 w-24 h-24 flex items-center justify-center">
+               <div className="relative shrink-0 w-24 h-24 flex items-center justify-center">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-md">
                       <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
                       <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  {profileCompletionPercentage < 100 && (
-                     <div className="absolute inset-0">
-                        <CircularProgress progress={profileCompletionPercentage} size={96} strokeWidth={5} />
-                    </div>
-                  )}
+                   <div className="absolute inset-0 flex items-center justify-center">
+                       <CircularProgress progress={profileCompletionPercentage} size={96} strokeWidth={5} />
+                   </div>
               </div>
           </div>
         </Card>
@@ -230,7 +226,7 @@ function ProfilePageContent() {
             <CardContent className='p-4'>
                 <ScrollArea>
                     <div className="flex items-center gap-x-2">
-                        {matches.map((match, index) => (
+                        {matches.filter(match => match.matchedWith !== user?.uid).map((match, index, array) => (
                             <div key={match.id} className="flex items-center gap-x-2">
                                  <Link href={`/eslesmeler/${match.id}`}>
                                     <div className='flex flex-col items-center gap-2 w-20'>
@@ -241,7 +237,7 @@ function ProfilePageContent() {
                                         <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
                                     </div>
                                 </Link>
-                                {index < matches.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0 animate-pulse-heart' />}
+                                {index < array.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0 animate-pulse-heart' />}
                             </div>
                         ))}
                     </div>
@@ -251,7 +247,6 @@ function ProfilePageContent() {
           </Card>
         )}
         
-        {/* Gallery Preview */}
         {galleryImages.length > 0 && (
              <Link href="/profil/galeri">
                 <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl cursor-pointer">
@@ -266,8 +261,6 @@ function ProfilePageContent() {
             </Link>
         )}
         
-
-        {/* Gold Card */}
         {!isGoldMember && (
           <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white rounded-2xl'>
               <CardContent className='p-4 flex items-center gap-4'>
@@ -285,7 +278,6 @@ function ProfilePageContent() {
           </Card>
         )}
         
-        {/* Action Buttons */}
         <div className="space-y-3">
            <Link href="/profil/galeri">
             <Button className="w-full h-14 rounded-2xl font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg">
@@ -294,7 +286,6 @@ function ProfilePageContent() {
           </Link>
         </div>
 
-        {/* Logout */}
         <div className="pt-8">
            <AlertDialog>
                 <AlertDialogTrigger asChild>
