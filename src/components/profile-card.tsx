@@ -63,7 +63,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
 
 
     return (
-        <Badge className='bg-black/40 text-white backdrop-blur-sm border-none'>
+        <Badge className='bg-black/40 text-white backdrop-blur-sm border-none shrink-0'>
             <div className={cn("w-2 h-2 rounded-full mr-2", iconColor)}></div>
             <span className='truncate whitespace-nowrap'>{statusText}</span>
         </Badge>
@@ -426,11 +426,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <Sheet>
                     <div className="p-4 pb-2 text-white pointer-events-auto relative z-10">
                         <div className="space-y-1">
-                            <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                            
-                            <div className="inline-flex items-center gap-3 p-1 rounded-lg">
-                                <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <h3 className="text-2xl font-bold">{profile.fullName},</h3>
                                 <span className="text-2xl font-semibold text-white/90">{age}</span>
+                                <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
+                            </div>
+                            <div className="flex items-center gap-3 p-1 rounded-lg">
                                 {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
                                 {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
                                 {displayDistance && (
@@ -609,3 +610,4 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
+
