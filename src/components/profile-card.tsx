@@ -307,12 +307,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
             <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
-             {profile.isNewUser &&
-                <Badge className="absolute top-4 left-4 z-30 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                    <Star className="w-3.5 h-3.5 fill-white"/>
-                    <span className='font-bold text-sm'>Yeni Üye</span>
-                </Badge>
-            }
+             <Badge className="absolute top-4 left-4 z-40 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                <Star className="w-3.5 h-3.5 fill-white"/>
+                <span className='font-bold text-sm'>Yeni Üye</span>
+            </Badge>
 
             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
                 <BarChart2 className="h-5 w-5" />
@@ -341,7 +339,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                        
-                        <div className="inline-flex items-center gap-3 p-1.5 rounded-lg bg-black/30 backdrop-blur-sm">
+                       <div className="inline-flex items-center gap-3 p-1.5 rounded-lg bg-black/30 backdrop-blur-sm">
                             <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                             <span className="text-2xl font-semibold text-white/90">{age}</span>
                             {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
@@ -353,12 +351,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 </div>
                             )}
                         </div>
-                         {profile.isNewUser && (
-                           <div className='flex items-center gap-2'>
-                                <Star className="w-5 h-5 text-blue-400 fill-blue-400" />
-                                <p className="font-semibold text-blue-400">Yeni Üye</p>
-                            </div>
-                        )}
                     </div>
                     <div className="absolute right-4 bottom-6">
                          <SheetTrigger asChild>
@@ -481,7 +473,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         </div>
 
         {compatibilityResult && (
-             <DialogContent className="sm:max-w-sm">
+             <DialogContent className="sm:max-w-xs bg-background/80 backdrop-blur-sm border-border">
                 <DialogHeader className="items-center text-center space-y-4">
                     <div className="flex items-center justify-center space-x-4">
                          <Avatar className="w-16 h-16 border-2">
@@ -489,7 +481,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                             <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         
-                        <Heart className="w-8 h-8 text-red-500 fill-red-500 animate-pulse" />
+                        <div className="relative">
+                            <Heart className="w-10 h-10 text-red-500 fill-red-500 animate-pulse" />
+                             <div className='absolute inset-0 flex items-center justify-center text-lg font-bold text-white'>
+                                {compatibilityResult.score}%
+                            </div>
+                        </div>
 
                         <Avatar className="w-16 h-16 border-2">
                             <AvatarImage src={profile.profilePicture || ''} />
@@ -497,12 +494,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         </Avatar>
                     </div>
 
-                    <div className='relative w-40 h-40 mx-auto'>
-                        <CircularProgress progress={compatibilityResult.score} size={160} strokeWidth={10} />
-                         <div className='absolute inset-0 flex items-center justify-center text-4xl font-bold'>
-                            {compatibilityResult.score}%
-                        </div>
-                    </div>
                     <DialogTitle className="text-2xl pt-2">{compatibilityResult.message}</DialogTitle>
                     <DialogDescription>
                         Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
