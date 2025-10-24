@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 
 const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.ElementType, title: string, value: string | number, href?: string, iconClass?: string }) => {
   const content = (
-    <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-card/80 text-card-foreground shadow-sm">
+    <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-card/80 dark:bg-zinc-800/50 text-card-foreground shadow-sm">
       <Icon className={`h-6 w-6 ${iconClass}`} />
       <span className="text-sm font-bold">{value}</span>
       <span className="text-xs text-muted-foreground">{title}</span>
@@ -154,7 +154,7 @@ function ProfilePageContent() {
       <div className="p-4 space-y-6">
 
         {/* Profile Header */}
-        <Card className="relative p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
+        <div className="relative p-4 shadow-sm bg-card/60 dark:bg-zinc-900/80 backdrop-blur-sm border border-white/20 dark:border-zinc-800 rounded-2xl">
           <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-4 flex-1">
                   <h1 className="text-2xl font-bold">
@@ -193,37 +193,35 @@ function ProfilePageContent() {
                    </div>
               </div>
           </div>
-        </Card>
+        </div>
 
         {filteredMatches.length > 0 && (
-          <Card className="shadow-sm bg-card/80 backdrop-blur-sm rounded-2xl">
-            <CardContent className='p-4'>
-                <ScrollArea>
-                    <div className="flex items-center gap-x-2">
-                        {filteredMatches.map((match, index, array) => (
-                            <div key={match.id} className="flex items-center gap-x-2">
-                                 <Link href={`/eslesmeler/${match.id}`}>
-                                    <div className='flex flex-col items-center gap-2 w-20'>
-                                        <Avatar className="h-16 w-16 border-2 border-primary">
-                                            <AvatarImage src={match.profilePicture} />
-                                            <AvatarFallback>{(match.fullName || '').charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
-                                    </div>
-                                </Link>
-                                {index < array.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0 animate-pulse-heart' />}
-                            </div>
-                        ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-            </CardContent>
-          </Card>
+          <div className="shadow-sm bg-card/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl p-4">
+              <ScrollArea>
+                  <div className="flex items-center gap-x-2">
+                      {filteredMatches.map((match, index, array) => (
+                          <div key={match.id} className="flex items-center gap-x-2">
+                               <Link href={`/eslesmeler/${match.id}`}>
+                                  <div className='flex flex-col items-center gap-2 w-20'>
+                                      <Avatar className="h-16 w-16 border-2 border-primary">
+                                          <AvatarImage src={match.profilePicture} />
+                                          <AvatarFallback>{(match.fullName || '').charAt(0)}</AvatarFallback>
+                                      </Avatar>
+                                      <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
+                                  </div>
+                              </Link>
+                              {index < array.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0 animate-pulse-heart' />}
+                          </div>
+                      ))}
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+          </div>
         )}
         
         {galleryImages.length > 0 && (
              <Link href="/profil/galeri">
-                <Card className="relative p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl cursor-pointer group">
+                <div className="relative p-4 shadow-sm bg-card/60 dark:bg-zinc-900/80 backdrop-blur-sm border border-white/20 dark:border-zinc-800 rounded-2xl cursor-pointer group">
                     <Button variant="outline" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-black/40 text-white border-white/30 backdrop-blur-sm hover:bg-black/60">
                         <Pencil className="h-4 w-4" />
                     </Button>
@@ -243,25 +241,23 @@ function ProfilePageContent() {
                             </div>
                         ))}
                     </div>
-                </Card>
+                </div>
             </Link>
         )}
         
         {!isGoldMember && (
-          <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white rounded-2xl'>
-              <CardContent className='p-4 flex items-center gap-4'>
-                  <Icons.beGold width={48} height={48} />
-                  <div className='flex-1'>
-                      <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
-                      <p className='text-sm text-white/90'>Sınırsız beğeni ve eşsiz özellikler kazan!</p>
-                  </div>
-                  <Link href="/market">
-                    <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
-                        {t.profil.upgrade}
-                    </Button>
-                  </Link>
-              </CardContent>
-          </Card>
+          <div className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white rounded-2xl p-4 flex items-center gap-4'>
+              <Icons.beGold width={48} height={48} />
+              <div className='flex-1'>
+                  <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
+                  <p className='text-sm text-white/90'>Sınırsız beğeni ve eşsiz özellikler kazan!</p>
+              </div>
+              <Link href="/market">
+                <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
+                    {t.profil.upgrade}
+                </Button>
+              </Link>
+          </div>
         )}
       </div>
     </div>
