@@ -44,8 +44,9 @@ export default function LocationSettingsPage() {
                 const userDocRef = doc(firestore, 'users', user.uid);
 
                 try {
-                    // First, get geocode data
-                    const geocodeResponse = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+                    // First, get geocode data from the absolute URL
+                    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || '';
+                    const geocodeResponse = await fetch(`${serverUrl}/api/geocode?lat=${latitude}&lon=${longitude}`);
                     let addressData = {};
                     if (geocodeResponse.ok) {
                         addressData = await geocodeResponse.json();

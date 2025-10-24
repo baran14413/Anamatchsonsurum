@@ -284,7 +284,8 @@ export default function SignUpPage() {
             form.setValue('location', { latitude, longitude }, { shouldValidate: true });
 
             try {
-                const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+                const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || '';
+                const response = await fetch(`${serverUrl}/api/geocode?lat=${latitude}&lon=${longitude}`);
                 if (response.ok) {
                     const addressData = await response.json();
                     form.setValue('address', {
