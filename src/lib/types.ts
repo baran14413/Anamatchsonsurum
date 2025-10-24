@@ -18,17 +18,17 @@ export type UserProfile = {
   interests?: string[];
   gender: 'male' | 'female' | 'other';
   genderPreference?: 'male' | 'female' | 'both';
+  showGenderOnProfile?: boolean;
   globalModeEnabled?: boolean;
   location?: {
-    latitude: number | null;
-    longitude: number | null;
+    latitude: number;
+    longitude: number;
   };
-  locationLastUpdated?: any; 
   address?: {
-    country?: string | null;
-    state?: string | null;
-    city?: string | null;
+    country?: string;
+    city?: string;
   } | null;
+  locationLastUpdated?: any; 
   school?: string;
   lookingFor?: string;
   distancePreference?: number;

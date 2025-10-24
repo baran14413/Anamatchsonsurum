@@ -25,6 +25,10 @@
           "type": "string",
           "description": "The user's gender."
         },
+        "showGenderOnProfile": {
+          "type": "boolean",
+          "description": "Whether to show the user's gender on their profile."
+        },
         "genderPreference": {
           "type": "string",
           "enum": ["male", "female", "both"],

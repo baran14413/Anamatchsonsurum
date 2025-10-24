@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Eye, EyeOff, MapPin } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { langTr } from '@/languages/tr';
 import { Icons } from '@/components/icons';
@@ -32,6 +32,8 @@ import { Label } from '@/components/ui/label';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Country, State, City }  from 'country-state-city';
+import NodeGeocoder from 'node-geocoder';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -57,7 +59,15 @@ const formSchema = z.object({
   gender: z.enum(['female', 'male'], {
     required_error: 'Lütfen cinsiyetinizi seçin.',
   }),
-  showGender: z.boolean().default(true),
+  showGenderOnProfile: z.boolean().default(true),
+  location: z.object({
+      latitude: z.number(),
+      longitude: z.number()
+  }).optional(),
+  address: z.object({
+    country: z.string().optional(),
+    city: z.string().optional(),
+  }).optional(),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
   lifestyle: lifestyleSchema,
@@ -227,6 +237,8 @@ export default function SignUpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -234,7 +246,7 @@ export default function SignUpPage() {
       fullName: '',
       dateOfBirth: undefined,
       gender: undefined,
-      showGender: true,
+      showGenderOnProfile: true,
       lookingFor: undefined,
       distancePreference: 80,
       lifestyle: {},
@@ -248,6 +260,7 @@ export default function SignUpPage() {
   const dateOfBirthValue = form.watch('dateOfBirth');
   const lifestyleValues = form.watch('lifestyle');
   const passwordValue = form.watch('password');
+  const locationValue = form.watch('location');
 
   const ageStatus = useMemo(() => {
     if (dateOfBirthValue && !isNaN(dateOfBirthValue.getTime())) {
@@ -261,6 +274,46 @@ export default function SignUpPage() {
 
   const handleDateOfBirthChange = (date: Date | null) => {
       form.setValue('dateOfBirth', date, { shouldValidate: true });
+  };
+  
+  const handleLocationRequest = () => {
+    setIsLocationLoading(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            form.setValue('location', { latitude, longitude }, { shouldValidate: true });
+            
+            // Reverse geocode to get country and city
+            const geocoder = NodeGeocoder({ provider: 'nominatimmapquest', apiKey: 'YOUR_MAPQUEST_API_KEY' }); // Replace with your actual key if needed
+            geocoder.reverse({ lat: latitude, lon: longitude })
+              .then((res) => {
+                if (res[0]) {
+                  form.setValue('address', {
+                    country: res[0].country,
+                    city: res[0].city,
+                  });
+                }
+              })
+              .catch((err) => {
+                console.warn('Geocoding failed:', err);
+              })
+              .finally(() => {
+                setIsLocationLoading(false);
+              });
+        },
+        (error) => {
+            let message = langTr.ayarlarKonum.errors.positionUnavailable;
+            if (error.code === error.PERMISSION_DENIED) {
+                message = langTr.ayarlarKonum.errors.permissionDenied;
+            } else if (error.code === error.TIMEOUT) {
+                message = langTr.ayarlarKonum.errors.timeout;
+            }
+            setLocationError(message);
+            setIsLocationLoading(false);
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+    );
   };
 
   const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
@@ -282,7 +335,9 @@ export default function SignUpPage() {
         dateOfBirth: data.dateOfBirth.toISOString(),
         gender: data.gender,
         genderPreference: 'both',
-        showGenderOnProfile: data.showGender,
+        showGenderOnProfile: data.showGenderOnProfile,
+        location: data.location,
+        address: data.address,
         lookingFor: data.lookingFor,
         distancePreference: data.distancePreference,
         lifestyle: data.lifestyle,
@@ -331,14 +386,17 @@ export default function SignUpPage() {
         fieldsToValidate = ['gender'];
         break;
       case 3:
-        fieldsToValidate = ['lookingFor'];
+        fieldsToValidate = ['location'];
         break;
       case 4:
+        fieldsToValidate = ['lookingFor'];
+        break;
+      case 5:
         fieldsToValidate = ['distancePreference'];
         break;
-       case 5:
+       case 6:
         break;
-      case 6:
+      case 7:
         fieldsToValidate = ['email', 'password', 'passwordConfirmation'];
         break;
     }
@@ -353,7 +411,7 @@ export default function SignUpPage() {
     }
   };
 
-  const totalSteps = 7;
+  const totalSteps = 8;
   const progressValue = ((step + 1) / totalSteps) * 100;
 
   const fullNameValue = form.watch('fullName');
@@ -484,17 +542,17 @@ export default function SignUpPage() {
                             </div>
                             <FormField
                             control={form.control}
-                            name="showGender"
+                            name="showGenderOnProfile"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                 <FormControl>
                                     <Checkbox
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
-                                    id="showGender"
+                                    id="showGenderOnProfile"
                                     />
                                 </FormControl>
-                                <Label className="font-normal" htmlFor="showGender">
+                                <Label className="font-normal" htmlFor="showGenderOnProfile">
                                     Profilimde cinsiyetimi göster
                                 </Label>
                                 </FormItem>
@@ -504,7 +562,26 @@ export default function SignUpPage() {
                     </div>
                 )}
 
-                {step === 3 && (
+                 {step === 3 && (
+                    <div className="flex-1 flex flex-col justify-center text-center">
+                        <div className="space-y-6">
+                            <MapPin className="h-16 w-16 mx-auto text-primary" />
+                            <h1 className="text-3xl font-bold">{langTr.signup.step6.title}</h1>
+                            <p className="text-muted-foreground">{langTr.signup.step6.description}</p>
+                            
+                            <Button onClick={handleLocationRequest} disabled={isLocationLoading} className="h-14 w-full max-w-sm mx-auto rounded-full text-lg">
+                                {isLocationLoading ? 
+                                    <Icons.logo width={24} height={24} className="animate-pulse" /> : 
+                                (locationValue ? <>Konum Alındı <CheckCircle className='ml-2 h-5 w-5'/></> : langTr.signup.step6.button)
+                                }
+                            </Button>
+                            {locationError && <p className="text-destructive text-sm mt-2">{locationError}</p>}
+                            <FormMessage>{form.formState.errors.location?.message}</FormMessage>
+                        </div>
+                    </div>
+                )}
+
+                {step === 4 && (
                     <div className="flex flex-col h-full">
                         <div className="space-y-2 mb-6 shrink-0">
                             <h1 className="text-3xl font-bold">{langTr.signup.step5.title}</h1>
@@ -533,7 +610,7 @@ export default function SignUpPage() {
                     </div>
                 )}
 
-                {step === 4 && (
+                {step === 5 && (
                     <div className="flex-1 flex flex-col">
                         <div className="space-y-8">
                             <div className="space-y-2">
@@ -565,7 +642,7 @@ export default function SignUpPage() {
                     </div>
                 )}
                 
-                {step === 5 && (
+                {step === 6 && (
                     <div className="flex-1 flex flex-col min-h-0">
                         <div className="space-y-2 mb-6 shrink-0">
                             <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
@@ -605,7 +682,7 @@ export default function SignUpPage() {
                     </div>
                 )}
 
-                {step === 6 && (
+                {step === 7 && (
                     <div className="flex-1 flex flex-col">
                         <div className="space-y-4">
                             <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
@@ -672,12 +749,12 @@ export default function SignUpPage() {
                 type="button"
                 onClick={handleNextStep}
                 className="h-14 w-full rounded-full text-lg font-bold"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLocationLoading}
                 >
                 {isSubmitting ? (
                     <Icons.logo width={24} height={24} className="animate-pulse" />
                 ) : (
-                    step === totalSteps -1 ? 'Bitir' : (step === 5 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle')
+                    step === totalSteps -1 ? 'Bitir' : (step === 6 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle')
                 )}
                 </Button>
             </div>
