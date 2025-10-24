@@ -34,17 +34,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // 2. Process the request body
-  const { matchId, type, userId } = req.body;
+  const { matchId, type, userId, botId } = req.body;
 
-  if (!matchId || !type || !userId) {
-    return res.status(400).json({ error: 'Missing required parameters: matchId, type, userId' });
+  if (!matchId || !type || !userId || !botId) {
+    return res.status(400).json({ error: 'Missing required parameters: matchId, type, userId, botId' });
   }
 
   // 3. Implement logic based on type
   if (type === 'MATCH') {
     try {
-      const botId = matchId.replace(userId, '').replace('_', '');
-
       // Wait a random delay (10s to 60s) before sending the message
       const delay = Math.floor(Math.random() * (60000 - 10000 + 1)) + 10000;
       await new Promise(resolve => setTimeout(resolve, delay));

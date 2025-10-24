@@ -341,6 +341,7 @@ function AnasayfaPageContent() {
                     type: 'MATCH',
                     matchId: matchId,
                     userId: user.uid,
+                    botId: profileToSwipe.uid // Pass botId directly
                 }),
             }).catch(error => console.error("Error triggering bot message webhook:", error));
         }
