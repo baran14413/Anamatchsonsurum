@@ -255,19 +255,24 @@ export const langTr = {
         description: 'Sevdiğin şeyleri paylaşan kişileri bulmana yardımcı olması için profiline {count} ilgi alanı ekle.',
         categories: [
             {
+                title: 'Yaratıcılık',
+                icon: 'Paintbrush',
+                options: [ 'El Sanatları', 'Yazmak', 'Dans', 'Resim', 'Tasarım', 'Makyaj' ]
+            },
+            {
+                title: 'Spor & Fitness',
+                icon: 'Dumbbell',
+                options: [ 'Buz Hokeyi', 'Atıcılık', 'Atletizm', 'Spor', 'Yürüyüş', 'Plaj Sporları', 'Fitness Dersleri', 'Kaykay', 'Rugby', 'Boks' ]
+            },
+            {
                 title: 'Dışarı Çıkmak',
                 icon: 'DoorOpen',
                 options: ['Kaçış Odaları', 'Barlar', 'İkinci El Alışverişi', 'Müzeler', 'Partiler', 'Arabalı Sinemalar', 'Müzikaller', 'Kafe Gezintisi', 'Akvaryum', 'Kulüpler', 'Sergiler', 'Alışveriş', 'Arabalar', 'Pub Quiz', 'Festivaller', 'Happy Hour', 'Stand-up Komedi', 'Karaoke', 'Ev Partileri', 'Tiyatro', 'Nargile', 'Paten', 'Canlı Müzik', 'Bar Gezintisi', 'Bowling', 'Motosikletler']
             },
             {
-                title: 'Açık Hava ve Macera',
-                icon: 'Tent',
-                options: ['Kürek Çekme', 'Tüplü Dalış', 'Jet Ski', 'Yürüyüş Turları', 'Doğa', 'Sıcak Su Kaynakları', 'Köpek Gezdirme', 'Kayak', 'Kano', 'Kar Kayağı', 'Yol Gezileri', 'Couchsurfing', 'Serbest Dalış', 'Seyahat', 'Stand-up Paddle', 'Sörf', 'Plaj Barları', 'Yamaç Paraşütü', 'Yelken', 'Yürüyüş', 'Dağlar', 'Sırt Çantasıyla Gezme', 'Kaya Tırmanışı', 'Balık Tutma', 'Kamp', 'Açık Hava', 'Piknikler']
-            },
-            {
                 title: 'Evde Takılmak',
                 icon: 'Home',
-                options: ['Okuma', 'Dizi/Film Maratonu', 'Evde Egzersiz', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online Alışveriş', 'Bahçe İşleri', 'Kutu Oyunları', 'Fırıncılık']
+                options: [ 'Okuma', 'Dizi/Film Maratonu', 'Evde Egzersiz', 'Bilgi Yarışmaları', 'Yemek Pişirme', 'Online Oyunlar', 'Online Alışveriş', 'Bahçe İşleri', 'Kutu Oyunları', 'Fırıncılık' ]
             },
         ]
     },
