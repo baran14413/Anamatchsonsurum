@@ -65,7 +65,7 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
     return (
         <Badge className='bg-black/40 text-white backdrop-blur-sm border-none'>
             <div className={cn("w-2 h-2 rounded-full mr-2", iconColor)}></div>
-            <span>{statusText}</span>
+            <span className='truncate whitespace-nowrap'>{statusText}</span>
         </Badge>
     );
 };
@@ -307,10 +307,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
             <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
-             <Badge className="absolute top-4 left-4 z-40 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                <Star className="w-3.5 h-3.5 fill-white"/>
-                <span className='font-bold text-sm'>Yeni Üye</span>
-            </Badge>
+             {profile.isNewUser && (
+                <Badge className="absolute top-4 left-4 z-40 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                    <Star className="w-3.5 h-3.5 fill-white"/>
+                    <span className='font-bold text-sm'>Yeni Üye</span>
+                </Badge>
+            )}
 
             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
                 <BarChart2 className="h-5 w-5" />
@@ -336,10 +338,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6 text-white z-20"
                 >
-                    <div className="space-y-1">
+                     <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                       
-                       <div className="inline-flex items-center gap-3 p-1.5 rounded-lg bg-black/30 backdrop-blur-sm">
+                        
+                        <div className="inline-flex items-center gap-3 p-1 rounded-lg bg-black/30 backdrop-blur-sm">
                             <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                             <span className="text-2xl font-semibold text-white/90">{age}</span>
                             {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
