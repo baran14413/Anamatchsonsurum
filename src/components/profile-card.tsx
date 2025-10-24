@@ -295,7 +295,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   return (
     <motion.div
-        className="absolute w-full h-full cursor-grab transform-gpu"
+        className="transform-gpu absolute w-full h-full cursor-grab"
         drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         onDragStart={handleDragStart}
@@ -392,6 +392,8 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 <span className='font-bold'>Yeni Üye</span>
                             </Badge>
                         )}
+                        {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
+                        {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
                         {profile.address?.countryCode && <span className='text-base'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
                     </div>
                      <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
@@ -432,10 +434,8 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                             </div>
                             <div className="flex items-center gap-3 p-1 rounded-lg">
-                                {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
-                                {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
                                 {displayDistance && (
-                                    <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
+                                    <div className="flex items-center gap-1.5 text-sm font-medium">
                                         <MapPin className="w-4 h-4" />
                                         <span>{displayDistance}</span>
                                     </div>
@@ -588,7 +588,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     <DialogDescription>
                         Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
                     </DialogDescription>
-                    <p className='text-xs italic text-muted-foreground'>Yapay zeka destekli eşleşme oranı hesaplayıcı</p>
+                    <p className='text-xs italic text-muted-foreground'>Yapay zeka destekli eşlesme orani hesaplayici</p>
                 </DialogHeader>
                 {compatibilityResult.commonInterests.length > 0 && (
                     <div className="text-center py-4">
