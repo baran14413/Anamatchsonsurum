@@ -140,9 +140,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const displayDistance = useMemo(() => {
     if (profile.distance === undefined || profile.distance === null) return null;
     if (profile.distance < 1) {
-      return `${Math.round(profile.distance * 1000)} m uzakta`;
+      return `${Math.round(profile.distance * 1000)} m`;
     }
-    return `${Math.round(profile.distance)} km uzakta`;
+    return `${Math.round(profile.distance)} km`;
   }, [profile.distance]);
 
 
@@ -230,20 +230,19 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 >
                     <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
-                        <div className="flex items-baseline gap-2">
-                           <h3 className="text-3xl font-bold truncate">{profile.fullName}</h3>
+                        <div className="inline-flex items-center gap-3 p-2 rounded-lg bg-black/30 backdrop-blur-sm">
+                           <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                            <span className="text-2xl font-semibold text-white/90">{age}</span>
                            {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
                            {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
-                           {isGoldMember && <Icons.beGold width={28} height={28} />}
+                           {displayDistance && (
+                                <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{displayDistance}</span>
+                                </div>
+                            )}
+                            {isGoldMember && <div className="border-l border-white/30 pl-3"><Icons.beGold width={24} height={24} /></div>}
                         </div>
-                        
-                         {displayDistance && (
-                            <div className="flex items-center gap-1.5 text-base font-medium">
-                                <MapPin className="w-4 h-4" />
-                                <span>{displayDistance}</span>
-                            </div>
-                        )}
                     </div>
                     <div className="absolute right-4 bottom-6">
                          <SheetTrigger asChild>
