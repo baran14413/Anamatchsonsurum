@@ -189,7 +189,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     // Set a timer to show the swipe hint
     hintTimer.current = setTimeout(() => {
         setShowSwipeHint(true);
-    }, 2500);
+    }, 6000);
 
     return () => {
         clearTimeout(hintTimer.current);
@@ -207,7 +207,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     setShowSwipeHint(false);
     pressTimer.current = setTimeout(() => {
         setIsLongPress(true);
-    }, 500); // 500ms for long press
+    }, 3000); // 3 seconds for long press
   };
 
   const handlePressEnd = () => {
@@ -357,7 +357,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </>
             )}
             
-            <AnimatePresence>
+             <AnimatePresence>
                 {showSwipeHint && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -380,19 +380,19 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
                 <div className="absolute top-4 left-4 z-20 flex flex-col items-start gap-2">
-                    {isNewUser && (
-                        <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
-                            <Star className="w-3 h-3 fill-white"/>
-                            <span className='font-bold'>Yeni Üye</span>
-                        </Badge>
-                    )}
-                     <div className="flex items-center gap-2">
-                        <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
-                            <Heart className="w-3 h-3 fill-white"/>
-                            <span className='font-bold'>%{likeRatio} Beğenilme</span>
-                        </Badge>
+                    <div className='flex items-center gap-2'>
+                        {isNewUser && (
+                            <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
+                                <Star className="w-3 h-3 fill-white"/>
+                                <span className='font-bold'>Yeni Üye</span>
+                            </Badge>
+                        )}
                         {profile.address?.countryCode && <span className='text-base'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
-                     </div>
+                    </div>
+                     <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
+                        <Heart className="w-3 h-3 fill-white"/>
+                        <span className='font-bold'>%{likeRatio} Beğenilme</span>
+                    </Badge>
                 </div>
 
                 <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
