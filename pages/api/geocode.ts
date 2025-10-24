@@ -9,6 +9,17 @@ const options: NodeGeocoder.Options = {
 const geocoder = NodeGeocoder(options);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Or a specific origin
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Handle preflight OPTIONS request
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+
     const { lat, lon } = req.query;
 
     if (typeof lat !== 'string' || typeof lon !== 'string') {
