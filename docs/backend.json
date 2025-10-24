@@ -83,6 +83,15 @@
                 "longitude": {"type": "number"}
             }
         },
+        "address": {
+          "type": "object",
+          "description": "The user's address, derived from their location.",
+          "properties": {
+            "country": { "type": "string" },
+            "countryCode": { "type": "string" },
+            "city": { "type": "string" }
+          }
+        },
         "distancePreference": {
             "type": "number",
             "description": "Maximum distance in kilometers for potential matches."

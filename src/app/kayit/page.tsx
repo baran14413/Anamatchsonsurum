@@ -62,6 +62,11 @@ const formSchema = z.object({
       latitude: z.number(),
       longitude: z.number()
   }).optional(),
+  address: z.object({
+      country: z.string().optional(),
+      countryCode: z.string().optional(),
+      city: z.string().optional(),
+  }).optional(),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
   lifestyle: lifestyleSchema,
@@ -274,10 +279,25 @@ export default function SignUpPage() {
     setIsLocationLoading(true);
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
             const { latitude, longitude } = position.coords;
             form.setValue('location', { latitude, longitude }, { shouldValidate: true });
-            setIsLocationLoading(false);
+
+            try {
+                const response = await fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`);
+                if (response.ok) {
+                    const addressData = await response.json();
+                    form.setValue('address', {
+                        country: addressData.country,
+                        countryCode: addressData.countryCode,
+                        city: addressData.city,
+                    }, { shouldValidate: true });
+                }
+            } catch (error) {
+                console.error("Geocoding API call failed", error);
+            } finally {
+                setIsLocationLoading(false);
+            }
         },
         (error) => {
             let message = langTr.ayarlarKonum.errors.positionUnavailable;
@@ -314,6 +334,7 @@ export default function SignUpPage() {
         genderPreference: 'both',
         showGenderOnProfile: data.showGenderOnProfile,
         location: data.location,
+        address: data.address,
         lookingFor: data.lookingFor,
         distancePreference: data.distancePreference,
         lifestyle: data.lifestyle,

@@ -24,6 +24,11 @@ export type UserProfile = {
     latitude: number;
     longitude: number;
   } | null;
+  address?: {
+    country?: string;
+    countryCode?: string;
+    city?: string;
+  } | null;
   locationLastUpdated?: any; 
   school?: string;
   lookingFor?: string;
