@@ -45,7 +45,6 @@ function ProfilePageContent() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
   const [likeRatio, setLikeRatio] = useState(75); // Default encouraging value
 
@@ -121,23 +120,6 @@ function ProfilePageContent() {
 
   }, [user, firestore]);
 
-
-  const handleLogout = async () => {
-    if (!auth) return;
-    setIsLoggingOut(true);
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: t.ayarlar.toasts.logoutErrorTitle,
-        description: t.ayarlar.toasts.logoutErrorDesc,
-        variant: "destructive"
-      });
-      setIsLoggingOut(false);
-    }
-  };
-  
   const calculateAge = (dateOfBirth: string | undefined | null): number | null => {
       if (!dateOfBirth) return null;
       const birthday = new Date(dateOfBirth);
@@ -174,6 +156,8 @@ function ProfilePageContent() {
   }
   
   const galleryImages = userProfile?.images?.slice(0, 4) || [];
+  const filteredMatches = matches.filter(match => match.matchedWith !== user?.uid);
+
 
   return (
     <div className="flex-1 overflow-y-auto bg-muted/30">
@@ -184,7 +168,7 @@ function ProfilePageContent() {
           <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-4 flex-1">
                   <h1 className="text-2xl font-bold">
-                      {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
+                      {userProfile?.fullName || t.profil.user}
                   </h1>
                   <div className="flex items-stretch gap-2 w-full">
                       <StatCard 
@@ -221,12 +205,12 @@ function ProfilePageContent() {
           </div>
         </Card>
 
-        {matches.length > 0 && (
-          <Card className="shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
+        {filteredMatches.length > 0 && (
+          <Card className="shadow-sm bg-card/80 backdrop-blur-sm rounded-2xl">
             <CardContent className='p-4'>
                 <ScrollArea>
                     <div className="flex items-center gap-x-2">
-                        {matches.filter(match => match.matchedWith !== user?.uid).map((match, index, array) => (
+                        {filteredMatches.map((match, index, array) => (
                             <div key={match.id} className="flex items-center gap-x-2">
                                  <Link href={`/eslesmeler/${match.id}`}>
                                     <div className='flex flex-col items-center gap-2 w-20'>
@@ -286,31 +270,6 @@ function ProfilePageContent() {
               </CardContent>
           </Card>
         )}
-        
-        <div className="pt-8">
-           <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="ghost" className="w-full text-muted-foreground font-bold gap-2">
-                        <LogOut className="h-4 w-4"/>
-                        {t.profil.logout}
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>{t.common.logoutConfirmTitle}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {t.common.logoutConfirmDescription}
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
-                        {isLoggingOut ? <Icons.logo width={16} height={16} className="h-4 w-4 animate-pulse" /> : t.common.logout}
-                    </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </div>
       </div>
     </div>
   );
