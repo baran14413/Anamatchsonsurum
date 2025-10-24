@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signOut } from 'firebase/auth';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
-import type { Match } from '@/lib/types';
+import type { Match, UserImage } from '@/lib/types';
 import AppShell from '@/components/app-shell';
 
 
@@ -168,6 +169,8 @@ function ProfilePageContent() {
       isGoldMember = false;
     }
   }
+  
+  const galleryImages = userProfile?.images?.slice(0, 4) || [];
 
   return (
     <div className="flex-1 overflow-y-auto bg-muted/30">
@@ -212,13 +215,29 @@ function ProfilePageContent() {
                       <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   {profileCompletionPercentage < 100 && (
-                     <div className="absolute inset-0 flex items-center justify-center">
+                     <div className="absolute inset-0">
                         <CircularProgress progress={profileCompletionPercentage} size={96} strokeWidth={5} />
                     </div>
                   )}
               </div>
           </div>
         </Card>
+        
+        {/* Gallery Preview */}
+        {galleryImages.length > 0 && (
+             <Card className="p-4 shadow-sm">
+                 <div className="grid grid-cols-2 gap-2">
+                     {galleryImages.map((image, index) => (
+                         <div key={index} className="relative aspect-square rounded-md overflow-hidden">
+                             <Image src={image.url} alt={`Galeri fotoğrafı ${index + 1}`} fill className="object-cover" />
+                         </div>
+                     ))}
+                 </div>
+                 <Link href="/profil/galeri" className="mt-4">
+                     <Button variant="secondary" className="w-full">Tümünü Gör ve Düzenle</Button>
+                 </Link>
+             </Card>
+        )}
         
 
         {/* Gold Card */}

@@ -588,6 +588,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     <DialogDescription>
                         Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
                     </DialogDescription>
+                    <p className='text-xs italic text-muted-foreground'>Yapay zeka destekli eşleşme oranı hesaplayıcı</p>
                 </DialogHeader>
                 {compatibilityResult.commonInterests.length > 0 && (
                     <div className="text-center py-4">
