@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -205,7 +206,7 @@ function ProfilePageContent() {
               </div>
 
               {/* Right side: Avatar */}
-              <div className="relative shrink-0 w-24 h-24">
+              <div className="relative shrink-0 w-24 h-24 flex items-center justify-center">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-md">
                       <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
                       <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>

@@ -198,12 +198,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     })}
                 </TooltipProvider>
 
-                <Link href="/haberler">
-                    <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
-                        <Globe className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                </Link>
-
                 <Link href="/ayarlar">
                     <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
                         <Settings className="h-5 w-5 text-muted-foreground" />
