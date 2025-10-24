@@ -94,10 +94,21 @@ export default {
             height: '0',
           },
         },
+        'pulse-heart': {
+          '0%, 100%': {
+            transform: 'scale(1)',
+            opacity: '0.7',
+          },
+          '50%': {
+            transform: 'scale(1.3)',
+            opacity: '1',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-heart': 'pulse-heart 2s ease-in-out infinite',
       },
     },
   },
