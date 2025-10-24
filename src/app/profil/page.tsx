@@ -175,47 +175,49 @@ function ProfilePageContent() {
 
         {/* Profile Header */}
         <Card className="p-4 shadow-sm">
-             <div className="flex items-center justify-between gap-4">
-                <div className='flex-1 flex flex-col items-start gap-4'>
-                    <h1 className="text-2xl font-bold">
-                        {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
-                    </h1>
-                     <div className="flex items-stretch gap-2 w-full">
-                          <StatCard 
-                            icon={Heart}
-                            title="Beğeni Oranı"
-                            value={`%${likeRatio}`}
-                            iconClass="text-pink-500"
-                          />
-                          <StatCard
-                            icon={Star}
-                            title="Super Like"
-                            value={superLikeBalance}
-                            href="/market"
-                            iconClass="text-blue-500"
-                          />
-                          <StatCard
-                            icon={Gem}
-                            title="Üyelik"
-                            value={isGoldMember ? 'Gold' : 'Free'}
-                            href="/market"
-                            iconClass="text-yellow-500"
-                          />
-                     </div>
-                </div>
+          <div className="flex items-center justify-between gap-4">
+              {/* Left side: Name and Stats */}
+              <div className="flex flex-col gap-4 flex-1">
+                  <h1 className="text-2xl font-bold">
+                      {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
+                  </h1>
+                  <div className="flex items-stretch gap-2 w-full">
+                      <StatCard 
+                        icon={Heart}
+                        title="Beğeni Oranı"
+                        value={`%${likeRatio}`}
+                        iconClass="text-pink-500"
+                      />
+                      <StatCard
+                        icon={Star}
+                        title="Super Like"
+                        value={superLikeBalance}
+                        href="/market"
+                        iconClass="text-blue-500"
+                      />
+                      <StatCard
+                        icon={Gem}
+                        title="Üyelik"
+                        value={isGoldMember ? 'Gold' : 'Free'}
+                        href="/market"
+                        iconClass="text-yellow-500"
+                      />
+                  </div>
+              </div>
 
-                <div className="relative shrink-0">
-                    <Avatar className="h-24 w-24 border-4 border-background shadow-md">
-                        <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
-                        <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     {profileCompletionPercentage < 100 && (
-                        <div className="absolute -bottom-2 -right-2">
-                            <CircularProgress progress={profileCompletionPercentage} size={40} />
-                        </div>
-                    )}
-                </div>
-            </div>
+              {/* Right side: Avatar */}
+              <div className="relative shrink-0">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+                      <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
+                      <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  {profileCompletionPercentage < 100 && (
+                    <div className="absolute -bottom-2 -right-2">
+                        <CircularProgress progress={profileCompletionPercentage} size={40} />
+                    </div>
+                  )}
+              </div>
+          </div>
         </Card>
         
 
@@ -283,4 +285,3 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
-
