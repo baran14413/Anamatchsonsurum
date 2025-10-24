@@ -182,6 +182,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   const age = calculateAge(profile.dateOfBirth);
   const isGoldMember = profile.membershipType === 'gold';
+  const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -307,12 +308,18 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
-            {profile.isNewUser && (
-                <Badge className="absolute top-4 left-4 z-40 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                    <Star className="w-3.5 h-3.5 fill-white"/>
-                    <span className='font-bold text-sm'>Yeni Üye</span>
+            <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2">
+                {isNewUser && (
+                    <Badge className="bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                        <Star className="w-3.5 h-3.5 fill-white"/>
+                        <span className='font-bold text-sm'>Yeni Üye</span>
+                    </Badge>
+                )}
+                 <Badge className="bg-gradient-to-r from-pink-500/70 to-orange-400/70 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+                    <Heart className="w-3.5 h-3.5 fill-white"/>
+                    <span className='font-bold text-sm'>%{likeRatio} Beğenilme</span>
                 </Badge>
-            )}
+            </div>
 
             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse">
                 <BarChart2 className="h-5 w-5" />
@@ -320,14 +327,14 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
             {profile.images && profile.images.length > 1 && (
                 <>
-                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-30'>
+                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-20'>
                         {profile.images.map((_, index) => (
                             <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                 <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                             </div>
                         ))}
                     </div>
-                    <div className='absolute inset-0 flex z-10'>
+                    <div className='absolute inset-0 flex z-20'>
                         <div className='flex-1 h-full' onClick={handlePrevImage} />
                         <div className='flex-1 h-full' onClick={handleNextImage} />
                     </div>
@@ -336,7 +343,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
             <Sheet>
                 <div
-                    className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
+                    className="absolute bottom-0 left-0 right-0 p-4 pb-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white z-20"
                 >
                      <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
@@ -412,7 +419,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                             <span className="font-semibold text-foreground/80 text-3xl">{age}</span>
                                         </div>
                                     </div>
-                                    {profile.isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
+                                    {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                     
                                     {displayDistance && (
                                         <div className="flex items-center gap-2 text-muted-foreground">
@@ -475,22 +482,22 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         </div>
 
         {compatibilityResult && (
-             <DialogContent className="sm:max-w-xs bg-background/60 backdrop-blur-sm border-border rounded-xl">
+             <DialogContent className="sm:max-w-[280px] bg-background/60 backdrop-blur-sm border-border rounded-xl">
                 <DialogHeader className="items-center text-center space-y-4">
                     <div className="flex items-center justify-center space-x-4">
-                         <Avatar className="w-16 h-16 border-2">
+                         <Avatar className="w-20 h-20 border-2">
                             <AvatarImage src={currentUserProfile?.profilePicture || ''} />
                             <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         
                         <div className="relative">
-                            <Heart className="w-10 h-10 text-red-500 fill-red-500 animate-pulse" />
+                            <Heart className="w-12 h-12 text-red-500 fill-red-500 animate-pulse" />
                              <div className='absolute inset-0 flex items-center justify-center text-lg font-bold text-white'>
                                 {compatibilityResult.score}%
                             </div>
                         </div>
 
-                        <Avatar className="w-16 h-16 border-2">
+                        <Avatar className="w-20 h-20 border-2">
                             <AvatarImage src={profile.profilePicture || ''} />
                             <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
