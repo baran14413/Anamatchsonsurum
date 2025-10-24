@@ -174,7 +174,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
      <AlertDialog>
       <div className="flex h-dvh flex-col bg-background text-foreground">
-         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-background px-4">
+         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
             <div className="flex items-center gap-2">
                 <Link href="/anasayfa">
                     <Icons.logo width={100} height={35} />
