@@ -475,7 +475,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         </div>
 
         {compatibilityResult && (
-             <DialogContent className="sm:max-w-xs bg-background/80 backdrop-blur-sm border-border">
+             <DialogContent className="sm:max-w-xs bg-background/60 backdrop-blur-sm border-border">
                 <DialogHeader className="items-center text-center space-y-4">
                     <div className="flex items-center justify-center space-x-4">
                          <Avatar className="w-16 h-16 border-2">
