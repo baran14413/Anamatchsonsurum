@@ -174,7 +174,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
      <AlertDialog>
       <div className="flex h-dvh flex-col bg-background text-foreground">
-         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:hidden">
+         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
             <div className="flex items-center gap-2">
                 <Link href="/anasayfa">
                     <Icons.logo width={100} height={35} />
@@ -215,27 +215,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col overflow-hidden">
            {children}
         </main>
-        
-        {/* Bottom Nav for Mobile */}
-        <footer className="sticky bottom-0 z-20 md:hidden border-t bg-background/95 backdrop-blur-sm">
-            <nav className='flex items-center justify-around p-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]'>
-                 {navItems.map((item) => {
-                    const isActive = pathname.startsWith(item.href);
-                    return (
-                        <Link key={item.href} href={item.href} className='flex-1'>
-                            <Button variant='ghost' className="w-full h-14 flex flex-col items-center justify-center gap-1 relative rounded-lg">
-                                <item.icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
-                                <span className={cn("text-xs", isActive ? "text-primary font-semibold" : "text-muted-foreground")}>{item.label}</span>
-                                {item.hasNotification && (
-                                    <span className="absolute top-2 right-1/4 block h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-                                )}
-                            </Button>
-                        </Link>
-                    )
-                })}
-            </nav>
-        </footer>
-
       </div>
       <AlertDialogContent>
         <AlertDialogHeader>
