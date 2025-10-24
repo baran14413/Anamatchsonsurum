@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Trash2, Check, Star, Info, ArrowLeft } from 'lucide-react';
+import { Search, MessageSquare, Trash2, Check, Star, Info, ArrowLeft, Heart } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 function EslesmelerPageContent() {
   const t = langTr.eslesmeler;
@@ -66,8 +67,8 @@ function EslesmelerPageContent() {
   }, [matchesQuery, toast]);
 
 
-  const filteredMatches = useMemo(() => {
-    if (!matches) return [];
+  const { realMatches, pendingSuperLikes, systemMatch, searchFiltered } = useMemo(() => {
+    if (!matches) return { realMatches: [], pendingSuperLikes: [], systemMatch: null, searchFiltered: [] };
     
     const realMatches = matches.filter(m => m.id !== 'system' && m.status === 'matched');
     const pendingSuperLikes = matches.filter(m => m.status === 'superlike_pending' && m.superLikeInitiator !== user?.uid);
@@ -76,7 +77,7 @@ function EslesmelerPageContent() {
     const searchFiltered = [...pendingSuperLikes, ...realMatches]
         .filter(m => !searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
-    return systemMatch ? [systemMatch, ...searchFiltered] : searchFiltered;
+    return { realMatches, pendingSuperLikes, systemMatch, searchFiltered };
   }, [matches, searchTerm, user?.uid]);
 
   const handleDeleteChat = async () => {
@@ -187,6 +188,30 @@ function EslesmelerPageContent() {
             </div>
         ) : (
             <>
+                {realMatches.length > 0 && (
+                  <div className="p-4 border-b">
+                    <h2 className="text-sm font-semibold mb-3 px-1">Eşleşmeler</h2>
+                    <ScrollArea>
+                        <div className="flex items-center gap-x-2">
+                            {realMatches.map((match, index) => (
+                                <div key={match.id} className="flex items-center gap-x-2">
+                                     <Link href={`/eslesmeler/${match.id}`}>
+                                        <div className='flex flex-col items-center gap-2 w-20'>
+                                            <Avatar className="h-16 w-16 border-2 border-primary">
+                                                <AvatarImage src={match.profilePicture} />
+                                                <AvatarFallback>{(match.fullName || '').charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
+                                        </div>
+                                    </Link>
+                                    {index < realMatches.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0' />}
+                                </div>
+                            ))}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                )}
                 <div className="p-4 shrink-0">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -196,7 +221,7 @@ function EslesmelerPageContent() {
                 
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
-                            {filteredMatches.map(match => {
+                            {(systemMatch ? [systemMatch, ...searchFiltered] : searchFiltered).map(match => {
                                 const isSystemChat = match.id === 'system';
                                 const hasUnread = (match.unreadCount && match.unreadCount > 0) || match.hasUnreadSystemMessage;
                                 const isUserDeleted = !match.fullName;
@@ -307,3 +332,5 @@ export default function EslesmelerPage() {
         </AppShell>
     );
 }
+
+    

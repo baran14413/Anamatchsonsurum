@@ -23,7 +23,7 @@ import AppShell from '@/components/app-shell';
 
 const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.ElementType, title: string, value: string | number, href?: string, iconClass?: string }) => {
   const content = (
-    <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-card text-card-foreground shadow-sm">
+    <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-card/80 text-card-foreground shadow-sm">
       <Icon className={`h-6 w-6 ${iconClass}`} />
       <span className="text-sm font-bold">{value}</span>
       <span className="text-xs text-muted-foreground">{title}</span>
@@ -174,10 +174,10 @@ function ProfilePageContent() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-muted/30">
-      <div className="container mx-auto max-w-2xl p-4 space-y-6">
+      <div className="p-4 space-y-6">
 
         {/* Profile Header */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
           <div className="flex items-center justify-between gap-4">
               {/* Left side: Name and Stats */}
               <div className="flex flex-col gap-4 flex-1">
@@ -225,24 +225,23 @@ function ProfilePageContent() {
         
         {/* Gallery Preview */}
         {galleryImages.length > 0 && (
-             <Card className="p-4 shadow-sm">
-                 <div className="grid grid-cols-2 gap-2">
-                     {galleryImages.map((image, index) => (
-                         <div key={index} className="relative aspect-square rounded-md overflow-hidden">
-                             <Image src={image.url} alt={`Galeri fotoğrafı ${index + 1}`} fill className="object-cover" />
-                         </div>
-                     ))}
-                 </div>
-                 <Link href="/profil/galeri" className="mt-4">
-                     <Button variant="secondary" className="w-full">Tümünü Gör ve Düzenle</Button>
-                 </Link>
-             </Card>
+             <Link href="/profil/galeri">
+                <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl cursor-pointer">
+                    <div className="grid grid-cols-2 gap-2">
+                        {galleryImages.map((image, index) => (
+                            <div key={index} className="relative aspect-square rounded-xl overflow-hidden">
+                                <Image src={image.url} alt={`Galeri fotoğrafı ${index + 1}`} fill className="object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            </Link>
         )}
         
 
         {/* Gold Card */}
         {!isGoldMember && (
-          <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white'>
+          <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white rounded-2xl'>
               <CardContent className='p-4 flex items-center gap-4'>
                   <Icons.beGold width={48} height={48} />
                   <div className='flex-1'>
@@ -261,7 +260,7 @@ function ProfilePageContent() {
         {/* Action Buttons */}
         <div className="space-y-3">
            <Link href="/profil/galeri">
-            <Button className="w-full h-14 rounded-xl font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg">
+            <Button className="w-full h-14 rounded-2xl font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg">
                 Galerini Düzenle
             </Button>
           </Link>
@@ -304,3 +303,5 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
+
+    
