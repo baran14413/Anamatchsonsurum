@@ -83,13 +83,6 @@
                 "longitude": {"type": "number"}
             }
         },
-        "address": {
-          "type": "object",
-          "properties": {
-            "city": { "type": "string" },
-            "country": { "type": "string" }
-          }
-        },
         "distancePreference": {
             "type": "number",
             "description": "Maximum distance in kilometers for potential matches."

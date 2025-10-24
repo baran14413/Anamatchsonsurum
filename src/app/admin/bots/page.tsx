@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -164,7 +165,6 @@ export default function AdminBotsPage() {
                 distancePreference: 160,
                 ageRange: { min: 18, max: 80 },
                 isOnline: true,
-                address: null, // Explicitly set address to null
             };
 
             await setDoc(docRef, botProfile);

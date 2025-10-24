@@ -23,10 +23,6 @@ export type UserProfile = {
   location?: {
     latitude: number;
     longitude: number;
-  };
-  address?: {
-    country?: string;
-    city?: string;
   } | null;
   locationLastUpdated?: any; 
   school?: string;

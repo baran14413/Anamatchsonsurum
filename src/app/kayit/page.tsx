@@ -32,8 +32,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { Country, State, City }  from 'country-state-city';
-import NodeGeocoder from 'node-geocoder';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -63,10 +61,6 @@ const formSchema = z.object({
   location: z.object({
       latitude: z.number(),
       longitude: z.number()
-  }).optional(),
-  address: z.object({
-    country: z.string().optional(),
-    city: z.string().optional(),
   }).optional(),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
@@ -283,24 +277,7 @@ export default function SignUpPage() {
         (position) => {
             const { latitude, longitude } = position.coords;
             form.setValue('location', { latitude, longitude }, { shouldValidate: true });
-            
-            // Reverse geocode to get country and city
-            const geocoder = NodeGeocoder({ provider: 'nominatimmapquest', apiKey: 'YOUR_MAPQUEST_API_KEY' }); // Replace with your actual key if needed
-            geocoder.reverse({ lat: latitude, lon: longitude })
-              .then((res) => {
-                if (res[0]) {
-                  form.setValue('address', {
-                    country: res[0].country,
-                    city: res[0].city,
-                  });
-                }
-              })
-              .catch((err) => {
-                console.warn('Geocoding failed:', err);
-              })
-              .finally(() => {
-                setIsLocationLoading(false);
-              });
+            setIsLocationLoading(false);
         },
         (error) => {
             let message = langTr.ayarlarKonum.errors.positionUnavailable;
@@ -337,7 +314,6 @@ export default function SignUpPage() {
         genderPreference: 'both',
         showGenderOnProfile: data.showGenderOnProfile,
         location: data.location,
-        address: data.address,
         lookingFor: data.lookingFor,
         distancePreference: data.distancePreference,
         lifestyle: data.lifestyle,

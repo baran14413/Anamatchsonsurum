@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -813,11 +814,11 @@ function ChatPageContent() {
                                                 </div>
                                                 {isNewUser && <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>}
                                                 
-                                                {(otherUser.address?.city && otherUser.address?.country) && (
+                                                {otherUser.location && (
                                                     <div className="flex items-center gap-2 text-muted-foreground">
                                                         <MapPin className="w-4 h-4" />
                                                         <span>
-                                                            {otherUser.address.city}, {otherUser.address.country}
+                                                            Konum bilgisi mevcut
                                                         </span>
                                                     </div>
                                                 )}
