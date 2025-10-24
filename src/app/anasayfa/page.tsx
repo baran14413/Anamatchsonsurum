@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
@@ -409,7 +409,7 @@ function AnasayfaPageContent() {
     const lastUndoDate = userProfile.lastUndoTimestamp?.toDate();
     const today = new Date();
     const isNewDay = !lastUndoDate || differenceInCalendarDays(today, lastUndoDate) >= 1;
-    const canUndo = isGoldMember || isNewDay || (userProfile.dailyUndoCount || 0) < 1;
+    const canUndo = isGoldMember || isNewDay || (userProfile.dailyUndoCount || 0) < 3;
 
     if (!canUndo) {
         toast({
@@ -580,5 +580,3 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
-
-    
