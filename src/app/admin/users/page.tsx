@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 
@@ -46,7 +47,7 @@ export default function AdminUsersPage() {
 
   const users = useMemo(() => {
     if (!allUsers) return [];
-    return allUsers.filter(user => user.isBot !== true).sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+    return allUsers.filter(user => user.isBot !== true).sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
   }, [allUsers]);
 
   const handleToggleAdmin = async (user: UserProfile) => {

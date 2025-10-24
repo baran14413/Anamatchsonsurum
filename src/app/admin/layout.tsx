@@ -1,13 +1,15 @@
+
 'use client';
 
 import { useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
-import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare } from 'lucide-react';
+import { Home, Users, Settings, Smartphone, Server, ShieldCheck, Bot, MessageSquare, LogOut, Heart, BarChart, Bug, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarSeparator } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, userProfile, isUserLoading } = useUser();
@@ -52,7 +54,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 <ScrollArea className="flex-1">
                     <SidebarMenu>
                         <SidebarGroup>
-                            <SidebarGroupLabel>Sistem Kontrolü</SidebarGroupLabel>
+                            <SidebarGroupLabel>Ana Menü</SidebarGroupLabel>
                             <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Dashboard" asChild>
                                     <Link href="/admin/dashboard">
@@ -69,7 +71,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
-                             <SidebarMenuItem>
+                            <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Botlar" asChild>
                                    <Link href="/admin/bots">
                                         <Bot />
@@ -77,17 +79,71 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
+                        </SidebarGroup>
+                        <SidebarSeparator />
+                        <SidebarGroup>
+                            <SidebarGroupLabel>İçerik & Etkileşim</SidebarGroupLabel>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Eşleşmeler" asChild>
+                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                        <Heart />
+                                        <span>Eşleşmeler</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                              <SidebarMenuItem>
-                                <SidebarMenuButton tooltip="Sistem Mesajları" asChild>
+                                <SidebarMenuButton tooltip="Raporlar" asChild>
+                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                        <Bug />
+                                        <span>Raporlar</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Duyurular" asChild>
                                    <Link href="/admin/system-messages">
                                         <MessageSquare />
-                                        <span>Sistem Mesajları</span>
+                                        <span>Duyurular</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarGroup>
+                        <SidebarSeparator />
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Sistem</SidebarGroupLabel>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Analiz" asChild>
+                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                        <BarChart />
+                                        <span>Analiz</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Adminler" asChild>
+                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                        <UserCog />
+                                        <span>Adminler</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                             <SidebarMenuItem>
+                                <SidebarMenuButton tooltip="Ayarlar" asChild>
+                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                        <Settings />
+                                        <span>Ayarlar</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         </SidebarGroup>
                     </SidebarMenu>
                 </ScrollArea>
+                <SidebarFooter>
+                    <Button variant="ghost" className='w-full justify-start'>
+                        <LogOut className='mr-2 h-4 w-4' />
+                        Çıkış Yap
+                    </Button>
+                </SidebarFooter>
             </SidebarContent>
         </Sidebar>
         <SidebarInset>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -209,7 +210,7 @@ export default function SystemMessagesPage() {
   return (
     <AlertDialog>
         <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Sistem Mesajları</h1>
+        <h1 className="text-2xl font-bold">Duyurular</h1>
 
         <div className="grid lg:grid-cols-2 gap-8">
             <Card>
