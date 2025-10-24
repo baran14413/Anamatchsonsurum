@@ -212,9 +212,9 @@ function AnasayfaPageContent() {
         const user1IsCurrentUser = user.uid === sortedIds[0];
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         
-        // If the other user is a bot and has no action, assume they liked back instantly
         let otherUserAction = matchData[otherUserActionKey];
-        if (profileToSwipe.isBot && !otherUserAction && (action === 'liked' || action === 'superliked')) {
+        // THIS IS THE KEY FIX: If it's a bot and the user likes/superlikes them, assume the bot likes back instantly.
+        if (profileToSwipe.isBot && (action === 'liked' || action === 'superliked')) {
             otherUserAction = 'liked';
         }
 
