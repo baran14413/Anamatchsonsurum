@@ -403,46 +403,41 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 )}
             </AnimatePresence>
             
-             <div className={cn("absolute inset-0 transition-opacity duration-300 z-20", isLongPress ? "opacity-0" : "opacity-100")}>
+             <div className={cn("absolute inset-0 transition-opacity duration-300", isLongPress ? "opacity-0" : "opacity-100")}>
                 {/* Gradient Overlays */}
-                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
                 
-                {/* Top-left Badges */}
-                <div className="absolute top-4 left-4 flex flex-col items-start gap-2 pointer-events-none">
-                    <div className='flex items-center gap-2'>
+                {/* Top Bar with actions and info */}
+                <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-30">
+                    <div className="flex items-center gap-2 pointer-events-none">
                         {isNewUser && (
                             <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
                                 <Star className="w-3 h-3 fill-white"/>
                                 <span className='font-bold'>Yeni Üye</span>
                             </Badge>
                         )}
-                        {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
-                        {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
-                        {profile.address?.countryCode && <span className='text-base'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
+                        {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300 drop-shadow-md" />}
+                        {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300 drop-shadow-md" />}
+                        {profile.address?.countryCode && <span className='text-base text-white drop-shadow-md'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
                     </div>
-                     <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
-                        <Heart className="w-3 h-3 fill-white"/>
-                        <span className='font-bold'>%{likeRatio} Beğenilme</span>
-                    </Badge>
+                     <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse pointer-events-auto">
+                        <BarChart2 className="h-5 w-5" />
+                    </Button>
                 </div>
-                
-                 {/* Top-right Actions */}
-                 <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse pointer-events-auto">
-                    <BarChart2 className="h-5 w-5" />
-                </Button>
+
 
                 {/* Image Navigation */}
                 {profile.images && profile.images.length > 1 && (
                     <>
-                        <div className='absolute top-2 left-2 right-2 flex gap-1 pointer-events-none'>
+                        <div className='absolute top-2 left-2 right-2 flex gap-1 pointer-events-none z-30'>
                             {profile.images.map((_, index) => (
                                 <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
                                     <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
                                 </div>
                             ))}
                         </div>
-                        <div className='absolute inset-y-0 left-0 w-1/2' onClick={handlePrevImage} />
-                        <div className='absolute inset-y-0 right-0 w-1/2' onClick={handleNextImage} />
+                        <div className='absolute inset-y-0 left-0 w-1/2 z-20' onClick={handlePrevImage} />
+                        <div className='absolute inset-y-0 right-0 w-1/2 z-20' onClick={handleNextImage} />
                     </>
                 )}
             </div>
@@ -452,7 +447,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <Sheet>
                     <div className="p-4 pb-2 text-white pointer-events-auto relative z-10">
                         <div className="space-y-1">
-                            <div className="flex items-center gap-x-3 flex-nowrap">
+                            <div className="flex flex-nowrap items-center gap-x-3">
                                 <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                                 <span className="text-2xl font-semibold text-white/90 shrink-0">{age}</span>
                                 <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
