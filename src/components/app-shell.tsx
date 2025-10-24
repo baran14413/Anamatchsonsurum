@@ -4,7 +4,7 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Settings, Flame, Heart, MessageSquare, User, Globe } from 'lucide-react';
+import { Settings, Flame, Heart, MessageSquare, User, Globe, Shield } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -233,5 +233,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
      </AlertDialog>
     );
 }
+
+    
 
     

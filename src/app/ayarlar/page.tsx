@@ -4,7 +4,7 @@
 import { useUser, useFirebase } from '@/firebase/provider';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone, Wallet, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone, Wallet, ShieldCheck, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
@@ -53,7 +53,7 @@ const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
 
 
 function SettingsPageContent() {
-    const { auth } = useFirebase();
+    const { userProfile, auth } = useUser();
     const router = useRouter();
     const t = langTr;
     const { toast } = useToast();
@@ -79,6 +79,21 @@ function SettingsPageContent() {
 
     return (
         <AlertDialog>
+             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="h-6 w-6" />
+                </Button>
+                <h1 className="text-lg font-semibold">Ayarlar</h1>
+                 {userProfile?.isAdmin ? (
+                    <Link href="/admin/dashboard">
+                        <Button variant="ghost" size="icon" className="rounded-full">
+                            <Shield className="w-6 h-6" />
+                        </Button>
+                    </Link>
+                ) : (
+                    <div className="w-9 h-9" />
+                )}
+            </header>
             <div className="flex-1 overflow-y-auto">
                 <SectionTitle title="Hesabın" />
                 <div className="bg-background border-y divide-y">
@@ -134,9 +149,12 @@ function SettingsPageContent() {
 
 
 export default function SettingsPage() {
+    // We don't need AppShell here because we are creating our own header
     return (
-        <AppShell>
-            <SettingsPageContent />
-        </AppShell>
+        <div className="flex h-dvh flex-col bg-background text-foreground">
+             <SettingsPageContent />
+        </div>
     );
 }
+
+    

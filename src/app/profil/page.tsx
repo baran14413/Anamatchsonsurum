@@ -155,17 +155,10 @@ function ProfilePageContent() {
 
         {/* Profile Header */}
         <Card className="relative p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
-           {userProfile?.isAdmin && (
-              <Link href="/admin/dashboard" className="absolute top-3 right-3 z-10">
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-full bg-black/20 text-white hover:bg-black/40 backdrop-blur-sm">
-                      <Shield className="w-5 h-5" />
-                  </Button>
-              </Link>
-          )}
           <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-4 flex-1">
                   <h1 className="text-2xl font-bold">
-                      {userProfile?.fullName || t.profil.user}
+                      {userProfile?.fullName}
                   </h1>
                   <div className="flex items-stretch gap-2 w-full">
                       <StatCard 
@@ -279,3 +272,5 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
+
+    
