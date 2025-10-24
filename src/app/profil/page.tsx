@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -206,14 +205,14 @@ function ProfilePageContent() {
               </div>
 
               {/* Right side: Avatar */}
-              <div className="relative shrink-0">
+              <div className="relative shrink-0 w-24 h-24">
                   <Avatar className="h-24 w-24 border-4 border-background shadow-md">
                       <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
                       <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   {profileCompletionPercentage < 100 && (
-                    <div className="absolute -bottom-2 -right-2">
-                        <CircularProgress progress={profileCompletionPercentage} size={40} />
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <CircularProgress progress={profileCompletionPercentage} size={96} strokeWidth={5} />
                     </div>
                   )}
               </div>

@@ -28,7 +28,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
     >
       <svg className="absolute w-full h-full" viewBox={`0 0 ${size} ${size}`}>
         <circle
-          className="text-muted/30"
+          className="text-white/30"
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
@@ -39,7 +39,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
         <circle
           className={cn(
             "transition-all duration-500 ease-out",
-            "text-primary"
+            "text-white"
           )}
           stroke="currentColor"
           strokeWidth={strokeWidth}
