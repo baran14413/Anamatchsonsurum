@@ -4,18 +4,11 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Settings, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
+import { Settings, Flame, Heart, MessageSquare, User, Globe } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -204,6 +197,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       )
                     })}
                 </TooltipProvider>
+
+                <Link href="/haberler">
+                    <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                        <Globe className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                </Link>
 
                 <Link href="/ayarlar">
                     <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
