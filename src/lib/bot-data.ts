@@ -23,33 +23,8 @@ export const bios = [
     "Belgesel izlemekten ve yeni şeyler öğrenmekten büyük keyif alırım."
 ];
 
-export const BOT_GREETINGS = [
-    "Merhaba, nasılsın? Profilin çok ilgimi çekti! 😊",
-    "Selam! Eşleştiğimize sevindim, sohbet etmek istersen buradayım. 😉",
-    "Merhaba! Ortak ilgi alanlarımız var gibi görünüyor. ✨",
-    "Hey! Enerjin harika görünüyor. Tanışalım mı?",
-    "Selam, günün nasıl geçiyor? ☀️",
-    "Profilindeki gülümsemen çok hoşuma gitti, merhaba demek istedim.",
-    "Sanırım birçok ortak noktamız var, ne dersin?",
-    "Eşleştiğimize göre bir kahve ısmarlarsın artık? ☕️",
-    "Vay canına, sonunda aradığım profili buldum galiba. 😄",
-    "İlk mesajı kim atacak diye beklemeyeyim dedim. Selam!",
-    "Fotoğrafların harika, özellikle de o macera dolu olan!",
-    "Beni beğendiğine emin misin? Sonra pişman olma. 😉 Şaka şaka, merhaba!",
-    "Umarım harika bir gün geçiriyorsundur. Sohbet etmek için sabırsızlanıyorum!",
-    "İkimizin de [ilgi alanı] sevmesi ne kadar güzel bir tesadüf!",
-    "Profilin adeta 'benimle konuş' diyor, ben de dinledim. 😄",
-    "Selam! Ortak paydada buluşabileceğimiz çok şey var gibi hissediyorum.",
-    "Enerjimiz eşleşmiş gibi duruyor, sohbetimiz de öyle olur mu dersin?",
-    "Merhaba! Beğenin için teşekkürler, ben de senin profiline kayıtsız kalamadım.",
-    "Biraz klişe olacak ama... Merhaba! 😊",
-    "Sohbet başlatma konusunda çok iyi değilimdir ama denemeye değer bir profilin var."
-];
-
 /**
- * Bu liste, bir kullanıcı bir bota mesaj gönderdiğinde botun vereceği rastgele cevapları içerir.
- * Bu sistem, Gemini gibi harici bir yapay zeka servisine çağrı yapmayı engeller ve maliyeti sıfırlar.
- * Cevaplar daha doğal ve "insansı" bir his vermek için kasıtlı olarak basit ve bazen belirsizdir.
+ * Bu liste, bir kullanıcı bir botla eşleştiğinde botun göndereceği ilk rastgele selamlama mesajlarını içerir.
  */
 export const BOT_REPLIES = [
     "Merhaba, nasılsın? Profilin çok ilgimi çekti! 😊",
@@ -72,3 +47,6 @@ export const BOT_REPLIES = [
     "Biraz klişe olacak ama... Merhaba! 😊",
     "Sohbet başlatma konusunda çok iyi değilimdir ama denemeye değer bir profilin var."
 ];
+
+// This list is kept for compatibility but should be consolidated with BOT_REPLIES.
+export const BOT_GREETINGS = BOT_REPLIES;
