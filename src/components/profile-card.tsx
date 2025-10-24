@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars, BarChart2 } from 'lucide-react';
+import { MapPin, Heart, X as XIcon, ChevronUp, X, Star, Venus, Mars, BarChart2, Hand } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription, SheetHeader, SheetClose } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -168,6 +168,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLongPress, setIsLongPress] = useState(false);
   const pressTimer = useRef<NodeJS.Timeout>();
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const hintTimer = useRef<NodeJS.Timeout>();
+
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -180,6 +183,19 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     setActiveImageIndex(0);
     x.set(0);
     y.set(0);
+    setIsLongPress(false);
+    setShowSwipeHint(false);
+
+    // Set a timer to show the swipe hint
+    hintTimer.current = setTimeout(() => {
+        setShowSwipeHint(true);
+    }, 2500);
+
+    return () => {
+        clearTimeout(hintTimer.current);
+        clearTimeout(pressTimer.current);
+    }
+
   }, [profile.uid, x, y]);
 
   const age = calculateAge(profile.dateOfBirth);
@@ -187,6 +203,8 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const isNewUser = profile.createdAt && (Date.now() - new Date(profile.createdAt.seconds * 1000).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
   const handlePressStart = () => {
+    clearTimeout(hintTimer.current);
+    setShowSwipeHint(false);
     pressTimer.current = setTimeout(() => {
         setIsLongPress(true);
     }, 500); // 500ms for long press
@@ -194,18 +212,27 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
   const handlePressEnd = () => {
       clearTimeout(pressTimer.current);
-      setIsLongPress(false);
+      // Only toggle if it was a real long press, not just a click
+      if (isLongPress) {
+        setIsLongPress(false);
+      }
   };
   
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isLongPress) return;
+    if(isLongPress) {
+        setIsLongPress(false);
+        return;
+    };
     setActiveImageIndex((prev) => (prev + 1) % (profile.images?.length || 1));
   };
   
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-     if (isLongPress) return;
+     if(isLongPress) {
+        setIsLongPress(false);
+        return;
+    };
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
   
@@ -216,6 +243,11 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         setIsDialogOpen(true);
     }
   };
+
+  const handleDragStart = () => {
+    setShowSwipeHint(false);
+    clearTimeout(hintTimer.current);
+  }
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y < -50) {
@@ -267,11 +299,10 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         className="absolute w-full h-full cursor-grab transform-gpu"
         drag
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onMouseDown={handlePressStart}
-        onMouseUp={handlePressEnd}
-        onTouchStart={handlePressStart}
-        onTouchEnd={handlePressEnd}
+        onPointerDown={handlePressStart}
+        onPointerUp={handlePressEnd}
         onMouseLeave={handlePressEnd}
         style={{ x, y, rotate }}
         exit={{
@@ -326,20 +357,38 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </>
             )}
             
+             <AnimatePresence>
+                {showSwipeHint && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="absolute inset-0 z-30 flex items-center justify-center bg-black/30 pointer-events-none"
+                >
+                    <div className="flex items-center gap-8">
+                    <XIcon className="w-16 h-16 text-white/80" />
+                    <Hand className="w-20 h-20 text-white animate-pulse" />
+                    <Heart className="w-16 h-16 text-white/80 fill-white/80" />
+                    </div>
+                </motion.div>
+                )}
+            </AnimatePresence>
+            
              <div className={cn("absolute inset-0 transition-opacity duration-300", isLongPress ? "opacity-0" : "opacity-100")}>
 
                 <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
                 <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2">
                     {isNewUser && (
-                        <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
-                            <Star className="w-3.5 h-3.5 fill-white"/>
-                            <span className='font-bold text-xs'>Yeni Üye</span>
+                        <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
+                            <Star className="w-3 h-3 fill-white"/>
+                            <span className='font-bold'>Yeni Üye</span>
                         </Badge>
                     )}
-                    <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2">
+                    <Badge className="bg-gradient-to-r from-pink-500/50 to-orange-400/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
                         <Heart className="w-3 h-3 fill-white"/>
-                        <span className='font-bold text-xs'>%{likeRatio} Beğenilme</span>
+                        <span className='font-bold'>%{likeRatio} Beğenilme</span>
                     </Badge>
                 </div>
 
@@ -510,23 +559,21 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
         {compatibilityResult && (
              <DialogContent className="sm:max-w-xs bg-background/60 backdrop-blur-sm border-border rounded-xl">
                 <DialogHeader className="items-center text-center space-y-4">
-                    <div className="flex items-center justify-center space-x-2">
+                     <div className="relative flex items-center justify-center space-x-2">
                          <Avatar className="w-16 h-16 border-2">
                             <AvatarImage src={currentUserProfile?.profilePicture || ''} />
                             <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         
-                        <div className="relative">
-                            <Heart className="w-10 h-10 text-red-500 fill-red-500 animate-pulse" />
-                             <div className='absolute inset-0 flex items-center justify-center text-sm font-bold text-white'>
-                                {compatibilityResult.score}%
-                            </div>
-                        </div>
+                        <Heart className="w-10 h-10 text-red-500 fill-red-500" />
 
                         <Avatar className="w-16 h-16 border-2">
                             <AvatarImage src={profile.profilePicture || ''} />
                             <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
                         </Avatar>
+                         <div className='absolute inset-0 flex items-center justify-center text-xl font-bold text-white drop-shadow-md'>
+                                %{compatibilityResult.score}
+                         </div>
                     </div>
 
                     <DialogTitle className="text-xl pt-2">{compatibilityResult.message}</DialogTitle>
