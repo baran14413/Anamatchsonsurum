@@ -169,6 +169,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const pressTimer = useRef<NodeJS.Timeout>();
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const hintTimer = useRef<NodeJS.Timeout>();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
 
   const x = useMotionValue(0);
@@ -196,6 +197,14 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     }
 
   }, [profile.uid, x, y]);
+
+  useEffect(() => {
+    if (profile.images?.[activeImageIndex]?.type === 'video' && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(error => console.log("Video autoplay failed:", error));
+    }
+  }, [activeImageIndex, profile.images]);
+
 
   const age = calculateAge(profile.dateOfBirth);
   const isGoldMember = profile.membershipType === 'gold';
@@ -337,24 +346,39 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             
             {profile.images && profile.images.length > 0 && (
                 <>
-                    {profile.images.map((image, index) => {
-                        if (!image || !image.url) return null;
+                    {profile.images.map((media, index) => {
+                        if (!media || !media.url) return null;
+                        const isActive = index === activeImageIndex;
+                        const isVideo = media.type === 'video';
+
                         return (
                           <div
-                            key={`${profile.uid}-img-${index}`}
+                            key={`${profile.uid}-media-${index}`}
                             className={cn(
                                 "absolute inset-0 w-full h-full transition-opacity duration-300 ease-in-out"
                             )}
-                            style={{ opacity: index === activeImageIndex ? 1 : 0 }}
+                            style={{ opacity: isActive ? 1 : 0 }}
                           >
-                            <Image
-                                src={image.url}
-                                alt={`${profile.fullName} profile image ${index + 1}`}
-                                fill
-                                sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
-                                className="object-cover"
-                                priority={true}
-                            />
+                             {isVideo ? (
+                                <video
+                                    ref={isActive ? videoRef : null}
+                                    src={media.url}
+                                    className="w-full h-full object-cover"
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                />
+                            ) : (
+                                <Image
+                                    src={media.url}
+                                    alt={`${profile.fullName} profile media ${index + 1}`}
+                                    fill
+                                    sizes="(max-width: 640px) 90vw, (max-width: 768px) 50vw, 384px"
+                                    className="object-cover"
+                                    priority={index === 0}
+                                />
+                            )}
                           </div>
                         );
                     })}
@@ -386,7 +410,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 {/* Top-left Badges */}
                 <div className="absolute top-4 left-4 flex flex-col items-start gap-2 pointer-events-none">
                     <div className='flex items-center gap-2'>
-                         {isNewUser && (
+                        {isNewUser && (
                             <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
                                 <Star className="w-3 h-3 fill-white"/>
                                 <span className='font-bold'>Yeni Üye</span>
@@ -428,7 +452,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <Sheet>
                     <div className="p-4 pb-2 text-white pointer-events-auto relative z-10">
                         <div className="space-y-1">
-                            <div className="flex flex-nowrap items-center gap-x-3">
+                            <div className="flex items-center gap-x-3 flex-nowrap">
                                 <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
                                 <span className="text-2xl font-semibold text-white/90 shrink-0">{age}</span>
                                 <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />

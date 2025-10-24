@@ -3,6 +3,7 @@
 export interface UserImage {
   url: string;
   public_id: string;
+  type?: 'image' | 'video';
 }
 
 export type UserProfile = {
