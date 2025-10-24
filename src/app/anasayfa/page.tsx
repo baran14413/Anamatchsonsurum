@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import type { UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -136,7 +136,11 @@ function AnasayfaPageContent() {
   const interactedUids = useRef<Set<string>>(new Set());
   
   // Welcome Gift Logic
-  const allUsersQuery = query(collection(firestore!, 'users'), orderBy('createdAt', 'asc'));
+  const allUsersQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), orderBy('createdAt', 'asc'));
+  }, [firestore]);
+
   const { data: allUsers, isLoading: isLoadingAllUsers } = useCollection<UserProfile>(allUsersQuery);
 
   useEffect(() => {
@@ -571,3 +575,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    

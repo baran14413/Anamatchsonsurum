@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
@@ -30,8 +30,8 @@ export interface UseCollectionResult<T> {
  * Handles nullable references/queries.
  * 
  *
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
+ * IMPORTANT! YOU MUST MEMOIZE the inputted targetRefOrQuery or BAD THINGS WILL HAPPEN
+ * use useMemo to memoize it per React guidence. Also make sure that it's dependencies are stable
  * references
  *  
  * @template T Optional type for document data. Defaults to any.
@@ -45,14 +45,12 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
   
-  const memoizedTargetRefOrQuery = useMemo(() => targetRefOrQuery, [targetRefOrQuery]);
-
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
+    if (!targetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -63,7 +61,7 @@ export function useCollection<T = any>(
     setError(null);
 
     const unsubscribe = onSnapshot(
-      memoizedTargetRefOrQuery,
+      targetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = snapshot.docs.map(doc => ({ ...(doc.data() as T), id: doc.id }));
         setData(results);
@@ -73,7 +71,7 @@ export function useCollection<T = any>(
       (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path: memoizedTargetRefOrQuery.type === 'collection' ? (memoizedTargetRefOrQuery as CollectionReference).path : 'query',
+          path: targetRefOrQuery.type === 'collection' ? (targetRefOrQuery as CollectionReference).path : 'query',
         });
         errorEmitter.emit('permission-error', contextualError);
         setError(contextualError);
@@ -83,7 +81,9 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+  }, [targetRefOrQuery]);
 
   return { data, isLoading, error };
 }
+
+    
