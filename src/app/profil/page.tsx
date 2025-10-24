@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -19,6 +18,22 @@ import CircularProgress from '@/components/circular-progress';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import type { Match } from '@/lib/types';
 import AppShell from '@/components/app-shell';
+
+
+const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.ElementType, title: string, value: string | number, href?: string, iconClass?: string }) => {
+  const content = (
+    <div className="flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-lg bg-card text-card-foreground shadow-sm">
+      <Icon className={`h-6 w-6 ${iconClass}`} />
+      <span className="text-sm font-bold">{value}</span>
+      <span className="text-xs text-muted-foreground">{title}</span>
+    </div>
+  );
+  
+  if (href) {
+    return <Link href={href} className="flex-1">{content}</Link>;
+  }
+  return content;
+};
 
 
 function ProfilePageContent() {
@@ -155,40 +170,63 @@ function ProfilePageContent() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background">
+    <div className="flex-1 overflow-y-auto bg-muted/30">
       <div className="container mx-auto max-w-2xl p-4 space-y-6">
 
         {/* Profile Header */}
-        <div className="flex flex-col items-center space-y-4 py-4">
-          <div className="relative">
-            <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-              <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
-              <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
-            </Avatar>
-             {profileCompletionPercentage < 100 && (
-                <div className="absolute -bottom-1 -right-1">
-                    <CircularProgress progress={profileCompletionPercentage} size={44} />
+        <Card className="p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+                <div className='flex flex-col items-start gap-3'>
+                    <h1 className="text-2xl font-bold">
+                        {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
+                    </h1>
+                     <div className="flex items-stretch gap-2 w-full">
+                          <StatCard 
+                            icon={Heart}
+                            title="Beğeni Oranı"
+                            value={`%${likeRatio}`}
+                            iconClass="text-pink-500"
+                          />
+                          <StatCard
+                            icon={Star}
+                            title="Super Like"
+                            value={superLikeBalance}
+                            href="/market"
+                            iconClass="text-blue-500"
+                          />
+                          <StatCard
+                            icon={Gem}
+                            title="Üyelik"
+                            value={isGoldMember ? 'Gold' : 'Free'}
+                            href="/market"
+                            iconClass="text-yellow-500"
+                          />
+                     </div>
                 </div>
-            )}
-          </div>
-          
-          <div className="text-center space-y-1">
-             <h1 className="text-2xl font-bold flex items-center gap-2">
-                {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
-                {isGoldMember ? <Icons.beGold width={24} height={24} /> : <ShieldCheckIcon className="h-6 w-6 text-blue-500" />}
-            </h1>
-            {isGoldMember && <p className="font-semibold text-yellow-500">Gold Üye</p>}
-          </div>
-        </div>
+
+                <div className="relative shrink-0">
+                    <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+                    <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
+                    <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                     {profileCompletionPercentage < 100 && (
+                        <div className="absolute -bottom-2 -right-2">
+                            <CircularProgress progress={profileCompletionPercentage} size={40} />
+                        </div>
+                    )}
+                </div>
+            </div>
+        </Card>
+        
 
         {/* Gold Card */}
         {!isGoldMember && (
-          <Card className='shadow-md bg-gradient-to-r from-pink-500 to-yellow-400 text-white'>
+          <Card className='shadow-md bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 text-white'>
               <CardContent className='p-4 flex items-center gap-4'>
                   <Icons.beGold width={48} height={48} />
                   <div className='flex-1'>
                       <h2 className='font-bold'>BeMatch Gold'a eriş</h2>
-                      <p className='text-sm text-white/90'>Eşsiz özellikleri kazan!</p>
+                      <p className='text-sm text-white/90'>Sınırsız beğeni ve eşsiz özellikler kazan!</p>
                   </div>
                   <Link href="/market">
                     <Button variant='secondary' size='sm' className='rounded-full bg-white text-black hover:bg-gray-200'>
@@ -198,32 +236,11 @@ function ProfilePageContent() {
               </CardContent>
           </Card>
         )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 text-center">
-           <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
-              <Heart className="h-6 w-6 text-red-500 fill-red-500" />
-              <p className="text-base font-bold">{matchCount}</p>
-              <span className="text-xs text-muted-foreground">Eşleşme</span>
-          </Card>
-           <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
-              <Star className="h-6 w-6 text-blue-400 fill-blue-400" />
-              <p className="text-base font-bold">{superLikeBalance}</p>
-               <Link href="/market">
-                <span className="text-xs font-semibold text-blue-500 cursor-pointer">{t.profil.getMore}</span>
-              </Link>
-          </Card>
-          <Card className="p-3 flex flex-col items-center justify-center space-y-1 border-0 bg-card/30 backdrop-blur-sm">
-              <Heart className="h-6 w-6 text-pink-400 fill-pink-400" />
-              <p className="text-base font-bold">% {likeRatio}</p>
-               <span className="text-xs text-muted-foreground">Beğeni Oranı</span>
-          </Card>
-        </div>
-
+        
         {/* Action Buttons */}
         <div className="space-y-3">
            <Link href="/profil/galeri">
-            <Button className="w-full h-14 rounded-full font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white">
+            <Button className="w-full h-14 rounded-xl font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg">
                 Galerini Düzenle
             </Button>
           </Link>
@@ -233,7 +250,8 @@ function ProfilePageContent() {
         <div className="pt-8">
            <AlertDialog>
                 <AlertDialogTrigger asChild>
-                    <Button variant="ghost" className="w-full text-muted-foreground font-bold">
+                    <Button variant="ghost" className="w-full text-muted-foreground font-bold gap-2">
+                        <LogOut className="h-4 w-4"/>
                         {t.profil.logout}
                     </Button>
                 </AlertDialogTrigger>
