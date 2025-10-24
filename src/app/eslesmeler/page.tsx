@@ -188,30 +188,6 @@ function EslesmelerPageContent() {
             </div>
         ) : (
             <>
-                {realMatches.length > 0 && (
-                  <div className="p-4 border-b">
-                    <h2 className="text-sm font-semibold mb-3 px-1">Eşleşmeler</h2>
-                    <ScrollArea>
-                        <div className="flex items-center gap-x-2">
-                            {realMatches.map((match, index) => (
-                                <div key={match.id} className="flex items-center gap-x-2">
-                                     <Link href={`/eslesmeler/${match.id}`}>
-                                        <div className='flex flex-col items-center gap-2 w-20'>
-                                            <Avatar className="h-16 w-16 border-2 border-primary">
-                                                <AvatarImage src={match.profilePicture} />
-                                                <AvatarFallback>{(match.fullName || '').charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
-                                        </div>
-                                    </Link>
-                                    {index < realMatches.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0' />}
-                                </div>
-                            ))}
-                        </div>
-                        <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </div>
-                )}
                 <div className="p-4 shrink-0">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

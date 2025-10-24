@@ -17,8 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import CircularProgress from '@/components/circular-progress';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
-import type { Match, UserImage } from '@/lib/types';
+import type { Match, UserImage, DenormalizedMatch } from '@/lib/types';
 import AppShell from '@/components/app-shell';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 
 const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.ElementType, title: string, value: string | number, href?: string, iconClass?: string }) => {
@@ -44,7 +45,7 @@ function ProfilePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [matchCount, setMatchCount] = useState(0);
+  const [matches, setMatches] = useState<DenormalizedMatch[]>([]);
   const [likeRatio, setLikeRatio] = useState(75); // Default encouraging value
 
   const matchesQuery = useMemo(() => {
@@ -55,14 +56,15 @@ function ProfilePageContent() {
     );
   }, [user, firestore]);
 
-  // Effect for match count
+  // Effect for matches
   useEffect(() => {
     if (!matchesQuery) return;
 
     const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
-        setMatchCount(snapshot.size);
+        const matchesData = snapshot.docs.map(doc => doc.data() as DenormalizedMatch);
+        setMatches(matchesData);
     }, (error) => {
-        console.error("Failed to fetch match count:", error);
+        console.error("Failed to fetch matches:", error);
     });
 
     return () => unsubscribe();
@@ -222,6 +224,32 @@ function ProfilePageContent() {
               </div>
           </div>
         </Card>
+
+        {matches.length > 0 && (
+          <Card className="shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
+            <CardContent className='p-4'>
+                <ScrollArea>
+                    <div className="flex items-center gap-x-2">
+                        {matches.map((match, index) => (
+                            <div key={match.id} className="flex items-center gap-x-2">
+                                 <Link href={`/eslesmeler/${match.id}`}>
+                                    <div className='flex flex-col items-center gap-2 w-20'>
+                                        <Avatar className="h-16 w-16 border-2 border-primary">
+                                            <AvatarImage src={match.profilePicture} />
+                                            <AvatarFallback>{(match.fullName || '').charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className='text-xs font-medium truncate w-full text-center'>{match.fullName}</span>
+                                    </div>
+                                </Link>
+                                {index < matches.length - 1 && <Heart className='h-4 w-4 text-muted-foreground shrink-0 animate-pulse-heart' />}
+                            </div>
+                        ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
         
         {/* Gallery Preview */}
         {galleryImages.length > 0 && (
