@@ -17,7 +17,7 @@ import { formatDistanceToNow, differenceInHours, differenceInMinutes } from 'dat
 import { tr } from 'date-fns/locale';
 import * as LucideIcons from 'lucide-react';
 import { Icons } from './icons';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { useUser } from '@/firebase/provider';
 import CircularProgress from './circular-progress';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -357,7 +357,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </>
             )}
             
-             <AnimatePresence>
+            <AnimatePresence>
                 {showSwipeHint && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -379,7 +379,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
                 <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
 
-                <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2">
+                <div className="absolute top-4 left-4 z-20 flex flex-col items-start gap-2">
                     {isNewUser && (
                         <Badge className="bg-blue-500/50 text-white backdrop-blur-sm border-none gap-1 py-0.5 px-2 text-xs">
                             <Star className="w-3 h-3 fill-white"/>
@@ -397,15 +397,13 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </Button>
 
                 {profile.images && profile.images.length > 1 && (
-                    <>
-                        <div className='absolute top-2 left-2 right-2 flex gap-1 z-20'>
-                            {profile.images.map((_, index) => (
-                                <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
-                                    <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
-                                </div>
-                            ))}
-                        </div>
-                    </>
+                    <div className='absolute top-2 left-2 right-2 flex gap-1 z-10'>
+                        {profile.images.map((_, index) => (
+                            <div key={index} className='h-1 flex-1 rounded-full bg-white/40'>
+                                <div className={cn('h-full rounded-full bg-white transition-all duration-300', activeImageIndex === index ? 'w-full' : 'w-0')} />
+                            </div>
+                        ))}
+                    </div>
                 )}
 
                  {/* Clickable areas for image navigation */}
@@ -427,6 +425,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                 <span className="text-2xl font-semibold text-white/90">{age}</span>
                                 {profile.gender === 'female' && <Venus className="w-5 h-5 text-pink-300" />}
                                 {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300" />}
+                                {profile.address?.countryCode && <span className='text-lg'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
                                 {displayDistance && (
                                     <div className="flex items-center gap-1.5 text-sm font-medium border-l border-white/30 pl-3">
                                         <MapPin className="w-4 h-4" />
