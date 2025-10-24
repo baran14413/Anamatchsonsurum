@@ -309,12 +309,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
             <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10" />
             
-            <Badge className="absolute top-4 left-4 z-20 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
+             <Badge className="absolute top-4 left-4 z-20 bg-blue-500/90 text-white backdrop-blur-sm border-none gap-1.5 py-1 px-2.5">
               <Star className="w-3.5 h-3.5 fill-white"/>
               <span className='font-bold text-sm'>Yeni Üye</span>
             </Badge>
 
-             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
+             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-40 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
                 <BarChart2 className="h-5 w-5" />
             </Button>
 
@@ -338,7 +338,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6 text-white z-20"
                 >
-                     <div className="space-y-1">
+                    <div className="space-y-1">
                         <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                        
                         <div className="inline-flex items-center gap-3 p-2 rounded-lg bg-black/30 backdrop-blur-sm">
@@ -413,10 +413,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                                         </div>
                                     </div>
                                     {isNewUser && (
-                                        <div className="inline-flex items-center gap-1.5 p-1 px-3 rounded-full bg-blue-500 text-white text-sm font-bold">
-                                            <Star className="w-4 h-4 fill-white"/>
-                                            YENİ ÜYE
-                                        </div>
+                                        <Badge className="bg-blue-500 text-white border-blue-500 shrink-0 !mt-3">Yeni Üye</Badge>
                                     )}
                                     
                                     {displayDistance && (
@@ -514,4 +511,3 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
-
