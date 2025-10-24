@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut, Video } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -253,7 +253,16 @@ function ProfilePageContent() {
                     <div className="grid grid-cols-2 gap-2">
                         {galleryImages.map((image, index) => (
                             <div key={index} className="relative aspect-square rounded-xl overflow-hidden">
-                                <Image src={image.url} alt={`Galeri fotoğrafı ${index + 1}`} fill className="object-cover" />
+                                {image.type === 'video' ? (
+                                    <>
+                                        <video src={image.url} className="w-full h-full object-cover" muted loop playsInline />
+                                        <div className="absolute top-2 right-2 z-10 bg-black/50 text-white rounded-full p-1.5 backdrop-blur-sm">
+                                            <Video className="w-3.5 h-3.5" />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <Image src={image.url} alt={`Galeri fotoğrafı ${index + 1}`} fill className="object-cover" />
+                                )}
                             </div>
                         ))}
                     </div>
@@ -278,14 +287,6 @@ function ProfilePageContent() {
           </Card>
         )}
         
-        <div className="space-y-3">
-           <Link href="/profil/galeri">
-            <Button className="w-full h-14 rounded-2xl font-bold text-base bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg">
-                Galerini Düzenle
-            </Button>
-          </Link>
-        </div>
-
         <div className="pt-8">
            <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -322,5 +323,3 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
-
-    
