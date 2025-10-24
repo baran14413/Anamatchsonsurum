@@ -175,8 +175,8 @@ function ProfilePageContent() {
 
         {/* Profile Header */}
         <Card className="p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-                <div className='flex flex-col items-start gap-3'>
+             <div className="flex items-center justify-between gap-4">
+                <div className='flex-1 flex flex-col items-start gap-4'>
                     <h1 className="text-2xl font-bold">
                         {userProfile?.fullName || t.profil.user}{age && `, ${age}`}
                     </h1>
@@ -206,8 +206,8 @@ function ProfilePageContent() {
 
                 <div className="relative shrink-0">
                     <Avatar className="h-24 w-24 border-4 border-background shadow-md">
-                    <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
-                    <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={userProfile?.profilePicture || user?.photoURL || ''} alt={userProfile?.fullName || 'User'} />
+                        <AvatarFallback>{userProfile?.fullName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                      {profileCompletionPercentage < 100 && (
                         <div className="absolute -bottom-2 -right-2">
@@ -283,3 +283,4 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
+
