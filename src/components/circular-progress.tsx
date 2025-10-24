@@ -23,12 +23,12 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
 
   return (
     <div
-      className="relative flex items-center justify-center bg-background rounded-full shadow-md"
+      className="relative flex items-center justify-center bg-transparent rounded-full"
       style={{ width: size, height: size }}
     >
       <svg className="absolute w-full h-full" viewBox={`0 0 ${size} ${size}`}>
         <circle
-          className="text-muted"
+          className="text-muted/30"
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
@@ -38,8 +38,8 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
         />
         <circle
           className={cn(
-            "transition-all duration-300 ease-in-out",
-            isComplete ? "text-green-500" : "text-primary"
+            "transition-all duration-500 ease-out",
+            "text-primary"
           )}
           stroke="currentColor"
           strokeWidth={strokeWidth}
@@ -53,15 +53,10 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
-      {isComplete ? (
-        <Check className="h-5 w-5 text-green-500 animate-in fade-in zoom-in" />
-      ) : (
-        <span className="text-xs font-bold text-primary">{`${Math.round(
-          progress
-        )}%`}</span>
-      )}
     </div>
   );
 };
 
 export default CircularProgress;
+
+    
