@@ -284,14 +284,14 @@ export default function SignUpPage() {
             form.setValue('location', { latitude, longitude }, { shouldValidate: true });
 
             try {
-                const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || '';
-                const response = await fetch(`${serverUrl}/api/geocode?lat=${latitude}&lon=${longitude}`);
+                // Use public Nominatim API
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
                 if (response.ok) {
-                    const addressData = await response.json();
+                    const data = await response.json();
                     form.setValue('address', {
-                        country: addressData.country,
-                        countryCode: addressData.countryCode,
-                        city: addressData.city,
+                        city: data.address.city || data.address.town || data.address.village || data.address.province,
+                        country: data.address.country,
+                        countryCode: data.address.country_code.toUpperCase(),
                     }, { shouldValidate: true });
                 }
             } catch (error) {

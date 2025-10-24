@@ -44,12 +44,17 @@ export default function LocationSettingsPage() {
                 const userDocRef = doc(firestore, 'users', user.uid);
 
                 try {
-                    // First, get geocode data from the absolute URL
-                    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || '';
-                    const geocodeResponse = await fetch(`${serverUrl}/api/geocode?lat=${latitude}&lon=${longitude}`);
+                    // Use a public reverse geocoding API directly from the client
+                    const geocodeResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
                     let addressData = {};
+
                     if (geocodeResponse.ok) {
-                        addressData = await geocodeResponse.json();
+                        const data = await geocodeResponse.json();
+                        addressData = {
+                            city: data.address.city || data.address.town || data.address.village || data.address.province,
+                            country: data.address.country,
+                            countryCode: data.address.country_code.toUpperCase(),
+                        };
                     } else {
                         console.warn("Geocoding failed, location will be saved without address.");
                     }
