@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore } from '@/firebase/provider';
@@ -34,6 +33,7 @@ import {
 import { useNotificationHandler } from '@/lib/notifications';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { initializeAdMob, showBanner } from '@/lib/admob';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -102,10 +102,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [user, userProfile, isUserLoading, pathname, router]);
 
 
-  // Effect for notifications (likes and messages)
+  // Effect for AdMob and Notifications
   useEffect(() => {
     if (!user || !firestore) return;
 
+    // --- AdMob Initialization ---
+    const initAds = async () => {
+      if (Capacitor.isNativePlatform()) {
+        await initializeAdMob();
+        await showBanner(); // Show banner ad on app load
+      }
+    };
+    initAds();
+
+    // --- Notification Listeners ---
     const likesQuery = query(
         collection(firestore, `users/${user.uid}/matches`), 
         where('status', 'in', ['pending', 'superlike_pending']),
@@ -233,7 +243,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
      </AlertDialog>
     );
 }
-
-    
-
-    
