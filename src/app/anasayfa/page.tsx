@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import type { UserProfile } from '@/lib/types';
-import { useUser, useFirestore } from '@/firebase/provider';
+import { useUser, useFirestore, useCollection } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where } from 'firebase/firestore';
+import { collection, query, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, increment, writeBatch, where, orderBy, Timestamp } from 'firebase/firestore';
 import { Icons } from '@/components/icons';
 import ProfileCard from '@/components/profile-card';
 import { getDistance } from '@/lib/utils';
@@ -15,9 +16,17 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/app-shell';
-import { Undo, Heart, X as XIcon, Star } from 'lucide-react';
+import { Undo, Heart, X as XIcon, Star, Sparkles, Gem } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, add } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Helper function to fetch and filter profiles
 const fetchProfiles = async (
@@ -119,8 +128,62 @@ function AnasayfaPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<{profile: UserProfile, direction: 'left' | 'right' | 'up'} | null>(null);
   
+  const [showWelcomeGift, setShowWelcomeGift] = useState(false);
+  const [welcomeGiftRank, setWelcomeGiftRank] = useState<number | null>(null);
+  const [isClaimingGift, setIsClaimingGift] = useState(false);
+
   const isFetching = useRef(false);
   const interactedUids = useRef<Set<string>>(new Set());
+  
+  // Welcome Gift Logic
+  const allUsersQuery = query(collection(firestore!, 'users'), orderBy('createdAt', 'asc'));
+  const { data: allUsers, isLoading: isLoadingAllUsers } = useCollection<UserProfile>(allUsersQuery);
+
+  useEffect(() => {
+    if (user && userProfile && !userProfile.welcomeGiftClaimed && allUsers) {
+      const userIndex = allUsers.findIndex(u => u.uid === user.uid);
+      if (userIndex !== -1 && userIndex < 1000) {
+        setWelcomeGiftRank(userIndex + 1);
+        setShowWelcomeGift(true);
+      }
+    }
+  }, [user, userProfile, allUsers]);
+
+  const handleClaimWelcomeGift = async () => {
+    if (!user || !firestore || !welcomeGiftRank) return;
+
+    setIsClaimingGift(true);
+    try {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const updateData: any = {
+            superLikeBalance: increment(10),
+            welcomeGiftClaimed: true
+        };
+
+        if (welcomeGiftRank <= 100) {
+            updateData.membershipType = 'gold';
+            updateData.goldMembershipExpiresAt = Timestamp.fromDate(add(new Date(), { weeks: 1 }));
+        }
+
+        await updateDoc(userDocRef, updateData);
+
+        toast({
+            title: "Hediyeleriniz Tanımlandı!",
+            description: "Ayrıcalıklarınız hesabınıza yüklendi. Keyfini çıkarın!",
+        });
+        setShowWelcomeGift(false);
+    } catch (error: any) {
+        console.error("Error claiming welcome gift:", error);
+        toast({
+            title: "Hata",
+            description: "Hediye alınırken bir sorun oluştu.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsClaimingGift(false);
+    }
+  };
+
 
   const loadProfiles = useCallback(async () => {
     if (!user || !firestore || !userProfile || isFetching.current) return;
@@ -213,7 +276,8 @@ function AnasayfaPageContent() {
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
         
         let otherUserAction = matchData[otherUserActionKey];
-        // THIS IS THE KEY FIX: If it's a bot and the user likes/superlikes them, assume the bot likes back instantly.
+
+        // Anında bot eşleşmesi mantığı
         if (profileToSwipe.isBot && (action === 'liked' || action === 'superliked')) {
             otherUserAction = 'liked';
         }
@@ -255,6 +319,7 @@ function AnasayfaPageContent() {
         
         await setDoc(matchDocRef, updateData, { merge: true });
         
+        // Bot mesajını tetikle
         if (profileToSwipe.isBot && isMatch) {
             const webhookUrl = '/api/message-webhook';
             fetch(webhookUrl, {
@@ -270,7 +335,6 @@ function AnasayfaPageContent() {
                 }),
             }).catch(error => console.error("Error triggering bot message webhook:", error));
         }
-
 
         const defaultLastMessage = langTr.eslesmeler.defaultMessage;
         
@@ -424,6 +488,37 @@ function AnasayfaPageContent() {
 
   return (
     <div className="flex-1 flex flex-col">
+       <Dialog open={showWelcomeGift} onOpenChange={setShowWelcomeGift}>
+          <DialogContent className="sm:max-w-md bg-background/80 backdrop-blur-sm border-border">
+              <DialogHeader className="items-center text-center">
+                  <Sparkles className="h-12 w-12 text-yellow-400" />
+                  <DialogTitle className="text-2xl font-bold">Tebrikler!</DialogTitle>
+                  <DialogDescription className="text-base">
+                      {welcomeGiftRank && welcomeGiftRank <= 100
+                          ? `İlk 100 kullanıcımızdan biri olduğun için sana özel bir hediyemiz var!`
+                          : `İlk 1000 kullanıcımızdan biri olduğun için aramıza hoş geldin hediyeni kap!`
+                      }
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 my-4 text-center">
+                  <div className="flex items-center justify-center gap-4 p-3 rounded-lg bg-blue-500/10">
+                      <Star className="h-6 w-6 text-blue-400 fill-blue-400" />
+                      <span className="font-semibold text-lg">10 Ücretsiz Super Like</span>
+                  </div>
+                  {welcomeGiftRank && welcomeGiftRank <= 100 && (
+                      <div className="flex items-center justify-center gap-4 p-3 rounded-lg bg-yellow-500/10">
+                          <Gem className="h-6 w-6 text-yellow-500" />
+                          <span className="font-semibold text-lg">1 Haftalık Gold Üyelik</span>
+                      </div>
+                  )}
+              </div>
+              <DialogFooter>
+                  <Button type="button" className="w-full" onClick={handleClaimWelcomeGift} disabled={isClaimingGift}>
+                      {isClaimingGift ? <Icons.logo className="h-5 w-5 animate-pulse" /> : "Hediyeleri Al"}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
       <div className="flex-1 relative">
          <div className="absolute inset-0">
           <AnimatePresence>

@@ -130,6 +130,10 @@
             "type": "boolean",
             "description": "Indicates if the user has agreed to the community rules."
         },
+        "welcomeGiftClaimed": {
+            "type": "boolean",
+            "description": "Indicates if the user has claimed their initial welcome gift."
+        },
         "isAdmin": {
             "type": "boolean",
             "description": "Indicates if the user has administrator privileges."

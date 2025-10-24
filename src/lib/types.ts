@@ -56,6 +56,7 @@ export type UserProfile = {
   lastSeen?: any;
   createdAt?: any;
   rulesAgreed?: boolean;
+  welcomeGiftClaimed?: boolean;
   isAdmin?: boolean;
   isBot?: boolean;
   superLikeBalance?: number;
