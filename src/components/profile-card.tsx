@@ -164,6 +164,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const { userProfile: currentUserProfile } = useUser();
   const [compatibilityResult, setCompatibilityResult] = useState<{ score: number; message: string; commonInterests: string[] } | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -195,6 +196,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     if (currentUserProfile) {
         const result = calculateCompatibility(currentUserProfile, profile);
         setCompatibilityResult(result);
+        setIsDialogOpen(true);
     }
   };
 
@@ -260,7 +262,12 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             transition: { duration: 0.3 }
         }}
     >
-      <Dialog onOpenChange={() => setCompatibilityResult(null)}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+              setCompatibilityResult(null);
+          }
+      }}>
         <div className={cn(
             "relative w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-gray-200",
             isGoldMember && "border-4 border-yellow-400"
@@ -307,11 +314,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
               <span className='font-bold text-sm'>Yeni Üye</span>
             </Badge>
 
-             <DialogTrigger asChild>
-                <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
-                    <BarChart2 className="h-5 w-5" />
-                </Button>
-            </DialogTrigger>
+             <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm">
+                <BarChart2 className="h-5 w-5" />
+            </Button>
 
             {profile.images && profile.images.length > 1 && (
                 <>
@@ -499,7 +504,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                     </div>
                 )}
                 <DialogFooter>
-                    <Button onClick={() => setCompatibilityResult(null)} className="w-full">Harika!</Button>
+                    <Button onClick={() => setIsDialogOpen(false)} className="w-full">Harika!</Button>
                 </DialogFooter>
             </DialogContent>
         )}
@@ -510,4 +515,3 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 
 export default ProfileCard;
 
-    
