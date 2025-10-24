@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { Heart, Star, CheckCircle, Lock } from 'lucide-react';
+import { Heart, Star, CheckCircle, Lock, ArrowLeft } from 'lucide-react';
 import type { UserProfile, DenormalizedMatch } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -105,14 +105,15 @@ function BegenilerPageContent() {
         setIsMatching(liker.matchedWith);
         try {
             const batch = writeBatch(firestore);
+            const user1IsCurrentUser = user.uid < liker.matchedWith;
 
             const mainMatchDocRef = doc(firestore, 'matches', liker.id);
             batch.update(mainMatchDocRef, {
                 status: 'matched',
                 matchDate: serverTimestamp(),
                  // Set current user's action to 'liked'
-                [user.uid === liker.id.split('_')[0] ? 'user1_action' : 'user2_action']: 'liked',
-                [user.uid === liker.id.split('_')[0] ? 'user1_timestamp' : 'user2_timestamp']: serverTimestamp(),
+                [user1IsCurrentUser ? 'user1_action' : 'user2_action']: 'liked',
+                [user1IsCurrentUser ? 'user1_timestamp' : 'user2_timestamp']: serverTimestamp(),
             });
 
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
@@ -191,7 +192,13 @@ function BegenilerPageContent() {
         <AlertDialog>
              <Sheet open={!!selectedProfile} onOpenChange={(isOpen) => !isOpen && setSelectedProfile(null)}>
                 <div className="flex-1 flex flex-col overflow-hidden bg-background">
-                    
+                    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                            <ArrowLeft className="h-6 w-6" />
+                        </Button>
+                        <h1 className="text-lg font-semibold">{t.begeniler.title}</h1>
+                        <div className="w-9"></div>
+                    </header>
                     {likers.length > 0 ? (
                         <div className="flex-1 overflow-y-auto p-4">
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

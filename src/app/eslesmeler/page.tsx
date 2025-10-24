@@ -6,7 +6,7 @@ import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, query, onSnapshot, orderBy, updateDoc, doc, writeBatch, serverTimestamp, getDocs, where, addDoc, limit, setDoc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare, Trash2, Check, Star, Info } from 'lucide-react';
+import { Search, MessageSquare, Trash2, Check, Star, Info, ArrowLeft } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -169,6 +169,14 @@ function EslesmelerPageContent() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft className="h-6 w-6" />
+            </Button>
+            <h1 className="text-lg font-semibold">{t.title}</h1>
+            <div className="w-9"></div>
+        </header>
+
         {(!matches || matches.length === 0) && !isLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
                 <MessageSquare className="h-20 w-20 text-muted-foreground/30" strokeWidth={1} />
