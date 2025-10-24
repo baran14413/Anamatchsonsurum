@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut, Video } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut, Video, Shield } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -119,15 +119,6 @@ function ProfilePageContent() {
     fetchInteractions();
 
   }, [user, firestore]);
-
-  const calculateAge = (dateOfBirth: string | undefined | null): number | null => {
-      if (!dateOfBirth) return null;
-      const birthday = new Date(dateOfBirth);
-      if (isNaN(birthday.getTime())) return null;
-      const ageDifMs = Date.now() - birthday.getTime();
-      const ageDate = new Date(ageDifMs);
-      return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
     
   const calculateProfileCompletion = (): number => {
       if (!userProfile) return 0;
@@ -143,7 +134,6 @@ function ProfilePageContent() {
       return Math.round((score / maxScore) * 100);
   }
 
-  const age = calculateAge(userProfile?.dateOfBirth);
   const profileCompletionPercentage = calculateProfileCompletion();
   const superLikeBalance = userProfile?.superLikeBalance ?? 0;
   
@@ -164,7 +154,14 @@ function ProfilePageContent() {
       <div className="p-4 space-y-6">
 
         {/* Profile Header */}
-        <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
+        <Card className="relative p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl">
+           {userProfile?.isAdmin && (
+              <Link href="/admin/dashboard" className="absolute top-3 right-3 z-10">
+                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-full bg-black/20 text-white hover:bg-black/40 backdrop-blur-sm">
+                      <Shield className="w-5 h-5" />
+                  </Button>
+              </Link>
+          )}
           <div className="flex items-center justify-between gap-4">
               <div className="flex flex-col gap-4 flex-1">
                   <h1 className="text-2xl font-bold">
