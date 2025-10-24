@@ -4,7 +4,7 @@
 import { useUser, useFirestore } from '@/firebase/provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Settings, AtSign, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
+import { Settings, Flame, Heart, MessageSquare, User, LogOut } from 'lucide-react';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -101,7 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
     } else if (!user) {
         // Allow access to public pages
-        const publicPages = ['/', '/giris', '/kayit', '/tos', '/privacy', '/cookies'];
+        const publicPages = ['/', '/giris', '/kayit', '/tos', '/privacy', '/cookies', '/sifremi-unuttum'];
         if (!publicPages.includes(pathname)) {
             router.replace('/');
         }
@@ -177,7 +177,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
          <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 bg-background px-4">
             <div className="flex items-center gap-2">
                 <Link href="/anasayfa">
-                    <Icons.logo width={32} height={32} />
+                    <Icons.logo width={100} height={35} />
                 </Link>
             </div>
 
