@@ -426,9 +426,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 <Sheet>
                     <div className="p-4 pb-2 text-white pointer-events-auto relative z-10">
                         <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <h3 className="text-2xl font-bold">{profile.fullName},</h3>
-                                <span className="text-2xl font-semibold text-white/90">{age}</span>
+                            <div className="flex flex-nowrap items-center gap-x-3">
+                                <h3 className="text-2xl font-bold truncate">{profile.fullName},</h3>
+                                <span className="text-2xl font-semibold text-white/90 shrink-0">{age}</span>
                                 <UserOnlineStatus isOnline={profile.isOnline} lastSeen={profile.lastSeen} isBot={profile.isBot} />
                             </div>
                             <div className="flex items-center gap-3 p-1 rounded-lg">
@@ -610,4 +610,3 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
 };
 
 export default ProfileCard;
-
