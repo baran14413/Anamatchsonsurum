@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut, Video, Shield } from 'lucide-react';
+import { Heart, Star, ShieldCheckIcon, GalleryHorizontal, ChevronRight, Gem, LogOut, Video, Shield, Pencil } from 'lucide-react';
 import { langTr } from '@/languages/tr';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
@@ -223,7 +223,10 @@ function ProfilePageContent() {
         
         {galleryImages.length > 0 && (
              <Link href="/profil/galeri">
-                <Card className="p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl cursor-pointer">
+                <Card className="relative p-4 shadow-sm bg-card/60 backdrop-blur-sm border-white/20 rounded-2xl cursor-pointer group">
+                    <Button variant="outline" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-black/40 text-white border-white/30 backdrop-blur-sm hover:bg-black/60">
+                        <Pencil className="h-4 w-4" />
+                    </Button>
                     <div className="grid grid-cols-2 gap-2">
                         {galleryImages.map((image, index) => (
                             <div key={index} className="relative aspect-square rounded-xl overflow-hidden">
@@ -272,5 +275,3 @@ export default function ProfilePage() {
         </AppShell>
     );
 }
-
-    
