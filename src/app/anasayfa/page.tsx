@@ -211,7 +211,12 @@ function AnasayfaPageContent() {
 
         const user1IsCurrentUser = user.uid === sortedIds[0];
         const otherUserActionKey = user1IsCurrentUser ? 'user2_action' : 'user1_action';
-        const otherUserAction = matchData[otherUserActionKey];
+        
+        // If the other user is a bot and has no action, assume they liked back instantly
+        let otherUserAction = matchData[otherUserActionKey];
+        if (profileToSwipe.isBot && !otherUserAction && (action === 'liked' || action === 'superliked')) {
+            otherUserAction = 'liked';
+        }
 
         const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
                         (action === 'superliked' && otherUserAction === 'liked');
