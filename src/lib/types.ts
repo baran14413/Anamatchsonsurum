@@ -47,6 +47,7 @@ export type UserProfile = {
   }
   isOnline?: boolean;
   isPhotoVerified?: boolean;
+  isNewUser?: boolean;
   lastSeen?: any;
   createdAt?: any;
   rulesAgreed?: boolean;
