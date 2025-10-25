@@ -3,8 +3,9 @@ import Image, { ImageProps } from 'next/image';
 import beGoldLogo from '@/img/begold.png';
 
 export const Icons = {
-  logo: (props: Omit<ImageProps, 'src' | 'alt'>) => (
-    <Image src="/logo.png" alt="BeMatch Logo" {...props} />
+  logo: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/logo.png" alt="BeMatch Logo" {...props} />
   ),
   adminLogo: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" {...props}>
