@@ -20,6 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" className={inter.className} suppressHydrationWarning>
+       <head>
+          <script
+            src="https://play.google.com/billing/ui/v1/billing-ui-v1.js"
+            async
+          ></script>
+      </head>
       <body>
         <ThemeProvider
           attribute="class"
@@ -34,9 +40,10 @@ export default function RootLayout({
 
         <Script id="twa-purchase-callback" strategy="afterInteractive">
           {`
-            window.purchaseSuccessful = function() {
-              alert("Ödemeniz başarıyla tamamlandı! Artık premium üyesiniz.");
-              window.location.href = '/profil';
+            window.purchaseSuccessful = function(productId) {
+              alert("Ödemeniz başarıyla tamamlandı! Ayrıcalıklarınız hesabınıza yüklendi. Değişikliklerin geçerli olması için lütfen uygulamayı yeniden başlatın.");
+              // Optionally, you can redirect or refresh
+              // window.location.href = '/profil'; 
             }
           `}
         </Script>
