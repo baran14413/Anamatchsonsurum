@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 import Image from 'next/image';
 import beGoldLogo from '@/img/begold.png';
+import logoPng from '@/img/logo.png';
 
 const svgProps = {
   viewBox: "0 0 24 24",
@@ -12,13 +13,8 @@ const svgProps = {
 };
 
 export const Icons = {
-  logo: (props: SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" {...props}>
-      <path
-        fill="hsl(var(--primary))"
-        d="M128 24a104 104 0 1 0 104 104A104.12 104.12 0 0 0 128 24m-11 49.61a20.19 20.19 0 0 1 11.27-3.61c8.13 0 12.33 3.49 12.33 8.36v5.22h-12.33v-4.85c0-1.87-.79-2.73-3-2.73s-2.93.86-2.93 2.73v16.14c0 1.87.76 2.73 3 2.73s3-.86 3-2.73v-4.85h12.33v5.22c0 4.87-4.2 8.36-12.33 8.36a20.19 20.19 0 0 1-11.27-3.61c-5.81-3.23-9.5-8.59-9.5-15.09v-1.14c0-6.5 3.69-11.86 9.5-15.09M90.4 116.59l11.45-31.14h13.1l-11.41 31.14zm-1.12 18.23l-7-18.77H69.4l7.15 18.77zm50.62-18.23l11.41-31.14h13.1l-11.45 31.14zm-1.12 18.23l7.15-18.77h12.88l-7 18.77z"
-      />
-    </svg>
+  logo: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
+    <Image src={logoPng} alt="BeMatch Logo" {...props} />
   ),
   adminLogo: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" {...props}>
