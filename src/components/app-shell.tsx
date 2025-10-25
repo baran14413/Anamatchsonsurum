@@ -119,11 +119,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // --- Notification Listeners ---
     const likesQuery = query(
         collection(firestore, `users/${user.uid}/matches`), 
-        where('status', 'in', ['pending', 'superlike_pending']),
-        where('superLikeInitiator', '!=', user.uid) 
+        where('status', 'in', ['pending', 'superlike_pending'])
     );
     const unsubscribeLikes = onSnapshot(likesQuery, (snapshot) => {
-        setHasNewLikes(!snapshot.empty);
+        const likerProfiles = snapshot.docs
+                .map(doc => doc.data())
+                .filter(match => match.superLikeInitiator !== user.uid);
+        setHasNewLikes(likerProfiles.length > 0);
     });
 
     const matchesQuery = query(
