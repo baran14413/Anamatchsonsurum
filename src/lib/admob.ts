@@ -9,11 +9,11 @@ const isNative = Capacitor.isNativePlatform();
 // It's recommended to use environment variables for these
 const adUnits = {
   // Android
-  android_banner: 'ca-app-pub-3940256099942544/6300978111', // Test ID
+  android_banner: 'ca-app-pub-9707142962495660/9985094438',
   android_interstitial: 'ca-app-pub-3940256099942544/1033173712', // Test ID
 
   // iOS
-  ios_banner: 'ca-app-pub-3940256099942544/2934735716', // Test ID
+  ios_banner: 'ca-app-pub-9707142962495660/9985094438',
   ios_interstitial: 'ca-app-pub-3940256099942544/4411468910', // Test ID
 };
 
@@ -53,7 +53,7 @@ export const showBanner = async (): Promise<void> => {
     adSize: BannerAdSize.ADAPTIVE_BANNER,
     position: BannerAdPosition.BOTTOM_CENTER,
     margin: 0,
-    isTesting: true, // Set to false for production
+    isTesting: false, // Set to false for production
   };
 
   try {
