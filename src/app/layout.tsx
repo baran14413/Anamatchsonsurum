@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -21,10 +22,11 @@ export default function RootLayout({
   return (
     <html lang="tr" className={inter.className} suppressHydrationWarning>
        <head>
-          <script
+          {/* Google Play Billing kütüphanesini yüklüyoruz */}
+          <Script
             src="https://play.google.com/billing/ui/v1/billing-ui-v1.js"
-            async
-          ></script>
+            strategy="beforeInteractive"
+          />
       </head>
       <body>
         <ThemeProvider
@@ -37,17 +39,18 @@ export default function RootLayout({
           </FirebaseProvider>
           <Toaster />
         </ThemeProvider>
-
-        <Script id="twa-purchase-callback" strategy="afterInteractive">
+        
+        {/* Satın alma başarılı olduğunda çağrılacak global fonksiyon */}
+        <Script id="twa-purchase-callback-script" strategy="afterInteractive">
           {`
             window.purchaseSuccessful = function(productId) {
+              console.log('Purchase successful for ' + productId);
               alert("Ödemeniz başarıyla tamamlandı! Ayrıcalıklarınız hesabınıza yüklendi. Değişikliklerin geçerli olması için lütfen uygulamayı yeniden başlatın.");
-              // Optionally, you can redirect or refresh
-              // window.location.href = '/profil'; 
+              // Gerekirse burada sayfayı yenileyebilir veya kullanıcıyı başka bir sayfaya yönlendirebilirsiniz.
+              // Örneğin: window.location.href = '/cuzdanim'; 
             }
           `}
         </Script>
-
       </body>
     </html>
   );

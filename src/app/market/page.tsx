@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -8,14 +9,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { products } from '@/lib/products';
 import { purchase } from '@/lib/billing';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 export default function MarketPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useFirebase();
+  const { user } = useUser();
   const [isPurchasing, setIsPurchasing] = useState<string | null>(null);
 
   const goldProducts = products.filter(p => p.type === 'gold');
@@ -31,8 +32,13 @@ export default function MarketPage() {
 
     try {
         await purchase({ productId });
-        // This will likely not be reached in the new simplified flow, as purchase rejects.
-        // Kept for potential future implementations.
+        // Başarılı olursa, TWA host'u global fonksiyonu çağıracak ve entitlement verilecek.
+        // Bu noktada kullanıcıya bir "işlem devam ediyor" mesajı gösterilebilir.
+        toast({
+          title: 'Satın Alma Başlatıldı',
+          description: 'Lütfen Google Play ekranındaki adımları takip edin.',
+        });
+
     } catch (error: any) {
       console.error('Satın alma başlatma hatası:', error);
       toast({
@@ -41,6 +47,7 @@ export default function MarketPage() {
           variant: 'destructive',
       });
     } finally {
+      // Ödeme ekranı açıldıktan sonra butonun tekrar aktif olması için state'i sıfırla.
       setIsPurchasing(null);
     }
   };
@@ -100,7 +107,7 @@ export default function MarketPage() {
         <section>
            <div className="text-center mb-6">
             <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
-              <Star className="text-blue-500 fill-blue-500" /> Super Like Paketleri
+              <Star className="text-blue-500 fill-blue-500" /> Süper Beğeni Paketleri
             </h2>
             <p className="text-muted-foreground">Normalden 3 kat daha fazla eşleşme şansı yakala.</p>
           </div>
