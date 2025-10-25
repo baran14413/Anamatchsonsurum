@@ -14,7 +14,7 @@ const svgProps = {
 
 export const Icons = {
   logo: (props: Omit<React.ComponentProps<typeof Image>, 'src' | 'alt'>) => (
-    <Image src={logoPng} alt="BeMatch Logo" {...props} />
+    <Image src="/logo.png" alt="BeMatch Logo" {...props} />
   ),
   adminLogo: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" {...props}>
