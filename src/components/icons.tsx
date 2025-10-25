@@ -1,7 +1,6 @@
-
 import type { SVGProps } from "react";
 import Image from 'next/image';
-import bematchLogo from '@/img/logo.png';
+import bematchLogo from '@/img/logo2.png';
 import beGoldLogo from '@/img/begold.png';
 
 const svgProps = {
