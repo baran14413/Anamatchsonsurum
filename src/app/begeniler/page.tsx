@@ -45,6 +45,7 @@ function BegenilerPageContent() {
         if (!user || !firestore) return null;
         // This query correctly fetches documents from the user's own subcollection
         // where someone else has initiated a like.
+        // It's simplified to avoid complex indexes. The superLikeInitiator check is now done on the client.
         return query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', 'in', ['pending', 'superlike_pending'])
