@@ -68,14 +68,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  webpack: (config, { isServer }) => {
-    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
-    if (!isServer) {
-        // Ensures the service worker is copied to the public folder
-        config.resolve.alias['firebase/messaging'] = path.resolve(__dirname, 'node_modules/firebase/messaging/dist/index.mjs');
-    }
-    return config;
-  }
 };
 
 export default nextConfig;
