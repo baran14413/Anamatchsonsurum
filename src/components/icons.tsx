@@ -1,11 +1,11 @@
 import type { SVGProps } from "react";
 import Image, { ImageProps } from 'next/image';
 import beGoldLogo from '@/img/begold.png';
+import appLogo from '@/img/logo.png';
 
 export const Icons = {
-  logo: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src="/img/logo.png" alt="BeMatch Logo" {...props} />
+  logo: (props: Omit<ImageProps, 'src' | 'alt'>) => (
+    <Image src={appLogo} alt="BeMatch Logo" {...props} />
   ),
   adminLogo: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" {...props}>
