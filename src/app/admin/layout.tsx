@@ -82,17 +82,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         <SidebarSeparator />
                         <SidebarGroup>
                             <SidebarGroupLabel>İçerik & Etkileşim</SidebarGroupLabel>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton tooltip="Eşleşmeler" asChild>
-                                   <Link href="/admin/dashboard"> {/* Placeholder */}
-                                        <Heart />
-                                        <span>Eşleşmeler</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
                              <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Raporlar" asChild>
-                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                   <Link href="/admin/reports">
                                         <Bug />
                                         <span>Raporlar</span>
                                     </Link>
@@ -112,7 +104,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                             <SidebarGroupLabel>Sistem</SidebarGroupLabel>
                              <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Analiz" asChild>
-                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                   <Link href="/admin/analytics">
                                         <BarChart />
                                         <span>Analiz</span>
                                     </Link>
@@ -120,7 +112,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                             </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Adminler" asChild>
-                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                   <Link href="/admin/admins">
                                         <UserCog />
                                         <span>Adminler</span>
                                     </Link>
@@ -128,7 +120,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                             </SidebarMenuItem>
                              <SidebarMenuItem>
                                 <SidebarMenuButton tooltip="Ayarlar" asChild>
-                                   <Link href="/admin/dashboard"> {/* Placeholder */}
+                                   <Link href="/admin/settings">
                                         <Settings />
                                         <span>Ayarlar</span>
                                     </Link>
