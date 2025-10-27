@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
 import { useMemo } from 'react';
 import type { UserProfile, ChatMessage, DenormalizedMatch } from '@/lib/types';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -55,8 +55,8 @@ export default function AdminAnalyticsPage() {
             date: formattedDate,
             "Yeni Kullanıcılar": dailyUsers?.filter(u => !u.isBot).length || 0,
             "Yeni Botlar": dailyUsers?.filter(u => u.isBot).length || 0,
-            "Mesajlar": dailyMessages?.length || 0,
             "Eşleşmeler": dailyMatches?.length || 0,
+            "Mesajlar": dailyMessages?.length || 0,
         });
     }
     return data;
