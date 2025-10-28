@@ -31,7 +31,7 @@ function calculateAge(dateOfBirth: string | undefined): number | null {
 function BegenilerPageContent() {
     const { user, userProfile } = useUser();
     const firestore = useFirestore();
-    const [likers, setLikers] = useState<DenormalizedMatch[]>([]);
+    const [likers, setLikers] = useState<(DenormalizedMatch & { uid: string })[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const t = langTr;
     const { toast } = useToast();
@@ -44,9 +44,6 @@ function BegenilerPageContent() {
     
     const likesQuery = useMemo(() => {
         if (!user || !firestore) return null;
-        // This query correctly fetches documents from the user's own subcollection
-        // where someone else has initiated a like.
-        // It's simplified to avoid complex indexes. The superLikeInitiator check is now done on the client.
         return query(
             collection(firestore, `users/${user.uid}/matches`),
             where('status', 'in', ['pending', 'superlike_pending'])
@@ -63,14 +60,11 @@ function BegenilerPageContent() {
 
         const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
             const likerProfiles = snapshot.docs
-                .map(doc => doc.data() as DenormalizedMatch)
-                // Additional client-side filter to be absolutely sure we don't show user's own initiated actions
+                .map(doc => ({ ...(doc.data() as DenormalizedMatch), uid: doc.data().matchedWith }))
                 .filter(match => {
                     if (match.status === 'superlike_pending') {
                         return match.superLikeInitiator !== user.uid;
                     }
-                    // For 'pending', if the initiator is not the current user, show it.
-                    // This relies on the swipe logic to correctly set up the pending documents.
                     return true;
                 });
             
@@ -89,10 +83,10 @@ function BegenilerPageContent() {
         return () => unsubscribe();
     }, [likesQuery, user, toast]);
 
-    const handleCardClick = async (liker: DenormalizedMatch) => {
+    const handleCardClick = async (liker: DenormalizedMatch & { uid: string }) => {
         if (isGoldMember) {
             if (firestore) {
-                 const profileDoc = await getDoc(doc(firestore, 'users', liker.matchedWith));
+                 const profileDoc = await getDoc(doc(firestore, 'users', liker.uid));
                  if(profileDoc.exists()) {
                      setSelectedProfile({ ...profileDoc.data(), uid: profileDoc.id } as UserProfile);
                  }
@@ -101,13 +95,13 @@ function BegenilerPageContent() {
         // For non-gold members, the click is handled by AlertDialogTrigger
     };
 
-    const handleInstantMatch = async (liker: DenormalizedMatch) => {
-        if (!user || !firestore || !userProfile || !liker.matchedWith || liker.status === 'matched') return;
+    const handleInstantMatch = async (liker: DenormalizedMatch & { uid: string }) => {
+        if (!user || !firestore || !userProfile || !liker.uid || liker.status === 'matched') return;
 
-        setIsMatching(liker.matchedWith);
+        setIsMatching(liker.uid);
         try {
             const batch = writeBatch(firestore);
-            const user1IsCurrentUser = user.uid < liker.matchedWith;
+            const user1IsCurrentUser = user.uid < liker.uid;
 
             const mainMatchDocRef = doc(firestore, 'matches', liker.id);
             batch.update(mainMatchDocRef, {
@@ -121,7 +115,7 @@ function BegenilerPageContent() {
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
             batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
             
-            const likerMatchRef = doc(firestore, `users/${liker.matchedWith}/matches`, liker.id);
+            const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
             batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
 
             await batch.commit();
@@ -244,7 +238,7 @@ function BegenilerPageContent() {
                         <div className='absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/90 to-transparent z-30'>
                                 <Button 
                                     className='w-full h-14 rounded-full bg-green-500 hover:bg-green-600 text-white' 
-                                    onClick={() => handleInstantMatch(likers.find(l => l.matchedWith === selectedProfile.uid)!)}
+                                    onClick={() => handleInstantMatch(likers.find(l => l.uid === selectedProfile.uid)!)}
                                     disabled={isMatching === selectedProfile.uid}
                                 >
                                     {isMatching === selectedProfile.uid ? (
@@ -292,4 +286,3 @@ export default function BegenilerPage() {
     );
 }
 
-    
