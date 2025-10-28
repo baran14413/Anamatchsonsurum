@@ -9,7 +9,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObjec
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen, Crown } from 'lucide-react';
+import { ArrowLeft, Send, MoreHorizontal, Check, CheckCheck, UserX, Paperclip, Mic, Trash2, Play, Pause, Square, Pencil, X, History, EyeOff, Gem, FileText, MapPin, Heart, Star, ChevronUp, Shield, File, BookOpen, Crown, Flag } from 'lucide-react';
 import { format, isToday, isYesterday, formatDistanceToNow, differenceInHours, differenceInMinutes } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogClose, DialogFooter, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -123,6 +122,7 @@ function ChatPageContent() {
     const [messages, setMessages] = useState<(ChatMessage | SystemMessage)[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isBlocking, setIsBlocking] = useState(false);
+    const [showBlockDialog, setShowBlockDialog] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isAcceptingSuperLike, setIsAcceptingSuperLike] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -509,7 +509,7 @@ function ChatPageContent() {
         }
     };
 
-    const handleBlockUser = async () => {
+    const handleUnmatchAndBlock = async () => {
         if (!user || !firestore || !otherUserId || !matchId) return;
         
         setIsBlocking(true);
@@ -532,21 +532,22 @@ function ChatPageContent() {
             await batch.commit();
 
             toast({
-                title: 'Kullanıcı Engellendi',
+                title: 'Eşleşme Kaldırıldı',
                 description: `${otherUser?.fullName} ile olan eşleşmeniz kaldırıldı.`,
             });
             
             router.push('/eslesmeler');
 
         } catch (error: any) {
-            console.error("Error blocking user:", error);
+            console.error("Error unmatching user:", error);
             toast({
                 title: t.common.error,
-                description: 'Kullanıcı engellenirken bir hata oluştu.',
+                description: 'Eşleşme kaldırılırken bir hata oluştu.',
                 variant: 'destructive',
             });
         } finally {
             setIsBlocking(false);
+            setShowBlockDialog(false);
         }
     }
     
@@ -737,7 +738,7 @@ function ChatPageContent() {
     const likeRatio = useMemo(() => otherUser ? Math.floor(Math.random() * (98 - 70 + 1)) + 70 : 0, [otherUser?.uid]);
 
     return (
-        <>
+        <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 bg-background px-4">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/eslesmeler')}>
                     <ArrowLeft className="h-6 w-6" />
@@ -895,12 +896,14 @@ function ChatPageContent() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className='text-red-500 focus:text-red-500'>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    <span>Eşleşmeyi Kaldır</span>
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
+                            <DropdownMenuItem onClick={() => router.push(`/rapor-et?userId=${otherUser.uid}&matchId=${matchId}`)}>
+                                <Flag className="mr-2 h-4 w-4" />
+                                <span>Rapor Et</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => setShowBlockDialog(true)} className='text-red-500 focus:text-red-500'>
+                                <UserX className="mr-2 h-4 w-4" />
+                                <span>Engelle & Eşleşmeyi Kaldır</span>
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
@@ -1218,24 +1221,22 @@ function ChatPageContent() {
                     )}
                 </DialogContent>
             </Dialog>
-            <AlertDialog>
-                <AlertDialogContent>
+             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Eşleşmeyi Kaldır</AlertDialogTitle>
+                    <AlertDialogTitle>Engelle & Eşleşmeyi Kaldır</AlertDialogTitle>
                     <AlertDialogDescription>
-                    Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecektir.
+                    Bu işlem geri alınamaz. {otherUser?.fullName} ile olan eşleşmeniz ve tüm sohbet geçmişiniz kalıcı olarak silinecektir. Bu kullanıcıyı bir daha görmeyeceksiniz.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>İptal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBlockUser} disabled={isBlocking} className='bg-destructive hover:bg-destructive/90'>
+                    <AlertDialogAction onClick={handleUnmatchAndBlock} disabled={isBlocking} className='bg-destructive hover:bg-destructive/90'>
                         {isBlocking ? <Icons.logo width={16} height={16} className='animate-pulse mr-2' /> : <UserX className='mr-2 h-4 w-4'/>}
-                        Kaldır
+                        Engelle
                     </AlertDialogAction>
                 </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
+            </AlertDialogContent>
+        </AlertDialog>
     );
     
     function isSender(senderId: string | undefined): boolean {
@@ -1251,6 +1252,3 @@ export default function ChatPage() {
         </AppShell>
     )
 }
-
-
-    
