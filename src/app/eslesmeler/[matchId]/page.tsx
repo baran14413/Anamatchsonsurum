@@ -45,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import * as LucideIcons from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import AppShell from '@/components/app-shell';
+import lamejs from 'lamejs';
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
@@ -395,7 +396,10 @@ function ChatPageContent() {
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            // Use a more compatible MIME type, or let the browser decide
+            const options = { mimeType: MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm' };
+            const recorder = new MediaRecorder(stream, options);
+
             mediaRecorderRef.current = recorder;
             const audioChunks: Blob[] = [];
 
@@ -404,7 +408,7 @@ function ChatPageContent() {
             };
 
             recorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioBlob = new Blob(audioChunks, { type: recorder.mimeType });
                 setAudioBlob(audioBlob);
                 setAudioUrl(URL.createObjectURL(audioBlob));
                 setRecordingStatus('preview');
@@ -443,16 +447,45 @@ function ChatPageContent() {
         setAudioBlob(null);
         setAudioUrl(null);
     };
+
+    const audioBufferToMp3 = async (audioBlob: Blob): Promise<Blob> => {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
+        const pcm = audioBuffer.getChannelData(0);
+        const mp3Data = [];
+
+        const samples = new Int16Array(pcm.length);
+        for (let i = 0; i < pcm.length; i++) {
+            samples[i] = pcm[i] * 32767.5;
+        }
+
+        const buffer = mp3encoder.encodeBuffer(samples);
+        if (buffer.length > 0) {
+            mp3Data.push(buffer);
+        }
+
+        const flushed = mp3encoder.flush();
+        if (flushed.length > 0) {
+            mp3Data.push(flushed);
+        }
+
+        return new Blob(mp3Data, { type: 'audio/mp3' });
+    };
     
     const sendAudioMessage = async () => {
         if (!audioBlob || !matchId || !storage || !user) return;
         setIsUploading(true);
-        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
         
-        const uniqueFileName = `bematch_chats/${matchId}/audio/${Date.now()}.mp3`;
-        const audioRef = storageRef(storage, uniqueFileName);
-
         try {
+            const mp3Blob = await audioBufferToMp3(audioBlob);
+            const audioFile = new File([mp3Blob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
+            
+            const uniqueFileName = `bematch_chats/${matchId}/audio/${Date.now()}.mp3`;
+            const audioRef = storageRef(storage, uniqueFileName);
+
             const snapshot = await uploadBytes(audioRef, audioFile);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
@@ -460,8 +493,8 @@ function ChatPageContent() {
             
         } catch (error: any) {
              toast({
-                title: 'Yükleme Başarısız',
-                description: error.message,
+                title: 'Ses Yükleme Başarısız',
+                description: error.message || 'Sesli mesaj gönderilirken bir hata oluştu.',
                 variant: 'destructive',
             });
         } finally {

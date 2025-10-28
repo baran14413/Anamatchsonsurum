@@ -124,11 +124,17 @@ export type ChatMessage = {
   audioUrl?: string;
   audioDuration?: number;
   timestamp: any; 
-  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed';
+  isRead?: boolean;
+  readTimestamp?: any;
+  type?: 'user' | 'system_superlike_prompt' | 'audio' | 'view-once' | 'view-once-viewed' | 'poll';
   action?: 'accepted' | 'declined';
   actionTaken?: boolean;
   isEdited?: boolean;
   editedAt?: any;
+  pollQuestion?: string;
+  pollOptions?: string[];
+  pollResults?: { [key: string]: number };
+  votedBy?: string[];
   createdAt?: any; // Kept for backward compatibility but should be migrated to timestamp
 };
 
