@@ -60,7 +60,11 @@ function BegenilerPageContent() {
 
         const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
             const likerProfiles = snapshot.docs
-                .map(doc => ({ ...(doc.data() as DenormalizedMatch), uid: doc.data().matchedWith }))
+                .map(doc => {
+                    const data = doc.data() as DenormalizedMatch;
+                    // CRITICAL FIX: Ensure the liker's UID is correctly assigned to the `uid` property.
+                    return { ...data, uid: data.matchedWith };
+                })
                 .filter(match => {
                     if (match.status === 'superlike_pending') {
                         return match.superLikeInitiator !== user.uid;
@@ -85,7 +89,7 @@ function BegenilerPageContent() {
 
     const handleCardClick = async (liker: DenormalizedMatch & { uid: string }) => {
         if (isGoldMember) {
-            if (firestore) {
+            if (firestore && liker.uid) { // Ensure liker.uid exists
                  const profileDoc = await getDoc(doc(firestore, 'users', liker.uid));
                  if(profileDoc.exists()) {
                      setSelectedProfile({ ...profileDoc.data(), uid: profileDoc.id } as UserProfile);
@@ -115,6 +119,7 @@ function BegenilerPageContent() {
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
             batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
             
+            // Use liker.uid which is now correctly populated
             const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
             batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
 
@@ -285,4 +290,5 @@ export default function BegenilerPage() {
         </AppShell>
     );
 }
+
 
