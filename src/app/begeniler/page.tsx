@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -128,7 +129,7 @@ function BegenilerPageContent() {
             toast({ title: t.anasayfa.matchToastTitle, description: `${liker.fullName} ${t.anasayfa.matchToastDescription}` });
             
             setSelectedProfile(null);
-            setLikers(prevLikers => prevLikers.filter(l => l.id !== liker.id));
+            router.push(`/eslesmeler/${liker.id}`);
 
         } catch (error) {
             console.error("Error creating instant match:", error);
