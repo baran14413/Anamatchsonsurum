@@ -581,3 +581,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
+    

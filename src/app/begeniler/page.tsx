@@ -102,7 +102,7 @@ function BegenilerPageContent() {
     };
 
     const handleInstantMatch = async (liker: DenormalizedMatch) => {
-        if (!user || !firestore || !userProfile || liker.status === 'matched') return;
+        if (!user || !firestore || !userProfile || !liker.matchedWith || liker.status === 'matched') return;
 
         setIsMatching(liker.matchedWith);
         try {
@@ -291,3 +291,5 @@ export default function BegenilerPage() {
         </AppShell>
     );
 }
+
+    
