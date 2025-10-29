@@ -286,7 +286,7 @@ function AnasayfaPageContent() {
         
         let otherUserAction = matchData[otherUserActionKey];
 
-        // Anında bot eşleşmesi mantığı
+        // Instant bot match logic
         if (profileToSwipe.isBot && (action === 'liked' || action === 'superliked')) {
             otherUserAction = 'liked';
         }
@@ -294,13 +294,11 @@ function AnasayfaPageContent() {
         const isMatch = (action === 'liked' && (otherUserAction === 'liked' || otherUserAction === 'superliked')) || 
                         (action === 'superliked' && otherUserAction === 'liked');
 
-        let newStatus: 'pending' | 'matched' | 'superlike_pending' = 'pending';
+        let newStatus: 'pending' | 'matched' | 'superlike_pending' = matchData.status || 'pending';
         if (isMatch) {
             newStatus = 'matched';
         } else if (action === 'superliked') {
             newStatus = 'superlike_pending';
-        } else if (matchData.status) {
-            newStatus = matchData.status;
         }
 
         const updateData: any = {
@@ -328,53 +326,51 @@ function AnasayfaPageContent() {
         
         await setDoc(matchDocRef, updateData, { merge: true });
         
-        // Bot mesajını tetikle
-        if (profileToSwipe.isBot && isMatch) {
-            const webhookUrl = '/api/message-webhook';
-            fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
-                },
-                body: JSON.stringify({
-                    type: 'MATCH',
-                    matchId: matchId,
-                    userId: user.uid,
-                    botId: profileToSwipe.uid // Pass botId directly
-                }),
-            }).catch(error => console.error("Error triggering bot message webhook:", error));
-        }
-
-        const defaultLastMessage = langTr.eslesmeler.defaultMessage;
-        
-        const currentUserMatchData = {
-            id: matchId,
-            matchedWith: profileToSwipe.uid,
-            status: newStatus,
-            timestamp: serverTimestamp(),
-            fullName: profileToSwipe.fullName || '',
-            profilePicture: profileToSwipe.profilePicture || '',
-            isSuperLike: updateData.isSuperLike,
-            superLikeInitiator: updateData.superLikeInitiator || null,
-            lastMessage: isMatch ? defaultLastMessage : '',
-        };
-        
-        const otherUserMatchData = {
-            id: matchId,
-            matchedWith: user.uid,
-            status: newStatus,
-            timestamp: serverTimestamp(),
-            fullName: userProfile.fullName || '',
-            profilePicture: userProfile.profilePicture || '',
-            isSuperLike: updateData.isSuperLike,
-            superLikeInitiator: updateData.superLikeInitiator || null,
-            lastMessage: isMatch ? defaultLastMessage : '',
-        };
-
         if (isMatch) {
+             // Denormalize match data for both users
+            const defaultLastMessage = langTr.eslesmeler.defaultMessage;
+            const currentUserMatchData = {
+                id: matchId,
+                matchedWith: profileToSwipe.uid,
+                status: 'matched',
+                timestamp: serverTimestamp(),
+                fullName: profileToSwipe.fullName || '',
+                profilePicture: profileToSwipe.profilePicture || '',
+                isSuperLike: updateData.isSuperLike,
+                superLikeInitiator: updateData.superLikeInitiator || null,
+                lastMessage: defaultLastMessage,
+            };
+            const otherUserMatchData = {
+                id: matchId,
+                matchedWith: user.uid,
+                status: 'matched',
+                timestamp: serverTimestamp(),
+                fullName: userProfile.fullName || '',
+                profilePicture: userProfile.profilePicture || '',
+                isSuperLike: updateData.isSuperLike,
+                superLikeInitiator: updateData.superLikeInitiator || null,
+                lastMessage: defaultLastMessage,
+            };
             await setDoc(doc(firestore, `users/${user.uid}/matches`, matchId), currentUserMatchData, { merge: true });
             await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+
+            // Trigger bot message if applicable
+            if (profileToSwipe.isBot) {
+                const webhookUrl = '/api/message-webhook';
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_WEBHOOK_SECRET}`
+                    },
+                    body: JSON.stringify({
+                        type: 'MATCH',
+                        matchId: matchId,
+                        userId: user.uid,
+                        botId: profileToSwipe.uid
+                    }),
+                }).catch(error => console.error("Error triggering bot message webhook:", error));
+            }
             
             toast({
                 title: langTr.anasayfa.matchToastTitle,
@@ -382,10 +378,21 @@ function AnasayfaPageContent() {
             });
 
         } else if (action !== 'disliked') {
-             if (profileToSwipe.uid) { 
-                await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
-            }
-             if (action === 'superliked') {
+            // For one-way likes/superlikes, create the record for the other user to see
+            const otherUserMatchData = {
+                id: matchId,
+                matchedWith: user.uid,
+                status: newStatus,
+                timestamp: serverTimestamp(),
+                fullName: userProfile.fullName || '',
+                profilePicture: userProfile.profilePicture || '',
+                isSuperLike: updateData.isSuperLike,
+                superLikeInitiator: updateData.superLikeInitiator || null,
+                lastMessage: '',
+            };
+            await setDoc(doc(firestore, `users/${profileToSwipe.uid}/matches`, matchId), otherUserMatchData, { merge: true });
+
+            if (action === 'superliked') {
                 toast({
                     title: "Super Like Gönderildi!",
                     description: `${profileToSwipe.fullName} kabul ederse eşleşeceksiniz.`
@@ -395,8 +402,9 @@ function AnasayfaPageContent() {
         
     } catch (error: any) {
         console.error(`Error handling ${direction}:`, error);
+        // Revert on error
         setProfiles(prev => [profileToSwipe, ...prev]);
-        interactedUids.current.delete(profileToSwipe.uid); // Revert interaction
+        interactedUids.current.delete(profileToSwipe.uid);
     }
 }, [user, firestore, toast, userProfile, router]);
   
@@ -581,4 +589,5 @@ export default function AnasayfaPage() {
         </AppShell>
     );
 }
+
 
