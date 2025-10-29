@@ -105,41 +105,6 @@ const calculateCompatibility = (currentUser: UserProfile, otherUser: UserProfile
             }
         }
     }
-
-    // 3. Lifestyle (35 points total)
-    if (currentUser.lifestyle && otherUser.lifestyle) {
-        const lifestyleKeys: (keyof typeof currentUser.lifestyle)[] = ['drinking', 'smoking', 'workout'];
-        maxScore += 35;
-        let lifestyleScore = 0;
-
-        // Drinking (15 points)
-        if (currentUser.lifestyle.drinking && otherUser.lifestyle.drinking) {
-            if (currentUser.lifestyle.drinking === otherUser.lifestyle.drinking) {
-                lifestyleScore += 15;
-            } else if (['not_for_me', 'dont_drink'].includes(currentUser.lifestyle.drinking) && ['not_for_me', 'dont_drink'].includes(otherUser.lifestyle.drinking)) {
-                 lifestyleScore += 15;
-            }
-        }
-
-        // Smoking (10 points)
-        if (currentUser.lifestyle.smoking && otherUser.lifestyle.smoking) {
-             if (currentUser.lifestyle.smoking === 'non_smoker' && otherUser.lifestyle.smoking === 'non_smoker') {
-                lifestyleScore += 10;
-            } else if (currentUser.lifestyle.smoking === otherUser.lifestyle.smoking) {
-                lifestyleScore += 5;
-            }
-        }
-
-        // Workout (10 points)
-        if (currentUser.lifestyle.workout && otherUser.lifestyle.workout) {
-            if (currentUser.lifestyle.workout === otherUser.lifestyle.workout) {
-                lifestyleScore += 10;
-            } else if (['everyday', 'often'].includes(currentUser.lifestyle.workout) && ['everyday', 'often'].includes(otherUser.lifestyle.workout)) {
-                lifestyleScore += 7;
-            }
-        }
-        score += lifestyleScore;
-    }
     
     const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 

@@ -70,100 +70,11 @@ const UserOnlineStatus = ({ isOnline, lastSeen, isBot }: { isOnline?: boolean; l
     );
 };
 
-const calculateCompatibility = (currentUser: UserProfile, otherUser: UserProfile): { score: number; message: string; commonInterests: string[] } => {
-    let score = 0;
-    let maxScore = 0;
-    const commonInterests: string[] = [];
-
-    // 1. Interests (Max 40 points)
-    if (currentUser.interests && otherUser.interests) {
-        maxScore += 40;
-        const currentUserInterests = new Set(currentUser.interests);
-        otherUser.interests.forEach(interest => {
-            if (currentUserInterests.has(interest)) {
-                score += 4; // Each common interest is 4 points (max 10 interests)
-                commonInterests.push(interest);
-            }
-        });
-    }
-
-    // 2. Looking For (25 points)
-    if (currentUser.lookingFor && otherUser.lookingFor) {
-        maxScore += 25;
-        if (currentUser.lookingFor === otherUser.lookingFor) {
-            score += 25;
-        } else {
-            // Partial match for similar goals
-            const similarPairs = [
-                ['long_term', 'long_term_short_ok'],
-                ['long_term_short_ok', 'short_term_long_ok'],
-                ['short_term_fun', 'short_term_long_ok']
-            ];
-            if (similarPairs.some(p => p.includes(currentUser.lookingFor!) && p.includes(otherUser.lookingFor!))) {
-                score += 15;
-            }
-        }
-    }
-
-    // 3. Lifestyle (35 points total)
-    if (currentUser.lifestyle && otherUser.lifestyle) {
-        const lifestyleKeys: (keyof typeof currentUser.lifestyle)[] = ['drinking', 'smoking', 'workout'];
-        maxScore += 35;
-        let lifestyleScore = 0;
-
-        // Drinking (15 points)
-        if (currentUser.lifestyle.drinking && otherUser.lifestyle.drinking) {
-            if (currentUser.lifestyle.drinking === otherUser.lifestyle.drinking) {
-                lifestyleScore += 15;
-            } else if (['not_for_me', 'dont_drink'].includes(currentUser.lifestyle.drinking) && ['not_for_me', 'dont_drink'].includes(otherUser.lifestyle.drinking)) {
-                 lifestyleScore += 15;
-            }
-        }
-
-        // Smoking (10 points)
-        if (currentUser.lifestyle.smoking && otherUser.lifestyle.smoking) {
-             if (currentUser.lifestyle.smoking === 'non_smoker' && otherUser.lifestyle.smoking === 'non_smoker') {
-                lifestyleScore += 10;
-            } else if (currentUser.lifestyle.smoking === otherUser.lifestyle.smoking) {
-                lifestyleScore += 5;
-            }
-        }
-
-        // Workout (10 points)
-        if (currentUser.lifestyle.workout && otherUser.lifestyle.workout) {
-            if (currentUser.lifestyle.workout === otherUser.lifestyle.workout) {
-                lifestyleScore += 10;
-            } else if (['everyday', 'often'].includes(currentUser.lifestyle.workout) && ['everyday', 'often'].includes(otherUser.lifestyle.workout)) {
-                lifestyleScore += 7;
-            }
-        }
-        score += lifestyleScore;
-    }
-    
-    const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-
-    let message;
-    if (finalScore > 75) {
-        message = "Eşleşme Şansınız Çok Yüksek!";
-    } else if (finalScore > 50) {
-        message = "Harika Bir Uyum Yakalayabilirsiniz!";
-    } else if (finalScore > 25) {
-        message = "Biraz Farklısınız Ama Neden Olmasın?";
-    } else {
-        message = "Zıt Kutuplar Birbirini Çeker Derler...";
-    }
-    
-    return { score: finalScore, message, commonInterests };
-};
-
-
-
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
 const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const { userProfile: currentUserProfile } = useUser();
-  const [compatibilityResult, setCompatibilityResult] = useState<{ score: number; message: string; commonInterests: string[] } | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLongPress, setIsLongPress] = useState(false);
   const pressTimer = useRef<NodeJS.Timeout>();
@@ -244,14 +155,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
     setActiveImageIndex((prev) => (prev - 1 + (profile.images?.length || 1)) % (profile.images?.length || 1));
   };
   
-  const handleCompatibilityCheck = () => {
-    if (currentUserProfile) {
-        const result = calculateCompatibility(currentUserProfile, profile);
-        setCompatibilityResult(result);
-        setIsDialogOpen(true);
-    }
-  };
-
   const handleDragStart = () => {
     setShowSwipeHint(false);
     clearTimeout(hintTimer.current);
@@ -321,12 +224,7 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
             transition: { duration: 0.3 }
         }}
     >
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-              setCompatibilityResult(null);
-          }
-      }}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <div 
           onContextMenu={(e) => e.preventDefault()}
           className={cn(
@@ -407,7 +305,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 {/* Gradient Overlays */}
                 <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
                 
-                {/* Top Bar with actions and info */}
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-30">
                     <div className="flex items-center gap-2 pointer-events-none">
                         {isNewUser && (
@@ -420,9 +317,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         {profile.gender === 'male' && <Mars className="w-5 h-5 text-blue-300 drop-shadow-md" />}
                         {profile.address?.countryCode && <span className='text-base text-white drop-shadow-md'>{profile.address.countryCode.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397))}</span>}
                     </div>
-                     <Button onClick={handleCompatibilityCheck} variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm animate-pulse pointer-events-auto">
-                        <BarChart2 className="h-5 w-5" />
-                    </Button>
                 </div>
 
 
@@ -482,10 +376,9 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                         <ScrollArea className='flex-1'>
                             <div className="space-y-6">
                                 {profile.images && profile.images.length > 0 && (
-                                        <Carousel className="w-full">
+                                    <Carousel className="w-full">
                                         <CarouselContent>
-                                            {profile.images
-                                                .map((image, index) => (
+                                            {profile.images.map((image, index) => (
                                                 <CarouselItem key={index}>
                                                     <div className="relative w-full aspect-[4/3]">
                                                         <Image
@@ -582,48 +475,6 @@ const ProfileCard = ({ profile, onSwipe }: ProfileCardProps) => {
                 </Sheet>
             </div>
         </div>
-
-        {compatibilityResult && (
-             <DialogContent className="sm:max-w-xs bg-background/60 backdrop-blur-sm border-border rounded-xl">
-                <DialogHeader className="items-center text-center space-y-4">
-                     <div className="relative flex items-center justify-center space-x-2">
-                         <Avatar className="w-16 h-16 border-2">
-                            <AvatarImage src={currentUserProfile?.profilePicture || ''} />
-                            <AvatarFallback>{currentUserProfile?.fullName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        
-                        <Heart className="w-10 h-10 text-red-500 fill-red-500" />
-
-                        <Avatar className="w-16 h-16 border-2">
-                            <AvatarImage src={profile.profilePicture || ''} />
-                            <AvatarFallback>{profile.fullName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                         <div className='absolute inset-0 flex items-center justify-center text-xl font-bold text-white drop-shadow-md'>
-                                %{compatibilityResult.score}
-                         </div>
-                    </div>
-
-                    <DialogTitle className="text-xl pt-2">{compatibilityResult.message}</DialogTitle>
-                    <DialogDescription>
-                        Seninle aranızdaki benzerlik oranına göre bir değerlendirme.
-                    </DialogDescription>
-                    <p className='text-xs italic text-muted-foreground'>Yapay zeka destekli eşlesme orani hesaplayici</p>
-                </DialogHeader>
-                {compatibilityResult.commonInterests.length > 0 && (
-                    <div className="text-center py-4">
-                        <h4 className="font-semibold mb-2">Ortak İlgi Alanlarınız</h4>
-                        <div className="flex flex-wrap justify-center gap-2">
-                        {compatibilityResult.commonInterests.map(interest => (
-                            <Badge key={interest} variant="default">{interest}</Badge>
-                        ))}
-                        </div>
-                    </div>
-                )}
-                <DialogFooter>
-                    <Button onClick={() => setIsDialogOpen(false)} className="w-full">Harika!</Button>
-                </DialogFooter>
-            </DialogContent>
-        )}
       </Dialog>
     </motion.div>
   );

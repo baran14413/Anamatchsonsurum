@@ -39,18 +39,6 @@ export type UserProfile = {
     max: number;
   };
   expandAgeRange?: boolean;
-  lifestyle?: {
-    drinking?: string;
-    smoking?: string;
-    workout?: string;
-    pets?: string[];
-  };
-  moreInfo?: {
-    communicationStyle?: string;
-    loveLanguage?: string;
-    educationLevel?: string;
-    zodiacSign?: string;
-  }
   isOnline?: boolean;
   isPhotoVerified?: boolean;
   isNewUser?: boolean;

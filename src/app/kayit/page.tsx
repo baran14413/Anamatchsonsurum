@@ -32,6 +32,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const eighteenYearsAgo = new Date();
 eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
@@ -69,7 +70,7 @@ const formSchema = z.object({
   }).optional(),
   lookingFor: z.string({ required_error: 'Lütfen bir seçim yapın.' }),
   distancePreference: z.number().min(1).max(160).default(80),
-  lifestyle: lifestyleSchema,
+  interests: z.array(z.string()).min(1, 'En az 1 ilgi alanı seçmelisin.').optional(),
   email: z.string().email({ message: "Lütfen geçerli bir e-posta adresi girin." }),
   password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
   passwordConfirmation: z.string(),
@@ -80,7 +81,6 @@ const formSchema = z.object({
 
 
 type SignupFormValues = z.infer<typeof formSchema>;
-type LifestyleKeys = keyof z.infer<typeof lifestyleSchema>;
 
 type IconName = keyof Omit<typeof LucideIcons, 'createLucideIcon' | 'LucideIcon'>;
 
@@ -248,7 +248,7 @@ export default function SignUpPage() {
       showGenderOnProfile: true,
       lookingFor: undefined,
       distancePreference: 80,
-      lifestyle: {},
+      interests: [],
       email: '',
       password: '',
       passwordConfirmation: '',
@@ -257,7 +257,7 @@ export default function SignUpPage() {
   });
   
   const dateOfBirthValue = form.watch('dateOfBirth');
-  const lifestyleValues = form.watch('lifestyle');
+  const interestsValue = form.watch('interests');
   const passwordValue = form.watch('password');
   const locationValue = form.watch('location');
 
@@ -314,6 +314,27 @@ export default function SignUpPage() {
     );
   };
 
+  const handleInterestToggle = (interest: string, categoryOptions: string[]) => {
+    const currentInterests = form.getValues('interests') || [];
+    const isSelected = currentInterests.includes(interest);
+    
+    if (isSelected) {
+      form.setValue('interests', currentInterests.filter(i => i !== interest), { shouldValidate: true });
+    } else {
+      const interestsInCategory = currentInterests.filter(i => categoryOptions.includes(i));
+      if (interestsInCategory.length >= 2) {
+        toast({
+          title: `Limit Aşıldı`,
+          description: `Bu kategoriden en fazla 2 ilgi alanı seçebilirsin.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      form.setValue('interests', [...currentInterests, interest], { shouldValidate: true });
+    }
+  };
+
+
   const prevStep = () => (step > 0 ? setStep((prev) => prev - 1) : router.push('/'));
   
   const onSubmit = async (data: SignupFormValues) => {
@@ -338,7 +359,7 @@ export default function SignUpPage() {
         address: data.address,
         lookingFor: data.lookingFor,
         distancePreference: data.distancePreference,
-        lifestyle: data.lifestyle,
+        interests: data.interests || [],
         createdAt: serverTimestamp(),
         rulesAgreed: false,
         membershipType: 'free',
@@ -392,7 +413,12 @@ export default function SignUpPage() {
       case 5:
         fieldsToValidate = ['distancePreference'];
         break;
-       case 6:
+      case 6:
+        fieldsToValidate = ['interests'];
+        if ((interestsValue?.length ?? 0) < 1) {
+            form.setError('interests', { type: 'manual', message: 'En az 1 ilgi alanı seçmelisin.' });
+            return;
+        }
         break;
       case 7:
         fieldsToValidate = ['email', 'password', 'passwordConfirmation'];
@@ -416,8 +442,7 @@ export default function SignUpPage() {
   const genderValue = form.watch('gender');
   const lookingForValue = form.watch('lookingFor');
   const distanceValue = form.watch('distancePreference');
-  const lifestyleQuestions = langTr.signup.step9;
-  const lifestyleAnswerCount = Object.values(lifestyleValues || {}).filter(v => v).length;
+  const interestCategories = langTr.signup.step11.categories;
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -643,39 +668,40 @@ export default function SignUpPage() {
                 {step === 6 && (
                     <div className="flex-1 flex flex-col min-h-0">
                         <div className="space-y-2 mb-6 shrink-0">
-                            <h1 className="text-3xl font-bold">{lifestyleQuestions.title.replace('{name}', fullNameValue || '')}</h1>
-                            <p className="text-muted-foreground">{lifestyleQuestions.description}</p>
+                            <h1 className="text-3xl font-bold">{langTr.signup.step11.title.replace('{count}', 'en fazla 10')}</h1>
+                            <p className="text-muted-foreground">{langTr.signup.step11.description}</p>
+                            <FormMessage>{form.formState.errors.interests?.message}</FormMessage>
                         </div>
                         <ScrollArea className="flex-1 -mr-6 pr-6">
-                            <div className="space-y-8">
-                                {(Object.keys(lifestyleQuestions) as Array<keyof typeof lifestyleQuestions>)
-                                    .filter(key => key !== 'title' && key !== 'description')
-                                    .map(key => {
-                                        const question = lifestyleQuestions[key as Exclude<keyof typeof lifestyleQuestions, 'title'|'description'>];
-                                        const Icon = LucideIcons[question.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
-
-                                        return (
-                                            <div key={key}>
-                                                <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-                                                    <Icon className="h-5 w-5 text-muted-foreground" />
-                                                    {question.question}
-                                                </h2>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {question.options.map(option => (
-                                                        <Badge
-                                                            key={option.id}
-                                                            variant={lifestyleValues?.[key as LifestyleKeys] === option.id ? 'default' : 'secondary'}
-                                                            onClick={() => form.setValue(`lifestyle.${key as LifestyleKeys}`, option.id, { shouldValidate: true })}
-                                                            className="cursor-pointer py-1.5 px-3 text-sm"
-                                                        >
-                                                            {option.label}
-                                                        </Badge>
-                                                    ))}
+                            <Accordion type="multiple" defaultValue={interestCategories.map(c => c.title)} className="w-full">
+                                {interestCategories.map((category) => {
+                                    const Icon = LucideIcons[category.icon as IconName] as React.ElementType || LucideIcons.Sparkles;
+                                    return (
+                                        <AccordionItem value={category.title} key={category.title}>
+                                            <AccordionTrigger>
+                                                <div className="flex items-center gap-3">
+                                                    <Icon className="h-5 w-5" />
+                                                    <span>{category.title}</span>
                                                 </div>
-                                            </div>
-                                        )
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="flex flex-wrap gap-2">
+                                                {category.options.map((interest) => (
+                                                    <Badge
+                                                        key={interest}
+                                                        variant={(interestsValue || []).includes(interest) ? 'default' : 'secondary'}
+                                                        onClick={() => handleInterestToggle(interest, category.options)}
+                                                        className="cursor-pointer text-base py-1 px-3"
+                                                    >
+                                                    {interest}
+                                                    </Badge>
+                                                ))}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    )
                                 })}
-                            </div>
+                            </Accordion>
                         </ScrollArea>
                     </div>
                 )}
@@ -752,7 +778,7 @@ export default function SignUpPage() {
                 {isSubmitting ? (
                     <Icons.logo width={24} height={24} className="animate-pulse" />
                 ) : (
-                    step === totalSteps -1 ? 'Bitir' : (step === 6 ? `İlerle (${lifestyleAnswerCount}/4)` : 'İlerle')
+                    step === totalSteps - 1 ? 'Bitir' : `İlerle`
                 )}
                 </Button>
             </div>
