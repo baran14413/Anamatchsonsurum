@@ -209,7 +209,7 @@ export default function GalleryPage() {
                 </Button>
                 <h1 className="text-lg font-semibold">{isOnboarding ? "Profil Medyaları" : t.title}</h1>
                 <Button onClick={handleSaveChanges} disabled={isSubmitting || (isOnboarding && uploadedImageCount < 2) || (!isOnboarding && uploadedImageCount < 1)}>
-                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (isOnboarding ? langTr.common.next : langTr.common.save)}
+                    {isSubmitting ? <Icons.logo width={24} height={24} className="animate-pulse" /> : (isOnboarding ? langTr.common.done : langTr.common.save)}
                 </Button>
             </header>
 
