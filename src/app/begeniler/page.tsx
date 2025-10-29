@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { Heart, Star, CheckCircle, Lock, ArrowLeft } from 'lucide-react';
+import { Heart, Star, CheckCircle, Lock, ArrowLeft, X } from 'lucide-react';
 import type { UserProfile, DenormalizedMatch } from '@/lib/types';
 import { langTr } from '@/languages/tr';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -62,7 +62,6 @@ function BegenilerPageContent() {
             const likerProfiles = snapshot.docs
                 .map(doc => {
                     const data = doc.data() as DenormalizedMatch;
-                    // CRITICAL FIX: Ensure the liker's UID is correctly assigned to the `uid` property.
                     return { ...data, uid: data.matchedWith };
                 })
                 .filter(match => {
@@ -89,14 +88,13 @@ function BegenilerPageContent() {
 
     const handleCardClick = async (liker: DenormalizedMatch & { uid: string }) => {
         if (isGoldMember) {
-            if (firestore && liker.uid) { // Ensure liker.uid exists
+            if (firestore && liker.uid) { 
                  const profileDoc = await getDoc(doc(firestore, 'users', liker.uid));
                  if(profileDoc.exists()) {
                      setSelectedProfile({ ...profileDoc.data(), uid: profileDoc.id } as UserProfile);
                  }
             }
         }
-        // For non-gold members, the click is handled by AlertDialogTrigger
     };
 
     const handleInstantMatch = async (liker: DenormalizedMatch & { uid: string }) => {
@@ -106,22 +104,21 @@ function BegenilerPageContent() {
         try {
             const batch = writeBatch(firestore);
             const user1IsCurrentUser = user.uid < liker.uid;
+            const defaultLastMessage = langTr.eslesmeler.defaultMessage;
 
             const mainMatchDocRef = doc(firestore, 'matches', liker.id);
             batch.update(mainMatchDocRef, {
                 status: 'matched',
                 matchDate: serverTimestamp(),
-                 // Set current user's action to 'liked'
                 [user1IsCurrentUser ? 'user1_action' : 'user2_action']: 'liked',
                 [user1IsCurrentUser ? 'user1_timestamp' : 'user2_timestamp']: serverTimestamp(),
             });
 
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
-            batch.update(currentUserMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
+            batch.update(currentUserMatchRef, { status: 'matched', lastMessage: defaultLastMessage });
             
-            // Use liker.uid which is now correctly populated
             const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
-            batch.update(likerMatchRef, { status: 'matched', lastMessage: t.eslesmeler.defaultMessage });
+            batch.update(likerMatchRef, { status: 'matched', lastMessage: defaultLastMessage });
 
             await batch.commit();
 
@@ -152,7 +149,7 @@ function BegenilerPageContent() {
     }
 
     const LikerCard = ({ liker }: { liker: DenormalizedMatch }) => {
-        const age = calculateAge(undefined); // age is hidden for non-gold
+        const age = calculateAge(undefined);
         return (
             <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
                 <Avatar className="h-full w-full rounded-lg">
@@ -231,12 +228,14 @@ function BegenilerPageContent() {
                     )}
                 </div>
 
-                {/* --- FOR GOLD MEMBERS --- */}
                 {selectedProfile && (
                 <SheetContent side="bottom" className='h-dvh max-h-dvh p-0 border-none bg-transparent'>
-                    <SheetHeader className='sr-only'>
-                        <SheetTitle>Profil Detayları</SheetTitle>
-                        <SheetDescription>{selectedProfile.fullName} kullanıcısının profil detayları.</SheetDescription>
+                     <SheetHeader className='absolute top-2 right-2 z-50'>
+                         <SheetClose asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full bg-black/40 text-white hover:bg-black/60 hover:text-white" type="button">
+                                <X className="h-6 w-6" />
+                            </Button>
+                        </SheetClose>
                     </SheetHeader>
                     <div className='relative h-full w-full bg-card rounded-t-2xl overflow-hidden flex flex-col'>
                         <ProfileCard profile={selectedProfile} onSwipe={() => {}} />
@@ -258,7 +257,6 @@ function BegenilerPageContent() {
                 </SheetContent>
                 )}
 
-                {/* --- FOR NON-GOLD MEMBERS --- */}
                 <AlertDialogContent>
                     <AlertDialogHeader className='items-center text-center'>
                         <div className="w-16 h-16 rounded-full bg-yellow-400/20 flex items-center justify-center mb-4">
@@ -290,6 +288,3 @@ export default function BegenilerPage() {
         </AppShell>
     );
 }
-
-
-
