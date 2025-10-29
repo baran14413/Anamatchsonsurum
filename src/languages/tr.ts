@@ -80,10 +80,9 @@ export const langTr = {
     },
     step1: {
       title: 'Hesabını oluştur',
-      description: 'Maceraya başlamak için e-posta ve şifreni belirle.',
+      description: 'Maceraya başlamak için e-posta ve şifreni belirle. Daha sonra e-postanı doğrulaman gerekecek.',
       emailLabel: 'E-posta Adresin',
       passwordLabel: 'Şifren',
-      confirmPasswordLabel: 'Şifreni Tekrarla',
     },
     step2: {
       title: 'Adın ne?',
