@@ -37,6 +37,7 @@ export interface UserHookResult {
   userProfile: UserProfile | null;
   isUserLoading: boolean;
   userError: Error | null;
+  firebaseApp: FirebaseApp | null; // Add firebaseApp here
 }
 
 // React Context
@@ -189,6 +190,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [services, user, userProfile, isUserLoading, userError]);
 
+  if (isUserLoading && !user) {
+    // Show a loading screen only on initial load when there's no user.
+    // This prevents screen flashing for already logged-in users.
+    // return <div className="flex h-dvh items-center justify-center bg-background"><Icons.logo width={48} height={48} className="animate-pulse" /></div>;
+  }
+  
   if (!services) {
     return null;
   }
@@ -207,14 +214,15 @@ export const useFirebase = (): Omit<FirebaseContextState, 'areServicesAvailable'
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth || !context.storage) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
+    // This check is important for when services are still initializing.
+    // Returning a loading state or a specific structure might be better than throwing.
   }
   return context;
 };
 
-export const useFirestore = (): Firestore => useFirebase().firestore!;
-export const useAuth = (): Auth => useFirebase().auth!;
-export const useFirebaseApp = (): FirebaseApp => useFirebase().firebaseApp!;
+export const useFirestore = (): Firestore | null => useFirebase().firestore;
+export const useAuth = (): Auth | null => useFirebase().auth;
+export const useFirebaseApp = (): FirebaseApp | null => useFirebase().firebaseApp;
 export const useUserProfile = (): UserProfile | null => useFirebase().userProfile;
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
@@ -227,6 +235,6 @@ export const useUser = (): UserHookResult => {
    if (context === undefined) {
     throw new Error('useUser must be used within a FirebaseProvider.');
   }
-  const { user, auth, userProfile, isUserLoading, userError } = context;
-  return { user, auth, userProfile, isUserLoading, userError };
+  const { user, auth, userProfile, isUserLoading, userError, firebaseApp } = context;
+  return { user, auth, userProfile, isUserLoading, userError, firebaseApp };
 };

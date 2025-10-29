@@ -24,30 +24,39 @@ type ImageSlot = {
     public_id?: string | null;
     isUploading: boolean;
     type: 'image' | 'video';
+    // Add a temporary ID for client-side keying
+    tempId: string; 
 };
 
 const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
-    const slots: ImageSlot[] = Array(MAX_IMAGES).fill(null).map(() => ({
-        file: null,
-        preview: null,
-        public_id: null,
-        isUploading: false,
-        type: 'image',
-    }));
+    const slots: ImageSlot[] = [];
 
     if (userProfile?.images) {
         userProfile.images.forEach((img: UserImage, index: number) => {
             if (index < MAX_IMAGES) {
-                slots[index] = {
+                slots.push({
                     file: null,
                     preview: img.url,
                     public_id: img.public_id,
                     isUploading: false,
                     type: img.type || 'image',
-                };
+                    tempId: `server-${img.public_id || index}`
+                });
             }
         });
     }
+
+    while (slots.length < MAX_IMAGES) {
+        slots.push({
+            file: null,
+            preview: null,
+            public_id: null,
+            isUploading: false,
+            type: 'image',
+            tempId: `new-${slots.length}-${Date.now()}`
+        });
+    }
+
     return slots;
 };
 
@@ -58,7 +67,7 @@ export default function GalleryPage() {
     const { user, userProfile, firestore, storage } = useFirebase();
     const t = langTr.ayarlarGaleri;
 
-    const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => getInitialImageSlots(userProfile));
+    const [imageSlots, setImageSlots] = useState<ImageSlot[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeSlotIndex = useRef<number | null>(null);
@@ -66,15 +75,11 @@ export default function GalleryPage() {
     const [isOnboarding, setIsOnboarding] = useState(false);
 
     useEffect(() => {
-        if (userProfile && !userProfile.rulesAgreed) {
-            setIsOnboarding(true);
-        }
-    }, [userProfile]);
-
-
-    useEffect(() => {
         if (userProfile) {
             setImageSlots(getInitialImageSlots(userProfile));
+            if (!userProfile.rulesAgreed) {
+                setIsOnboarding(true);
+            }
         }
     }, [userProfile]);
 
@@ -89,7 +94,8 @@ export default function GalleryPage() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || activeSlotIndex.current === null) return;
         const file = e.target.files[0];
-        uploadFile(file, activeSlotIndex.current);
+        const indexToUpdate = activeSlotIndex.current;
+        uploadFile(file, indexToUpdate);
         if (e.target) e.target.value = '';
     };
 
@@ -97,8 +103,10 @@ export default function GalleryPage() {
         if (!storage || !user) return;
         
         const fileType = file.type.startsWith('video') ? 'video' : 'image';
+        const tempId = `uploading-${index}-${Date.now()}`;
+        const previewUrl = URL.createObjectURL(file);
 
-        setImageSlots(prev => prev.map((s, i) => i === index ? { ...s, file, preview: URL.createObjectURL(file), isUploading: true, type: fileType } : s));
+        setImageSlots(prev => prev.map((s, i) => i === index ? { ...s, file, preview: previewUrl, isUploading: true, type: fileType, tempId } : s));
 
         const uniqueFileName = `bematch_profiles/${user.uid}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
         const imageRef = storageRef(storage, uniqueFileName);
@@ -106,12 +114,16 @@ export default function GalleryPage() {
         try {
             const snapshot = await uploadBytes(imageRef, file);
             const downloadURL = await getDownloadURL(snapshot.ref);
+            
+            // Clean up the object URL after upload
+            URL.revokeObjectURL(previewUrl);
 
-            setImageSlots(prev => prev.map((s, i) => i === index ? { isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null, type: fileType } : s));
+            setImageSlots(prev => prev.map((s, i) => i === index ? { isUploading: false, public_id: uniqueFileName, preview: downloadURL, file: null, type: fileType, tempId: `server-${uniqueFileName}` } : s));
 
         } catch (error: any) {
             toast({ title: t.toasts.uploadFailedTitle, description: error.message, variant: "destructive" });
-            setImageSlots(prev => prev.map((s, i) => i === index ? getInitialImageSlots(userProfile)[i] : s));
+            // Revert on error
+            setImageSlots(prev => prev.map((s, i) => i === index ? { ...s, file: null, preview: null, isUploading: false, tempId: `new-${i}-${Date.now()}` } : s));
         }
     };
     
@@ -129,7 +141,7 @@ export default function GalleryPage() {
         const slotToDelete = imageSlots[index];
         const newSlots = [...imageSlots];
         newSlots.splice(index, 1);
-        newSlots.push({ file: null, preview: null, public_id: null, isUploading: false, type: 'image' });
+        newSlots.push({ file: null, preview: null, public_id: null, isUploading: false, type: 'image', tempId: `new-${newSlots.length}-${Date.now()}` });
         setImageSlots(newSlots);
 
         if (slotToDelete.public_id && storage) {
@@ -141,7 +153,8 @@ export default function GalleryPage() {
                  if (err.code !== 'storage/object-not-found') {
                      console.error("Failed to delete media from Firebase Storage:", err);
                      toast({ title: t.toasts.deleteErrorTitle, description: t.toasts.deleteErrorDesc, variant: "destructive" });
-                     setImageSlots(getInitialImageSlots(userProfile)); // Revert on error
+                     // Revert on error by re-fetching from profile
+                     if(userProfile) setImageSlots(getInitialImageSlots(userProfile));
                  }
             }
         }
@@ -206,7 +219,7 @@ export default function GalleryPage() {
                 </p>
                 <div className="grid grid-cols-3 gap-3">
                     {imageSlots.map((slot, index) => (
-                        <div key={index} onClick={() => handleFileSelect(index)} className={cn("cursor-pointer w-full aspect-square border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-primary")}>
+                        <div key={slot.tempId} onClick={() => !slot.preview && handleFileSelect(index)} className={cn("cursor-pointer w-full aspect-square border-2 border-dashed bg-card rounded-lg flex items-center justify-center relative overflow-hidden transition-colors hover:bg-muted group", slot.preview && "border-solid border-primary")}>
                             {slot.preview ? (
                                 <>
                                     {slot.type === 'video' ? (
