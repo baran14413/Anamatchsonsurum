@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase/provider';
-import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDoc, doc, writeBatch, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Heart, Star, CheckCircle, Lock, ArrowLeft, X } from 'lucide-react';
 import type { UserProfile, DenormalizedMatch } from '@/lib/types';
 import { langTr } from '@/languages/tr';
@@ -62,7 +62,6 @@ function BegenilerPageContent() {
             const likerProfiles = snapshot.docs
                 .map(doc => {
                     const data = doc.data() as DenormalizedMatch;
-                    // Correctly assign the other user's UID
                     const uid = data.id.replace(user.uid, '').replace('_', '');
                     return { ...data, uid };
                 })
@@ -100,7 +99,7 @@ function BegenilerPageContent() {
     };
 
     const handleInstantMatch = async (liker: DenormalizedMatch & { uid: string }) => {
-        if (!user || !firestore || !userProfile || !liker.uid || liker.status === 'matched') return;
+        if (!user || !firestore || !liker.uid || liker.status === 'matched') return;
 
         setIsMatching(liker.uid);
         try {
@@ -116,10 +115,10 @@ function BegenilerPageContent() {
             });
 
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
-            batch.update(currentUserMatchRef, { status: 'matched' });
+            batch.set(currentUserMatchRef, { status: 'matched' }, { merge: true });
             
             const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
-            batch.update(likerMatchRef, { status: 'matched' });
+            batch.set(likerMatchRef, { status: 'matched' }, { merge: true });
 
             await batch.commit();
             
@@ -148,7 +147,7 @@ function BegenilerPageContent() {
     }
 
     const LikerCard = ({ liker }: { liker: DenormalizedMatch }) => {
-        const age = calculateAge(undefined);
+        const age = calculateAge(undefined); // This seems incorrect, should be liker's age if available
         return (
             <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-md group cursor-pointer">
                 <Avatar className="h-full w-full rounded-lg">
