@@ -62,7 +62,9 @@ function BegenilerPageContent() {
             const likerProfiles = snapshot.docs
                 .map(doc => {
                     const data = doc.data() as DenormalizedMatch;
-                    return { ...data, uid: data.matchedWith };
+                    // Correctly assign the other user's UID
+                    const uid = data.id.replace(user.uid, '').replace('_', '');
+                    return { ...data, uid };
                 })
                 .filter(match => {
                     if (match.status === 'superlike_pending') {
@@ -104,7 +106,6 @@ function BegenilerPageContent() {
         try {
             const batch = writeBatch(firestore);
             const user1IsCurrentUser = user.uid < liker.uid;
-            const defaultLastMessage = langTr.eslesmeler.defaultMessage;
 
             const mainMatchDocRef = doc(firestore, 'matches', liker.id);
             batch.update(mainMatchDocRef, {
@@ -115,14 +116,12 @@ function BegenilerPageContent() {
             });
 
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
-            batch.update(currentUserMatchRef, { status: 'matched', lastMessage: defaultLastMessage });
+            batch.update(currentUserMatchRef, { status: 'matched' });
             
             const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
-            batch.update(likerMatchRef, { status: 'matched', lastMessage: defaultLastMessage });
+            batch.update(likerMatchRef, { status: 'matched' });
 
             await batch.commit();
-
-            toast({ title: t.anasayfa.matchToastTitle, description: `${liker.fullName} ${t.anasayfa.matchToastDescription}` });
             
             setSelectedProfile(null);
             router.push(`/eslesmeler/${liker.id}`);
@@ -250,7 +249,7 @@ function BegenilerPageContent() {
                                     ) : (
                                         <Heart className="mr-2 h-6 w-6 fill-white" />
                                     )}
-                                    <span className='font-bold text-lg'>Beğen ve Eşleş</span>
+                                    <span className='font-bold text-lg'>İlk Adımı At</span>
                                 </Button>
                         </div>
                     </div>
