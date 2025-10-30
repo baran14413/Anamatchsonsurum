@@ -319,6 +319,56 @@
         "timestamp",
         "isRead"
       ]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "Represents a user-submitted report against another user.",
+      "properties": {
+        "reporterId": {
+          "type": "string",
+          "description": "The UID of the user who submitted the report."
+        },
+        "reportedId": {
+          "type": "string",
+          "description": "The UID of the user being reported."
+        },
+        "matchId": {
+          "type": "string",
+          "description": "The ID of the match, if the report is related to a specific chat."
+        },
+        "reason": {
+          "type": "string",
+          "description": "The selected reason for the report."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the issue provided by the reporter."
+        },
+        "screenshotURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the screenshot provided as evidence."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "resolved", "banned"],
+          "description": "The current status of the report."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the report was submitted."
+        }
+      },
+      "required": [
+        "reporterId",
+        "reportedId",
+        "reason",
+        "status",
+        "timestamp"
+      ]
     }
   },
   "auth": {
@@ -366,6 +416,16 @@
             "$ref": "#/entities/ChatMessage"
           },
           "description": "Stores chat messages for a specific confirmed match. Access is controlled by match membership."
+        }
+      },
+      {
+        "path": "/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": {
+            "$ref": "#/entities/Report"
+          },
+          "description": "Stores user-submitted reports for moderation."
         }
       }
     ]

@@ -9,7 +9,6 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'fire
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Flag, FileText, Camera, Send, X } from 'lucide-react';
-import { langTr } from '@/languages/tr';
 import { Icons } from '@/components/icons';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -30,7 +29,7 @@ export default function ReportPage() {
     const searchParams = useSearchParams();
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = getStorage();
+    const storage = firestore ? getStorage() : null;
     const { toast } = useToast();
 
     const reportedUserId = searchParams.get('userId');
@@ -68,7 +67,7 @@ export default function ReportPage() {
         setIsSubmitting(true);
         try {
             let screenshotURL: string | null = null;
-            if (screenshot) {
+            if (screenshot && storage) {
                 const uniqueFileName = `reports/${user.uid}/${Date.now()}-${screenshot.name}`;
                 const imageRef = storageRef(storage, uniqueFileName);
                 const snapshot = await uploadBytes(imageRef, screenshot);
@@ -153,7 +152,7 @@ export default function ReportPage() {
                     </Label>
                     {screenshotPreview ? (
                         <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
-                            <Image src={screenshotPreview} alt="Ekran görüntüsü önizlemesi" layout="fill" objectFit="cover" />
+                            <Image src={screenshotPreview} alt="Ekran görüntüsü önizlemesi" fill style={{objectFit: 'cover'}} />
                             <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 rounded-full" onClick={() => { setScreenshot(null); setScreenshotPreview(null); }}>
                                 <X className="h-4 w-4" />
                             </Button>

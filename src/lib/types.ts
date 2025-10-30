@@ -140,4 +140,16 @@ export interface DenormalizedMatch {
     lastSystemMessageId?: string;
     hasUnreadSystemMessage?: boolean;
 }
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  reportedId: string;
+  matchId?: string;
+  reason: string;
+  description?: string;
+  screenshotURL?: string;
+  status: 'pending' | 'resolved' | 'banned';
+  timestamp: any;
+}
     
