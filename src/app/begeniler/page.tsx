@@ -99,13 +99,14 @@ function BegenilerPageContent() {
     };
 
     const handleInstantMatch = async (liker: DenormalizedMatch & { uid: string }) => {
-        if (!user || !firestore || !liker.uid || liker.status === 'matched') return;
-
+        if (!user || !firestore || !userProfile || !liker.uid || liker.status === 'matched') return;
+    
         setIsMatching(liker.uid);
         try {
             const batch = writeBatch(firestore);
             const user1IsCurrentUser = user.uid < liker.uid;
-
+    
+            // Update the main match document
             const mainMatchDocRef = doc(firestore, 'matches', liker.id);
             batch.update(mainMatchDocRef, {
                 status: 'matched',
@@ -113,18 +114,30 @@ function BegenilerPageContent() {
                 [user1IsCurrentUser ? 'user1_action' : 'user2_action']: 'liked',
                 [user1IsCurrentUser ? 'user1_timestamp' : 'user2_timestamp']: serverTimestamp(),
             });
-
+    
+            const defaultLastMessage = t.eslesmeler.defaultMessage;
+    
+            // Update/Create the denormalized doc for the current user
             const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, liker.id);
-            batch.set(currentUserMatchRef, { status: 'matched' }, { merge: true });
+            batch.set(currentUserMatchRef, { 
+                status: 'matched',
+                lastMessage: defaultLastMessage,
+                timestamp: serverTimestamp(),
+            }, { merge: true });
             
+            // Update/Create the denormalized doc for the other user
             const likerMatchRef = doc(firestore, `users/${liker.uid}/matches`, liker.id);
-            batch.set(likerMatchRef, { status: 'matched' }, { merge: true });
-
+            batch.set(likerMatchRef, { 
+                status: 'matched',
+                lastMessage: defaultLastMessage,
+                timestamp: serverTimestamp(),
+            }, { merge: true });
+    
             await batch.commit();
             
             setSelectedProfile(null);
             router.push(`/eslesmeler/${liker.id}`);
-
+    
         } catch (error) {
             console.error("Error creating instant match:", error);
             toast({
