@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -27,9 +26,9 @@ const reportReasons = [
 export default function ReportPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user } = useUser();
+    const { user, firebaseApp } = useUser();
     const firestore = useFirestore();
-    const storage = firestore ? getStorage() : null;
+    const storage = firebaseApp ? getStorage(firebaseApp) : null;
     const { toast } = useToast();
 
     const reportedUserId = searchParams.get('userId');
@@ -52,7 +51,7 @@ export default function ReportPage() {
 
     const handleSubmit = async () => {
         if (!user || !firestore) {
-            toast({ title: 'Hata', description: 'Rapor göndermek için giriş yapmalısınız.', variant: 'destructive' });
+            toast({ title: 'Hata', description: 'Rapor göndermek için giriş yapmalısınız veya servisler yüklenemedi.', variant: 'destructive' });
             return;
         }
         if (!reportedUserId) {
@@ -67,7 +66,10 @@ export default function ReportPage() {
         setIsSubmitting(true);
         try {
             let screenshotURL: string | null = null;
-            if (screenshot && storage) {
+            if (screenshot) {
+                if (!storage) {
+                    throw new Error("Depolama hizmeti başlatılamadı.");
+                }
                 const uniqueFileName = `reports/${user.uid}/${Date.now()}-${screenshot.name}`;
                 const imageRef = storageRef(storage, uniqueFileName);
                 const snapshot = await uploadBytes(imageRef, screenshot);
@@ -102,7 +104,7 @@ export default function ReportPage() {
             console.error("Rapor gönderme hatası:", error);
             toast({
                 title: 'Hata',
-                description: 'Raporunuz gönderilirken bir sorun oluştu.',
+                description: `Raporunuz gönderilirken bir sorun oluştu: ${error.message}`,
                 variant: 'destructive',
             });
         } finally {
