@@ -74,16 +74,23 @@ export default function ReportPage() {
                 screenshotURL = await getDownloadURL(snapshot.ref);
             }
 
-            await addDoc(collection(firestore, 'reports'), {
+            const reportData: any = {
                 reporterId: user.uid,
                 reportedId: reportedUserId,
-                matchId: matchId,
                 reason: reason,
                 description: description,
-                screenshotURL: screenshotURL,
-                status: 'pending', // 'pending', 'resolved', 'banned'
+                status: 'pending',
                 timestamp: serverTimestamp(),
-            });
+            };
+
+            if (matchId) {
+                reportData.matchId = matchId;
+            }
+            if (screenshotURL) {
+                reportData.screenshotURL = screenshotURL;
+            }
+
+            await addDoc(collection(firestore, 'reports'), reportData);
 
             toast({
                 title: 'Rapor Gönderildi',
