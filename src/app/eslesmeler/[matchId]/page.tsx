@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -156,7 +157,7 @@ function ChatPageContent() {
     
     const messagesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !matchId) return null;
-        const collectionPath = isSystemChat ? 'system_messages' : `matches/${matchId}/messages`;
+        const collectionPath = isSystemChat ? `users/${user.uid}/matches/system/messages` : `matches/${matchId}/messages`;
         return query(collection(firestore, collectionPath), orderBy('timestamp', 'asc'));
     }, [isSystemChat, matchId, user, firestore]);
     
@@ -235,16 +236,6 @@ function ChatPageContent() {
                     if (isSystemChat) {
                         if (data.hasUnreadSystemMessage) {
                             updatePayload.hasUnreadSystemMessage = false;
-                            
-                            const systemMessageIds = messages.map(m => m.id);
-                            if (systemMessageIds.length > 0) {
-                                const batch = writeBatch(firestore);
-                                systemMessageIds.forEach(msgId => {
-                                    const centralMessageRef = doc(firestore, 'system_messages', msgId);
-                                    batch.update(centralMessageRef, { seenBy: arrayUnion(user.uid) });
-                                });
-                                await batch.commit().catch(err => console.log("System message seen update error:", err));
-                            }
                         }
                     } else {
                         if (data.unreadCount && data.unreadCount > 0) {
@@ -780,10 +771,13 @@ function ChatPageContent() {
                     {isSystemChat ? (
                         <>
                             <Avatar className="h-10 w-10">
-                                <Icons.bmIcon className='h-full w-full' />
+                                <Icons.bmIcon className="h-full w-full p-0.5" />
                             </Avatar>
                             <div className="flex flex-col">
-                                <span className="font-semibold">BeMatch Sistem</span>
+                                <span className="font-semibold flex items-center gap-1.5">
+                                    BeMatch Studio
+                                    <CheckCircle className="h-4 w-4 text-blue-500 fill-white" />
+                                </span>
                                 <span className="text-xs text-muted-foreground">Resmi Duyurular</span>
                             </div>
                         </>
@@ -956,34 +950,19 @@ function ChatPageContent() {
                         </Button>
                     </div>
                 )}
-                 {isSystemChat && (
-                    <div className="p-4 mb-4 text-center rounded-lg bg-muted">
-                        <p className="text-sm text-muted-foreground">
-                            Burası BeMatch ekibinden gelen resmi duyuruları bulabileceğin yerdir.
-                        </p>
-                        <div className="mt-4 flex flex-wrap justify-center gap-2">
-                             <Button asChild variant="link">
-                                <Link href="/tos"><BookOpen className="mr-2 h-4 w-4" />Kullanım Koşulları</Link>
-                            </Button>
-                            <Button asChild variant="link">
-                                <Link href="/privacy"><Shield className="mr-2 h-4 w-4" />Gizlilik Politikası</Link>
-                            </Button>
-                        </div>
-                    </div>
-                )}
                 <div className="space-y-1">
                     {messages.map((message, index) => {
                         const isSender = 'senderId' in message && message.senderId === user?.uid;
                         const isSystemGenerated = 'senderId' in message && message.senderId === 'system';
                         const prevMessage = index > 0 ? messages[index - 1] : null;
 
-                        if (isSystemChat && 'text' in message) {
+                        if (isSystemGenerated && 'text' in message) {
                              return (
                                 <div key={message.id}>
                                     {renderTimestampLabel(message.timestamp, prevMessage?.timestamp)}
                                     <div className={cn("flex items-end gap-2 group justify-start")}>
                                         <Avatar className="h-8 w-8 self-end mb-1">
-                                            <Icons.bmIcon className="h-full w-full" />
+                                            <Icons.bmIcon className="h-full w-full p-0.5" />
                                         </Avatar>
                                         <div className="max-w-[70%] rounded-2xl flex flex-col items-start bg-muted rounded-bl-none p-3 space-y-3">
                                             <p className='break-words whitespace-pre-wrap text-left w-full'>{message.text}</p>

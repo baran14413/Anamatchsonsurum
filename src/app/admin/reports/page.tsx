@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useFirestore, useCollection } from '@/firebase';
@@ -14,11 +15,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Icons } from '@/components/icons';
-import { UserProfile } from '@/lib/types';
+import { UserProfile, Report } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, UserX, CheckCircle, User } from 'lucide-react';
+import { MoreHorizontal, UserX, CheckCircle, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,18 +30,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-interface Report {
-  id: string;
-  reporterId: string;
-  reportedId: string;
-  reason: string;
-  status: 'pending' | 'resolved' | 'banned';
-  timestamp: any;
-  reporterProfile?: UserProfile;
-  reportedProfile?: UserProfile;
-}
 
 export default function AdminReportsPage() {
   const firestore = useFirestore();
@@ -97,8 +88,17 @@ export default function AdminReportsPage() {
     }
   }
 
-
   const isLoading = isLoadingReports || isLoadingUsers;
+  
+  const getStatusVariant = (status: Report['status']) => {
+    switch (status) {
+      case 'pending': return 'destructive';
+      case 'resolved': return 'default';
+      case 'banned': return 'secondary';
+      default: return 'secondary';
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -144,7 +144,10 @@ export default function AdminReportsPage() {
                     {report.timestamp ? formatDistanceToNow(report.timestamp.toDate(), { locale: tr, addSuffix: true }) : '-'}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={report.status === 'pending' ? 'destructive' : 'secondary'}>{report.status}</Badge>
+                    <Badge variant={getStatusVariant(report.status)} className={cn(report.status === 'resolved' && 'bg-green-500 hover:bg-green-600')}>
+                      {report.status === 'resolved' && <CheckCircle className="mr-1 h-3 w-3" />}
+                      {report.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className='text-right'>
                     <DropdownMenu>
@@ -158,6 +161,10 @@ export default function AdminReportsPage() {
                         <DropdownMenuItem onClick={() => handleUpdateReportStatus(report.id, 'resolved')}>
                             <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
                             <span>Çözüldü Olarak İşaretle</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleUpdateReportStatus(report.id, 'pending')}>
+                            <Trash2 className="mr-2 h-4 w-4 text-yellow-500" />
+                            <span>Beklemede Olarak İşaretle</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { handleBanUser(report.reportedProfile); handleUpdateReportStatus(report.id, 'banned'); }}>
                             <UserX className="mr-2 h-4 w-4 text-red-500" />
