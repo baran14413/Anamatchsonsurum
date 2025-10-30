@@ -68,7 +68,9 @@ export default function ReportPage() {
             let screenshotURL: string | null = null;
             if (screenshot) {
                 if (!storage) {
-                    throw new Error("Depolama hizmeti başlatılamadı.");
+                    toast({ title: 'Hata', description: 'Depolama hizmeti başlatılamadı. Ekran görüntüsü yüklenemiyor.', variant: 'destructive' });
+                    setIsSubmitting(false);
+                    return;
                 }
                 const uniqueFileName = `reports/${user.uid}/${Date.now()}-${screenshot.name}`;
                 const imageRef = storageRef(storage, uniqueFileName);

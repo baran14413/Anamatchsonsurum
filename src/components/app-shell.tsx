@@ -89,18 +89,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return; // Wait until user status is resolved
     }
 
-    if (user && !userProfile?.rulesAgreed) {
-        if (pathname !== '/kurallar' && pathname !== '/profil/galeri') {
-            router.replace('/profil/galeri');
+    if (user) {
+        // If user is logged in, check onboarding status
+        if (!userProfile?.images || userProfile.images.length < 2) {
+             if (pathname !== '/profil/galeri') {
+                router.replace('/profil/galeri');
+             }
+        } else if (!userProfile.rulesAgreed) {
+             if (pathname !== '/kurallar') {
+                router.replace('/kurallar');
+             }
         }
-    } else if (!user) {
-        // Allow access to public pages
+    } else {
+        // If user is not logged in, only allow access to public pages
         const publicPages = ['/', '/giris', '/kayit', '/tos', '/privacy', '/cookies', '/sifremi-unuttum'];
         if (!publicPages.includes(pathname)) {
             router.replace('/');
         }
     }
-  }, [user, userProfile, isUserLoading, pathname, router]);
+}, [user, userProfile, isUserLoading, pathname, router]);
 
 
   // Effect for AdMob and Notifications

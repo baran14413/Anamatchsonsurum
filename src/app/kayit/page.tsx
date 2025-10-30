@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -440,7 +439,7 @@ export default function SignUpPage() {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b-0 bg-transparent px-4">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4">
         <div className="flex flex-1 items-center gap-4">
           <Button
             variant="ghost"
@@ -458,7 +457,7 @@ export default function SignUpPage() {
         <form onSubmit={(e) => e.preventDefault()} className="flex flex-1 flex-col overflow-hidden p-6">
             <div className="flex-1 flex flex-col min-h-0">
                 {step === 0 && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-center">
                         <div className="space-y-4">
                             <h1 className="text-3xl font-bold">{langTr.signup.step2.title}</h1>
                             <FormField
@@ -485,7 +484,7 @@ export default function SignUpPage() {
                 )}
 
                 {step === 1 && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-center">
                         <div className="space-y-4">
                             <h1 className="text-3xl font-bold">{langTr.signup.step3.title}</h1>
                             <Controller
@@ -523,7 +522,7 @@ export default function SignUpPage() {
                 )}
 
                 {step === 2 && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-center">
                         <div className="space-y-8">
                             <h1 className="text-3xl font-bold">{langTr.signup.step4.title}</h1>
                             <div className="space-y-4">
@@ -628,7 +627,7 @@ export default function SignUpPage() {
                 )}
 
                 {step === 5 && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-center">
                         <div className="space-y-8">
                             <div className="space-y-2">
                                 <h1 className="text-3xl font-bold">{langTr.signup.step7.title}</h1>
@@ -701,7 +700,7 @@ export default function SignUpPage() {
                 )}
 
                 {step === 7 && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-center">
                         <div className="space-y-4">
                             <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
                             <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
