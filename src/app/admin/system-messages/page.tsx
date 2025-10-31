@@ -123,11 +123,13 @@ export default function SystemMessagesPage() {
         const timestamp = serverTimestamp();
         const centralMessageRef = doc(collection(firestore, 'system_messages'));
 
+        // Corrected SystemMessage object
         const centralMessageData: Omit<SystemMessage, 'id'> = {
             timestamp: timestamp,
             sentTo: users.map(u => u.uid),
             seenBy: [],
             text: messageContent,
+            type: 'text',
         };
 
         batch.set(centralMessageRef, centralMessageData);

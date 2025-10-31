@@ -93,11 +93,16 @@ export type Post = {
 };
 
 export interface SystemMessage {
-  id: string;
-  timestamp: any;
-  sentTo: string[];
-  seenBy: string[];
-  text: string;
+    id: string;
+    timestamp: any;
+    sentTo: string[];
+    seenBy: string[];
+    type?: 'text' | 'poll';
+    text: string | null;
+    pollQuestion?: string | null;
+    pollOptions?: string[] | null;
+    pollResults?: { [key: string]: number } | null;
+    votedBy?: string[]; // Tracks which UIDs have voted on this poll
 }
 
 export type ChatMessage = {
