@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore';
+import { collection, query, writeBatch, serverTimestamp, doc, addDoc, orderBy, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { Send, Users, X, Plus, BarChart2, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
-import { UserProfile, SystemMessage } from '@/lib/types';
+import { UserProfile, SystemMessage, ChatMessage } from '@/lib/types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -36,9 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 
-const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMessage, totalUsers: number, onDelete: (messageId: string) => void }) => {
-    const seenCount = message.seenBy?.length || 0;
-
+const SentMessageCard = ({ message, onDelete }: { message: ChatMessage, onDelete: (messageId: string) => void }) => {
     return (
         <Card>
             <CardHeader className='p-4 flex-row items-start justify-between'>
@@ -68,12 +66,6 @@ const SentMessageCard = ({ message, totalUsers, onDelete }: { message: SystemMes
                 <div className="text-xs text-muted-foreground">
                     {message.timestamp?.toDate && formatDistanceToNow(message.timestamp.toDate(), { locale: tr, addSuffix: true })}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                     <div className='flex items-center gap-1.5' title={`${seenCount} kullanıcı tarafından görüldü`}>
-                        <Eye className="h-4 w-4" />
-                        <span>{seenCount} / {totalUsers}</span>
-                    </div>
-                </div>
             </CardFooter>
         </Card>
     );
@@ -98,11 +90,12 @@ export default function SystemMessagesPage() {
     return allUsers.filter(user => user.isBot !== true);
   }, [allUsers]);
 
+  // Fetch from a single user's system chat to display history
   const systemMessagesQuery = useMemo(
-    () => (firestore ? query(collection(firestore, 'system_messages'), orderBy('timestamp', 'desc')) : null),
-    [firestore]
+    () => (firestore && users.length > 0 ? query(collection(firestore, `users/${users[0].uid}/matches/system/messages`), orderBy('timestamp', 'desc')) : null),
+    [firestore, users]
   );
-  const { data: sentMessages, isLoading: isLoadingMessages } = useCollection<SystemMessage>(systemMessagesQuery);
+  const { data: sentMessages, isLoading: isLoadingMessages } = useCollection<ChatMessage>(systemMessagesQuery);
 
 
   const handleSendMessage = async () => {
@@ -121,33 +114,32 @@ export default function SystemMessagesPage() {
     try {
         const batch = writeBatch(firestore);
         const timestamp = serverTimestamp();
-        const centralMessageRef = doc(collection(firestore, 'system_messages'));
-
-        // Corrected SystemMessage object
-        const centralMessageData: Omit<SystemMessage, 'id'> = {
-            timestamp: timestamp,
-            sentTo: users.map(u => u.uid),
-            seenBy: [],
-            text: messageContent,
-            type: 'text',
-        };
-
-        batch.set(centralMessageRef, centralMessageData);
-
+        
         const systemMatchData = {
             id: 'system',
             matchedWith: 'system',
             lastMessage: messageContent,
             timestamp: timestamp,
-            fullName: 'BeMatch - Sistem Mesajları',
-            profilePicture: '',
+            fullName: 'BeMatch Studio',
+            profilePicture: '', 
             hasUnreadSystemMessage: true,
         };
         
-        users.forEach(user => {
+        const messageData = {
+            senderId: 'system',
+            text: messageContent,
+            timestamp: timestamp,
+            type: 'user',
+        };
+
+        // Create the message and update the match for each user
+        for (const user of users) {
             const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
+            const newMessageRef = doc(collection(firestore, `users/${user.uid}/matches/system/messages`));
+            
             batch.set(systemMatchRef, systemMatchData, { merge: true });
-        });
+            batch.set(newMessageRef, { ...messageData, id: newMessageRef.id });
+        }
 
         await batch.commit();
 
@@ -177,16 +169,11 @@ export default function SystemMessagesPage() {
     try {
         const batch = writeBatch(firestore);
         
-        const centralMessageRef = doc(firestore, 'system_messages', messageToDelete);
-        batch.delete(centralMessageRef);
-
-        users.forEach(user => {
-            const systemMatchRef = doc(firestore, `users/${user.uid}/matches`, 'system');
-            batch.update(systemMatchRef, {
-                lastMessage: "Sistem mesajı silindi.",
-                hasUnreadSystemMessage: false,
-            });
-        });
+        // Delete the message from every user's system chat
+        for (const user of users) {
+            const messageRef = doc(firestore, `users/${user.uid}/matches/system/messages`, messageToDelete);
+            batch.delete(messageRef);
+        }
 
         await batch.commit();
 
@@ -270,7 +257,7 @@ export default function SystemMessagesPage() {
                 ) : sentMessages && sentMessages.length > 0 ? (
                     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                         {sentMessages.map(msg => (
-                            <SentMessageCard key={msg.id} message={msg} totalUsers={users?.length || 0} onDelete={() => setMessageToDelete(msg.id)} />
+                            <SentMessageCard key={msg.id} message={msg} onDelete={() => setMessageToDelete(msg.id)} />
                         ))}
                     </div>
                 ) : (

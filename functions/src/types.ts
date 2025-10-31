@@ -1,4 +1,5 @@
 
+
 export interface UserImage {
     url: string;
     public_id: string;
@@ -94,14 +95,9 @@ export interface UserImage {
   export interface SystemMessage {
     id: string;
     timestamp: any;
-    sentTo: string[];
-    seenBy: string[];
-    type?: 'text' | 'poll';
-    text: string | null;
-    pollQuestion?: string | null;
-    pollOptions?: string[] | null;
-    pollResults?: { [key: string]: number } | null;
-    votedBy?: string[]; // Tracks which UIDs have voted on this poll
+    senderId: 'system';
+    text: string;
+    type: 'user';
   }
   
   export type ChatMessage = {
@@ -141,7 +137,6 @@ export interface UserImage {
       status?: 'pending' | 'matched' | 'superlike_pending';
       superLikeInitiator?: string;
       unreadCount?: number;
-      lastSystemMessageId?: string;
       hasUnreadSystemMessage?: boolean;
   }
   

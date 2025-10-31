@@ -93,16 +93,11 @@ export type Post = {
 };
 
 export interface SystemMessage {
-    id: string;
-    timestamp: any;
-    sentTo: string[];
-    seenBy: string[];
-    type?: 'text' | 'poll';
-    text: string | null;
-    pollQuestion?: string | null;
-    pollOptions?: string[] | null;
-    pollResults?: { [key: string]: number } | null;
-    votedBy?: string[]; // Tracks which UIDs have voted on this poll
+  id: string;
+  timestamp: any;
+  senderId: 'system';
+  text: string;
+  type: 'user'; // System messages will use the 'user' type for simplicity in rendering
 }
 
 export type ChatMessage = {
@@ -133,7 +128,7 @@ export type ChatMessage = {
 
 export interface DenormalizedMatch {
     id: string;
-    matchedWith: string;
+    matchedWith: string; // For system messages, this will be 'system'
     lastMessage: string;
     timestamp: any;
     fullName: string;
@@ -142,8 +137,7 @@ export interface DenormalizedMatch {
     status?: 'pending' | 'matched' | 'superlike_pending';
     superLikeInitiator?: string;
     unreadCount?: number;
-    lastSystemMessageId?: string;
-    hasUnreadSystemMessage?: boolean;
+    hasUnreadSystemMessage?: boolean; // Specific for system chat
 }
 
 export interface Report {
