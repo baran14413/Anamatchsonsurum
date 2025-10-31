@@ -8,7 +8,7 @@ import { Settings, Flame, Heart, MessageSquare, User, Globe, Shield } from 'luci
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import Link from 'next/link';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,10 +35,11 @@ import { useNotificationHandler } from '@/lib/notifications';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { initializeAdMob, showBanner } from '@/lib/admob';
+import type { UserProfile } from '@/lib/types';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, userProfile, auth, isUserLoading } = useUser();
+  const { user, auth, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -47,9 +48,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useNotificationHandler(toast);
 
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+  
+  const isUserLoading = isAuthLoading || isProfileLoading;
 
   const handleAdminLogin = () => {
     if (adminPassword === 'admin') {
@@ -83,10 +88,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  // Real-time listener for user profile
+  useEffect(() => {
+    if (user && firestore) {
+      setIsProfileLoading(true);
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
+        } else {
+          setUserProfile(null);
+        }
+        setIsProfileLoading(false);
+      }, (error) => {
+        console.error("Error fetching user profile:", error);
+        setUserProfile(null);
+        setIsProfileLoading(false);
+      });
+      return () => unsubscribe();
+    } else {
+      setUserProfile(null);
+      setIsProfileLoading(false);
+    }
+  }, [user, firestore]);
 
   useEffect(() => {
     if (isUserLoading) {
-        return; // Wait until user status is resolved
+        return; // Wait until auth and profile status is resolved
     }
 
     if (user) {
@@ -107,7 +135,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             router.replace('/');
         }
     }
-}, [user, userProfile, isUserLoading, pathname, router]);
+  }, [user, userProfile, isUserLoading, pathname, router]);
 
 
   // Effect for AdMob and Notifications
