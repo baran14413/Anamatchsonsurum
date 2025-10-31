@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,10 @@ import { ArrowLeft, Plus, Trash2, Pencil, Star, Video } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
 import { langTr } from '@/languages/tr';
-import type { UserImage } from "@/lib/types";
+import type { UserImage, UserProfile } from "@/lib/types";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useFirestore, useFirebaseApp } from '@/firebase/provider';
 
 const MAX_IMAGES = 10;
 
@@ -28,7 +29,7 @@ type ImageSlot = {
     tempId: string; 
 };
 
-const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
+const getInitialImageSlots = (userProfile: UserProfile | null): ImageSlot[] => {
     const slots: ImageSlot[] = [];
 
     if (userProfile?.images) {
@@ -64,7 +65,10 @@ const getInitialImageSlots = (userProfile: any): ImageSlot[] => {
 export default function GalleryPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { user, userProfile, firestore, storage } = useFirebase();
+    const { user, userProfile, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const firebaseApp = useFirebaseApp();
+    const storage = firebaseApp ? getStorage(firebaseApp) : null;
     const t = langTr.ayarlarGaleri;
 
     const [imageSlots, setImageSlots] = useState<ImageSlot[]>([]);
@@ -75,13 +79,15 @@ export default function GalleryPage() {
     const [isOnboarding, setIsOnboarding] = useState(false);
 
     useEffect(() => {
-        if (userProfile) {
+        // Wait until user profile is loaded
+        if (!isUserLoading) {
             setImageSlots(getInitialImageSlots(userProfile));
-            if (!userProfile.rulesAgreed) {
+            // Determine if it's onboarding if rulesAgreed is missing or false
+            if (!userProfile?.rulesAgreed) {
                 setIsOnboarding(true);
             }
         }
-    }, [userProfile]);
+    }, [userProfile, isUserLoading]);
 
     const uploadedImageCount = useMemo(() => imageSlots.filter(slot => slot.preview).length, [imageSlots]);
 
@@ -161,7 +167,7 @@ export default function GalleryPage() {
     };
 
     const handleSaveChanges = async () => {
-        if (!firestore || !user) return;
+        if (!firestore || !user || !userProfile) return;
         if (uploadedImageCount < 1) {
              toast({ title: "Hata", description: "Lütfen en az 1 medya yükleyin.", variant: "destructive" });
              return;
@@ -179,7 +185,7 @@ export default function GalleryPage() {
 
             await updateDoc(doc(firestore, "users", user.uid), {
                 images: finalImages,
-                profilePicture: finalImages.length > 0 ? (finalImages[0].type === 'image' ? finalImages[0].url : userProfile?.profilePicture) : null,
+                profilePicture: finalImages.length > 0 && finalImages[0].type === 'image' ? finalImages[0].url : userProfile.profilePicture,
             });
             
             toast({
@@ -199,6 +205,18 @@ export default function GalleryPage() {
             setIsSubmitting(false);
         }
     };
+
+
+    if (isUserLoading) {
+      return <div className="flex h-dvh items-center justify-center bg-background"><Icons.logo width={48} height={48} className="animate-pulse" /></div>;
+    }
+
+    // Redirect already onboarded users if they land here by mistake
+    if (!isUserLoading && userProfile && userProfile.rulesAgreed && userProfile.images && userProfile.images.length > 0) {
+        if (pathname !== '/profil/galeri') { // Assuming you can get pathname
+           // router.replace('/profil'); // Or wherever they should be
+        }
+    }
 
 
     return (

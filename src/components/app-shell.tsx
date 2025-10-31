@@ -39,7 +39,7 @@ import type { UserProfile } from '@/lib/types';
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, auth, isUserLoading: isAuthLoading } = useUser();
+  const { user, auth, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -48,14 +48,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useNotificationHandler(toast);
 
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [hasNewLikes, setHasNewLikes] = useState(false);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   
-  const isUserLoading = isAuthLoading || isProfileLoading;
-
   const handleAdminLogin = () => {
     if (adminPassword === 'admin') {
       sessionStorage.setItem('admin_access', 'granted');
@@ -88,47 +84,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  // Real-time listener for user profile
-  useEffect(() => {
-    if (user && firestore) {
-      setIsProfileLoading(true);
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setUserProfile({ id: docSnap.id, ...docSnap.data() } as UserProfile);
-        } else {
-          setUserProfile(null);
-        }
-        setIsProfileLoading(false);
-      }, (error) => {
-        console.error("Error fetching user profile:", error);
-        setUserProfile(null);
-        setIsProfileLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
-      setUserProfile(null);
-      setIsProfileLoading(false);
-    }
-  }, [user, firestore]);
-
   useEffect(() => {
     if (isUserLoading) {
         return; // Wait until auth and profile status is resolved
     }
 
-    if (user) {
-        // If user is logged in, check onboarding status
-        if (!userProfile?.images || userProfile.images.length < 2) {
-             if (pathname !== '/profil/galeri') {
-                router.replace('/profil/galeri');
-             }
-        } else if (!userProfile.rulesAgreed) {
-             if (pathname !== '/kurallar') {
-                router.replace('/kurallar');
-             }
-        }
-    } else {
+    if (!user) {
         // If user is not logged in, only allow access to public pages
         const publicPages = ['/', '/giris', '/kayit', '/tos', '/privacy', '/cookies', '/sifremi-unuttum'];
         if (!publicPages.includes(pathname)) {
@@ -200,17 +161,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     ];
     
     // Determine if the AppShell UI should be shown
-    const showAppUI = user && userProfile?.rulesAgreed;
+    const showAppUI = user && userProfile; // Show if user is logged in and has a profile
 
     if (isUserLoading) {
       return <div className="flex h-dvh items-center justify-center bg-background"><Icons.logo width={48} height={48} className="animate-pulse" /></div>;
     }
     
     if (!showAppUI) {
-      // For public pages or onboarding, just render the children without the shell
+      // For public pages or onboarding (which now handle their own logic), just render the children
       return <>{children}</>;
     }
-
 
     return (
      <AlertDialog>
