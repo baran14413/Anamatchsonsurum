@@ -72,6 +72,10 @@ const formSchema = z.object({
   interests: z.array(z.string()).min(1, 'En az 1 ilgi alanı seçmelisin.').optional(),
   email: z.string().email({ message: "Lütfen geçerli bir e-posta adresi girin." }),
   password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
+  confirmPassword: z.string().min(6, { message: "Şifre onayı en az 6 karakter olmalıdır." }),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: langTr.login.errors.passwordMismatch,
+    path: ["confirmPassword"],
 });
 
 
@@ -230,6 +234,7 @@ export default function SignUpPage() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   
@@ -245,6 +250,7 @@ export default function SignUpPage() {
       interests: [],
       email: '',
       password: '',
+      confirmPassword: '',
     },
     mode: 'onChange',
   });
@@ -414,7 +420,7 @@ export default function SignUpPage() {
         }
         break;
       case 7:
-        fieldsToValidate = ['email', 'password'];
+        fieldsToValidate = ['email', 'password', 'confirmPassword'];
         break;
     }
 
@@ -737,6 +743,24 @@ export default function SignUpPage() {
                                         </FormItem>
                                     )}
                                 />
+                                 <FormField
+                                    control={form.control}
+                                    name="confirmPassword"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                            <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-background text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                                {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                            </button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
                         </div>
                     </div>
@@ -762,3 +786,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+    
