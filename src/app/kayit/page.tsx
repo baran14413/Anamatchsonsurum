@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -706,64 +707,66 @@ export default function SignUpPage() {
                 )}
 
                 {step === 7 && (
-                    <div className="flex-1 flex flex-col justify-center">
-                        <div className="space-y-4">
-                            <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
-                            <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
-                            <div className="space-y-6 pt-4">
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="E-posta adresini gir..." {...field} className="h-14 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                            <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni belirle..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-background text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
-                                                {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                                            </button>
-                                            </div>
-                                        </FormControl>
-                                        <PasswordStrength password={passwordValue} />
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                 <FormField
-                                    control={form.control}
-                                    name="confirmPassword"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                            <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-background text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
-                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
-                                                {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                                            </button>
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                    <ScrollArea className="flex-1 -mx-6 px-6">
+                        <div className="flex flex-col justify-center min-h-full py-6">
+                            <div className="space-y-4">
+                                <h1 className="text-3xl font-bold">{langTr.signup.step1.title}</h1>
+                                <p className="text-muted-foreground">{langTr.signup.step1.description}</p>
+                                <div className="space-y-6 pt-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>{langTr.signup.step1.emailLabel}</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="E-posta adresini gir..." {...field} className="h-14 rounded-none border-0 border-b-2 bg-transparent text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>{langTr.signup.step1.passwordLabel}</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                <Input type={showPassword ? 'text' : 'password'} placeholder="Şifreni belirle..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-background text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                                    {showPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                                </button>
+                                                </div>
+                                            </FormControl>
+                                            <PasswordStrength password={passwordValue} />
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="confirmPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>{langTr.login.confirmPasswordLabel}</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Şifreni tekrar gir..." {...field} className="h-14 pr-10 rounded-none border-0 border-b-2 bg-background text-lg focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary" />
+                                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 p-2">
+                                                    {showConfirmPassword ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
+                                                </button>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </ScrollArea>
                 )}
             </div>
             
@@ -786,4 +789,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-    
