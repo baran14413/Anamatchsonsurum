@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, Trash2, Pencil, Star, Video } from 'lucide-react';
@@ -211,19 +210,11 @@ export default function GalleryPage() {
       return <div className="flex h-dvh items-center justify-center bg-background"><Icons.logo width={48} height={48} className="animate-pulse" /></div>;
     }
 
-    // Redirect already onboarded users if they land here by mistake
-    if (!isUserLoading && userProfile && userProfile.rulesAgreed && userProfile.images && userProfile.images.length > 0) {
-        if (pathname !== '/profil/galeri') { // Assuming you can get pathname
-           // router.replace('/profil'); // Or wherever they should be
-        }
-    }
-
-
     return (
         <div className="flex h-dvh flex-col bg-background text-foreground">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} disabled={isSubmitting || isOnboarding}>
-                    <ArrowLeft className="h-6 w-6" />
+                <Button variant="ghost" size="icon" onClick={() => !isOnboarding && router.back()} disabled={isSubmitting || isOnboarding}>
+                    {!isOnboarding && <ArrowLeft className="h-6 w-6" />}
                 </Button>
                 <h1 className="text-lg font-semibold">{isOnboarding ? "Profil Medyaları" : t.title}</h1>
                 <Button onClick={handleSaveChanges} disabled={isSubmitting || (isOnboarding && uploadedImageCount < 2) || (!isOnboarding && uploadedImageCount < 1)}>
