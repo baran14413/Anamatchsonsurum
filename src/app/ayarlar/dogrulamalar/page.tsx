@@ -1,16 +1,28 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MailCheck, ShieldCheck, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MailCheck, ShieldCheck, ChevronRight, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 
-const VerificationItem = ({ icon: Icon, title, description, isVerified, actionText, onAction, disabled = false }: {
+const VerificationItem = ({ 
+    icon: Icon, 
+    title, 
+    description, 
+    isVerified, 
+    actionText, 
+    onAction, 
+    disabled = false,
+    href
+}: {
     icon: React.ElementType;
     title: string;
     description: string;
@@ -18,9 +30,10 @@ const VerificationItem = ({ icon: Icon, title, description, isVerified, actionTe
     actionText: string;
     onAction?: () => void;
     disabled?: boolean;
+    href?: string;
 }) => {
     const content = (
-        <div className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+        <div className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors">
             <div className="p-3 rounded-full bg-primary/10 text-primary">
                 <Icon className="w-6 h-6" />
             </div>
@@ -34,7 +47,7 @@ const VerificationItem = ({ icon: Icon, title, description, isVerified, actionTe
                     Doğrulandı
                 </Badge>
             ) : (
-                <Button variant="ghost" size="sm" disabled={disabled} onClick={onAction}>
+                <Button variant="ghost" size="sm" disabled={disabled} onClick={href ? undefined : onAction}>
                     {disabled ? (
                         <>
                             <Icons.logo width={16} height={16} className="mr-2 animate-pulse" />
@@ -48,14 +61,18 @@ const VerificationItem = ({ icon: Icon, title, description, isVerified, actionTe
             )}
         </div>
     );
+    
+    if (href && !isVerified) {
+        return <Link href={href}>{content}</Link>
+    }
 
-    return <div onClick={!isVerified ? onAction : undefined}>{content}</div>;
+    return <div onClick={!isVerified && !href ? onAction : undefined} className={href ? '' : 'cursor-pointer'}>{content}</div>;
 };
 
 
 export default function VerificationsPage() {
     const router = useRouter();
-    const { user, isUserLoading } = useUser();
+    const { user, userProfile, isUserLoading } = useUser();
     const { toast } = useToast();
     const [isSending, setIsSending] = useState(false);
     const [cooldown, setCooldown] = useState(0);
@@ -104,6 +121,7 @@ export default function VerificationsPage() {
     }
 
     const isEmailVerified = user?.emailVerified ?? false;
+    const isPhotoVerified = userProfile?.isPhotoVerified ?? false;
 
     return (
         <div className="flex h-dvh flex-col">
@@ -115,17 +133,33 @@ export default function VerificationsPage() {
                 <div className='w-9'></div>
             </header>
             <main className="flex-1 overflow-y-auto p-6 space-y-8">
-                <div className="divide-y border rounded-lg">
-                    <VerificationItem
-                        icon={MailCheck}
-                        title="E-posta Doğrulaması"
-                        description={isEmailVerified ? user?.email || 'E-posta adresiniz doğrulandı' : 'Hesap güvenliğinizi artırın'}
-                        isVerified={isEmailVerified}
-                        actionText={cooldown > 0 ? `Tekrar Gönder (${cooldown}s)` : 'Doğrulama E-postası Gönder'}
-                        onAction={handleSendVerificationEmail}
-                        disabled={isSending || cooldown > 0}
-                    />
-                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Hesap Güvenliği</CardTitle>
+                        <CardDescription>Hesabını doğrulayarak güvenliğini artır ve profilinde mavi tik kazan.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="divide-y border rounded-lg">
+                            <VerificationItem
+                                icon={MailCheck}
+                                title="E-posta Doğrulaması"
+                                description={isEmailVerified ? user?.email || 'E-posta adresiniz doğrulandı' : 'Hesabının sana ait olduğunu onayla.'}
+                                isVerified={isEmailVerified}
+                                actionText={cooldown > 0 ? `Tekrar Gönder (${cooldown}s)` : 'Doğrula'}
+                                onAction={handleSendVerificationEmail}
+                                disabled={isSending || cooldown > 0}
+                            />
+                             <VerificationItem
+                                icon={Camera}
+                                title="Yüz Doğrulaması"
+                                description={isPhotoVerified ? 'Profilin fotoğrafla doğrulandı.' : 'Gerçek bir kişi olduğunu kanıtla.'}
+                                isVerified={isPhotoVerified}
+                                actionText="Doğrula"
+                                href="/ayarlar/dogrulamalar/yuz"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
             </main>
         </div>
     )

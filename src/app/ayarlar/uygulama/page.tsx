@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff, Palette } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Laptop, Trash2, Smartphone, Bell, BellOff, Palette, Monitor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { langTr } from '@/languages/tr';
 import { requestNotificationPermission, isNotificationSupported, saveTokenToFirestore, useNotificationHandler } from '@/lib/notifications';
@@ -15,10 +15,35 @@ import { Icons } from '@/components/icons';
 import { useUser, useFirestore } from '@/firebase/provider';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 // You can get this from package.json in a real build process
 const appVersion = '0.1.0';
+
+// Helper function to parse user agent
+const getDeviceInfo = () => {
+    if (typeof window === 'undefined') return { device: 'Bilinmeyen', browser: 'Bilinmeyen' };
+    const ua = navigator.userAgent;
+    let device = 'Masaüstü';
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+        device = "Tablet";
+    } else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|NetFront|Silk-Accelerated|(hpw|web)OS|Fennec|Minimo|Opera M(obi|ini)|Blazer|Dolfin|Dolphin|Skyfire|Zune/.test(ua)) {
+        device = "Mobil";
+    }
+    
+    let browser = 'Bilinmeyen Tarayıcı';
+    if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('SamsungBrowser')) browser = 'Samsung Internet';
+    else if (ua.includes('Opera') || ua.includes('OPR')) browser = 'Opera';
+    else if (ua.includes('Trident')) browser = 'Internet Explorer';
+    else if (ua.includes('Edge')) browser = 'Edge';
+    else if (ua.includes('Chrome')) browser = 'Chrome';
+    else if (ua.includes('Safari')) browser = 'Safari';
+
+    return { device, browser };
+}
+
 
 export default function AppSettingsPage() {
   const router = useRouter();
@@ -32,11 +57,14 @@ export default function AppSettingsPage() {
   const [notificationPermission, setNotificationPermission] = useState('default');
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState({ device: 'Bilinmeyen', browser: 'Bilinmeyen' });
+
   
   useNotificationHandler(toast);
 
   useEffect(() => {
     setMounted(true);
+    setDeviceInfo(getDeviceInfo());
     const checkSupport = async () => {
         if (Capacitor.isNativePlatform()) {
             setIsSupported(true);
@@ -157,32 +185,52 @@ export default function AppSettingsPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-6 space-y-8">
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold">Bildirimler</h2>
-            <p className="text-muted-foreground">Yeni eşleşmelerden ve mesajlardan anında haberdar ol.</p>
-            {isSupported ? (
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Oturum Yönetimi</CardTitle>
+                <CardDescription>Aktif oturumlarını ve giriş yaptığın cihazları gör.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="flex items-center gap-4 rounded-lg border bg-background p-4">
+                    <Monitor className="h-8 w-8 text-muted-foreground" />
+                    <div className="flex-1">
+                        <p className="font-semibold text-green-500">Bu Cihaz</p>
+                        <p className="text-sm text-muted-foreground">{deviceInfo.browser}, {deviceInfo.device}</p>
+                    </div>
+                     <Button variant="outline" size="sm" disabled>Oturumu Kapat</Button>
+                 </div>
+            </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Bildirimler</CardTitle>
+            <CardDescription>Yeni eşleşmelerden ve mesajlardan anında haberdar ol.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             {isSupported ? (
                  <div className="flex items-center justify-between rounded-lg border bg-background p-4">
                     <div className="flex flex-col space-y-1">
                         <span>Anlık Bildirimler</span>
                         <span className="font-normal text-xs leading-snug text-muted-foreground">
                              {notificationPermission === 'granted' && 'Bildirimlere izin verdin.'}
                              {notificationPermission === 'denied' && 'Bildirimleri engelledin.'}
+                             {notificationPermission === 'default' && 'Bildirimlere henüz izin vermedin.'}
                              {notificationPermission === 'prompt' && 'Bildirimlere henüz izin vermedin.'}
                         </span>
                     </div>
-                     {notificationPermission === 'prompt' && (
+                     {notificationPermission === 'prompt' || notificationPermission === 'default' ? (
                         <Button variant="default" size="sm" onClick={handleEnableNotificationsClick} disabled={isRequestingPermission}>
                            {isRequestingPermission ? <Icons.logo width={16} height={16} className='animate-pulse mr-2' /> : <Bell className="h-4 w-4 mr-2"/>}
                            İzin Ver
                         </Button>
-                     )}
-                      {notificationPermission === 'granted' && (
+                     ) : notificationPermission === 'granted' ? (
                         <div className='flex items-center gap-2 text-green-500'>
                             <Bell className="h-5 w-5" />
                             <span className='font-semibold text-sm'>Aktif</span>
                         </div>
-                     )}
-                     {notificationPermission === 'denied' && (
+                     ) : (
                         <div className='flex items-center gap-2 text-red-500'>
                             <BellOff className="h-5 w-5" />
                             <span className='font-semibold text-sm'>Engellendi</span>
@@ -199,57 +247,46 @@ export default function AppSettingsPage() {
                     </div>
                 </div>
             )}
-        </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Görünüm</CardTitle>
+            <CardDescription>Uygulamanın nasıl görüneceğini seçin.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup value={theme} onValueChange={setTheme} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Label htmlFor="light" className="flex flex-col items-center justify-center rounded-lg border-2 p-4 cursor-pointer [&:has([data-state=checked])]:border-primary">
+                <Sun className="h-8 w-8 mb-2" />
+                <span>Aydınlık</span>
+                <RadioGroupItem value="light" id="light" className="sr-only" />
+              </Label>
+              <Label htmlFor="dark" className="flex flex-col items-center justify-center rounded-lg border-2 p-4 cursor-pointer [&:has([data-state=checked])]:border-primary">
+                <Moon className="h-8 w-8 mb-2" />
+                <span>Karanlık</span>
+                <RadioGroupItem value="dark" id="dark" className="sr-only" />
+              </Label>
+              <Label htmlFor="system" className="flex flex-col items-center justify-center rounded-lg border-2 p-4 cursor-pointer [&:has([data-state=checked])]:border-primary">
+                <Laptop className="h-8 w-8 mb-2" />
+                <span>Sistem</span>
+                <RadioGroupItem value="system" id="system" className="sr-only" />
+              </Label>
+            </RadioGroup>
+          </CardContent>
+        </Card>
 
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold">Görünüm</h2>
-          <p className="text-muted-foreground">Uygulamanın nasıl görüneceğini seçin.</p>
-          <RadioGroup
-            value={theme}
-            onValueChange={setTheme}
-            className="space-y-1"
-          >
-            <Label
-              htmlFor="light"
-              className="flex items-center justify-between rounded-lg border bg-background p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              <div className="flex items-center gap-3">
-                <Palette className="h-5 w-5" />
-                <span>Siyah &amp; Beyaz</span>
-              </div>
-              <RadioGroupItem value="light" id="light" />
-            </Label>
-            <Label
-              htmlFor="dark"
-              className="flex items-center justify-between rounded-lg border bg-background p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              <div className="flex items-center gap-3">
-                <Moon className="h-5 w-5" />
-                <span>Gece Modu</span>
-              </div>
-              <RadioGroupItem value="dark" id="dark" />
-            </Label>
-            <Label
-              htmlFor="system"
-              className="flex items-center justify-between rounded-lg border bg-background p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-            >
-              <div className="flex items-center gap-3">
-                <Laptop className="h-5 w-5" />
-                <span>Sistem Varsayılanı</span>
-              </div>
-              <RadioGroupItem value="system" id="system" />
-            </Label>
-          </RadioGroup>
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold">Uygulama Verileri</h2>
-           <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Uygulama Verileri</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between rounded-lg border bg-background p-4">
                 <div className="flex flex-col space-y-1">
                     <span>Önbelleği Temizle</span>
                     <span className="font-normal text-xs leading-snug text-muted-foreground">
-                        Uygulamanın tarayıcıda sakladığı tüm yerel verileri (tema seçimi vb.) temizler.
+                        Uygulamanın tarayıcıda sakladığı tüm yerel verileri temizler.
                     </span>
                 </div>
                 <Button variant="destructive" size="sm" onClick={handleClearCache}>
@@ -257,19 +294,23 @@ export default function AppSettingsPage() {
                     Temizle
                 </Button>
             </div>
-        </div>
+          </CardContent>
+        </Card>
 
-         <div className="space-y-4">
-          <h2 className="text-xl font-bold">Hakkında</h2>
-           <div className="flex items-center justify-between rounded-lg border bg-background p-4">
-                <div className="flex items-center gap-3">
-                     <Smartphone className="h-5 w-5" />
-                     <span>Sürüm</span>
+         <Card>
+            <CardHeader>
+                <CardTitle>Hakkında</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+                    <div className="flex items-center gap-3">
+                        <Smartphone className="h-5 w-5" />
+                        <span>Sürüm</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground font-mono">{appVersion}</span>
                 </div>
-                <span className="text-sm text-muted-foreground font-mono">{appVersion}</span>
-            </div>
-        </div>
-
+            </CardContent>
+         </Card>
       </main>
     </div>
   );
