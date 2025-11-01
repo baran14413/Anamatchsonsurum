@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase/provider';
+import { useUser, useFirestore, useFirebaseApp } from '@/firebase/provider';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,9 @@ const reportReasons = [
 export default function ReportPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, firebaseApp } = useUser();
+    const { user } = useUser();
     const firestore = useFirestore();
+    const firebaseApp = useFirebaseApp();
     const storage = firebaseApp ? getStorage(firebaseApp) : null;
     const { toast } = useToast();
 
@@ -50,10 +51,19 @@ export default function ReportPage() {
     };
 
     const handleSubmit = async () => {
-        if (!user || !firestore) {
-            toast({ title: 'Hata', description: 'Rapor göndermek için giriş yapmalısınız veya servisler yüklenemedi.', variant: 'destructive' });
+        // --- YENİ GÜVENLİK KONTROLÜ ---
+        // Servislerin veya kullanıcının henüz hazır olmadığından emin ol.
+        if (!user || !firestore || !storage) {
+            toast({
+                title: 'Hata: Servisler Hazır Değil',
+                description: 'Rapor göndermek için gerekli servisler yüklenemedi veya oturumunuz doğrulanmadı. Lütfen bir an bekleyip tekrar deneyin.',
+                variant: 'destructive',
+            });
+            setIsSubmitting(false); // Butonu tekrar aktif et
             return;
         }
+        // --- KONTROL SONU ---
+
         if (!reportedUserId) {
             toast({ title: 'Hata', description: 'Rapor edilecek kullanıcı bulunamadı.', variant: 'destructive' });
             return;
@@ -67,11 +77,6 @@ export default function ReportPage() {
         try {
             let screenshotURL: string | null = null;
             if (screenshot) {
-                if (!storage) {
-                    toast({ title: 'Hata', description: 'Depolama hizmeti başlatılamadı. Ekran görüntüsü yüklenemiyor.', variant: 'destructive' });
-                    setIsSubmitting(false);
-                    return;
-                }
                 const uniqueFileName = `reports/${user.uid}/${Date.now()}-${screenshot.name}`;
                 const imageRef = storageRef(storage, uniqueFileName);
                 const snapshot = await uploadBytes(imageRef, screenshot);
