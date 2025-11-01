@@ -112,9 +112,9 @@
             "type": "boolean",
             "description": "Indicates if the user is currently online."
         },
-        "isPhotoVerified": {
+        "isGenderVerified": {
             "type": "boolean",
-            "description": "Indicates if the user has verified their profile with a photo."
+            "description": "Indicates if the user's gender has been verified by AI."
         },
         "lastSeen": {
             "type": "string",

@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MailCheck, ShieldCheck, ChevronRight, Camera } from 'lucide-react';
+import { ArrowLeft, MailCheck, ShieldCheck, ChevronRight, Camera, VenetianMask } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Icons } from '@/components/icons';
@@ -121,7 +120,7 @@ export default function VerificationsPage() {
     }
 
     const isEmailVerified = user?.emailVerified ?? false;
-    const isPhotoVerified = userProfile?.isPhotoVerified ?? false;
+    const isGenderVerified = userProfile?.isGenderVerified ?? false;
 
     return (
         <div className="flex h-dvh flex-col">
@@ -150,12 +149,12 @@ export default function VerificationsPage() {
                                 disabled={isSending || cooldown > 0}
                             />
                              <VerificationItem
-                                icon={Camera}
-                                title="Yüz Doğrulaması"
-                                description={isPhotoVerified ? 'Profilin fotoğrafla doğrulandı.' : 'Gerçek bir kişi olduğunu kanıtla.'}
-                                isVerified={isPhotoVerified}
+                                icon={VenetianMask}
+                                title="Cinsiyet Doğrulaması"
+                                description={isGenderVerified ? 'Cinsiyetin yapay zeka ile doğrulandı.' : 'Profilinin cinsiyetinle tutarlı olduğunu onayla.'}
+                                isVerified={isGenderVerified}
                                 actionText="Doğrula"
-                                href="/ayarlar/dogrulamalar/yuz"
+                                href="/ayarlar/dogrulamalar/cinsiyet"
                             />
                         </div>
                     </CardContent>

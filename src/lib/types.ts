@@ -40,7 +40,7 @@ export type UserProfile = {
   };
   expandAgeRange?: boolean;
   isOnline?: boolean;
-  isPhotoVerified?: boolean;
+  isGenderVerified?: boolean;
   isNewUser?: boolean;
   lastSeen?: any;
   createdAt?: any;
