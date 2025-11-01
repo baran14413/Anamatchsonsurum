@@ -4,7 +4,7 @@
 import { useUser, useFirebase } from '@/firebase/provider';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone, Wallet, ShieldCheck, Shield } from 'lucide-react';
+import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone, Wallet, ShieldCheck, Shield, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import Link from 'next/link';
@@ -109,6 +109,17 @@ function SettingsPageContent() {
                 <SettingsItem icon={ShieldCheck} iconColor="#16a34a" text="Doğrulamalar" href="/ayarlar/dogrulamalar" />
                 </div>
 
+                <SectionTitle title="Destek" />
+                <div className="bg-background border-y divide-y">
+                    <SettingsItem 
+                        icon={HelpCircle} 
+                        iconColor="#64748b" 
+                        text="Destek & İletişim" 
+                        value="bematchstudio@gmail.com"
+                        href="mailto:bematchstudio@gmail.com" 
+                    />
+                </div>
+
                 <SectionTitle title="Oturum" />
                 <div className="bg-background border-y">
                     <AlertDialogTrigger asChild>
@@ -151,5 +162,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
