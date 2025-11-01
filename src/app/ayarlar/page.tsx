@@ -109,11 +109,6 @@ function SettingsPageContent() {
                 <SettingsItem icon={ShieldCheck} iconColor="#16a34a" text="Doğrulamalar" href="/ayarlar/dogrulamalar" />
                 </div>
 
-                <SectionTitle title="Uygulama Ayarları" />
-                <div className="bg-background border-y">
-                <SettingsItem icon={Smartphone} iconColor="#f97316" text="Uygulama" href='/ayarlar/uygulama' />
-                </div>
-
                 <SectionTitle title="Oturum" />
                 <div className="bg-background border-y">
                     <AlertDialogTrigger asChild>

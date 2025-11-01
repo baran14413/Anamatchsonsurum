@@ -296,21 +296,6 @@ export default function AppSettingsPage() {
             </div>
           </CardContent>
         </Card>
-
-         <Card>
-            <CardHeader>
-                <CardTitle>Hakkında</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between rounded-lg border bg-background p-4">
-                    <div className="flex items-center gap-3">
-                        <Smartphone className="h-5 w-5" />
-                        <span>Sürüm</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground font-mono">{appVersion}</span>
-                </div>
-            </CardContent>
-         </Card>
       </main>
     </div>
   );
