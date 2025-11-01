@@ -132,13 +132,13 @@ function EslesmelerPageContent() {
         const batch = writeBatch(firestore);
 
         const matchDocRef = doc(firestore, 'matches', match.id);
-        batch.update(matchDocRef, { status: 'matched', matchDate: serverTimestamp() });
+        batch.set(matchDocRef, { status: 'matched', matchDate: serverTimestamp() }, { merge: true });
 
         const currentUserMatchRef = doc(firestore, `users/${user.uid}/matches`, match.id);
-        batch.update(currentUserMatchRef, { status: 'matched', lastMessage: "Super Like'ı kabul ettin!" });
+        batch.set(currentUserMatchRef, { status: 'matched', lastMessage: "Super Like'ı kabul ettin!" }, { merge: true });
         
         const otherUserMatchRef = doc(firestore, `users/${match.matchedWith}/matches`, match.id);
-        batch.update(otherUserMatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" });
+        batch.set(otherUserMatchRef, { status: 'matched', lastMessage: "Super Like'ın kabul edildi!" }, { merge: true });
         
         await batch.commit();
         
@@ -308,5 +308,7 @@ export default function EslesmelerPage() {
         </AppShell>
     );
 }
+
+    
 
     
