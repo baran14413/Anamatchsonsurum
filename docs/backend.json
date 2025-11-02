@@ -346,11 +346,6 @@
           "type": "string",
           "description": "A detailed description of the issue provided by the reporter."
         },
-        "screenshotURL": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL of the screenshot provided as evidence."
-        },
         "status": {
           "type": "string",
           "enum": ["pending", "resolved", "banned"],

@@ -147,7 +147,6 @@ export interface UserImage {
     matchId?: string;
     reason: string;
     description?: string;
-    screenshotURL?: string;
     status: 'pending' | 'resolved' | 'banned';
     timestamp: any;
   }

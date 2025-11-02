@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useUser, useFirestore, useFirebaseApp } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Flag, FileText, Camera, Send, X } from 'lucide-react';
+import { ArrowLeft, Flag, FileText, Send } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import Image from 'next/image';
 
 const reportReasons = [
     { id: 'inappropriate_profile', label: 'Uygunsuz Profil İçeriği' },
@@ -28,8 +26,6 @@ export default function ReportPage() {
     const searchParams = useSearchParams();
     const { user } = useUser();
     const firestore = useFirestore();
-    const firebaseApp = useFirebaseApp();
-    const storage = firebaseApp ? getStorage(firebaseApp) : null;
     const { toast } = useToast();
 
     const reportedUserId = searchParams.get('userId');
@@ -37,32 +33,18 @@ export default function ReportPage() {
 
     const [reason, setReason] = useState<string>('');
     const [description, setDescription] = useState('');
-    const [screenshot, setScreenshot] = useState<File | null>(null);
-    const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setScreenshot(file);
-            setScreenshotPreview(URL.createObjectURL(file));
-        }
-    };
 
     const handleSubmit = async () => {
-        // --- YENİ GÜVENLİK KONTROLÜ ---
-        // Servislerin veya kullanıcının henüz hazır olmadığından emin ol.
-        if (!user || !firestore || !storage) {
+        if (!user || !firestore) {
             toast({
                 title: 'Hata: Servisler Hazır Değil',
                 description: 'Rapor göndermek için gerekli servisler yüklenemedi veya oturumunuz doğrulanmadı. Lütfen bir an bekleyip tekrar deneyin.',
                 variant: 'destructive',
             });
-            setIsSubmitting(false); // Butonu tekrar aktif et
+            setIsSubmitting(false);
             return;
         }
-        // --- KONTROL SONU ---
 
         if (!reportedUserId) {
             toast({ title: 'Hata', description: 'Rapor edilecek kullanıcı bulunamadı.', variant: 'destructive' });
@@ -75,14 +57,6 @@ export default function ReportPage() {
 
         setIsSubmitting(true);
         try {
-            let screenshotURL: string | null = null;
-            if (screenshot) {
-                const uniqueFileName = `reports/${user.uid}/${Date.now()}-${screenshot.name}`;
-                const imageRef = storageRef(storage, uniqueFileName);
-                const snapshot = await uploadBytes(imageRef, screenshot);
-                screenshotURL = await getDownloadURL(snapshot.ref);
-            }
-
             const reportData: any = {
                 reporterId: user.uid,
                 reportedId: reportedUserId,
@@ -94,9 +68,6 @@ export default function ReportPage() {
 
             if (matchId) {
                 reportData.matchId = matchId;
-            }
-            if (screenshotURL) {
-                reportData.screenshotURL = screenshotURL;
             }
 
             await addDoc(collection(firestore, 'reports'), reportData);
@@ -159,31 +130,6 @@ export default function ReportPage() {
                         onChange={(e) => setDescription(e.target.value)}
                         rows={5}
                         disabled={isSubmitting}
-                    />
-                </div>
-
-                <div className="space-y-4">
-                    <Label htmlFor="screenshot" className="text-lg font-semibold flex items-center gap-2">
-                        <Camera className="h-5 w-5" /> Ekran Görüntüsü Ekle (İsteğe Bağlı)
-                    </Label>
-                    {screenshotPreview ? (
-                        <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden">
-                            <Image src={screenshotPreview} alt="Ekran görüntüsü önizlemesi" fill style={{objectFit: 'cover'}} />
-                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 rounded-full" onClick={() => { setScreenshot(null); setScreenshotPreview(null); }}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
-                            Dosya Seç
-                        </Button>
-                    )}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        accept="image/png, image/jpeg"
                     />
                 </div>
             </main>
