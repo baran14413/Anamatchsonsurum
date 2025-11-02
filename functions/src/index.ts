@@ -3,7 +3,10 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { Report } from "./types";
 
-admin.initializeApp();
+// Ensure app is initialized. This is idempotent.
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 
 const db = admin.firestore();
 
@@ -67,23 +70,26 @@ const sendDataNotification = async (
 const sendSystemMessage = async (userId: string, message: string) => {
     try {
         const systemMatchRef = db.collection('users').doc(userId).collection('matches').doc('system');
+        const timestamp = admin.firestore.FieldValue.serverTimestamp();
         
+        // Update the denormalized match data with the new last message
         await systemMatchRef.set({
             id: 'system',
             matchedWith: 'system',
             lastMessage: message,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: timestamp,
             fullName: 'BeMatch Studio',
             profilePicture: '', // You can add a URL to the BeMatch logo
             hasUnreadSystemMessage: true,
         }, { merge: true });
 
+        // Add the new message to the messages subcollection
         const messageRef = systemMatchRef.collection('messages').doc();
         await messageRef.set({
             id: messageRef.id,
             senderId: 'system',
             text: message,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: timestamp,
             type: 'user',
         })
 

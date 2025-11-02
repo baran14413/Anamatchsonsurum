@@ -68,17 +68,19 @@ function EslesmelerPageContent() {
 
 
   const { realMatches, pendingSuperLikes, systemMatch } = useMemo(() => {
-    if (!matches) return { realMatches: [], pendingSuperLikes: [], systemMatch: null };
+    const systemMatch = matches.find(m => m.id === 'system') || null;
+    const otherMatches = matches.filter(m => m.id !== 'system');
     
-    const allMatches = matches.filter(m => m.id !== 'system');
-    const filteredMatches = allMatches.filter(m => !searchTerm || (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredMatches = searchTerm
+      ? otherMatches.filter(m => (m.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()))
+      : otherMatches;
 
     const realMatches = filteredMatches.filter(m => m.status === 'matched');
     const pendingSuperLikes = filteredMatches.filter(m => m.status === 'superlike_pending' && m.superLikeInitiator !== user?.uid);
-    const systemMatch = matches.find(m => m.id === 'system');
     
     return { realMatches, pendingSuperLikes, systemMatch };
   }, [matches, searchTerm, user?.uid]);
+
 
   const handleDeleteChat = async () => {
     if (!chatToInteract || !user || !firestore) return;
@@ -172,7 +174,11 @@ function EslesmelerPageContent() {
             {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />)}
             <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
           </Avatar>
-          {hasUnread && !isPendingSuperlike && <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-background" />}
+          {hasUnread && !isPendingSuperlike && (
+            <span className="absolute bottom-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary ring-2 ring-background text-white text-[10px] font-bold">
+              {isSystemChat ? '!' : match.unreadCount}
+            </span>
+          )}
           {isPendingSuperlike && (
             <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 ring-2 ring-background">
               <Star className='h-3 w-3 text-white fill-white' />
@@ -184,6 +190,7 @@ function EslesmelerPageContent() {
             <h3 className={cn("font-semibold flex items-center gap-1.5 truncate", hasUnread && "text-foreground")}>
               {isUserDeleted ? 'Kullanıcı Bulunamadı' : match.fullName}
               {match.isSuperLike && !isPendingSuperlike && <Star className="h-4 w-4 text-blue-500 fill-blue-500" />}
+               {isSystemChat && <Check className="h-4 w-4 text-blue-500" />}
             </h3>
             {match.timestamp?.toDate && (
               <p className="text-xs text-muted-foreground shrink-0 pl-2">
@@ -257,7 +264,9 @@ function EslesmelerPageContent() {
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
                            {systemMatch && (
-                              <MatchItem match={systemMatch} onClick={() => router.push(`/eslesmeler/system`)} />
+                              <div className='border-b-4 border-double'>
+                                <MatchItem match={{...systemMatch, fullName: "BeMatch Studio"}} onClick={() => router.push(`/eslesmeler/system`)} />
+                              </div>
                            )}
                            {pendingSuperLikes.map(match => (
                                <MatchItem key={match.id} match={match} onClick={() => {}} onAcceptSuperLike={(e) => handleAcceptSuperLike(e, match)} />
