@@ -227,4 +227,3 @@ export const onReportUpdate = functions.region("europe-west1").firestore
 
         return null;
     });
-
