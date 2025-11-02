@@ -92,12 +92,12 @@ export type Post = {
   timestamp: Date;
 };
 
-export interface SystemMessage {
+// This type is now aligned with ChatMessage for simplicity,
+// as system messages will be rendered using the same components.
+export interface SystemMessage extends Omit<ChatMessage, 'matchId'> {
   id: string;
-  timestamp: any;
   senderId: 'system';
-  text: string;
-  type: 'user'; // System messages will use the 'user' type for simplicity in rendering
+  type: 'user';
 }
 
 export type ChatMessage = {
