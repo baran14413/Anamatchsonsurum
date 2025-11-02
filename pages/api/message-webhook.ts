@@ -1,7 +1,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp, serverTimestamp, increment } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue, increment } from 'firebase-admin/firestore';
 import { BOT_REPLIES } from '@/lib/bot-data';
 
 // Initialize Firebase Admin SDK
@@ -57,13 +57,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await messagesRef.add({
         senderId: botId,
         text: greeting,
-        timestamp: serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         type: 'user'
       });
       
       const updatePayload = {
           lastMessage: greeting,
-          timestamp: serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
           unreadCount: increment(1),
       };
 
