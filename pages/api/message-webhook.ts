@@ -1,7 +1,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp, FieldValue, increment } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { BOT_REPLIES } from '@/lib/bot-data';
 
 // Initialize Firebase Admin SDK
@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const updatePayload = {
           lastMessage: greeting,
           timestamp: FieldValue.serverTimestamp(),
-          unreadCount: increment(1),
+          unreadCount: FieldValue.increment(1),
       };
 
       // Update the last message for the real user to see it in their match list
