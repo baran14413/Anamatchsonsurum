@@ -39,8 +39,9 @@ const verifyGenderFlow = ai.defineFlow(
 
     const { output } = await ai.generate({
       model: 'googleai/gemini-pro-vision',
-      prompt: {
-        text: `You are a strict gender verification system for a dating app. Your task is to determine if the person in the provided images appears consistent with the declared gender: "${declaredGender}".
+      prompt: [
+        {
+          text: `You are a strict gender verification system for a dating app. Your task is to determine if the person in the provided images appears consistent with the declared gender: "${declaredGender}".
 
         Analyze facial features, body shape, and overall presentation across all images. Do not make assumptions based on clothing, hair style, or makeup alone. Focus on biological and generally accepted visual gender cues.
         
@@ -48,9 +49,10 @@ const verifyGenderFlow = ai.defineFlow(
         - If the person in the photos is visually consistent with the declared gender, set isConsistent to true.
         - If the person in the photos is NOT visually consistent with the declared gender, set isConsistent to false.
         - If you cannot determine (e.g., no clear person, ambiguous features, non-human subject), set isConsistent to false.
-        `,
-        media: mediaParts.map(p => p.media),
-      },
+        `
+        },
+        ...mediaParts,
+      ],
       output: {
         format: 'json',
         schema: VerifyGenderOutputSchema
