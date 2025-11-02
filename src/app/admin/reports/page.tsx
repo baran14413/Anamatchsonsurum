@@ -32,6 +32,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
+// Define an extended type for the hydrated report
+interface HydratedReport extends Report {
+  reporterProfile?: UserProfile;
+  reportedProfile?: UserProfile;
+}
+
 
 export default function AdminReportsPage() {
   const firestore = useFirestore();
@@ -45,12 +51,12 @@ export default function AdminReportsPage() {
   const usersQuery = useMemo(() => (firestore ? collection(firestore, 'users') : null), [firestore]);
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  const [hydratedReports, setHydratedReports] = useState<Report[]>([]);
+  const [hydratedReports, setHydratedReports] = useState<HydratedReport[]>([]);
 
   useEffect(() => {
     if (reports && users) {
       const userMap = new Map(users.map(u => [u.uid, u]));
-      const newHydratedReports = reports.map(report => ({
+      const newHydratedReports: HydratedReport[] = reports.map(report => ({
         ...report,
         reporterProfile: userMap.get(report.reporterId),
         reportedProfile: userMap.get(report.reportedId),
