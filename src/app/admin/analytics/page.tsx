@@ -31,7 +31,7 @@ export default function AdminAnalyticsPage() {
     );
     const matchesQuery = query(
         collection(firestore, 'matches'),
-        where('matchDate', '>=', startDate)
+        where('timestamp', '>=', startDate)
     );
 
     return { users: usersQuery, messages: messagesQuery, matches: matchesQuery };
@@ -49,7 +49,7 @@ export default function AdminAnalyticsPage() {
         
         const dailyUsers = recentUsers?.filter(u => u.createdAt && format(u.createdAt.toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
         const dailyMessages = recentMessages?.filter(m => m.timestamp && format(m.timestamp.toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
-        const dailyMatches = recentMatches?.filter(m => m.matchDate && format(m.matchDate.toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+        const dailyMatches = recentMatches?.filter(m => m.timestamp && format(m.timestamp.toDate(), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
 
         data.push({
             date: formattedDate,
