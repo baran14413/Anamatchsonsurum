@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -174,11 +173,14 @@ function EslesmelerPageContent() {
             {isSystemChat ? <Icons.bmIcon className='h-full w-full' /> : (isUserDeleted ? <Icons.bmIcon className='h-full w-full' /> : <AvatarImage src={match.profilePicture} />)}
             <AvatarFallback>{isSystemChat ? 'BM' : (isUserDeleted ? 'X' : (match.fullName || '').charAt(0))}</AvatarFallback>
           </Avatar>
-          {hasUnread && !isPendingSuperlike && (
+          {hasUnread && !isPendingSuperlike && match.unreadCount && match.unreadCount > 0 && (
             <span className="absolute bottom-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary ring-2 ring-background text-white text-[10px] font-bold">
-              {isSystemChat ? '!' : match.unreadCount}
+              {match.unreadCount}
             </span>
           )}
+           {isSystemChat && match.hasUnreadSystemMessage && (
+             <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-primary ring-2 ring-background" />
+           )}
           {isPendingSuperlike && (
             <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 ring-2 ring-background">
               <Star className='h-3 w-3 text-white fill-white' />
@@ -264,7 +266,7 @@ function EslesmelerPageContent() {
                 <div className='flex-1 overflow-y-auto'>
                         <div className="divide-y">
                            {systemMatch && (
-                              <div className='border-b-4 border-double'>
+                              <div className='border-b'>
                                 <MatchItem match={{...systemMatch, fullName: "BeMatch Studio"}} onClick={() => router.push(`/eslesmeler/system`)} />
                               </div>
                            )}
