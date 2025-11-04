@@ -81,6 +81,7 @@ const sendSystemMessage = async (userId: string, message: string) => {
             fullName: 'BeMatch Studio',
             profilePicture: '', // You can add a URL to the BeMatch logo
             hasUnreadSystemMessage: true,
+            unreadCount: admin.firestore.FieldValue.increment(1)
         }, { merge: true });
 
         // Add the new message to the messages subcollection
@@ -215,8 +216,8 @@ export const onNewMatch = functions.region("europe-west1").firestore
 export const onReportUpdate = functions.region("europe-west1").firestore
     .document("reports/{reportId}")
     .onUpdate(async (change, context) => {
-        const before = change.before.data() as Report;
-        const after = change.after.data() as Report;
+        const before = change.before.data();
+        const after = change.after.data();
 
         // If status changes to 'resolved'
         if (before.status !== "resolved" && after.status === "resolved") {

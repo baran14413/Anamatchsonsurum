@@ -141,7 +141,6 @@ export interface UserImage {
   }
   
   export interface Report {
-    id: string;
     reporterId: string;
     reportedId: string;
     matchId?: string;
