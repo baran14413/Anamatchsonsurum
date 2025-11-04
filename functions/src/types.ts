@@ -139,14 +139,4 @@ export interface UserImage {
       unreadCount?: number;
       hasUnreadSystemMessage?: boolean;
   }
-  
-  export interface Report {
-    reporterId: string;
-    reportedId: string;
-    matchId?: string;
-    reason: string;
-    description?: string;
-    status: 'pending' | 'resolved' | 'banned';
-    timestamp: any;
-  }
       

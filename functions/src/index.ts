@@ -1,7 +1,6 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { Report } from "./types";
 
 // Ensure app is initialized. This is idempotent.
 if (admin.apps.length === 0) {
@@ -66,39 +65,6 @@ const sendDataNotification = async (
     console.error("Error sending data messages:", error);
   }
 };
-
-const sendSystemMessage = async (userId: string, message: string) => {
-    try {
-        const systemMatchRef = db.collection('users').doc(userId).collection('matches').doc('system');
-        const timestamp = admin.firestore.FieldValue.serverTimestamp();
-        
-        // Update the denormalized match data with the new last message
-        await systemMatchRef.set({
-            id: 'system',
-            matchedWith: 'system',
-            lastMessage: message,
-            timestamp: timestamp,
-            fullName: 'BeMatch Studio',
-            profilePicture: '', // You can add a URL to the BeMatch logo
-            hasUnreadSystemMessage: true,
-            unreadCount: admin.firestore.FieldValue.increment(1)
-        }, { merge: true });
-
-        // Add the new message to the messages subcollection
-        const messageRef = systemMatchRef.collection('messages').doc();
-        await messageRef.set({
-            id: messageRef.id,
-            senderId: 'system',
-            text: message,
-            timestamp: timestamp,
-            type: 'user',
-        })
-
-        console.log(`System message sent to ${userId}`);
-    } catch(error) {
-        console.error(`Error sending system message to ${userId}:`, error);
-    }
-}
 
 
 // Triggered when a new message is created in any chat
@@ -210,27 +176,3 @@ export const onNewMatch = functions.region("europe-west1").firestore
     }
     return null;
   });
-
-
-// Triggered when a report is updated, to send notifications
-export const onReportUpdate = functions.region("europe-west1").firestore
-    .document("reports/{reportId}")
-    .onUpdate(async (change, context) => {
-        const before = change.before.data();
-        const after = change.after.data();
-
-        // If status changes to 'resolved'
-        if (before.status !== "resolved" && after.status === "resolved") {
-            const { reporterId, reportedId, reason } = after;
-
-            // 1. Send warning to the reported user
-            const warningMessage = `Merhaba, platformdaki bir davranışın topluluk kurallarımıza uymadığı için rapor edildi. Sebep: "${reason}". Lütfen herkes için saygılı ve güvenli bir ortam sağlamak adına kurallarımızı gözden geçir. Tekrarlanan ihlaller hesabınla ilgili işlem yapılmasına neden olabilir. Anlayışın için teşekkürler.`;
-            await sendSystemMessage(reportedId, warningMessage);
-
-            // 2. Send thank you to the reporter
-            const thankYouMessage = `Merhaba, gönderdiğin rapor için teşekkür ederiz. Topluluğumuzu daha güvenli bir yer yapmamıza yardımcı oldun. Raporun incelendi ve gerekli işlemler yapıldı.`;
-            await sendSystemMessage(reporterId, thankYouMessage);
-        }
-
-        return null;
-    });
