@@ -111,7 +111,7 @@ const AudioPlayer = ({ src }: { src: string }) => {
 
 function ChatPageContent() {
     const params = useParams();
-    const matchId = Array.isArray(params.matchId) ? params.matchId[0] : params.matchId;
+    const matchId = params ? (Array.isArray(params.matchId) ? params.matchId[0] : params.matchId) : null;
     const router = useRouter();
     const { user, userProfile, firebaseApp } = useUser();
     const firestore = useFirestore();
@@ -351,7 +351,7 @@ function ChatPageContent() {
     };
 
     const handleSendImage = async () => {
-        if (!imagePreview || !storage || !user) return;
+        if (!imagePreview || !storage || !user || !matchId) return;
         setIsUploading(true);
         
         const uniqueFileName = `bematch_chats/${matchId}/${Date.now()}-${imagePreview.file.name.replace(/\s+/g, '_')}`;
