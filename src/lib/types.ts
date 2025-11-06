@@ -34,6 +34,7 @@ export type UserProfile = {
   school?: string;
   lookingFor?: string;
   distancePreference?: number;
+  distance?: number; // Add this line
   ageRange?: {
     min: number;
     max: number;
