@@ -1,20 +1,18 @@
-
 {
   "entities": {
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile within the BeMatch application.",
+      "description": "Represents a user's profile on the BeMatch app.",
       "properties": {
-        "uid": {
+        "id": {
           "type": "string",
-          "description": "The Firebase Authentication UID associated with this user."
+          "description": "Unique identifier for the UserProfile entity."
         },
         "fullName": {
           "type": "string",
-          "description": "The user's full name, max 14 characters.",
-          "maxLength": 14
+          "description": "The user's full name."
         },
         "dateOfBirth": {
           "type": "string",
@@ -25,350 +23,117 @@
           "type": "string",
           "description": "The user's gender."
         },
-        "showGenderOnProfile": {
-          "type": "boolean",
-          "description": "Whether to show the user's gender on their profile."
-        },
-        "genderPreference": {
-          "type": "string",
-          "enum": ["male", "female", "both"],
-          "description": "The gender the user is interested in matching with."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address.",
-          "format": "email"
-        },
-        "profilePicture": {
-          "type": "string",
-          "description": "URL of the user's main profile picture.",
-          "format": "uri"
-        },
-        "media": {
+        "profilePictures": {
           "type": "array",
-          "description": "A list of media objects for the user's profile.",
+          "description": "Array of URLs to the user's profile pictures.",
           "items": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string",
-                "format": "uri"
-              },
-              "public_id": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string",
-                "enum": ["image", "video"]
-              }
-            }
+            "type": "string"
           }
         },
         "interests": {
           "type": "array",
-          "description": "A list of the user's interests.",
+          "description": "Array of user's interests.",
           "items": {
             "type": "string"
           }
         },
         "bio": {
           "type": "string",
-          "description": "A short biography or description of the user, limited to 100 characters.",
-          "maxLength": 100
+          "description": "A short biography or description of the user."
         },
         "location": {
-            "type": "object",
-            "properties": {
-                "latitude": {"type": "number"},
-                "longitude": {"type": "number"}
-            }
-        },
-        "address": {
-          "type": "object",
-          "description": "The user's address, derived from their location.",
-          "properties": {
-            "country": { "type": "string" },
-            "countryCode": { "type": "string" },
-            "city": { "type": "string" }
-          }
-        },
-        "distancePreference": {
-            "type": "number",
-            "description": "Maximum distance in kilometers for potential matches."
-        },
-        "ageRange": {
-            "type": "object",
-            "properties": {
-                "min": {"type": "number"},
-                "max": {"type": "number"}
-            },
-            "description": "The preferred age range for matches."
-        },
-        "expandAgeRange": {
-            "type": "boolean",
-            "description": "Whether to show people outside the preferred age range if there are no matches."
-        },
-        "isOnline": {
-            "type": "boolean",
-            "description": "Indicates if the user is currently online."
-        },
-        "isGenderVerified": {
-            "type": "boolean",
-            "description": "Indicates if the user's gender has been verified by AI."
-        },
-        "lastSeen": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The last time the user was seen online."
-        },
-        "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The timestamp when the user profile was created."
-        },
-        "rulesAgreed": {
-            "type": "boolean",
-            "description": "Indicates if the user has agreed to the community rules."
-        },
-        "welcomeGiftClaimed": {
-            "type": "boolean",
-            "description": "Indicates if the user has claimed their initial welcome gift."
-        },
-        "isAdmin": {
-            "type": "boolean",
-            "description": "Indicates if the user has administrator privileges."
-        },
-        "superLikeBalance": {
-            "type": "number",
-            "description": "The number of Super Likes the user has available."
-        },
-        "membershipType": {
           "type": "string",
-          "enum": ["free", "gold"],
-          "description": "The user's membership tier."
-        },
-        "goldMembershipExpiresAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The user's Gold membership expires."
-        },
-        "dailyUndoCount": {
-          "type": "number",
-          "description": "The number of times a free user has used the undo feature today."
-        },
-        "lastUndoTimestamp": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The timestamp of the last undo action."
+          "description": "The user's location."
         }
       },
       "required": [
-        "uid",
+        "id",
         "fullName",
         "dateOfBirth",
         "gender",
-        "email"
+        "profilePictures",
+        "interests",
+        "bio",
+        "location"
       ]
     },
     "Match": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Match",
       "type": "object",
-      "description": "Represents an interaction or match between two users.",
-      "properties": {
-        "user1Id": {
-          "type": "string",
-          "description": "The UID of the first user (lexicographically smaller)."
-        },
-        "user2Id": {
-          "type": "string",
-          "description": "The UID of the second user (lexicographically larger)."
-        },
-        "user1_action": {
-          "type": "string",
-          "enum": ["liked", "disliked", "superliked"],
-          "description": "The action taken by user1."
-        },
-        "user1_timestamp": {
-            "type": "string",
-            "format": "date-time"
-        },
-        "user2_action": {
-          "type": "string",
-          "enum": ["liked", "disliked", "superliked"],
-          "description": "The action taken by user2."
-        },
-        "user2_timestamp": {
-            "type": "string",
-            "format": "date-time"
-        },
-        "status": {
-            "type": "string",
-            "enum": ["pending", "matched", "superlike_pending"],
-            "description": "The current status of the interaction."
-        },
-        "matchDate": {
-          "type": "string",
-          "description": "The date and time when the match was confirmed.",
-          "format": "date-time"
-        },
-        "isSuperLike": {
-            "type": "boolean",
-            "description": "Indicates if this interaction was initiated with a Super Like."
-        },
-        "superLikeInitiator": {
-          "type": "string",
-          "description": "UID of the user who sent the Super Like."
-        }
-      },
-      "required": [
-        "user1Id",
-        "user2Id"
-      ]
-    },
-    "ChatMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
-      "type": "object",
-      "description": "Represents a single message within a chat conversation.",
+      "description": "Represents a match between two users.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
+          "description": "Unique identifier for the Match entity."
         },
-        "matchId": {
+        "user1Id": {
           "type": "string",
-          "description": "Reference to Match. (Relationship: Match 1:N ChatMessage)"
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Match) The ID of the first user in the match."
         },
-        "senderId": {
+        "user2Id": {
           "type": "string",
-          "description": "Reference to UserProfile who sent the message, or 'system'."
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Match) The ID of the second user in the match."
         },
-        "text": {
+        "matchDate": {
           "type": "string",
-          "description": "The text content of the message."
-        },
-        "imageUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL of an image sent in the message."
-        },
-        "imagePublicId": {
-          "type": "string",
-          "description": "Public ID of the image on Cloudinary for deletion."
-        },
-        "isViewOnce": {
-          "type": "boolean",
-          "description": "If true, the image can only be viewed once."
-        },
-        "viewed": {
-            "type": "boolean",
-            "description": "If true, the 'view once' image has been viewed."
-        },
-        "audioUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL of an audio message."
-        },
-        "audioDuration": {
-            "type": "number",
-            "description": "Duration of the audio message in seconds."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "The date and time when the message was sent.",
+          "description": "The date when the match occurred.",
           "format": "date-time"
-        },
-        "isRead": {
-          "type": "boolean",
-          "description": "Indicates if the message has been read by the recipient."
-        },
-        "readTimestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time when the message was read."
-        },
-        "type": {
-          "type": "string",
-          "enum": ["user", "system_superlike_prompt", "audio", "view-once", "view-once-viewed"],
-          "description": "The type of message."
-        },
-        "action": {
-          "type": "string",
-          "enum": ["accepted", "declined"],
-          "description": "Action taken on a system message."
-        },
-        "actionTaken": {
-          "type": "boolean",
-          "description": "Indicates if an action has been taken on the system message."
-        },
-        "isEdited": {
-          "type": "boolean",
-          "description": "Indicates if the message has been edited."
-        },
-        "editedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time when the message was last edited."
         }
       },
       "required": [
         "id",
-        "matchId",
-        "senderId",
-        "timestamp",
-        "isRead"
+        "user1Id",
+        "user2Id",
+        "matchDate"
       ]
     },
-    "Report": {
+    "Message": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Report",
+      "title": "Message",
       "type": "object",
-      "description": "Represents a user-submitted report against another user.",
+      "description": "Represents a message exchanged between users.",
       "properties": {
-        "reporterId": {
+        "id": {
           "type": "string",
-          "description": "The UID of the user who submitted the report."
+          "description": "Unique identifier for the Message entity."
         },
-        "reportedId": {
+        "senderId": {
           "type": "string",
-          "description": "The UID of the user being reported."
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Message) The ID of the user who sent the message."
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Message) The ID of the user who received the message."
         },
         "matchId": {
           "type": "string",
-          "description": "The ID of the match, if the report is related to a specific chat."
+          "description": "Reference to Match. (Relationship: Match 1:N Message) The ID of the match this message belongs to."
         },
-        "reason": {
+        "messageText": {
           "type": "string",
-          "description": "The selected reason for the report."
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of the issue provided by the reporter."
-        },
-        "status": {
-          "type": "string",
-          "enum": ["pending", "resolved", "banned"],
-          "description": "The current status of the report."
+          "description": "The content of the message."
         },
         "timestamp": {
           "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the report was submitted."
+          "description": "The timestamp of when the message was sent.",
+          "format": "date-time"
         }
       },
       "required": [
-        "reporterId",
-        "reportedId",
-        "reason",
-        "status",
+        "id",
+        "senderId",
+        "receiverId",
+        "matchId",
+        "messageText",
         "timestamp"
       ]
     }
   },
   "auth": {
     "providers": [
-      "google.com"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
@@ -378,9 +143,15 @@
         "definition": {
           "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/entities/UserProfile"
+            "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores public user profile data."
+          "description": "Stores user profiles. Document ID is the Firebase Auth UID. Path-based ownership enables secure access. Denormalized 'userId' field from auth token.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
         }
       },
       {
@@ -388,41 +159,38 @@
         "definition": {
           "entityName": "Match",
           "schema": {
-            "$ref": "#/entities/Match"
+            "$ref": "#/backend/entities/Match"
           },
-          "description": "Stores interaction data (likes, dislikes, matches) between two users. The document ID is a composite key of the two user UIDs, sorted lexicographically."
-        }
-      },
-      {
-        "path": "/users/{userId}/matches/{matchId}",
-        "definition": {
-          "entityName": "Match",
-          "schema": {
-            "$ref": "#/entities/Match"
-          },
-          "description": "Stores denormalized data for confirmed matches for a specific user, allowing for easy querying of a user's match list."
+          "description": "Stores matches between users. Includes denormalized 'user1Id' and 'user2Id' fields for authorization independence.",
+          "params": [
+            {
+              "name": "matchId",
+              "description": "Unique ID of the match document."
+            }
+          ]
         }
       },
       {
         "path": "/matches/{matchId}/messages/{messageId}",
         "definition": {
-          "entityName": "ChatMessage",
+          "entityName": "Message",
           "schema": {
-            "$ref": "#/entities/ChatMessage"
+            "$ref": "#/backend/entities/Message"
           },
-          "description": "Stores chat messages for a specific confirmed match. Access is controlled by match membership."
-        }
-      },
-      {
-        "path": "/reports/{reportId}",
-        "definition": {
-          "entityName": "Report",
-          "schema": {
-            "$ref": "#/entities/Report"
-          },
-          "description": "Stores user-submitted reports for moderation."
+          "description": "Stores messages within a match. Includes denormalized 'user1Id' and 'user2Id' from the parent 'match' document for authorization independence.",
+          "params": [
+            {
+              "name": "matchId",
+              "description": "The ID of the match the message belongs to."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique ID of the message."
+            }
+          ]
         }
       }
-    ]
+    ],
+    "reasoning": "The Firestore data structure is designed to support the core features of the BeMatch app, focusing on user profiles, matches, and real-time messaging. The structure prioritizes authorization independence, clarity, and scalability.\n\n*   **UserProfile:** User profiles are stored in a `users` collection using the user's UID as the document ID. This enables path-based ownership, simplifying security rules. All profile data is stored directly within the user document.\n*   **Matches:** Matches between users are stored in a `matches` collection. Each match document contains references to the two users involved (`user1Id`, `user2Id`). To achieve authorization independence and enable secure listing of matches for a given user, the `matches` collection will denormalize the `user1Id` and `user2Id` fields. Security rules will leverage these fields to control access.\n*   **Messages:** Messages are stored in a subcollection `messages` under each `match` document. This hierarchical structure ensures that messages are directly associated with their corresponding match. Each message includes `senderId`, `receiverId`, and `matchId` for easy querying. Similar to matches, to support authorization independence, each `message` will include a denormalized `user1Id` and `user2Id` from the parent `match` document.\n\n**Authorization Independence:**\nAuthorization independence is achieved primarily through denormalization. The `matches` collection denormalizes user IDs, and the `messages` collection denormalizes the user IDs from the parent `match` document. This ensures that access control can be enforced based on the contents of each document, without needing to perform expensive and brittle `get()` operations to fetch parent data.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations via structural segregation and path-based ownership. For `users`, the `list` operation is restricted to authenticated users viewing their profile data. For `matches`, a user can only list matches where their user ID is present as either `user1Id` or `user2Id` (denormalized fields). For `messages`, a user can only list messages under a specific match, and the match document itself enforces that the user is one of the participants. This prevents users from listing all messages across the entire database. Global roles are not required, as access is controlled via path-based ownership and membership denormalization."
   }
 }
