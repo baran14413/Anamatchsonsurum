@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useUser, useFirestore, useMemoFirebase, useFirebaseApp } from '@/firebase/provider';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, writeBatch, where, getDocs, deleteDoc, increment, collectionGroup, arrayUnion } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -371,7 +371,7 @@ function ChatPageContent() {
         } catch (error: any) {
             toast({
                 title: 'Yükleme Başarısız',
-                description: error.message,
+                description: `Fotoğraf yüklenirken bir yetki hatası oluştu. Hata: ${error.message}`,
                 variant: 'destructive',
             });
         } finally {
@@ -1264,3 +1264,5 @@ export default function ChatPage() {
         </AppShell>
     )
 }
+
+    
