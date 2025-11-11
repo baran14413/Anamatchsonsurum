@@ -373,13 +373,21 @@ export default function SignUpPage() {
       router.push('/profil/galeri');
 
     } catch (error: any) {
+      console.error("Signup Error:", error.code, error.message);
       if (error.code === 'auth/email-already-in-use') {
         toast({
             title: langTr.common.emailExistsTitle,
             description: langTr.common.emailExistsDescription,
             action: <Button onClick={() => router.push('/giris')}>{langTr.common.goToLogin}</Button>
         });
-      } else {
+      } else if (error.code === 'permission-denied') {
+         toast({ 
+            title: 'Veritabanı İzin Hatası', 
+            description: 'Profiliniz oluşturulamadı. Lütfen destek ile iletişime geçin.', 
+            variant: 'destructive' 
+        });
+      }
+      else {
         toast({ title: langTr.signup.errors.signupFailed, description: error.message, variant: 'destructive' });
       }
     } finally {
