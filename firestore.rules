@@ -3,54 +3,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // User profiles
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
-      // Allow any authenticated user to create a user document.
-      // This is necessary for the sign-up flow where a user does not have a doc yet.
-      // Once created, only the owner can update it.
-      allow create: if request.auth != null;
-    }
+      // New users can create their own profile document.
+      allow create; 
+      
+      // Only the owner of the profile can read, update, or delete their own document.
+      allow read, update, delete: if isOwner(userId);
 
-    // Matches
-    match /matches/{matchId} {
-      // Users can only access matches they are a part of.
-      allow read, update: if request.auth != null && (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
-      // Allow creation if the user is one of the participants.
-      allow create: if request.auth != null && (request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
-
-      // Messages subcollection
-      match /messages/{messageId} {
-        // Only participants of the match can read or write messages.
-        allow read, create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id || request.auth.uid == get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id);
-        // Only the sender of a message can update or delete it.
-        allow update, delete: if request.auth != null && request.auth.uid == resource.data.senderId;
+      // Allow authenticated users to list matches (for discovery, etc.)
+      match /matches/{matchId} {
+        allow read: if request.auth != null;
+        allow write, delete: if isOwner(userId);
       }
     }
-    
-    // User-specific denormalized matches
-    match /users/{userId}/matches/{matchId} {
-        allow read, write, delete: if isOwner(userId);
+
+    match /matches/{matchId} {
+      // A user can get a match document if they are one of the participants.
+      allow get: if request.auth != null && (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+      
+      // A user can update a match document (e.g., to like/dislike) if they are a participant.
+      allow write: if request.auth != null && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+
+      // Messages can only be read or written by the two users in the match.
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && (get(/databases/$(database)/documents/matches/$(matchId)).data.user1Id == request.auth.uid || get(/databases/$(database)/documents/matches/$(matchId)).data.user2Id == request.auth.uid);
+      }
     }
-    
-    // Reports
+
     match /reports/{reportId} {
       // Any authenticated user can create a report.
       allow create: if request.auth != null;
-      // Reading/updating/deleting reports should be restricted to admins.
-      // This will be handled by server-side logic (e.g., Cloud Functions with admin SDK).
-      allow read, update, delete: if false; 
     }
 
-    // App settings - readable by all, writable only by admins (via server-side logic)
-    match /app_settings/{settingId} {
-      allow read: if true;
-      allow write: if false; 
+    // Admins have full access to all data for management purposes.
+    // This rule assumes you have a custom claim 'isAdmin' set to true for admin users.
+    match /{document=**} {
+      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
   }
 }
