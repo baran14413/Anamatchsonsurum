@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -473,12 +471,11 @@ function ChatPageContent() {
         
         try {
             const mp3Blob = await audioBufferToMp3(audioBlob);
-            const audioFile = new File([mp3Blob], `voice-message-${Date.now()}.mp3`, { type: 'audio/mpeg' });
             
             const uniqueFileName = `bematch_chats/${matchId}/audio/${Date.now()}.mp3`;
             const audioRef = storageRef(storage, uniqueFileName);
 
-            const snapshot = await uploadBytes(audioRef, audioFile);
+            const snapshot = await uploadBytes(audioRef, mp3Blob);
             const downloadURL = await getDownloadURL(snapshot.ref);
 
             handleSendMessage({ audioUrl: downloadURL, audioDuration: recordingTime, type: 'audio' });
