@@ -41,7 +41,7 @@ const StatCard = ({ icon: Icon, title, value, href, iconClass }: { icon: React.E
 
 function ProfilePageContent() {
   const t = langTr;
-  const { user, userProfile, auth } = useUser();
+  const { user, userProfile } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
