@@ -113,7 +113,8 @@ function ChatPageContent() {
     const params = useParams();
     const matchId = params ? (Array.isArray(params.matchId) ? params.matchId[0] : params.matchId) : null;
     const router = useRouter();
-    const { user, userProfile, firebaseApp } = useUser();
+    const { user, userProfile } = useUser();
+    const firebaseApp = useFirebaseApp();
     const firestore = useFirestore();
     const { toast } = useToast();
     const t = langTr;
@@ -1264,5 +1265,3 @@ export default function ChatPage() {
         </AppShell>
     )
 }
-
-    
