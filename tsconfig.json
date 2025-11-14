@@ -29,7 +29,9 @@
     "src/**/*.tsx",
     ".next/types/**/*.ts",
     "pages/**/*.ts",
-    "pages/**/*.tsx"
+    "pages/**/*.tsx",
+    "src/app/**/*.ts",
+    "src/app/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
