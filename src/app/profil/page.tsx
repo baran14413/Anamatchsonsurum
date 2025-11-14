@@ -226,7 +226,7 @@ function ProfilePageContent() {
                         <Pencil className="h-4 w-4" />
                     </Button>
                     <div className="grid grid-cols-2 gap-2">
-                        {galleryImages.map((image, index) => (
+                        {galleryImages.map((image: UserImage, index) => (
                             <div key={index} className="relative aspect-square rounded-xl overflow-hidden">
                                 {image.type === 'video' ? (
                                     <>
