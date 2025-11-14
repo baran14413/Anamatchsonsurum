@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirebase } from '@/firebase/provider';
+import { useUser, useAuth } from '@/firebase/provider';
 import { langTr } from '@/languages/tr';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronRight, SlidersHorizontal, LogOut, Heart, User, MapPin, Smartphone, Wallet, ShieldCheck, Shield, HelpCircle } from 'lucide-react';
@@ -53,7 +53,8 @@ const SectionTitle: React.FC<{ title: string }> = ({ title }) => (
 
 
 function SettingsPageContent() {
-    const { userProfile, auth } = useUser();
+    const { userProfile } = useUser();
+    const auth = useAuth();
     const router = useRouter();
     const t = langTr;
     const { toast } = useToast();
