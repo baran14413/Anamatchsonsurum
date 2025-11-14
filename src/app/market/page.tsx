@@ -31,7 +31,7 @@ export default function MarketPage() {
     setIsPurchasing(productId);
 
     try {
-        await purchase({ productId });
+        purchase(productId);
         // Başarılı olursa, TWA host'u global fonksiyonu çağıracak ve entitlement verilecek.
         // Bu noktada kullanıcıya bir "işlem devam ediyor" mesajı gösterilebilir.
         toast({
