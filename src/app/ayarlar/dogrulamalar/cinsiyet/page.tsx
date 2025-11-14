@@ -11,6 +11,7 @@ import { Icons } from '@/components/icons';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { doc, updateDoc } from 'firebase/firestore';
 import { verifyGender } from '@/ai/flows/verify-gender-flow';
+import type { UserImage } from '@/lib/types';
 
 // Helper function to fetch and convert an image URL to a data URI via a server-side proxy
 const toDataURL = async (url: string): Promise<string> => {
@@ -58,7 +59,7 @@ export default function GenderVerificationPage() {
 
         try {
             // Convert all profile images to data URIs in parallel
-            const imageUrls = userProfile.images.map(img => img.url);
+            const imageUrls = userProfile.images.map((img: UserImage) => img.url);
             
             const result = await verifyGender({
                 declaredGender: userProfile.gender,
