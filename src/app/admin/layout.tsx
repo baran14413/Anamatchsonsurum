@@ -35,7 +35,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }, [user, userProfile, isUserLoading, router]);
 
   // While user data is loading, show a loading indicator.
-  if (isUserLoading) {
+  if (isUserLoading || (user && !userProfile)) {
     return <div className="flex h-screen items-center justify-center"><Icons.logo className="h-12 w-12 animate-pulse" /></div>;
   }
 
